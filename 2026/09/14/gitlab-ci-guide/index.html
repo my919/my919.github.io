@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="CI&#x2F;CD · GitLab CI 实战 入门篇之后的专项落地。流水线概念 · .gitlab-ci.yml 语法 · 构建测试发布 · 环境部署 · 缓存与缓存清理 · 安全与最佳实践。配置带详细注释。  技术栈速查   类别 选型 用途    平台 GitLab CE&#x2F;EE 17.x 代码与流水线   Runner Docker executor 任务执行器   语法 .g">
+<meta property="og:type" content="article">
+<meta property="og:title" content="GitLab CI 实战：从流水线到部署">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/gitlab-ci-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="CI&#x2F;CD · GitLab CI 实战 入门篇之后的专项落地。流水线概念 · .gitlab-ci.yml 语法 · 构建测试发布 · 环境部署 · 缓存与缓存清理 · 安全与最佳实践。配置带详细注释。  技术栈速查   类别 选型 用途    平台 GitLab CE&#x2F;EE 17.x 代码与流水线   Runner Docker executor 任务执行器   语法 .g">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T09:55:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.166Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/gitlab-ci-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/gitlab-ci-guide/","path":"2026/09/14/gitlab-ci-guide/","title":"GitLab CI 实战：从流水线到部署"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>GitLab CI 实战：从流水线到部署 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#CI-CD-%C2%B7-GitLab-CI-%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">CI&#x2F;CD · GitLab CI 实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%AE%89%E8%A3%85-Runner"><span class="nav-number">1.3.</span> <span class="nav-text">2. 安装 Runner</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%B5%81%E6%B0%B4%E7%BA%BF"><span class="nav-number">1.4.</span> <span class="nav-text">3. 第一个流水线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E5%B8%B8%E7%94%A8%E8%AF%AD%E6%B3%95%E9%80%9F%E6%9F%A5"><span class="nav-number">1.5.</span> <span class="nav-text">4. 常用语法速查</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%8F%98%E9%87%8F%E4%B8%8E%E7%8E%AF%E5%A2%83"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 变量与环境</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%9D%A1%E4%BB%B6%E6%89%A7%E8%A1%8C%EF%BC%88rules%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 条件执行（rules）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E7%BC%93%E5%AD%98-vs-%E5%88%B6%E5%93%81"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 缓存 vs 制品</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-%E6%89%8B%E5%8A%A8%E7%A1%AE%E8%AE%A4%EF%BC%88%E9%83%A8%E7%BD%B2%E7%94%9F%E4%BA%A7%EF%BC%89"><span class="nav-number">1.5.4.</span> <span class="nav-text">4.4 手动确认（部署生产）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%AE%8C%E6%95%B4%E5%AE%9E%E6%88%98%EF%BC%9AJava-%E5%BE%AE%E6%9C%8D%E5%8A%A1%E4%BA%A4%E4%BB%98"><span class="nav-number">1.6.</span> <span class="nav-text">5. 完整实战：Java 微服务交付</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%EF%BC%88%E7%94%B1%E6%B5%85%E5%85%A5%E6%B7%B1%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">6. 部署策略（由浅入深）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5%E4%B8%8E%E5%9D%91"><span class="nav-number">1.8.</span> <span class="nav-text">7. 最佳实践与坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.9.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/gitlab-ci-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="GitLab CI 实战：从流水线到部署 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          GitLab CI 实战：从流水线到部署
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 17:55:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T17:55:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="CI-CD-·-GitLab-CI-实战"><a href="#CI-CD-·-GitLab-CI-实战" class="headerlink" title="CI&#x2F;CD · GitLab CI 实战"></a>CI&#x2F;CD · GitLab CI 实战</h1><blockquote>
+<p>入门篇之后的专项落地。流水线概念 · .gitlab-ci.yml 语法 · 构建测试发布 · 环境部署 · 缓存与缓存清理 · 安全与最佳实践。配置带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>平台</td>
+<td>GitLab CE&#x2F;EE 17.x</td>
+<td>代码与流水线</td>
+</tr>
+<tr>
+<td>Runner</td>
+<td>Docker executor</td>
+<td>任务执行器</td>
+</tr>
+<tr>
+<td>语法</td>
+<td>.gitlab-ci.yml</td>
+<td>流水线定义</td>
+</tr>
+<tr>
+<td>制品</td>
+<td>GitLab Artifacts</td>
+<td>构建产物传递</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>SSH &#x2F; Kubernetes &#x2F; docker compose</td>
+<td>发布</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>GitLab CI</strong> 是 GitLab 内置的持续集成&#x2F;部署系统：提交代码 → Runner 执行流水线 → 构建&#x2F;测试&#x2F;部署。</p>
+<p><strong>核心概念</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Pipeline</td>
+<td>一次 CI 执行（每次 push 触发）</td>
+</tr>
+<tr>
+<td>Stage</td>
+<td>阶段（build → test → deploy），同阶段并行、跨阶段串行</td>
+</tr>
+<tr>
+<td>Job</td>
+<td>一个任务（一个 stage 下的具体命令）</td>
+</tr>
+<tr>
+<td>Runner</td>
+<td>执行任务的机器（共享&#x2F;特定）</td>
+</tr>
+<tr>
+<td>Artifacts</td>
+<td>任务产物（如 jar），可传递给后续任务</td>
+</tr>
+</tbody></table>
+<p><strong>工作流</strong>：Merge Request 触发 → 校验（lint&#x2F;test）→ 合并后自动部署到测试环境 → 手动&#x2F;自动部署生产。</p>
+<h2 id="2-安装-Runner"><a href="#2-安装-Runner" class="headerlink" title="2. 安装 Runner"></a>2. 安装 Runner</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Docker 方式安装（推荐，\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name gitlab-runner --restart always \</span><br><span class="line">  -v /srv/gitlab-runner/config:/etc/gitlab-runner \</span><br><span class="line">  -v /var/run/docker.sock:/var/run/docker.sock \</span><br><span class="line">  gitlab/gitlab-runner:latest</span><br><span class="line"></span><br><span class="line"><span class="comment"># 注册 Runner（token 在 GitLab → Settings → CI/CD → Runners，\ 为续行符整段复制）</span></span><br><span class="line">docker <span class="built_in">exec</span> -it gitlab-runner gitlab-runner register \</span><br><span class="line">  --url https://gitlab.com \</span><br><span class="line">  --token &lt;注册token&gt; \</span><br><span class="line">  --executor docker \</span><br><span class="line">  --docker-image docker:27 \</span><br><span class="line">  --docker-privileged \</span><br><span class="line">  --description <span class="string">&quot;docker-runner&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-第一个流水线"><a href="#3-第一个流水线" class="headerlink" title="3. 第一个流水线"></a>3. 第一个流水线</h2><p>在仓库根目录创建 <code>.gitlab-ci.yml</code>：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">stages:</span>          <span class="comment"># 定义阶段（顺序执行）</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">build</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">test</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">deploy</span></span><br><span class="line"></span><br><span class="line"><span class="attr">build-job:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">build</span>                        <span class="comment"># 属于 build 阶段</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">maven:3.9-eclipse-temurin-21</span> <span class="comment"># 运行镜像（Java 21）</span></span><br><span class="line">  <span class="attr">script:</span>                             <span class="comment"># 执行的命令</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">mvn</span> <span class="string">clean</span> <span class="string">package</span> <span class="string">-DskipTests</span>   <span class="comment"># 打包（跳过测试）</span></span><br><span class="line">  <span class="attr">artifacts:</span>                  <span class="comment"># 产物传递到后续 job</span></span><br><span class="line">    <span class="attr">paths:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">target/*.jar</span>          <span class="comment"># 打包出的 jar</span></span><br><span class="line">    <span class="attr">expire_in:</span> <span class="number">1</span> <span class="string">day</span>          <span class="comment"># 过期时间（防存储膨胀）</span></span><br><span class="line"></span><br><span class="line"><span class="attr">test-job:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">test</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">maven:3.9-eclipse-temurin-21</span></span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">mvn</span> <span class="string">test</span>                        <span class="comment"># 跑测试</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_PIPELINE_SOURCE == &quot;merge_request_event&quot;&#x27;</span>   <span class="comment"># 仅 MR 跑</span></span><br><span class="line"></span><br><span class="line"><span class="attr">deploy-job:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">deploy</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">alpine:3.20</span></span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">echo</span> <span class="string">&quot;部署到测试环境&quot;</span></span><br><span class="line">  <span class="attr">environment:</span> <span class="string">test</span>                   <span class="comment"># 部署到 test 环境</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_COMMIT_BRANCH == &quot;main&quot;&#x27;</span>                    <span class="comment"># 仅 main 分支</span></span><br></pre></td></tr></table></figure>
+
+<p>提交后到 GitLab → CI&#x2F;CD → Pipelines 查看流水线运行。</p>
+<h2 id="4-常用语法速查"><a href="#4-常用语法速查" class="headerlink" title="4. 常用语法速查"></a>4. 常用语法速查</h2><h3 id="4-1-变量与环境"><a href="#4-1-变量与环境" class="headerlink" title="4.1 变量与环境"></a>4.1 变量与环境</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">variables:</span>                    <span class="comment"># 全局变量</span></span><br><span class="line">  <span class="attr">MAVEN_OPTS:</span> <span class="string">&quot;-Xmx2g&quot;</span>        <span class="comment"># JVM 堆内存</span></span><br><span class="line">  <span class="attr">DOCKER_IMAGE:</span> <span class="string">&quot;registry.gitlab.com/myorg/myapp&quot;</span>   <span class="comment"># 镜像地址</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 项目级变量：Settings → CI/CD → Variables（存密钥，Masked 加密）</span></span><br><span class="line"><span class="comment"># DEPLOY_HOST, DEPLOY_USER, SSH_PRIVATE_KEY</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-条件执行（rules）"><a href="#4-2-条件执行（rules）" class="headerlink" title="4.2 条件执行（rules）"></a>4.2 条件执行（rules）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">job:</span></span><br><span class="line">  <span class="attr">script:</span> <span class="string">echo</span> <span class="string">&quot;conditional&quot;</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_COMMIT_BRANCH == &quot;main&quot;&#x27;</span>          <span class="comment"># main 分支</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_COMMIT_TAG&#x27;</span>                        <span class="comment"># 打了 tag</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_PIPELINE_SOURCE == &quot;schedule&quot;&#x27;</span>     <span class="comment"># 定时</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">when:</span> <span class="string">never</span>                                 <span class="comment"># 其他都跳过</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-缓存-vs-制品"><a href="#4-3-缓存-vs-制品" class="headerlink" title="4.3 缓存 vs 制品"></a>4.3 缓存 vs 制品</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">build:</span></span><br><span class="line">  <span class="attr">script:</span> <span class="string">mvn</span> <span class="string">package</span></span><br><span class="line">  <span class="attr">cache:</span>                       <span class="comment"># 依赖缓存（加速）</span></span><br><span class="line">    <span class="attr">key:</span> <span class="string">maven-cache</span>           <span class="comment"># 缓存键（分支间隔离）</span></span><br><span class="line">    <span class="attr">paths:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">.m2/</span>                   <span class="comment"># Maven 本地仓库</span></span><br><span class="line"></span><br><span class="line"><span class="attr">deploy:</span></span><br><span class="line">  <span class="attr">script:</span> <span class="string">deploy.sh</span></span><br><span class="line">  <span class="attr">artifacts:</span>                   <span class="comment"># 制品（任务间传递）</span></span><br><span class="line">    <span class="attr">paths:</span> [ <span class="string">target/*.jar</span> ]</span><br></pre></td></tr></table></figure>
+
+<p><strong>区别</strong>：cache 是依赖加速（下载的依赖）；artifacts 是任务产物（构建的 jar）。</p>
+<h3 id="4-4-手动确认（部署生产）"><a href="#4-4-手动确认（部署生产）" class="headerlink" title="4.4 手动确认（部署生产）"></a>4.4 手动确认（部署生产）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">deploy-prod:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">deploy</span></span><br><span class="line">  <span class="attr">script:</span> <span class="string">./deploy-prod.sh</span></span><br><span class="line">  <span class="attr">environment:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">production</span>            <span class="comment"># 生产环境</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_COMMIT_TAG&#x27;</span>      <span class="comment"># 打 tag 才触发</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">manual</span>                 <span class="comment"># 需要手动点击执行</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="5-完整实战：Java-微服务交付"><a href="#5-完整实战：Java-微服务交付" class="headerlink" title="5. 完整实战：Java 微服务交付"></a>5. 完整实战：Java 微服务交付</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">stages:</span> [<span class="string">lint</span>, <span class="string">build</span>, <span class="string">test</span>, <span class="string">package</span>, <span class="string">deploy-test</span>, <span class="string">deploy-prod</span>]   <span class="comment"># 6 个阶段</span></span><br><span class="line"></span><br><span class="line"><span class="attr">variables:</span></span><br><span class="line">  <span class="attr">MAVEN_OPTS:</span> <span class="string">&quot;-Dmaven.repo.local=$CI_PROJECT_DIR/.m2&quot;</span>   <span class="comment"># 缓存目录</span></span><br><span class="line">  <span class="attr">IMAGE_TAG:</span> <span class="string">&quot;$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA&quot;</span>   <span class="comment"># 镜像标签=提交哈希</span></span><br><span class="line"></span><br><span class="line"><span class="attr">lint:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">lint</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">maven:3.9-eclipse-temurin-21</span></span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">mvn</span> <span class="string">spotless:check</span>              <span class="comment"># 代码格式检查</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_PIPELINE_SOURCE == &quot;merge_request_event&quot;&#x27;</span>   <span class="comment"># MR 才跑</span></span><br><span class="line"></span><br><span class="line"><span class="attr">build:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">build</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">maven:3.9-eclipse-temurin-21</span></span><br><span class="line">  <span class="attr">cache:</span></span><br><span class="line">    <span class="attr">key:</span> <span class="string">maven-cache</span></span><br><span class="line">    <span class="attr">paths:</span> [<span class="string">.m2/</span>]                     <span class="comment"># 依赖缓存加速</span></span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">mvn</span> <span class="string">clean</span> <span class="string">package</span> <span class="string">-DskipTests</span>   <span class="comment"># 打包</span></span><br><span class="line">  <span class="attr">artifacts:</span></span><br><span class="line">    <span class="attr">paths:</span> [<span class="string">target/*.jar</span>]</span><br><span class="line">    <span class="attr">expire_in:</span> <span class="number">1</span> <span class="string">day</span></span><br><span class="line"></span><br><span class="line"><span class="attr">test:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">test</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">maven:3.9-eclipse-temurin-21</span></span><br><span class="line">  <span class="attr">needs:</span> [<span class="string">build</span>]                      <span class="comment"># 依赖 build 的产物（不等全阶段）</span></span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">mvn</span> <span class="string">verify</span>                      <span class="comment"># 测试+覆盖率</span></span><br><span class="line">  <span class="attr">coverage:</span> <span class="string">&#x27;/Coverage: ([0-9.]+)%/&#x27;</span>     <span class="comment"># 测试覆盖率采集（正则）</span></span><br><span class="line"></span><br><span class="line"><span class="attr">package:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">package</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">docker:27</span>                    <span class="comment"># Docker 客户端</span></span><br><span class="line">  <span class="attr">services:</span> [<span class="string">docker:27-dind</span>]          <span class="comment"># Docker-in-Docker 守护进程</span></span><br><span class="line">  <span class="attr">before_script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">echo</span> <span class="string">&quot;$CI_REGISTRY_PASSWORD&quot;</span> <span class="string">|</span> <span class="string">docker</span> <span class="string">login</span> <span class="string">-u</span> <span class="string">&quot;$CI_REGISTRY_USER&quot;</span> <span class="string">--password-stdin</span> <span class="string">$CI_REGISTRY</span></span><br><span class="line">    <span class="comment"># 登录容器镜像仓库</span></span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">docker</span> <span class="string">build</span> <span class="string">-t</span> <span class="string">$IMAGE_TAG</span> <span class="string">.</span>    <span class="comment"># 构建镜像</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">docker</span> <span class="string">push</span> <span class="string">$IMAGE_TAG</span>          <span class="comment"># 推送镜像</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_COMMIT_BRANCH == &quot;main&quot;&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">deploy-test:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">deploy-test</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">alpine:3.20</span></span><br><span class="line">  <span class="attr">needs:</span> [<span class="string">package</span>]</span><br><span class="line">  <span class="attr">before_script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">apk</span> <span class="string">add</span> <span class="string">--no-cache</span> <span class="string">openssh-client</span>   <span class="comment"># 装 SSH 客户端</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">eval</span> <span class="string">$(ssh-agent</span> <span class="string">-s)</span> <span class="string">&amp;&amp;</span> <span class="string">echo</span> <span class="string">&quot;$SSH_PRIVATE_KEY&quot;</span> <span class="string">|</span> <span class="string">ssh-add</span> <span class="bullet">-</span>   <span class="comment"># 加载私钥</span></span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ssh</span> <span class="string">-o</span> <span class="string">StrictHostKeyChecking=no</span> <span class="string">&quot;$DEPLOY_USER@$DEPLOY_HOST&quot;</span></span><br><span class="line">      <span class="string">&quot;cd /opt/app &amp;&amp; docker pull $IMAGE_TAG &amp;&amp; docker compose up -d&quot;</span></span><br><span class="line">    <span class="comment"># 远程拉镜像并重启（\ 为续行符）</span></span><br><span class="line">  <span class="attr">environment:</span> <span class="string">test</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_COMMIT_BRANCH == &quot;main&quot;&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">deploy-prod:</span></span><br><span class="line">  <span class="attr">stage:</span> <span class="string">deploy-prod</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">alpine:3.20</span></span><br><span class="line">  <span class="attr">needs:</span> [<span class="string">package</span>]</span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ssh</span> <span class="string">&quot;$DEPLOY_USER@$DEPLOY_PROD_HOST&quot;</span> <span class="string">&quot;cd /opt/app &amp;&amp; docker pull $IMAGE_TAG &amp;&amp; docker compose up -d&quot;</span></span><br><span class="line">  <span class="attr">environment:</span> <span class="string">production</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">manual</span>                          <span class="comment"># 手动触发（生产需人工确认）</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">if:</span> <span class="string">&#x27;$CI_COMMIT_TAG&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Dockerfile</strong>：</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> eclipse-temurin:<span class="number">21</span>-jre        <span class="comment"># Java 21 运行时（精简版）</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> /app                       <span class="comment"># 工作目录</span></span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> target/*.jar app.jar          <span class="comment"># 复制构建产物</span></span></span><br><span class="line"><span class="keyword">EXPOSE</span> <span class="number">8080</span>                        <span class="comment"># 暴露端口</span></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;java&quot;</span>, <span class="string">&quot;-jar&quot;</span>, <span class="string">&quot;app.jar&quot;</span>]   <span class="comment"># 启动命令</span></span></span><br></pre></td></tr></table></figure>
+
+<h2 id="6-部署策略（由浅入深）"><a href="#6-部署策略（由浅入深）" class="headerlink" title="6. 部署策略（由浅入深）"></a>6. 部署策略（由浅入深）</h2><table>
+<thead>
+<tr>
+<th>策略</th>
+<th>说明</th>
+<th>适合</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>直接替换</td>
+<td>docker compose up -d（有短暂中断）</td>
+<td>测试环境</td>
+</tr>
+<tr>
+<td>滚动更新</td>
+<td>K8s 滚动发布</td>
+<td>生产</td>
+</tr>
+<tr>
+<td>蓝绿</td>
+<td>新版本全量后切流量</td>
+<td>大版本</td>
+</tr>
+<tr>
+<td>金丝雀</td>
+<td>先 5% 流量验证再全量</td>
+<td>重要变更</td>
+</tr>
+</tbody></table>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># K8s 滚动发布（GitLab → kubectl）</span></span><br><span class="line"><span class="attr">deploy-k8s:</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">bitnami/kubectl:1.33</span></span><br><span class="line">  <span class="attr">script:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">kubectl</span> <span class="string">set</span> <span class="string">image</span> <span class="string">deployment/myapp</span> <span class="string">myapp=$IMAGE_TAG</span> <span class="string">-n</span> <span class="string">prod</span>    <span class="comment"># 更新镜像</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">kubectl</span> <span class="string">rollout</span> <span class="string">status</span> <span class="string">deployment/myapp</span> <span class="string">-n</span> <span class="string">prod</span>                <span class="comment"># 等待滚动完成</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-最佳实践与坑"><a href="#7-最佳实践与坑" class="headerlink" title="7. 最佳实践与坑"></a>7. 最佳实践与坑</h2><table>
+<thead>
+<tr>
+<th>实践</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>密钥走 Variables</td>
+<td>不写进 yml&#x2F;仓库，用 Masked + Protected</td>
+</tr>
+<tr>
+<td>artifacts 设过期</td>
+<td>防止存储膨胀</td>
+</tr>
+<tr>
+<td>cache 配 key</td>
+<td>分支间隔离缓存</td>
+</tr>
+<tr>
+<td>阶段划分清晰</td>
+<td>build&#x2F;test&#x2F;deploy 分离，便于定位</td>
+</tr>
+<tr>
+<td>超时限制</td>
+<td><code>timeout: 30m</code> 防任务挂死</td>
+</tr>
+<tr>
+<td>镜像固定版本</td>
+<td>避免 latest 漂移导致偶发失败</td>
+</tr>
+<tr>
+<td>失败重试</td>
+<td><code>retry: 2</code> 处理网络抖动</td>
+</tr>
+</tbody></table>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 示例：带超时与重试</span></span><br><span class="line"><span class="attr">flakey-job:</span></span><br><span class="line">  <span class="attr">script:</span> <span class="string">./run.sh</span></span><br><span class="line">  <span class="attr">timeout:</span> <span class="string">30m</span>          <span class="comment"># 30 分钟超时</span></span><br><span class="line">  <span class="attr">retry:</span></span><br><span class="line">    <span class="attr">max:</span> <span class="number">2</span>              <span class="comment"># 最多重试 2 次</span></span><br><span class="line">    <span class="attr">when:</span> <span class="string">runner_system_failure</span>   <span class="comment"># 仅基础设施故障重试</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 本地验证 yml 语法（gitlab-ci-local）</span></span><br><span class="line">npx gitlab-ci-local --pipeline</span><br><span class="line"></span><br><span class="line"><span class="comment"># 手动触发 pipeline（提交时带参数）</span></span><br><span class="line">git push origin main</span><br><span class="line">curl -X POST <span class="string">&quot;<span class="variable">$CI_SERVER_URL</span>/api/v4/projects/<span class="variable">$PROJECT_ID</span>/pipeline?ref=main&quot;</span> \</span><br><span class="line">  -H <span class="string">&quot;PRIVATE-TOKEN: <span class="variable">$TOKEN</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/blockchain-dapp-guide/" rel="prev" title="DApp 全栈开发实战">
+                  <i class="fa fa-angle-left"></i> DApp 全栈开发实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/concurrency-juc-guide/" rel="next" title="Java 并发进阶：JUC 与线程池">
+                  Java 并发进阶：JUC 与线程池 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

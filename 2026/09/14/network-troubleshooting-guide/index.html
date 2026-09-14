@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="网络 · 问题排查 入门篇之后的排障实战。排查方法论 · 连通性&#x2F;延迟&#x2F;丢包诊断 · TCP 连接状态 · DNS 问题 · 抓包分析 · 应用层排障。  技术栈速查   类别 选型 用途    诊断 ping &#x2F; traceroute &#x2F; mtr 连通与路径   端口 ss &#x2F; netstat &#x2F; nc 监听与连接   抓包 tcpdu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="网络问题排查实战">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/network-troubleshooting-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="网络 · 问题排查 入门篇之后的排障实战。排查方法论 · 连通性&#x2F;延迟&#x2F;丢包诊断 · TCP 连接状态 · DNS 问题 · 抓包分析 · 应用层排障。  技术栈速查   类别 选型 用途    诊断 ping &#x2F; traceroute &#x2F; mtr 连通与路径   端口 ss &#x2F; netstat &#x2F; nc 监听与连接   抓包 tcpdu">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T11:20:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.619Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/network-troubleshooting-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/network-troubleshooting-guide/","path":"2026/09/14/network-troubleshooting-guide/","title":"网络问题排查实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>网络问题排查实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C-%C2%B7-%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-number">1.</span> <span class="nav-text">网络 · 问题排查</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%8E%92%E6%9F%A5%E6%96%B9%E6%B3%95%E8%AE%BA"><span class="nav-number">1.2.</span> <span class="nav-text">1. 排查方法论</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E8%BF%9E%E9%80%9A%E6%80%A7%E8%AF%8A%E6%96%AD"><span class="nav-number">1.3.</span> <span class="nav-text">2. 连通性诊断</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%AB%AF%E5%8F%A3%E4%B8%8E%E8%BF%9E%E6%8E%A5%E7%8A%B6%E6%80%81"><span class="nav-number">1.4.</span> <span class="nav-text">3. 端口与连接状态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E5%BB%B6%E8%BF%9F%E4%B8%8E%E5%B8%A6%E5%AE%BD%E8%AF%8A%E6%96%AD"><span class="nav-number">1.5.</span> <span class="nav-text">4. 延迟与带宽诊断</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-DNS-%E6%8E%92%E6%9F%A5"><span class="nav-number">1.6.</span> <span class="nav-text">5. DNS 排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-TCP-%E6%8F%A1%E6%89%8B%E6%8E%92%E9%9A%9C%EF%BC%88%E6%8A%93%E5%8C%85%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">6. TCP 握手排障（抓包）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-HTTP-TLS-%E5%BA%94%E7%94%A8%E5%B1%82%E6%8E%92%E6%9F%A5"><span class="nav-number">1.8.</span> <span class="nav-text">7. HTTP&#x2F;TLS 应用层排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E9%80%9F%E6%9F%A5%E8%A1%A8"><span class="nav-number">1.9.</span> <span class="nav-text">8. 常见问题速查表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E4%B8%80%E6%AC%A1%E5%AE%8C%E6%95%B4%E6%8E%92%E6%9F%A5%E6%A1%88%E4%BE%8B"><span class="nav-number">1.10.</span> <span class="nav-text">9. 一次完整排查案例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.11.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/network-troubleshooting-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="网络问题排查实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          网络问题排查实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 19:20:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T19:20:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="网络-·-问题排查"><a href="#网络-·-问题排查" class="headerlink" title="网络 · 问题排查"></a>网络 · 问题排查</h1><blockquote>
+<p>入门篇之后的排障实战。排查方法论 · 连通性&#x2F;延迟&#x2F;丢包诊断 · TCP 连接状态 · DNS 问题 · 抓包分析 · 应用层排障。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>诊断</td>
+<td>ping &#x2F; traceroute &#x2F; mtr</td>
+<td>连通与路径</td>
+</tr>
+<tr>
+<td>端口</td>
+<td>ss &#x2F; netstat &#x2F; nc</td>
+<td>监听与连接</td>
+</tr>
+<tr>
+<td>抓包</td>
+<td>tcpdump &#x2F; Wireshark</td>
+<td>报文分析</td>
+</tr>
+<tr>
+<td>DNS</td>
+<td>dig &#x2F; nslookup &#x2F; resolvectl</td>
+<td>域名解析</td>
+</tr>
+<tr>
+<td>连接</td>
+<td>curl -v &#x2F; openssl s_client</td>
+<td>HTTP&#x2F;TLS 排障</td>
+</tr>
+</tbody></table>
+<h2 id="1-排查方法论"><a href="#1-排查方法论" class="headerlink" title="1. 排查方法论"></a>1. 排查方法论</h2><p><strong>网络排障七层（从底到顶）</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">1. 物理层：网线/网卡 up？  → ip link</span><br><span class="line">2. 数据链路：ARP、同网段通？ → ip neigh</span><br><span class="line">3. 网络层：IP 路由可达？    → ping / traceroute</span><br><span class="line">4. 传输层：端口开放？TCP 握手？ → ss / nc</span><br><span class="line">5. 会话层/应用层：HTTP 状态？ → curl -v</span><br><span class="line">6. DNS：域名解析对吗？       → dig</span><br><span class="line">7. 安全层：防火墙/安全组？   → 防火墙规则检查</span><br></pre></td></tr></table></figure>
+
+<p><strong>核心原则</strong>：从底层往上排查，先确认”通不通”，再看”慢不慢”，最后看”应用层错误”。<strong>先 ping 通没 → 再端口通没 → 再 curl 看响应</strong>。</p>
+<h2 id="2-连通性诊断"><a href="#2-连通性诊断" class="headerlink" title="2. 连通性诊断"></a>2. 连通性诊断</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 基本连通（ICMP）</span></span><br><span class="line">ping -c 4 baidu.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 路径与丢包（mtr 结合 ping+traceroute，最强）</span></span><br><span class="line">mtr -rw 8.8.8.8</span><br><span class="line"><span class="comment"># 输出: 每跳的丢包率/延迟，定位哪一跳丢包</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 指定源 IP 测试</span></span><br><span class="line">ping -I 192.168.1.10 10.0.0.5</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. TCP 连通（ping 通不代表端口通！）</span></span><br><span class="line">nc -zv 10.0.0.5 8080          <span class="comment"># 端口扫描</span></span><br><span class="line"><span class="built_in">timeout</span> 3 bash -c <span class="string">&#x27;&lt;/dev/tcp/10.0.0.5/8080&#x27;</span> &amp;&amp; <span class="built_in">echo</span> <span class="string">&quot;端口通&quot;</span> || <span class="built_in">echo</span> <span class="string">&quot;端口不通&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>关键区分</strong>：ping 通 &#x3D; 网络层通；业务不通还可能是：端口未监听、防火墙拦截、服务没起来。</p>
+<h2 id="3-端口与连接状态"><a href="#3-端口与连接状态" class="headerlink" title="3. 端口与连接状态"></a>3. 端口与连接状态</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 本机监听端口</span></span><br><span class="line">ss -tlnp                      <span class="comment"># 全部监听（-n 不解析域名，-p 显示进程）</span></span><br><span class="line">ss -tln | grep 8080           <span class="comment"># 8080 是否在监听</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 所有 TCP 连接状态统计</span></span><br><span class="line">ss -tan | awk <span class="string">&#x27;&#123;print $1&#125;&#x27;</span> | <span class="built_in">sort</span> | <span class="built_in">uniq</span> -c</span><br><span class="line"><span class="comment"># ESTAB 多 = 正常连接；SYN_SENT 多 = 连不上；TIME_WAIT 多 = 短连接密集</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 查看某服务的连接</span></span><br><span class="line">ss -tan | grep :8080</span><br></pre></td></tr></table></figure>
+
+<p><strong>TIME_WAIT 过多</strong>（高并发短连接常见）：是 TCP 正常机制（2MSL 后回收），一般不用处理；服务器调优可开 <code>net.ipv4.tcp_tw_reuse</code>。</p>
+<h2 id="4-延迟与带宽诊断"><a href="#4-延迟与带宽诊断" class="headerlink" title="4. 延迟与带宽诊断"></a>4. 延迟与带宽诊断</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 延迟</span></span><br><span class="line">ping -c 10 10.0.0.5 | <span class="built_in">tail</span> -1</span><br><span class="line"><span class="comment"># rtt min/avg/max/mdev：avg 大 = 网络慢；mdev 大 = 抖动</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 带宽测试（iperf3）</span></span><br><span class="line"><span class="comment"># 服务端</span></span><br><span class="line">iperf3 -s</span><br><span class="line"><span class="comment"># 客户端</span></span><br><span class="line">iperf3 -c 10.0.0.5 -t 10</span><br><span class="line"><span class="comment"># 输出带宽：瓶颈是网络还是应用一目了然</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 应用层耗时分解（重点！）</span></span><br><span class="line">curl -w <span class="string">&#x27;DNS解析: %&#123;time_namelookup&#125;s\n连接: %&#123;time_connect&#125;s\nTLS握手: %&#123;time_appconnect&#125;s\n首字节: %&#123;time_starttransfer&#125;s\n总耗时: %&#123;time_total&#125;s\n&#x27;</span> -o /dev/null https://example.com</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-DNS-排查"><a href="#5-DNS-排查" class="headerlink" title="5. DNS 排查"></a>5. DNS 排查</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 解析结果</span></span><br><span class="line">dig example.com</span><br><span class="line"><span class="comment"># 看 ANSWER SECTION 的 IP；注意 CNAME 链</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 指定 DNS 服务器测试</span></span><br><span class="line">dig @8.8.8.8 example.com</span><br><span class="line">dig @223.5.5.5 example.com        <span class="comment"># 阿里 DNS</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 反向解析</span></span><br><span class="line">dig -x 10.0.0.5</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 系统 DNS 配置</span></span><br><span class="line"><span class="built_in">cat</span> /etc/resolv.conf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 排查：能 ping IP 但域名不通 → DNS 问题</span></span><br><span class="line"><span class="comment"># 解决方案：改 DNS / hosts 临时验证</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;10.0.0.5 api.example.com&quot;</span> &gt;&gt; /etc/hosts</span><br></pre></td></tr></table></figure>
+
+<h2 id="6-TCP-握手排障（抓包）"><a href="#6-TCP-握手排障（抓包）" class="headerlink" title="6. TCP 握手排障（抓包）"></a>6. TCP 握手排障（抓包）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 抓包（tcpdump，需要 root）</span></span><br><span class="line">tcpdump -i any host 10.0.0.5 and port 8080 -w /tmp/cap.pcap</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 看握手（回显模式）</span></span><br><span class="line">tcpdump -i any host 10.0.0.5 and port 8080 -nn</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 结合 curl 复现</span></span><br><span class="line">curl -v http://10.0.0.5:8080/ --connect-timeout 5</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 分析抓包结果</span></span><br><span class="line"><span class="comment"># 正常握手: SYN → SYN-ACK → ACK</span></span><br><span class="line"><span class="comment"># 只有 SYN 发出无响应: 对方防火墙丢弃 / 端口未监听</span></span><br><span class="line"><span class="comment"># SYN-ACK 重传: 网络路径问题</span></span><br><span class="line"><span class="comment"># RST: 端口关闭或应用拒绝</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Wireshark 分析</strong>：打开 pcap → Statistics → Flow Graph 看握手；TCP 专家系统自动标红异常。</p>
+<h2 id="7-HTTP-TLS-应用层排查"><a href="#7-HTTP-TLS-应用层排查" class="headerlink" title="7. HTTP&#x2F;TLS 应用层排查"></a>7. HTTP&#x2F;TLS 应用层排查</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 完整请求（看响应头/重定向）</span></span><br><span class="line">curl -v http://example.com/api/health</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 只看响应头</span></span><br><span class="line">curl -I https://example.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. TLS 握手详情</span></span><br><span class="line">openssl s_client -connect example.com:443 -servername example.com</span><br><span class="line"><span class="comment"># 看协议版本（TLS1.2/1.3）、证书链、密码套件</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 代理环境排查</span></span><br><span class="line">curl -x http://proxy:8080 -v https://example.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 超时与重试</span></span><br><span class="line">curl --connect-timeout 3 --max-time 10 -v https://example.com</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-常见问题速查表"><a href="#8-常见问题速查表" class="headerlink" title="8. 常见问题速查表"></a>8. 常见问题速查表</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>可能原因</th>
+<th>排查</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ping 不通</td>
+<td>物理&#x2F;路由&#x2F;防火墙</td>
+<td>ip link、mtr</td>
+</tr>
+<tr>
+<td>端口不通</td>
+<td>服务没起&#x2F;防火墙&#x2F;安全组</td>
+<td>ss -tlnp、nc</td>
+</tr>
+<tr>
+<td>能通但慢</td>
+<td>带宽&#x2F;应用&#x2F;丢包</td>
+<td>iperf3、mtr、curl 分时</td>
+</tr>
+<tr>
+<td>域名解析失败</td>
+<td>DNS 配置&#x2F;污染</td>
+<td>dig、&#x2F;etc&#x2F;resolv.conf</td>
+</tr>
+<tr>
+<td>偶发超时</td>
+<td>丢包重传</td>
+<td>tcpdump 看重传率</td>
+</tr>
+<tr>
+<td>连接被重置</td>
+<td>RST：端口关闭&#x2F;防攻击</td>
+<td>tcpdump 抓 RST</td>
+</tr>
+<tr>
+<td>HTTPS 证书错误</td>
+<td>证书过期&#x2F;链不完整</td>
+<td>openssl s_client</td>
+</tr>
+<tr>
+<td>内网通外网不通</td>
+<td>网关&#x2F;NAT&#x2F;代理</td>
+<td>ip route、traceroute</td>
+</tr>
+</tbody></table>
+<h2 id="9-一次完整排查案例"><a href="#9-一次完整排查案例" class="headerlink" title="9. 一次完整排查案例"></a>9. 一次完整排查案例</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">现象：App 访问 API 偶发超时</span><br><span class="line">步骤：</span><br><span class="line">1. ping api.example.com → 通，延迟 30ms</span><br><span class="line">2. mtr → 无丢包（排除链路）</span><br><span class="line">3. ss -tan | grep :443 → ESTAB 正常</span><br><span class="line">4. curl -w 分时 → TLS 握手偶发 2s+（connect 快，appconnect 慢）</span><br><span class="line">5. tcpdump 抓 443 包 → 发现 TLS ClientHello 重传</span><br><span class="line">6. 定位：出口防火墙对 TLS SNI 深度检测引入延迟</span><br><span class="line">7. 缓解：走内网专线/换端口或联系网络团队</span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">mtr -rw &lt;host&gt;                <span class="comment"># 路径+丢包</span></span><br><span class="line">ss -tlnp                      <span class="comment"># 监听与进程</span></span><br><span class="line">nc -zv &lt;host&gt; &lt;port&gt;          <span class="comment"># 端口探测</span></span><br><span class="line">dig &lt;domain&gt;                  <span class="comment"># DNS</span></span><br><span class="line">tcpdump -i any host &lt;ip&gt; and port &lt;port&gt; -nn   <span class="comment"># 抓包</span></span><br><span class="line">curl -w <span class="string">&#x27;time_total: %&#123;time_total&#125;s&#x27;</span> -o /dev/null &lt;url&gt;</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/netty-protocol-guide/" rel="prev" title="Netty 自定义协议与编解码实战">
+                  <i class="fa fa-angle-left"></i> Netty 自定义协议与编解码实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/nginx-lb-ha-guide/" rel="next" title="Nginx 负载均衡与高可用">
+                  Nginx 负载均衡与高可用 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="API · 接口安全 从 0 到生产级防护。认证与授权 · JWT 实战 · OAuth2 与第三方登录 · 接口签名与防重放 · 限流 · 越权防护。代码带详细注释。  技术栈速查   类别 选型 用途    认证 JWT（jjwt） 无状态令牌   授权 Spring Security &#x2F; RBAC 权限模型   第三方登录 OAuth2.0 &#x2F; OIDC 微信&#x2F;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="接口安全实战：鉴权限流防重放">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/api-security-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="API · 接口安全 从 0 到生产级防护。认证与授权 · JWT 实战 · OAuth2 与第三方登录 · 接口签名与防重放 · 限流 · 越权防护。代码带详细注释。  技术栈速查   类别 选型 用途    认证 JWT（jjwt） 无状态令牌   授权 Spring Security &#x2F; RBAC 权限模型   第三方登录 OAuth2.0 &#x2F; OIDC 微信&#x2F;">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T09:35:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.133Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/api-security-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/api-security-guide/","path":"2026/09/14/api-security-guide/","title":"接口安全实战：鉴权限流防重放"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>接口安全实战：鉴权限流防重放 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#API-%C2%B7-%E6%8E%A5%E5%8F%A3%E5%AE%89%E5%85%A8"><span class="nav-number">1.</span> <span class="nav-text">API · 接口安全</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-JWT-%E7%99%BB%E5%BD%95%E5%AE%9E%E6%88%98%EF%BC%88Spring-Boot%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">2. JWT 登录实战（Spring Boot）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E4%BE%9D%E8%B5%96"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 依赖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E7%AD%BE%E5%8F%91%E4%B8%8E%E6%A0%A1%E9%AA%8C"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 签发与校验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E7%99%BB%E5%BD%95%E6%8E%A5%E5%8F%A3"><span class="nav-number">1.3.3.</span> <span class="nav-text">2.3 登录接口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-%E8%AE%A4%E8%AF%81%E6%8B%A6%E6%88%AA%E5%99%A8"><span class="nav-number">1.3.4.</span> <span class="nav-text">2.4 认证拦截器</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E6%8E%88%E6%9D%83%EF%BC%9ARBAC-%E6%9D%83%E9%99%90%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.4.</span> <span class="nav-text">3. 授权：RBAC 权限模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-OAuth2-%E7%AC%AC%E4%B8%89%E6%96%B9%E7%99%BB%E5%BD%95"><span class="nav-number">1.5.</span> <span class="nav-text">4. OAuth2 第三方登录</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E6%8E%A5%E5%8F%A3%E7%AD%BE%E5%90%8D%E4%B8%8E%E9%98%B2%E9%87%8D%E6%94%BE%EF%BC%88%E5%BC%80%E6%94%BE%E5%B9%B3%E5%8F%B0%E5%9C%BA%E6%99%AF%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 接口签名与防重放（开放平台场景）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E9%99%90%E6%B5%81%E4%B8%8E%E9%98%B2%E5%88%B7"><span class="nav-number">1.7.</span> <span class="nav-text">6. 限流与防刷</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%AE%89%E5%85%A8%E5%9F%BA%E7%BA%BF%E6%B8%85%E5%8D%95"><span class="nav-number">1.8.</span> <span class="nav-text">7. 安全基线清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.9.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/api-security-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="接口安全实战：鉴权限流防重放 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          接口安全实战：鉴权限流防重放
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 17:35:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T17:35:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="API-·-接口安全"><a href="#API-·-接口安全" class="headerlink" title="API · 接口安全"></a>API · 接口安全</h1><blockquote>
+<p>从 0 到生产级防护。认证与授权 · JWT 实战 · OAuth2 与第三方登录 · 接口签名与防重放 · 限流 · 越权防护。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>认证</td>
+<td>JWT（jjwt）</td>
+<td>无状态令牌</td>
+</tr>
+<tr>
+<td>授权</td>
+<td>Spring Security &#x2F; RBAC</td>
+<td>权限模型</td>
+</tr>
+<tr>
+<td>第三方登录</td>
+<td>OAuth2.0 &#x2F; OIDC</td>
+<td>微信&#x2F;谷歌登录</td>
+</tr>
+<tr>
+<td>签名</td>
+<td>HMAC-SHA256</td>
+<td>请求防篡改</td>
+</tr>
+<tr>
+<td>限流</td>
+<td>Resilience4j &#x2F; Sentinel</td>
+<td>防刷</td>
+</tr>
+<tr>
+<td>存储</td>
+<td>Redis</td>
+<td>令牌与防重放</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p>接口安全四层防护，由浅入深：</p>
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>解决</th>
+<th>手段</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>认证（Authentication）</td>
+<td>你是谁</td>
+<td>账号密码、JWT、OAuth2</td>
+</tr>
+<tr>
+<td>授权（Authorization）</td>
+<td>你能干什么</td>
+<td>RBAC 角色权限</td>
+</tr>
+<tr>
+<td>传输安全</td>
+<td>数据不被窃听篡改</td>
+<td>HTTPS + 签名</td>
+</tr>
+<tr>
+<td>攻击防护</td>
+<td>刷接口&#x2F;重放&#x2F;注入</td>
+<td>限流、防重放、参数校验</td>
+</tr>
+</tbody></table>
+<p><strong>JWT 结构</strong>：<code>Header.Payload.Signature</code>，三段 base64：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Header：算法与类型</span></span><br><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;alg&quot;</span><span class="punctuation">:</span><span class="string">&quot;HS256&quot;</span><span class="punctuation">,</span><span class="attr">&quot;typ&quot;</span><span class="punctuation">:</span><span class="string">&quot;JWT&quot;</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// Payload：声明（不要放敏感信息，base64 可解码）</span></span><br><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;sub&quot;</span><span class="punctuation">:</span><span class="string">&quot;1001&quot;</span><span class="punctuation">,</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span><span class="string">&quot;admin&quot;</span><span class="punctuation">,</span><span class="attr">&quot;exp&quot;</span><span class="punctuation">:</span><span class="number">1730000000</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// Signature：签名（防篡改）</span></span><br><span class="line"><span class="comment">// = HMAC-SHA256(base64(Header)+&quot;.&quot;+base64(Payload), secret)</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>JWT 优缺点</strong>：无状态（适合分布式，不用查库）；缺点是无法主动吊销（用 Redis 黑名单&#x2F;短过期补偿）。</p>
+<h2 id="2-JWT-登录实战（Spring-Boot）"><a href="#2-JWT-登录实战（Spring-Boot）" class="headerlink" title="2. JWT 登录实战（Spring Boot）"></a>2. JWT 登录实战（Spring Boot）</h2><h3 id="2-1-依赖"><a href="#2-1-依赖" class="headerlink" title="2.1 依赖"></a>2.1 依赖</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.jsonwebtoken<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>jjwt-api<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.12.6<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- JWT API --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.jsonwebtoken<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>jjwt-impl<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.12.6<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">scope</span>&gt;</span>runtime<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- 实现（运行时） --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.jsonwebtoken<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>jjwt-jackson<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.12.6<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">scope</span>&gt;</span>runtime<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- JSON 序列化支持 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-签发与校验"><a href="#2-2-签发与校验" class="headerlink" title="2.2 签发与校验"></a>2.2 签发与校验</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">JwtUtil</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">SecretKey</span> <span class="variable">key</span> <span class="operator">=</span> Jwts.SIG.HS256.key().build();   <span class="comment">// 随机密钥</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">long</span> <span class="variable">EXPIRE_MS</span> <span class="operator">=</span> <span class="number">2</span> * <span class="number">60</span> * <span class="number">60</span> * <span class="number">1000L</span>;   <span class="comment">// 2 小时</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">createToken</span><span class="params">(Long userId, String role)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Jwts.builder()</span><br><span class="line">            .subject(String.valueOf(userId))   <span class="comment">// 主题：用户 ID</span></span><br><span class="line">            .claim(<span class="string">&quot;role&quot;</span>, role)               <span class="comment">// 自定义声明：角色</span></span><br><span class="line">            .issuedAt(<span class="keyword">new</span> <span class="title class_">Date</span>())              <span class="comment">// 签发时间</span></span><br><span class="line">            .expiration(<span class="keyword">new</span> <span class="title class_">Date</span>(System.currentTimeMillis() + EXPIRE_MS))   <span class="comment">// 过期时间</span></span><br><span class="line">            .signWith(key)                     <span class="comment">// 签名</span></span><br><span class="line">            .compact();                        <span class="comment">// 生成令牌</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> Claims <span class="title function_">parse</span><span class="params">(String token)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Jwts.parser().verifyWith(key).build()   <span class="comment">// 用密钥校验</span></span><br><span class="line">            .parseSignedClaims(token).getPayload();    <span class="comment">// 解析并取声明</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-登录接口"><a href="#2-3-登录接口" class="headerlink" title="2.3 登录接口"></a>2.3 登录接口</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@PostMapping(&quot;/auth/login&quot;)</span></span><br><span class="line"><span class="keyword">public</span> R&lt;String&gt; <span class="title function_">login</span><span class="params">(<span class="meta">@RequestBody</span> LoginReq req, <span class="meta">@Autowired</span> JwtUtil jwtUtil)</span> &#123;</span><br><span class="line">    <span class="comment">// 1. 校验账号密码（BCrypt 比对，禁止明文存储）</span></span><br><span class="line">    <span class="type">User</span> <span class="variable">user</span> <span class="operator">=</span> userMapper.findByUsername(req.username());</span><br><span class="line">    <span class="keyword">if</span> (user == <span class="literal">null</span> || !BCrypt.checkpw(req.password(), user.getPasswordHash())) &#123;</span><br><span class="line">        <span class="comment">// checkpw：明文与哈希比对</span></span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BusinessException</span>(<span class="number">20001</span>, <span class="string">&quot;用户名或密码错误&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 2. 签发令牌</span></span><br><span class="line">    <span class="keyword">return</span> R.ok(jwtUtil.createToken(user.getId(), user.getRole()));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-认证拦截器"><a href="#2-4-认证拦截器" class="headerlink" title="2.4 认证拦截器"></a>2.4 认证拦截器</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">JwtAuthInterceptor</span> <span class="keyword">implements</span> <span class="title class_">HandlerInterceptor</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> JwtUtil jwtUtil;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">preHandle</span><span class="params">(HttpServletRequest req, HttpServletResponse resp, Object handler)</span> &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">auth</span> <span class="operator">=</span> req.getHeader(<span class="string">&quot;Authorization&quot;</span>);   <span class="comment">// 取令牌头</span></span><br><span class="line">        <span class="keyword">if</span> (auth == <span class="literal">null</span> || !auth.startsWith(<span class="string">&quot;Bearer &quot;</span>)) &#123;   <span class="comment">// 无令牌</span></span><br><span class="line">            resp.setStatus(<span class="number">401</span>);</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;      <span class="comment">// 拦截</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="type">Claims</span> <span class="variable">claims</span> <span class="operator">=</span> jwtUtil.parse(auth.substring(<span class="number">7</span>));   <span class="comment">// 校验（去掉 Bearer 前缀）</span></span><br><span class="line">            req.setAttribute(<span class="string">&quot;userId&quot;</span>, Long.valueOf(claims.getSubject()));   <span class="comment">// 存用户</span></span><br><span class="line">            req.setAttribute(<span class="string">&quot;role&quot;</span>, claims.getRole());   <span class="comment">// 存角色</span></span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;       <span class="comment">// 放行</span></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            resp.setStatus(<span class="number">401</span>);       <span class="comment">// 过期/伪造</span></span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-授权：RBAC-权限模型"><a href="#3-授权：RBAC-权限模型" class="headerlink" title="3. 授权：RBAC 权限模型"></a>3. 授权：RBAC 权限模型</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">用户 ──多对多──▶ 角色 ──多对多──▶ 权限</span><br><span class="line">  user             admin            order:create</span><br><span class="line">                   operator         order:query</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 注解式权限控制（自定义注解 + 拦截器）</span></span><br><span class="line"><span class="meta">@RequirePermission(&quot;order:create&quot;)</span></span><br><span class="line"><span class="meta">@PostMapping(&quot;/orders&quot;)</span></span><br><span class="line"><span class="keyword">public</span> R&lt;Long&gt; <span class="title function_">create</span><span class="params">(<span class="meta">@RequestBody</span> CreateOrderReq req)</span> &#123; ... &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 拦截器检查</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Map&lt;String, Set&lt;String&gt;&gt; ROLE_PERMS = Map.of(</span><br><span class="line">    <span class="string">&quot;admin&quot;</span>, Set.of(<span class="string">&quot;*&quot;</span>),                          <span class="comment">// 管理员全部权限</span></span><br><span class="line">    <span class="string">&quot;operator&quot;</span>, Set.of(<span class="string">&quot;order:create&quot;</span>, <span class="string">&quot;order:query&quot;</span>));   <span class="comment">// 运营部分权限</span></span><br><span class="line"></span><br><span class="line"><span class="type">boolean</span> <span class="variable">allowed</span> <span class="operator">=</span> ROLE_PERMS.getOrDefault(role, Set.of())</span><br><span class="line">    .contains(<span class="string">&quot;*&quot;</span>) || ROLE_PERMS.get(role).contains(perm);</span><br><span class="line"><span class="comment">// 管理员通配 或 角色含该权限</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>越权防护（重点）</strong>：只校验”登录了”不够，必须校验<strong>资源归属</strong>——用户 A 不能改用户 B 的订单：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 水平越权防护：查询时强制带 userId</span></span><br><span class="line"><span class="meta">@GetMapping(&quot;/orders/&#123;id&#125;&quot;)</span></span><br><span class="line"><span class="keyword">public</span> Order <span class="title function_">getOwn</span><span class="params">(<span class="meta">@PathVariable</span> Long id, <span class="meta">@RequestAttribute</span> Long userId)</span> &#123;</span><br><span class="line">    <span class="type">Order</span> <span class="variable">o</span> <span class="operator">=</span> orderMapper.selectByIdAndUserId(id, userId);   <span class="comment">// WHERE id=? AND user_id=?</span></span><br><span class="line">    <span class="comment">// 关键：SQL 同时限定资源归属者</span></span><br><span class="line">    <span class="keyword">if</span> (o == <span class="literal">null</span>) <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BusinessException</span>(<span class="number">30003</span>, <span class="string">&quot;订单不存在&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> o;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-OAuth2-第三方登录"><a href="#4-OAuth2-第三方登录" class="headerlink" title="4. OAuth2 第三方登录"></a>4. OAuth2 第三方登录</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">用户点击&quot;微信登录&quot;</span><br><span class="line">  → 跳转微信授权页（redirect_uri 回调地址）</span><br><span class="line">  → 用户授权 → 微信回调 code</span><br><span class="line">  → 后端用 code 换 access_token → 拉取用户信息 → 绑定/创建本地账号 → 签发 JWT</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 引导用户去授权</span></span><br><span class="line"><span class="type">String</span> <span class="variable">authUrl</span> <span class="operator">=</span> <span class="string">&quot;https://open.weixin.qq.com/connect/qrconnect&quot;</span></span><br><span class="line">    + <span class="string">&quot;?appid=&quot;</span> + APP_ID + <span class="string">&quot;&amp;redirect_uri=&quot;</span> + URLEncoder.encode(CALLBACK)</span><br><span class="line">    + <span class="string">&quot;&amp;response_type=code&amp;scope=snsapi_login&quot;</span>;</span><br><span class="line"><span class="keyword">return</span> <span class="string">&quot;redirect:&quot;</span> + authUrl;      <span class="comment">// 重定向到微信</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 回调换 token</span></span><br><span class="line"><span class="type">RestTemplate</span> <span class="variable">rt</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">RestTemplate</span>();</span><br><span class="line">Map&lt;String, String&gt; tokenResp = rt.getForObject(</span><br><span class="line">    <span class="string">&quot;https://api.weixin.qq.com/sns/oauth2/access_token?appid=&#123;appid&#125;&amp;secret=&#123;secret&#125;&amp;code=&#123;code&#125;&amp;grant_type=authorization_code&quot;</span>,</span><br><span class="line">    Map.class, APP_ID, APP_SECRET, code);   <span class="comment">// code 换 access_token</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 拉用户信息 → 查/建本地账号 → 发 JWT</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong>：APP_SECRET 只存后端；回调地址要精确匹配；state 参数防 CSRF。</p>
+<h2 id="5-接口签名与防重放（开放平台场景）"><a href="#5-接口签名与防重放（开放平台场景）" class="headerlink" title="5. 接口签名与防重放（开放平台场景）"></a>5. 接口签名与防重放（开放平台场景）</h2><p>适用：服务端到服务端调用（无用户登录态），防止请求被篡改与重放。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 签名规则：timestamp + nonce + body 参与 HMAC 签名</span></span><br><span class="line"><span class="comment"># 客户端：</span></span><br><span class="line"><span class="comment">#   sign = HMAC-SHA256(appSecret, appId + timestamp + nonce + body)</span></span><br><span class="line"><span class="comment">#   Header: X-App-Id, X-Timestamp, X-Nonce, X-Sign</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 服务端校验</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">verifySign</span><span class="params">(HttpServletRequest req)</span> &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">appId</span> <span class="operator">=</span> req.getHeader(<span class="string">&quot;X-App-Id&quot;</span>);       <span class="comment">// 应用 ID</span></span><br><span class="line">    <span class="type">long</span> <span class="variable">ts</span> <span class="operator">=</span> Long.parseLong(req.getHeader(<span class="string">&quot;X-Timestamp&quot;</span>));   <span class="comment">// 时间戳</span></span><br><span class="line">    <span class="type">String</span> <span class="variable">nonce</span> <span class="operator">=</span> req.getHeader(<span class="string">&quot;X-Nonce&quot;</span>);        <span class="comment">// 随机数</span></span><br><span class="line">    <span class="type">String</span> <span class="variable">sign</span> <span class="operator">=</span> req.getHeader(<span class="string">&quot;X-Sign&quot;</span>);          <span class="comment">// 签名</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 防重放：时间戳在 5 分钟内 + nonce 未用过（Redis）</span></span><br><span class="line">    <span class="keyword">if</span> (Math.abs(System.currentTimeMillis() / <span class="number">1000</span> - ts) &gt; <span class="number">300</span>) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BusinessException</span>(<span class="number">20010</span>, <span class="string">&quot;请求已过期&quot;</span>);   <span class="comment">// 超时拒绝</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">Boolean</span> <span class="variable">first</span> <span class="operator">=</span> redis.opsForValue().setIfAbsent(</span><br><span class="line">        <span class="string">&quot;nonce:&quot;</span> + nonce, <span class="string">&quot;1&quot;</span>, Duration.ofMinutes(<span class="number">5</span>));</span><br><span class="line">    <span class="comment">// SETNX：nonce 第一次出现才成功</span></span><br><span class="line">    <span class="keyword">if</span> (!Boolean.TRUE.equals(first)) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BusinessException</span>(<span class="number">20011</span>, <span class="string">&quot;重复请求&quot;</span>);   <span class="comment">// nonce 已用</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 防篡改：重算签名比对</span></span><br><span class="line">    <span class="type">String</span> <span class="variable">body</span> <span class="operator">=</span> readBody(req);                       <span class="comment">// 请求体</span></span><br><span class="line">    <span class="type">String</span> <span class="variable">expected</span> <span class="operator">=</span> hmacSha256(appSecret(appId),     <span class="comment">// 用 app 密钥重算</span></span><br><span class="line">        appId + ts + nonce + body);</span><br><span class="line">    <span class="keyword">if</span> (!MessageDigest.isEqual(expected.getBytes(), sign.getBytes())) &#123;</span><br><span class="line">        <span class="comment">// 常量时间比较（防时序攻击）</span></span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BusinessException</span>(<span class="number">20012</span>, <span class="string">&quot;签名错误&quot;</span>);   <span class="comment">// 篡改拒绝</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="6-限流与防刷"><a href="#6-限流与防刷" class="headerlink" title="6. 限流与防刷"></a>6. 限流与防刷</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>手段</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IP 限流</td>
+<td>网关&#x2F;Sentinel 按 IP 限流</td>
+</tr>
+<tr>
+<td>用户限流</td>
+<td>Redis 滑动窗口：<code>INCR + EXPIRE</code></td>
+</tr>
+<tr>
+<td>接口限流</td>
+<td>按接口维度配置阈值</td>
+</tr>
+<tr>
+<td>验证码</td>
+<td>高频&#x2F;异常行为触发</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Redis 固定窗口限流：每用户每接口每分钟 N 次</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">rateLimit</span><span class="params">(String userId, String api, <span class="type">int</span> max, Duration window)</span> &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">key</span> <span class="operator">=</span> <span class="string">&quot;rl:&quot;</span> + userId + <span class="string">&quot;:&quot;</span> + api;       <span class="comment">// 限流键</span></span><br><span class="line">    <span class="type">Long</span> <span class="variable">count</span> <span class="operator">=</span> redis.opsForValue().increment(key);   <span class="comment">// 计数+1</span></span><br><span class="line">    <span class="keyword">if</span> (count == <span class="number">1</span>) &#123;</span><br><span class="line">        redis.expire(key, window);                 <span class="comment">// 首次设置过期窗口</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> count &lt;= max;                           <span class="comment">// 超限返回 false</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-安全基线清单"><a href="#7-安全基线清单" class="headerlink" title="7. 安全基线清单"></a>7. 安全基线清单</h2><table>
+<thead>
+<tr>
+<th>项</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>传输</td>
+<td>全站 HTTPS（TLS1.2+）</td>
+</tr>
+<tr>
+<td>密码</td>
+<td>BCrypt（cost≥10），禁止 MD5&#x2F;SHA 明文</td>
+</tr>
+<tr>
+<td>令牌</td>
+<td>JWT 短过期 + Redis 黑名单（登出&#x2F;改密失效）</td>
+</tr>
+<tr>
+<td>越权</td>
+<td>每接口校验资源归属</td>
+</tr>
+<tr>
+<td>输入</td>
+<td>参数化 SQL、白名单校验、长度限制</td>
+</tr>
+<tr>
+<td>敏感数据</td>
+<td>日志脱敏、Payload 不放敏感信息</td>
+</tr>
+<tr>
+<td>重放</td>
+<td>时间戳 + nonce 幂等</td>
+</tr>
+<tr>
+<td>限流</td>
+<td>核心接口全部接限流</td>
+</tr>
+</tbody></table>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成 BCrypt 哈希（验证密码强度）</span></span><br><span class="line">htpasswd -bnBC 10 <span class="string">&quot;&quot;</span> <span class="string">&#x27;YourPassword123&#x27;</span> | <span class="built_in">tr</span> -d <span class="string">&#x27;:\n&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 调试 JWT（在线工具或命令行）</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;eyJhbGciOiJIUzI1NiJ9...&#x27;</span> | <span class="built_in">cut</span> -d. -f2 | <span class="built_in">base64</span> -d</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/algorithm-dp-greedy-guide/" rel="prev" title="动态规划与贪心算法专题">
+                  <i class="fa fa-angle-left"></i> 动态规划与贪心算法专题
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/openapi-spec-guide/" rel="next" title="OpenAPI 规范与接口文档化">
+                  OpenAPI 规范与接口文档化 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

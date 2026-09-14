@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="数据访问层 · 事务与多数据源 入门篇之后深入数据层难点。事务传播行为 · 隔离级别 · 常见失效场景 · 多数据源配置 · 读写分离 · 分布式事务引入。代码带详细注释。  技术栈速查   类别 选型 用途    框架 Spring Boot 3.5 &#x2F; MyBatis-Plus 3.5.17 数据访问   事务 Spring @Transactional 声明式事务   多数据源 d">
+<meta property="og:type" content="article">
+<meta property="og:title" content="事务与多数据源实战">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/dal-transaction-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="数据访问层 · 事务与多数据源 入门篇之后深入数据层难点。事务传播行为 · 隔离级别 · 常见失效场景 · 多数据源配置 · 读写分离 · 分布式事务引入。代码带详细注释。  技术栈速查   类别 选型 用途    框架 Spring Boot 3.5 &#x2F; MyBatis-Plus 3.5.17 数据访问   事务 Spring @Transactional 声明式事务   多数据源 d">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T10:05:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.923Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/dal-transaction-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/dal-transaction-guide/","path":"2026/09/14/dal-transaction-guide/","title":"事务与多数据源实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>事务与多数据源实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E8%AE%BF%E9%97%AE%E5%B1%82-%C2%B7-%E4%BA%8B%E5%8A%A1%E4%B8%8E%E5%A4%9A%E6%95%B0%E6%8D%AE%E6%BA%90"><span class="nav-number">1.</span> <span class="nav-text">数据访问层 · 事务与多数据源</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-Transactional-%E4%BC%A0%E6%92%AD%E8%A1%8C%E4%B8%BA"><span class="nav-number">1.3.</span> <span class="nav-text">2. @Transactional 传播行为</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E5%85%AB%E5%A4%A7%E5%9C%BA%E6%99%AF%EF%BC%88%E9%AB%98%E9%A2%91%E9%9D%A2%E8%AF%95%E4%B8%8E%E5%9D%91%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. 事务失效八大场景（高频面试与坑）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB%E8%AE%BE%E7%BD%AE"><span class="nav-number">1.5.</span> <span class="nav-text">4. 隔离级别设置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%A4%9A%E6%95%B0%E6%8D%AE%E6%BA%90%EF%BC%88dynamic-datasource%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 多数据源（dynamic-datasource）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%BC%95%E5%85%A5%E4%B8%8E%E9%85%8D%E7%BD%AE"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 引入与配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E6%B3%A8%E8%A7%A3%E5%88%87%E6%8D%A2"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 注解切换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%8A%A8%E6%80%81%E5%88%87%E6%8D%A2%EF%BC%88%E6%8C%89%E7%94%A8%E6%88%B7-%E7%A7%9F%E6%88%B7%EF%BC%89"><span class="nav-number">1.6.3.</span> <span class="nav-text">5.3 动态切换（按用户&#x2F;租户）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">1.6.4.</span> <span class="nav-text">5.4 注意事项</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E8%AF%BB%E5%86%99%E5%88%86%E7%A6%BB-%E4%BA%8B%E5%8A%A1%E6%B5%8B%E8%AF%95"><span class="nav-number">1.7.</span> <span class="nav-text">6. 读写分离 + 事务测试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E9%95%BF%E4%BA%8B%E5%8A%A1%E6%B2%BB%E7%90%86"><span class="nav-number">1.8.</span> <span class="nav-text">7. 长事务治理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E4%BD%95%E6%97%B6%E5%BC%95%E5%85%A5%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1"><span class="nav-number">1.9.</span> <span class="nav-text">8. 何时引入分布式事务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/dal-transaction-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="事务与多数据源实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          事务与多数据源实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 18:05:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T18:05:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="数据访问层-·-事务与多数据源"><a href="#数据访问层-·-事务与多数据源" class="headerlink" title="数据访问层 · 事务与多数据源"></a>数据访问层 · 事务与多数据源</h1><blockquote>
+<p>入门篇之后深入数据层难点。事务传播行为 · 隔离级别 · 常见失效场景 · 多数据源配置 · 读写分离 · 分布式事务引入。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>框架</td>
+<td>Spring Boot 3.5 &#x2F; MyBatis-Plus 3.5.17</td>
+<td>数据访问</td>
+</tr>
+<tr>
+<td>事务</td>
+<td>Spring @Transactional</td>
+<td>声明式事务</td>
+</tr>
+<tr>
+<td>多数据源</td>
+<td>dynamic-datasource-spring-boot-starter 4.3</td>
+<td>动态数据源</td>
+</tr>
+<tr>
+<td>分布式事务</td>
+<td>Seata 2.x</td>
+<td>跨库事务</td>
+</tr>
+<tr>
+<td>测试</td>
+<td>Testcontainers</td>
+<td>真实数据库测试</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>事务</strong>：一组操作要么全部成功要么全部回滚（ACID：原子性、一致性、隔离性、持久性）。</p>
+<p><strong>数据库隔离级别</strong>（从宽松到严格）：</p>
+<table>
+<thead>
+<tr>
+<th>级别</th>
+<th>脏读</th>
+<th>不可重复读</th>
+<th>幻读</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>READ UNCOMMITTED</td>
+<td>✅可能</td>
+<td>✅可能</td>
+<td>✅可能</td>
+</tr>
+<tr>
+<td>READ COMMITTED</td>
+<td>❌</td>
+<td>✅可能</td>
+<td>✅可能</td>
+</tr>
+<tr>
+<td>REPEATABLE READ</td>
+<td>❌</td>
+<td>❌</td>
+<td>✅可能（MySQL 可防）</td>
+</tr>
+<tr>
+<td>SERIALIZABLE</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+</tbody></table>
+<p>MySQL 默认 REPEATABLE READ（MVCC 下已防幻读）；PostgreSQL 默认 READ COMMITTED。</p>
+<p><strong>何时需要多数据源</strong>：读写分离、多库分片、老系统对接、微服务各自建库。</p>
+<h2 id="2-Transactional-传播行为"><a href="#2-Transactional-传播行为" class="headerlink" title="2. @Transactional 传播行为"></a>2. @Transactional 传播行为</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Transactional(propagation = Propagation.REQUIRED)</span>      <span class="comment">// 默认：有事务用当前，无则新建</span></span><br><span class="line"><span class="meta">@Transactional(propagation = Propagation.REQUIRES_NEW)</span>  <span class="comment">// 总是新事务（日志表）</span></span><br><span class="line"><span class="meta">@Transactional(propagation = Propagation.NESTED)</span>        <span class="comment">// 嵌套：子回滚不影响外层（savepoint）</span></span><br><span class="line"><span class="meta">@Transactional(propagation = Propagation.SUPPORTS)</span>      <span class="comment">// 有则参与，无则不开启（只读查询）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>经典场景</strong>：记录操作日志必须独立提交（失败不影响主流程）→ REQUIRES_NEW；子业务失败不影响主业务 → NESTED。</p>
+<h2 id="3-事务失效八大场景（高频面试与坑）"><a href="#3-事务失效八大场景（高频面试与坑）" class="headerlink" title="3. 事务失效八大场景（高频面试与坑）"></a>3. 事务失效八大场景（高频面试与坑）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 同类内部调用（this 调用不走代理）—— 最常见！</span></span><br><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">create</span><span class="params">()</span> &#123; <span class="built_in">this</span>.deduct(); &#125;      <span class="comment">// ❌ 事务不生效</span></span><br><span class="line">    <span class="meta">@Transactional</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">deduct</span><span class="params">()</span> &#123; ... &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 解决：注入自身代理或拆分到别的 Bean</span></span><br><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderService</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> OrderService self;             <span class="comment">// 注入代理</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">create</span><span class="params">()</span> &#123; self.deduct(); &#125;      <span class="comment">// ✅ 走代理</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 方法非 public —— 不生效</span></span><br><span class="line"><span class="comment">// 3. 异常被 catch 吞掉 —— 不回滚</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">pay</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123; accountMapper.deduct(); &#125; <span class="keyword">catch</span> (Exception e) &#123; log.warn(<span class="string">&quot;忽略&quot;</span>); &#125;</span><br><span class="line">    <span class="comment">// ❌ 异常被吞，事务照常提交</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4. 抛非 RuntimeException（默认只回滚 RuntimeException/Error）</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">order</span><span class="params">()</span> <span class="keyword">throws</span> Exception &#123; <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Exception</span>(<span class="string">&quot;x&quot;</span>); &#125;  <span class="comment">// ❌ 不回滚</span></span><br><span class="line"><span class="comment">// 解决：@Transactional(rollbackFor = Exception.class)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 5. 自调用绕过 AOP（同 1）</span></span><br><span class="line"><span class="comment">// 6. 数据库引擎不支持事务（MyISAM）→ 用 InnoDB</span></span><br><span class="line"><span class="comment">// 7. 多线程：子线程不在当前事务内</span></span><br><span class="line"><span class="comment">// 8. 事务方法里发消息/远程调用——长事务（见 §7）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="4-隔离级别设置"><a href="#4-隔离级别设置" class="headerlink" title="4. 隔离级别设置"></a>4. 隔离级别设置</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 高并发下单：防止超卖用 SELECT ... FOR UPDATE（悲观锁）或乐观锁</span></span><br><span class="line"><span class="meta">@Transactional(isolation = Isolation.READ_COMMITTED)</span></span><br><span class="line"><span class="keyword">public</span> Order <span class="title function_">createOrder</span><span class="params">(Long skuId, <span class="type">int</span> qty)</span> &#123;</span><br><span class="line">    <span class="comment">// 悲观锁：行级锁直到事务结束</span></span><br><span class="line">    <span class="type">Sku</span> <span class="variable">sku</span> <span class="operator">=</span> skuMapper.selectForUpdate(skuId);      <span class="comment">// SELECT * FROM sku WHERE id=? FOR UPDATE</span></span><br><span class="line">    <span class="keyword">if</span> (sku.getStock() &lt; qty) <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BusinessException</span>(<span class="string">&quot;库存不足&quot;</span>);   <span class="comment">// 校验</span></span><br><span class="line">    skuMapper.decrease(skuId, qty);                  <span class="comment">// 扣库存</span></span><br><span class="line">    <span class="keyword">return</span> orderMapper.insert(...);                  <span class="comment">// 写订单</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>乐观锁（推荐，少锁冲突）</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 表加 version 字段，UPDATE 带条件（版本号比较）</span></span><br><span class="line"><span class="meta">@Update(&quot;UPDATE sku SET stock = stock - #&#123;qty&#125;, version = version + 1 &quot; +</span></span><br><span class="line"><span class="meta">        &quot;WHERE id = #&#123;id&#125; AND version = #&#123;version&#125;&quot;)</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">decreaseWithVersion</span><span class="params">(<span class="meta">@Param(&quot;id&quot;)</span> Long id, <span class="meta">@Param(&quot;qty&quot;)</span> <span class="type">int</span> qty, <span class="meta">@Param(&quot;version&quot;)</span> <span class="type">long</span> version)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 返回 0 行 = 并发修改，重试</span></span><br><span class="line"><span class="type">int</span> <span class="variable">rows</span> <span class="operator">=</span> skuMapper.decreaseWithVersion(id, qty, sku.getVersion());</span><br><span class="line"><span class="keyword">if</span> (rows == <span class="number">0</span>) <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BusinessException</span>(<span class="string">&quot;库存被并发修改，请重试&quot;</span>);   <span class="comment">// 冲突处理</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="5-多数据源（dynamic-datasource）"><a href="#5-多数据源（dynamic-datasource）" class="headerlink" title="5. 多数据源（dynamic-datasource）"></a>5. 多数据源（dynamic-datasource）</h2><h3 id="5-1-引入与配置"><a href="#5-1-引入与配置" class="headerlink" title="5.1 引入与配置"></a>5.1 引入与配置</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.baomidou<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>dynamic-datasource-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>4.3.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- 动态数据源 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">dynamic:</span></span><br><span class="line">      <span class="attr">primary:</span> <span class="string">master</span>                    <span class="comment"># 默认主库</span></span><br><span class="line">      <span class="attr">strict:</span> <span class="literal">false</span>                      <span class="comment"># 未匹配数据源时不报错</span></span><br><span class="line">      <span class="attr">datasource:</span></span><br><span class="line">        <span class="attr">master:</span>                          <span class="comment"># 主库（写）</span></span><br><span class="line">          <span class="attr">url:</span> <span class="string">jdbc:mysql://localhost:3306/shop?useSSL=false&amp;serverTimezone=Asia/Shanghai</span></span><br><span class="line">          <span class="attr">username:</span> <span class="string">root</span></span><br><span class="line">          <span class="attr">password:</span> <span class="string">secret</span></span><br><span class="line">          <span class="attr">driver-class-name:</span> <span class="string">com.mysql.cj.jdbc.Driver</span></span><br><span class="line">        <span class="attr">slave:</span>                           <span class="comment"># 从库（读）</span></span><br><span class="line">          <span class="attr">url:</span> <span class="string">jdbc:mysql://localhost:3307/shop_slave?useSSL=false</span></span><br><span class="line">          <span class="attr">username:</span> <span class="string">root</span></span><br><span class="line">          <span class="attr">password:</span> <span class="string">secret</span></span><br><span class="line">          <span class="attr">driver-class-name:</span> <span class="string">com.mysql.cj.jdbc.Driver</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-注解切换"><a href="#5-2-注解切换" class="headerlink" title="5.2 注解切换"></a>5.2 注解切换</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 方法级切换数据源（读写分离）</span></span><br><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderQueryService</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@DS(&quot;slave&quot;)</span>                          <span class="comment">// 读走从库</span></span><br><span class="line">    <span class="keyword">public</span> List&lt;Order&gt; <span class="title function_">listRecent</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> orderMapper.selectList(...);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@DS(&quot;master&quot;)</span>                         <span class="comment">// 写走主库（默认就是 master 可不写）</span></span><br><span class="line">    <span class="meta">@Transactional</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">save</span><span class="params">(Order o)</span> &#123; ... &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-动态切换（按用户-租户）"><a href="#5-3-动态切换（按用户-租户）" class="headerlink" title="5.3 动态切换（按用户&#x2F;租户）"></a>5.3 动态切换（按用户&#x2F;租户）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@DS(&quot;slave&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">query</span><span class="params">()</span> &#123; ... &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 或编程式切换（DynamicDataSourceContextHolder）</span></span><br><span class="line">DynamicDataSourceContextHolder.push(<span class="string">&quot;slave&quot;</span>);    <span class="comment">// 压栈切换</span></span><br><span class="line"><span class="keyword">try</span> &#123; ... &#125; <span class="keyword">finally</span> &#123; DynamicDataSourceContextHolder.poll(); &#125;   <span class="comment">// 用完弹出</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-注意事项"><a href="#5-4-注意事项" class="headerlink" title="5.4 注意事项"></a>5.4 注意事项</h3><ul>
+<li><strong>事务与数据源</strong>：@Transactional 内切换数据源不生效（事务绑定连接），跨库事务必须用 Seata。</li>
+<li><strong>主从延迟</strong>：刚写入立刻读可能读到旧数据——写后强制走主库（@DS(“master”)）或用缓存标记。</li>
+<li><strong>从库多实例</strong>：负载均衡配置 <code>slave_1, slave_2</code>。</li>
+</ul>
+<h2 id="6-读写分离-事务测试"><a href="#6-读写分离-事务测试" class="headerlink" title="6. 读写分离 + 事务测试"></a>6. 读写分离 + 事务测试</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Testcontainers 真实 MySQL 测试</span></span><br><span class="line"><span class="meta">@Testcontainers</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">OrderServiceTest</span> &#123;</span><br><span class="line">    <span class="meta">@Container</span></span><br><span class="line">    <span class="keyword">static</span> MySQLContainer&lt;?&gt; mysql = <span class="keyword">new</span> <span class="title class_">MySQLContainer</span>&lt;&gt;(<span class="string">&quot;mysql:8.4&quot;</span>);   <span class="comment">// 容器数据库</span></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="meta">@Transactional</span>                      <span class="comment">// 测试回滚（不污染库）</span></span><br><span class="line">    <span class="keyword">void</span> <span class="title function_">createOrder_should_decrease_stock</span><span class="params">()</span> &#123;</span><br><span class="line">        orderService.createOrder(<span class="number">1L</span>, <span class="number">2</span>);            <span class="comment">// 执行下单</span></span><br><span class="line">        <span class="type">Sku</span> <span class="variable">sku</span> <span class="operator">=</span> skuMapper.selectById(<span class="number">1L</span>);         <span class="comment">// 查库存</span></span><br><span class="line">        assertThat(sku.getStock()).isEqualTo(<span class="number">98</span>);   <span class="comment">// 断言扣减正确</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.testcontainers<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mysql<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>2.1.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">scope</span>&gt;</span>test<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Testcontainers MySQL --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-长事务治理"><a href="#7-长事务治理" class="headerlink" title="7. 长事务治理"></a>7. 长事务治理</h2><p><strong>问题</strong>：事务内远程调用&#x2F;发消息 → 锁持有时间长 → 连接池耗尽、死锁、主从延迟。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ❌ 长事务：查库 + 远程调用 + 发消息都在事务里</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> Order <span class="title function_">create</span><span class="params">(OrderReq req)</span> &#123;</span><br><span class="line">    <span class="type">Order</span> <span class="variable">o</span> <span class="operator">=</span> orderMapper.insert(req);</span><br><span class="line">    <span class="type">boolean</span> <span class="variable">ok</span> <span class="operator">=</span> riskService.check(o);       <span class="comment">// 远程调用 200ms（锁持有期间）</span></span><br><span class="line">    mqTemplate.send(o);                       <span class="comment">// 发消息</span></span><br><span class="line">    <span class="keyword">return</span> o;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ✅ 拆分：事务只包本地 DB 操作；补偿/事件落库后异步处理</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> Order <span class="title function_">create</span><span class="params">(OrderReq req)</span> &#123;</span><br><span class="line">    <span class="type">Order</span> <span class="variable">o</span> <span class="operator">=</span> orderMapper.insert(req);       <span class="comment">// 本地 DB</span></span><br><span class="line">    outboxMapper.insert(<span class="keyword">new</span> <span class="title class_">Outbox</span>(o.getId(), <span class="string">&quot;ORDER_CREATED&quot;</span>));  <span class="comment">// 事件表（同事务）</span></span><br><span class="line">    <span class="keyword">return</span> o;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 另起任务扫 outbox 表发消息（事务外），失败重试——可靠消息最终一致</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="8-何时引入分布式事务"><a href="#8-何时引入分布式事务" class="headerlink" title="8. 何时引入分布式事务"></a>8. 何时引入分布式事务</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单库多表</td>
+<td>本地事务（默认）</td>
+</tr>
+<tr>
+<td>跨库（同应用多数据源）</td>
+<td>Seata AT</td>
+</tr>
+<tr>
+<td>跨服务（微服务）</td>
+<td>Seata TCC &#x2F; SAGA &#x2F; 可靠消息</td>
+</tr>
+<tr>
+<td>高一致 vs 高可用权衡</td>
+<td>多数场景用”最终一致”（本地消息表 + 定时对账）</td>
+</tr>
+</tbody></table>
+<p><strong>原则</strong>：能本地事务就不分布式；能用最终一致就不用强一致（分布式事务有性能与复杂度代价）。</p>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mvn <span class="built_in">test</span>                     <span class="comment"># 运行测试</span></span><br><span class="line"><span class="comment"># 查看 MySQL 事务状态</span></span><br><span class="line">SELECT * FROM information_schema.INNODB_TRX\G</span><br><span class="line">SHOW ENGINE INNODB STATUS\G</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/concurrency-juc-guide/" rel="prev" title="Java 并发进阶：JUC 与线程池">
+                  <i class="fa fa-angle-left"></i> Java 并发进阶：JUC 与线程池
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/database-design-guide/" rel="next" title="数据库设计规范与建模实战">
+                  数据库设计规范与建模实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

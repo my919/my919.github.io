@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="分布式 · 分布式事务 从 0 到生产选型。事务演进与问题 · XA&#x2F;AT&#x2F;TCC&#x2F;SAGA 对比 · Seata 实战 · 可靠消息最终一致 · 对账与补偿。代码带详细注释。  技术栈速查   类别 选型 用途    框架 Seata 2.x 分布式事务   注册中心 Nacos 3.x 配置与发现   消息 Kafka 4.x 最终一致   数据库 MySQL 8">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式事务专题：Seata 与最终一致">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/distributed-transaction-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="分布式 · 分布式事务 从 0 到生产选型。事务演进与问题 · XA&#x2F;AT&#x2F;TCC&#x2F;SAGA 对比 · Seata 实战 · 可靠消息最终一致 · 对账与补偿。代码带详细注释。  技术栈速查   类别 选型 用途    框架 Seata 2.x 分布式事务   注册中心 Nacos 3.x 配置与发现   消息 Kafka 4.x 最终一致   数据库 MySQL 8">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T10:25:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.958Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/distributed-transaction-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/distributed-transaction-guide/","path":"2026/09/14/distributed-transaction-guide/","title":"分布式事务专题：Seata 与最终一致"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>分布式事务专题：Seata 与最终一致 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F-%C2%B7-%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1"><span class="nav-number">1.</span> <span class="nav-text">分布式 · 分布式事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%9B%9B%E7%A7%8D%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-number">1.3.</span> <span class="nav-text">2. 四种方案对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-Seata-AT-%E6%A8%A1%E5%BC%8F%E5%AE%9E%E6%88%98%EF%BC%88%E8%87%AA%E5%8A%A8%E5%9B%9E%E6%BB%9A%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. Seata AT 模式实战（自动回滚）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E9%83%A8%E7%BD%B2-Seata-Server"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 部署 Seata Server</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E4%B8%9A%E5%8A%A1%E5%BA%93%E5%BB%BA-undo-%E8%A1%A8"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 业务库建 undo 表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E5%BA%94%E7%94%A8%E6%8E%A5%E5%85%A5%EF%BC%88%E8%AE%A2%E5%8D%95-%E5%BA%93%E5%AD%98-%E8%B4%A6%E6%88%B7%E4%B8%89%E6%9C%8D%E5%8A%A1%EF%BC%89"><span class="nav-number">1.4.3.</span> <span class="nav-text">3.3 应用接入（订单&#x2F;库存&#x2F;账户三服务）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-%E5%8F%91%E8%B5%B7%E5%85%A8%E5%B1%80%E4%BA%8B%E5%8A%A1%EF%BC%88%E5%8F%AA%E9%9C%80%E4%B8%80%E4%B8%AA%E6%B3%A8%E8%A7%A3%EF%BC%89"><span class="nav-number">1.4.4.</span> <span class="nav-text">3.4 发起全局事务（只需一个注解）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-TCC-%E6%A8%A1%E5%BC%8F%EF%BC%88%E8%B5%84%E9%87%91%E5%BC%BA%E4%B8%80%E8%87%B4%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. TCC 模式（资金强一致）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-SAGA-%E6%A8%A1%E5%BC%8F%EF%BC%88%E9%95%BF%E6%B5%81%E7%A8%8B%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. SAGA 模式（长流程）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E5%8F%AF%E9%9D%A0%E6%B6%88%E6%81%AF%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%EF%BC%88%E6%9C%80%E5%B8%B8%E7%94%A8%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">6. 可靠消息最终一致（最常用）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E9%80%89%E5%9E%8B%E5%86%B3%E7%AD%96%E6%A0%91"><span class="nav-number">1.8.</span> <span class="nav-text">7. 选型决策树</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.9.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/distributed-transaction-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="分布式事务专题：Seata 与最终一致 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          分布式事务专题：Seata 与最终一致
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 18:25:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T18:25:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="分布式-·-分布式事务"><a href="#分布式-·-分布式事务" class="headerlink" title="分布式 · 分布式事务"></a>分布式 · 分布式事务</h1><blockquote>
+<p>从 0 到生产选型。事务演进与问题 · XA&#x2F;AT&#x2F;TCC&#x2F;SAGA 对比 · Seata 实战 · 可靠消息最终一致 · 对账与补偿。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>框架</td>
+<td>Seata 2.x</td>
+<td>分布式事务</td>
+</tr>
+<tr>
+<td>注册中心</td>
+<td>Nacos 3.x</td>
+<td>配置与发现</td>
+</tr>
+<tr>
+<td>消息</td>
+<td>Kafka 4.x</td>
+<td>最终一致</td>
+</tr>
+<tr>
+<td>数据库</td>
+<td>MySQL 8.4</td>
+<td>事务存储</td>
+</tr>
+<tr>
+<td>场景</td>
+<td>订单&#x2F;库存&#x2F;账户三服务</td>
+<td>典型案例</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>为什么需要分布式事务</strong>：微服务拆分后，一次下单跨”订单库 + 库存库 + 账户库”三个独立事务——本地事务无法保证一致性。</p>
+<p><strong>分布式事务核心指标</strong>：</p>
+<ul>
+<li><strong>强一致（CP）</strong>：所有节点要么全成功要么全失败（XA&#x2F;AT&#x2F;TCC）。</li>
+<li><strong>最终一致（AP）</strong>：先各自提交，通过异步补偿最终一致（SAGA&#x2F;消息）。</li>
+</ul>
+<p><strong>工程共识</strong>：互联网业务 90% 用<strong>最终一致</strong>；只有资金类强约束场景用强一致。<strong>能用单库事务绝不分布式</strong>。</p>
+<h2 id="2-四种方案对比"><a href="#2-四种方案对比" class="headerlink" title="2. 四种方案对比"></a>2. 四种方案对比</h2><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>原理</th>
+<th>一致性</th>
+<th>侵入性</th>
+<th>性能</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>XA</td>
+<td>数据库原生 2PC</td>
+<td>强</td>
+<td>低</td>
+<td>差（锁久）</td>
+<td>老旧系统</td>
+</tr>
+<tr>
+<td>AT</td>
+<td>代理层生成反向 SQL</td>
+<td>强</td>
+<td>低</td>
+<td>中</td>
+<td><strong>Seata 首选</strong></td>
+</tr>
+<tr>
+<td>TCC</td>
+<td>业务三方法(Try&#x2F;Confirm&#x2F;Cancel)</td>
+<td>强</td>
+<td>高</td>
+<td>高</td>
+<td>资金&#x2F;高并发</td>
+</tr>
+<tr>
+<td>SAGA</td>
+<td>正向+补偿事务</td>
+<td>最终</td>
+<td>中</td>
+<td>高</td>
+<td>长流程</td>
+</tr>
+</tbody></table>
+<p><strong>2PC 问题</strong>（XA 的短板）：协调者单点、同步阻塞（资源锁定）、脑裂时不一致——所以现代方案用 AT&#x2F;TCC&#x2F;SAGA 规避。</p>
+<h2 id="3-Seata-AT-模式实战（自动回滚）"><a href="#3-Seata-AT-模式实战（自动回滚）" class="headerlink" title="3. Seata AT 模式实战（自动回滚）"></a>3. Seata AT 模式实战（自动回滚）</h2><p><strong>原理</strong>：事务拦截器记录<strong>前后镜像</strong>（undo_log 表），提交时全局协调（TC）确认；失败时用反向 SQL 自动回滚——业务代码几乎零侵入。</p>
+<h3 id="3-1-部署-Seata-Server"><a href="#3-1-部署-Seata-Server" class="headerlink" title="3.1 部署 Seata Server"></a>3.1 部署 Seata Server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 下载 Seata 2.x（github.com/seata/seata/releases）</span></span><br><span class="line"><span class="comment"># 2. 使用 Nacos 作为注册/配置中心（\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name seata-server -p 8091:8091 \</span><br><span class="line">  -e SEATA_IP=127.0.0.1 \</span><br><span class="line">  -e SEATA_CONFIG_MODE=nacos \</span><br><span class="line">  -e SEATA_REGISTRY_MODE=nacos \</span><br><span class="line">  -e NACOS_ADDR=127.0.0.1:8848 \</span><br><span class="line">  seataio/seata-server:2.3.0</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-业务库建-undo-表"><a href="#3-2-业务库建-undo-表" class="headerlink" title="3.2 业务库建 undo 表"></a>3.2 业务库建 undo 表</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 每个参与分布式事务的业务库都要执行</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> IF <span class="keyword">NOT</span> <span class="keyword">EXISTS</span> `undo_log` (</span><br><span class="line">  `branch_id`     <span class="type">BIGINT</span>       <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;branch transaction id&#x27;</span>,   <span class="comment">-- 分支事务 ID</span></span><br><span class="line">  `xid`           <span class="type">VARCHAR</span>(<span class="number">128</span>) <span class="keyword">NOT NULL</span>,        <span class="comment">-- 全局事务 ID</span></span><br><span class="line">  `context`       <span class="type">VARCHAR</span>(<span class="number">128</span>) <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `rollback_info` LONGBLOB     <span class="keyword">NOT NULL</span>,        <span class="comment">-- 前后镜像（回滚依据）</span></span><br><span class="line">  `log_status`    <span class="type">INT</span>          <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `log_created`   DATETIME     <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `log_modified`  DATETIME     <span class="keyword">NOT NULL</span>,</span><br><span class="line">  <span class="keyword">PRIMARY KEY</span> (`branch_id`),</span><br><span class="line">  KEY `ux_undo_log` (`xid`, `branch_id`)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-应用接入（订单-库存-账户三服务）"><a href="#3-3-应用接入（订单-库存-账户三服务）" class="headerlink" title="3.3 应用接入（订单&#x2F;库存&#x2F;账户三服务）"></a>3.3 应用接入（订单&#x2F;库存&#x2F;账户三服务）</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.seata<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>seata-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>2.3.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Seata 与 Spring Boot 集成 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># application.yml（每个参与方）</span></span><br><span class="line"><span class="attr">seata:</span></span><br><span class="line">  <span class="attr">application-id:</span> <span class="string">order-service</span>      <span class="comment"># 应用名</span></span><br><span class="line">  <span class="attr">tx-service-group:</span> <span class="string">my_test_tx_group</span>   <span class="comment"># 事务组</span></span><br><span class="line">  <span class="attr">registry:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">nacos</span></span><br><span class="line">    <span class="attr">nacos:</span></span><br><span class="line">      <span class="attr">server-addr:</span> <span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span><span class="string">:8848</span>   <span class="comment"># 注册中心</span></span><br><span class="line">  <span class="attr">config:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">nacos</span></span><br><span class="line">    <span class="attr">nacos:</span></span><br><span class="line">      <span class="attr">server-addr:</span> <span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span><span class="string">:8848</span>   <span class="comment"># 配置中心</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-发起全局事务（只需一个注解）"><a href="#3-4-发起全局事务（只需一个注解）" class="headerlink" title="3.4 发起全局事务（只需一个注解）"></a>3.4 发起全局事务（只需一个注解）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 下单接口（事务发起方）</span></span><br><span class="line"><span class="meta">@GlobalTransactional(name = &quot;create-order&quot;, rollbackFor = Exception.class)</span>   <span class="comment">// 开启全局事务</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">createOrder</span><span class="params">(CreateOrderReq req)</span> &#123;</span><br><span class="line">    <span class="comment">// 1. 本地：写订单（订单服务库）</span></span><br><span class="line">    orderMapper.insert(toOrder(req));</span><br><span class="line">    <span class="comment">// 2. 远程：扣库存（库存服务，走 Feign）</span></span><br><span class="line">    inventoryClient.deduct(req.getSkuId(), req.getQty());</span><br><span class="line">    <span class="comment">// 3. 远程：扣账户（账户服务）</span></span><br><span class="line">    accountClient.decrease(req.getUserId(), req.getAmount());</span><br><span class="line">    <span class="comment">// 任一失败 → 全局回滚：库存/账户/订单全部还原</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong>：三个参与方各自 <code>@Transactional</code> 照写，Seata 用 XID 贯穿（透传 Header）；<strong>远程调用必须同步</strong>（异步会丢 XID）。</p>
+<h2 id="4-TCC-模式（资金强一致）"><a href="#4-TCC-模式（资金强一致）" class="headerlink" title="4. TCC 模式（资金强一致）"></a>4. TCC 模式（资金强一致）</h2><p>业务实现三方法，Seata 只负责协调：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@LocalTCC</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">AccountTccService</span> &#123;</span><br><span class="line">    <span class="comment">// Try：预扣（冻结），幂等</span></span><br><span class="line">    <span class="meta">@TwoPhaseBusinessAction(name = &quot;decrease&quot;, commitMethod = &quot;confirm&quot;, rollbackMethod = &quot;cancel&quot;)</span></span><br><span class="line">    <span class="type">boolean</span> <span class="title function_">tryDecrease</span><span class="params">(<span class="meta">@BusinessActionContextParameter(paramName = &quot;userId&quot;)</span> Long userId,</span></span><br><span class="line"><span class="params">                        <span class="meta">@BusinessActionContextParameter(paramName = &quot;amount&quot;)</span> BigDecimal amount)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">boolean</span> <span class="title function_">confirm</span><span class="params">(BusinessActionContext ctx)</span>;   <span class="comment">// Confirm：冻结转扣减</span></span><br><span class="line">    <span class="type">boolean</span> <span class="title function_">cancel</span><span class="params">(BusinessActionContext ctx)</span>;    <span class="comment">// Cancel：解冻</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 账户表加冻结字段</span></span><br><span class="line"><span class="comment">-- try:  UPDATE account SET frozen = frozen + #&#123;amount&#125; WHERE id=#&#123;userId&#125;      -- 预扣冻结</span></span><br><span class="line"><span class="comment">-- confirm: UPDATE account SET frozen=frozen-#&#123;amount&#125;, balance=balance-#&#123;amount&#125; -- 正式扣</span></span><br><span class="line"><span class="comment">-- cancel:  UPDATE account SET frozen=frozen-#&#123;amount&#125;                            -- 解冻</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>TCC 铁律</strong>：三方法都要<strong>幂等</strong>（Seata 会重试）；Confirm&#x2F;Cancel 不能失败（失败走人工）。</p>
+<h2 id="5-SAGA-模式（长流程）"><a href="#5-SAGA-模式（长流程）" class="headerlink" title="5. SAGA 模式（长流程）"></a>5. SAGA 模式（长流程）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 订单 → 库存 → 支付 → 物流，每步配补偿</span></span><br><span class="line"><span class="comment">// Seata SAGA 状态机（JSON 定义）：</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;stateMachine&quot;</span>: &#123;</span><br><span class="line">    <span class="string">&quot;states&quot;</span>: &#123;</span><br><span class="line">      <span class="string">&quot;service&quot;</span>: &#123;</span><br><span class="line">        <span class="string">&quot;CompensateState&quot;</span>: &#123; <span class="string">&quot;CompensateAction&quot;</span>: <span class="string">&quot;deductStockCompensate&quot;</span> &#125;   <span class="comment">// 补偿动作</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>适用</strong>：跨天&#x2F;多步骤长流程（旅行预订、审批流）；每步提交后释放资源，只在失败时执行反向补偿。</p>
+<h2 id="6-可靠消息最终一致（最常用）"><a href="#6-可靠消息最终一致（最常用）" class="headerlink" title="6. 可靠消息最终一致（最常用）"></a>6. 可靠消息最终一致（最常用）</h2><p>不用 Seata，用”本地消息表 + 消息队列”实现最终一致——<strong>高并发场景首选</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 同库写业务 + 写消息表（本地事务保证）</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> Order <span class="title function_">createOrder</span><span class="params">(CreateOrderReq req)</span> &#123;</span><br><span class="line">    <span class="type">Order</span> <span class="variable">order</span> <span class="operator">=</span> orderMapper.insert(...);            <span class="comment">// 写订单</span></span><br><span class="line">    outboxMapper.insert(<span class="keyword">new</span> <span class="title class_">Outbox</span>(order.getId(), <span class="string">&quot;ORDER_CREATED&quot;</span>, payload));   <span class="comment">// 写消息表</span></span><br><span class="line">    <span class="keyword">return</span> order;                                     <span class="comment">// 同事务提交</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 定时任务扫描未发消息（每 5s），发 Kafka，标记已发</span></span><br><span class="line"><span class="meta">@Scheduled(fixedDelay = 5000)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">publishOutbox</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">for</span> (Outbox msg : outboxMapper.selectPending()) &#123;       <span class="comment">// 查未发消息</span></span><br><span class="line">        kafkaTemplate.send(<span class="string">&quot;order-events&quot;</span>, msg.getPayload());   <span class="comment">// 发消息</span></span><br><span class="line">        outboxMapper.markSent(msg.getId());        <span class="comment">// 先发后标记（消费端幂等兜底）</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 消费端（库存服务）：幂等消费 + 失败重试 + 死信</span></span><br><span class="line"><span class="meta">@KafkaListener(topics = &quot;order-events&quot;, groupId = &quot;inventory&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onOrderCreated</span><span class="params">(String payload)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (consumeLog.exist(payload)) <span class="keyword">return</span>;         <span class="comment">// 幂等：已处理过则跳过</span></span><br><span class="line">    inventoryService.deduct(parse(payload));       <span class="comment">// 扣库存</span></span><br><span class="line">    consumeLog.record(payload);                     <span class="comment">// 记录消费</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4. 对账兜底：定期对比两方数据，不一致人工/自动补偿</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>一致性保证链条</strong>：本地事务（写库+写表）→ 定时重发（不丢）→ 消费幂等（不重）→ 对账（最终一致）。</p>
+<h2 id="7-选型决策树"><a href="#7-选型决策树" class="headerlink" title="7. 选型决策树"></a>7. 选型决策树</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">跨几个库/服务？</span><br><span class="line">├─ 1 个库 → 本地事务（结束）</span><br><span class="line">├─ 多个，高并发，可容忍短不一致 → 可靠消息最终一致 ★首选</span><br><span class="line">├─ 多个，需要强一致，低并发 → Seata AT ★</span><br><span class="line">├─ 资金核心，高并发 → TCC</span><br><span class="line">└─ 长流程编排 → SAGA</span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Seata 控制台（查看全局事务/分支事务）</span></span><br><span class="line"><span class="comment"># http://127.0.0.1:7091</span></span><br><span class="line">docker logs -f seata-server</span><br><span class="line"><span class="comment"># 常见问题</span></span><br><span class="line"><span class="comment"># 1. undo_log 表缺失 → 每个业务库建表</span></span><br><span class="line"><span class="comment"># 2. 回滚失败 → 看 rollback_info 与异常日志，手动补偿</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/design-patterns-refactor-guide/" rel="prev" title="用设计模式重构代码">
+                  <i class="fa fa-angle-left"></i> 用设计模式重构代码
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/docker-compose-guide/" rel="next" title="Docker Compose 生产实践">
+                  Docker Compose 生产实践 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

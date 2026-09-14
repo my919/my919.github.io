@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="视频 · 直播流处理 入门篇之后的专项实战。直播协议对比 · 推流拉流 · SRS 服务器 · HLS 切片 · 转码与自适应码率 · 直播架构落地。代码带详细注释。  技术栈速查   类别 选型 用途    流服务器 SRS 6（国产开源） 直播分发   推流 OBS &#x2F; FFmpeg 采集推流   协议 RTMP &#x2F; HLS &#x2F; WebRTC 传输与播放   播放">
+<meta property="og:type" content="article">
+<meta property="og:title" content="直播流处理实战：RTMP 与 HLS">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/video-livestream-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="视频 · 直播流处理 入门篇之后的专项实战。直播协议对比 · 推流拉流 · SRS 服务器 · HLS 切片 · 转码与自适应码率 · 直播架构落地。代码带详细注释。  技术栈速查   类别 选型 用途    流服务器 SRS 6（国产开源） 直播分发   推流 OBS &#x2F; FFmpeg 采集推流   协议 RTMP &#x2F; HLS &#x2F; WebRTC 传输与播放   播放">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T12:15:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.907Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/video-livestream-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/video-livestream-guide/","path":"2026/09/14/video-livestream-guide/","title":"直播流处理实战：RTMP 与 HLS"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>直播流处理实战：RTMP 与 HLS | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%A7%86%E9%A2%91-%C2%B7-%E7%9B%B4%E6%92%AD%E6%B5%81%E5%A4%84%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">视频 · 直播流处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-SRS-%E6%B5%81%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%83%A8%E7%BD%B2"><span class="nav-number">1.3.</span> <span class="nav-text">2. SRS 流服务器部署</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-HLS-%E7%9B%B4%E6%92%AD%EF%BC%88%E6%B5%8F%E8%A7%88%E5%99%A8%E5%8E%9F%E7%94%9F%E6%92%AD%E6%94%BE%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. HLS 直播（浏览器原生播放）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E5%A4%9A%E7%A0%81%E7%8E%87%E8%BD%AC%E7%A0%81%EF%BC%88%E8%87%AA%E9%80%82%E5%BA%94%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 多码率转码（自适应）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%89%8D%E7%AB%AF%E6%92%AD%E6%94%BE%EF%BC%88hls-js%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 前端播放（hls.js）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E7%9B%B4%E6%92%AD%E9%89%B4%E6%9D%83%EF%BC%88%E9%98%B2%E7%9B%97%E9%93%BE%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">6. 直播鉴权（防盗链）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E6%8E%A8%E6%B5%81%E9%89%B4%E6%9D%83%EF%BC%88%E9%98%B2%E5%81%B7%E6%8E%A8%EF%BC%89"><span class="nav-number">1.7.1.</span> <span class="nav-text">6.1 推流鉴权（防偷推）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-%E6%92%AD%E6%94%BE%E5%9C%B0%E5%9D%80%E7%AD%BE%E5%90%8D%EF%BC%88HLS-%E9%98%B2%E7%9B%97%E9%93%BE%EF%BC%89"><span class="nav-number">1.7.2.</span> <span class="nav-text">6.2 播放地址签名（HLS 防盗链）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E7%94%9F%E4%BA%A7%E7%9B%B4%E6%92%AD%E6%9E%B6%E6%9E%84"><span class="nav-number">1.8.</span> <span class="nav-text">7. 生产直播架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-number">1.9.</span> <span class="nav-text">8. 常见问题排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/video-livestream-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="直播流处理实战：RTMP 与 HLS | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          直播流处理实战：RTMP 与 HLS
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 20:15:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T20:15:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="视频-·-直播流处理"><a href="#视频-·-直播流处理" class="headerlink" title="视频 · 直播流处理"></a>视频 · 直播流处理</h1><blockquote>
+<p>入门篇之后的专项实战。直播协议对比 · 推流拉流 · SRS 服务器 · HLS 切片 · 转码与自适应码率 · 直播架构落地。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>流服务器</td>
+<td>SRS 6（国产开源）</td>
+<td>直播分发</td>
+</tr>
+<tr>
+<td>推流</td>
+<td>OBS &#x2F; FFmpeg</td>
+<td>采集推流</td>
+</tr>
+<tr>
+<td>协议</td>
+<td>RTMP &#x2F; HLS &#x2F; WebRTC</td>
+<td>传输与播放</td>
+</tr>
+<tr>
+<td>播放</td>
+<td>hls.js &#x2F; flv.js</td>
+<td>浏览器播放</td>
+</tr>
+<tr>
+<td>转码</td>
+<td>FFmpeg</td>
+<td>多码率</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>直播链路</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">采集（OBS/摄像头）→ 推流（RTMP）→ 流服务器（SRS）→ 分发（HLS/RTMP）→ 播放（浏览器/App）</span><br></pre></td></tr></table></figure>
+
+<p><strong>协议对比</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>协议</th>
+<th>延迟</th>
+<th>浏览器支持</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RTMP</td>
+<td>1-3s</td>
+<td>❌ 需插件&#x2F;封装</td>
+<td>推流、内部播放</td>
+</tr>
+<tr>
+<td>HLS</td>
+<td>5-15s</td>
+<td>✅ 原生</td>
+<td>点播、直播（默认首选）</td>
+</tr>
+<tr>
+<td>HTTP-FLV</td>
+<td>1-3s</td>
+<td>需 flv.js</td>
+<td>低延迟直播</td>
+</tr>
+<tr>
+<td>WebRTC</td>
+<td>&lt;1s</td>
+<td>✅ 原生</td>
+<td>连麦、互动直播</td>
+</tr>
+</tbody></table>
+<p><strong>延迟取舍</strong>：HLS 延迟高但兼容最好（稳定首选）；低延迟互动场景用 HTTP-FLV 或 WebRTC。</p>
+<h2 id="2-SRS-流服务器部署"><a href="#2-SRS-流服务器部署" class="headerlink" title="2. SRS 流服务器部署"></a>2. SRS 流服务器部署</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># SRS（Simple Realtime Server）单容器部署（\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name srs -p 1935:1935 -p 1985:1985 -p 8080:8080 \</span><br><span class="line">  registry.cn-hangzhou.aliyuncs.com/ossrs/srs:6</span><br><span class="line"></span><br><span class="line"><span class="comment"># 端口说明</span></span><br><span class="line"><span class="comment"># 1935  RTMP 推流/拉流</span></span><br><span class="line"><span class="comment"># 1985  HTTP API（控制台）</span></span><br><span class="line"><span class="comment"># 8080  HTTP 服务（HLS 播放）</span></span><br></pre></td></tr></table></figure>
+
+<p>验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 推流测试（FFmpeg 推送测试视频流，\ 为续行符整段复制）</span></span><br><span class="line">ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=30 \</span><br><span class="line">  -f lavfi -i sine=frequency=440 \</span><br><span class="line">  -c:v libx264 -preset veryfast -tune zerolatency \</span><br><span class="line">  -c:a aac -f flv rtmp://localhost:1935/live/test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 拉流验证</span></span><br><span class="line">ffplay rtmp://localhost:1935/live/test</span><br><span class="line"></span><br><span class="line"><span class="comment"># HTTP-FLV（浏览器可用 flv.js 播放）</span></span><br><span class="line"><span class="comment"># http://localhost:8080/live/test.flv</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># HLS 播放</span></span><br><span class="line"><span class="comment"># http://localhost:8080/live/test.m3u8</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-HLS-直播（浏览器原生播放）"><a href="#3-HLS-直播（浏览器原生播放）" class="headerlink" title="3. HLS 直播（浏览器原生播放）"></a>3. HLS 直播（浏览器原生播放）</h2><p>SRS 默认把 RTMP 流转封装为 HLS，无需额外配置：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 播放验证（浏览器/命令行）</span></span><br><span class="line">ffplay http://localhost:8080/live/test.m3u8</span><br><span class="line"><span class="comment"># 或浏览器打开 http://localhost:8080/players/（SRS 自带播放器测试页）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>HLS 原理</strong>：直播流切成 4-6 秒的 <code>.ts</code> 分片 + <code>m3u8</code> 播放列表（索引），播放器逐片拉取。延迟 &#x3D; 切片时长 + 列表缓冲。</p>
+<p><strong>降低延迟</strong>：<code>-hls_time 2</code>（切 2 秒片）+ 播放器 <code>lowLatencyMode</code>。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 手动转 HLS（不经 SRS，直接给静态服务器，\ 为续行符整段复制）</span></span><br><span class="line">ffmpeg -re -stream_loop -1 -i in.mp4 \</span><br><span class="line">  -c:v libx264 -preset veryfast -g 60 \</span><br><span class="line">  -c:a aac -f hls -hls_time 2 -hls_list_size 6 \</span><br><span class="line">  -hls_flags delete_segments+append_list live/index.m3u8</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-多码率转码（自适应）"><a href="#4-多码率转码（自适应）" class="headerlink" title="4. 多码率转码（自适应）"></a>4. 多码率转码（自适应）</h2><p>观众带宽不同 → 服务器转出多档码率，播放器自动切换（ABR）。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># SRS 转码配置（conf/transcode.conf 示例思路）</span></span><br><span class="line"><span class="string">vhost</span> <span class="string">__defaultVhost__</span> &#123;</span><br><span class="line">    <span class="string">transcode</span> &#123;</span><br><span class="line">        <span class="string">enabled</span> <span class="string">on;</span>           <span class="comment"># 开启转码</span></span><br><span class="line">        <span class="string">ffmpeg</span> &#123;</span><br><span class="line">            <span class="comment"># 1080p 全尺寸 3Mbps</span></span><br><span class="line">            <span class="comment"># 720p  1280x720 1.5Mbps</span></span><br><span class="line">            <span class="comment"># 480p  854x480 800kbps</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># FFmpeg 手动转码（多路输出，\ 为续行符整段复制）</span></span><br><span class="line">ffmpeg -re -i rtmp://localhost:1935/live/source \</span><br><span class="line">  -c:v libx264 -b:v 3000k -s 1920x1080 -c:a aac -f flv rtmp://localhost:1935/live/1080p \</span><br><span class="line">  -c:v libx264 -b:v 1500k -s 1280x720 -c:a aac -f flv rtmp://localhost:1935/live/720p \</span><br><span class="line">  -c:v libx264 -b:v 800k  -s 854x480  -c:a aac -f flv rtmp://localhost:1935/live/480p</span><br></pre></td></tr></table></figure>
+
+<p><strong>生产注意</strong>：转码是 CPU&#x2F;GPU 密集——用硬件编码（NVENC&#x2F;QuickSync）、转码集群化，或只用 SRS 专业版&#x2F;云转码。</p>
+<h2 id="5-前端播放（hls-js）"><a href="#5-前端播放（hls-js）" class="headerlink" title="5. 前端播放（hls.js）"></a>5. 前端播放（hls.js）</h2><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- HLS（Safari 原生，其他浏览器用 hls.js） --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">&quot;https://cdn.jsdelivr.net/npm/hls.js@1.5.0&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">video</span> <span class="attr">id</span>=<span class="string">&quot;video&quot;</span> <span class="attr">controls</span> <span class="attr">autoplay</span> <span class="attr">muted</span>&gt;</span><span class="tag">&lt;/<span class="name">video</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="language-javascript"></span></span><br><span class="line"><span class="language-javascript">  <span class="keyword">const</span> video = <span class="variable language_">document</span>.<span class="title function_">getElementById</span>(<span class="string">&#x27;video&#x27;</span>);        <span class="comment">// 取视频元素</span></span></span><br><span class="line"><span class="language-javascript">  <span class="keyword">const</span> url = <span class="string">&#x27;https://live.example.com/live/test.m3u8&#x27;</span>; <span class="comment">// HLS 地址</span></span></span><br><span class="line"><span class="language-javascript"></span></span><br><span class="line"><span class="language-javascript">  <span class="keyword">if</span> (video.<span class="title function_">canPlayType</span>(<span class="string">&#x27;application/vnd.apple.mpegurl&#x27;</span>)) &#123;</span></span><br><span class="line"><span class="language-javascript">    video.<span class="property">src</span> = url;                       <span class="comment">// Safari 原生播放</span></span></span><br><span class="line"><span class="language-javascript">  &#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="title class_">Hls</span>.<span class="title function_">isSupported</span>()) &#123;          <span class="comment">// 其他浏览器走 hls.js</span></span></span><br><span class="line"><span class="language-javascript">    <span class="keyword">const</span> hls = <span class="keyword">new</span> <span class="title class_">Hls</span>(&#123; <span class="attr">lowLatencyMode</span>: <span class="literal">true</span> &#125;);   <span class="comment">// 低延迟模式</span></span></span><br><span class="line"><span class="language-javascript">    hls.<span class="title function_">loadSource</span>(url);                   <span class="comment">// 加载流</span></span></span><br><span class="line"><span class="language-javascript">    hls.<span class="title function_">attachMedia</span>(video);                <span class="comment">// 绑定视频元素</span></span></span><br><span class="line"><span class="language-javascript">  &#125;</span></span><br><span class="line"><span class="language-javascript">  hls.<span class="title function_">on</span>(<span class="title class_">Hls</span>.<span class="property">Events</span>.<span class="property">ERROR</span>, <span class="function">(<span class="params">e, data</span>) =&gt;</span> <span class="variable language_">console</span>.<span class="title function_">error</span>(<span class="string">&#x27;播放错误&#x27;</span>, data));   <span class="comment">// 错误监听</span></span></span><br><span class="line"><span class="language-javascript"></span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- HTTP-FLV 低延迟播放（flv.js） --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">&quot;https://cdn.jsdelivr.net/npm/flv.js@1.6.2&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="language-javascript"></span></span><br><span class="line"><span class="language-javascript">  <span class="keyword">const</span> flvPlayer = flvjs.<span class="title function_">createPlayer</span>(&#123;    <span class="comment">// 创建 FLV 播放器</span></span></span><br><span class="line"><span class="language-javascript">    <span class="attr">type</span>: <span class="string">&#x27;flv&#x27;</span>, <span class="attr">isLive</span>: <span class="literal">true</span>,             <span class="comment">// 直播流</span></span></span><br><span class="line"><span class="language-javascript">    <span class="attr">url</span>: <span class="string">&#x27;https://live.example.com/live/test.flv&#x27;</span>,</span></span><br><span class="line"><span class="language-javascript">  &#125;);</span></span><br><span class="line"><span class="language-javascript">  flvPlayer.<span class="title function_">attachMediaElement</span>(video);     <span class="comment">// 绑定 video 元素</span></span></span><br><span class="line"><span class="language-javascript">  flvPlayer.<span class="title function_">load</span>();                        <span class="comment">// 加载</span></span></span><br><span class="line"><span class="language-javascript">  flvPlayer.<span class="title function_">play</span>();                        <span class="comment">// 播放</span></span></span><br><span class="line"><span class="language-javascript"></span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="6-直播鉴权（防盗链）"><a href="#6-直播鉴权（防盗链）" class="headerlink" title="6. 直播鉴权（防盗链）"></a>6. 直播鉴权（防盗链）</h2><h3 id="6-1-推流鉴权（防偷推）"><a href="#6-1-推流鉴权（防偷推）" class="headerlink" title="6.1 推流鉴权（防偷推）"></a>6.1 推流鉴权（防偷推）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># SRS vhost 配置</span></span><br><span class="line"><span class="string">vhost</span> <span class="string">__defaultVhost__</span> &#123;</span><br><span class="line">    <span class="string">play</span> &#123;</span><br><span class="line">        <span class="comment"># 播放鉴权：开启 on_play 回调</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="string">publish</span> &#123;</span><br><span class="line">        <span class="comment"># 推流鉴权：开启 on_publish 回调</span></span><br><span class="line">        <span class="comment"># HTTP 回调到业务服务验证 token</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 推流地址带 token</span></span><br><span class="line">ffmpeg -i in.mp4 -f flv <span class="string">&quot;rtmp://localhost:1935/live/test?token=abc123&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 业务服务 on_publish 回调：验证 token 有效性 → 返回 0 允许 / 非 0 拒绝</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-播放地址签名（HLS-防盗链）"><a href="#6-2-播放地址签名（HLS-防盗链）" class="headerlink" title="6.2 播放地址签名（HLS 防盗链）"></a>6.2 播放地址签名（HLS 防盗链）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 签名 URL：过期时间 + 密钥签名</span></span><br><span class="line"><span class="comment"># 格式: /live/test.m3u8?expire=1730000000&amp;sign=md5(stream+expire+secret)</span></span><br><span class="line"><span class="comment"># 服务器校验 sign，过期拒绝</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-生产直播架构"><a href="#7-生产直播架构" class="headerlink" title="7. 生产直播架构"></a>7. 生产直播架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">主播 → OBS/手机推流（RTMP，带 token 鉴权）</span><br><span class="line">         ↓</span><br><span class="line">     边缘推流节点（SRS，就近收流）</span><br><span class="line">         ↓</span><br><span class="line">     中心源站（转码多码率 + 录制 + 审核）</span><br><span class="line">         ↓</span><br><span class="line">     边缘分发节点（CDN：HLS/HTTP-FLV）</span><br><span class="line">         ↓</span><br><span class="line">     观众（浏览器 hls.js / App 播放器）</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键设计</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>低延迟</td>
+<td>HTTP-FLV 边缘分发 + 切片 2s</td>
+</tr>
+<tr>
+<td>高并发</td>
+<td>CDN 分发，源站只处理转码</td>
+</tr>
+<tr>
+<td>合规</td>
+<td>开播审核（截图+语音转写）</td>
+</tr>
+<tr>
+<td>录制</td>
+<td>源站同步录制（flv → mp4 后处理）</td>
+</tr>
+<tr>
+<td>秒开</td>
+<td>播放器预加载 + 首帧快出</td>
+</tr>
+<tr>
+<td>监控</td>
+<td>推流在线数、断流告警、转码队列</td>
+</tr>
+</tbody></table>
+<h2 id="8-常见问题排查"><a href="#8-常见问题排查" class="headerlink" title="8. 常见问题排查"></a>8. 常见问题排查</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>原因与解决</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>推流失败</td>
+<td>端口&#x2F;地址错、token 拒绝 → 检查 1935 端口与回调日志</td>
+</tr>
+<tr>
+<td>播放卡顿</td>
+<td>带宽不足 → 多码率&#x2F;降低码率</td>
+</tr>
+<tr>
+<td>延迟越来越高</td>
+<td>播放器缓冲 → lowLatencyMode + 服务端 GOP 设置</td>
+</tr>
+<tr>
+<td>音画不同步</td>
+<td>时间戳异常 → 推流端检查采集</td>
+</tr>
+<tr>
+<td>HLS 播放不了</td>
+<td>m3u8 路径&#x2F;跨域 → 检查 CORS 头与路径</td>
+</tr>
+<tr>
+<td>观众多就卡</td>
+<td>源站带宽瓶颈 → CDN 分发</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 排障三连</span></span><br><span class="line">docker logs -f srs                    <span class="comment"># 服务器日志</span></span><br><span class="line">ffprobe rtmp://localhost:1935/live/test   <span class="comment"># 拉流分析</span></span><br><span class="line">curl -I http://localhost:8080/live/test.m3u8   <span class="comment"># HTTP 头检查</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name srs -p 1935:1935 -p 1985:1985 -p 8080:8080 registry.cn-hangzhou.aliyuncs.com/ossrs/srs:6</span><br><span class="line">ffmpeg -re -i in.mp4 -c copy -f flv rtmp://localhost:1935/live/test   <span class="comment"># 推流</span></span><br><span class="line">ffplay http://localhost:8080/live/test.m3u8                          <span class="comment"># 播放</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/cli-productivity-guide/" rel="prev" title="命令行效率手册">
+                  <i class="fa fa-angle-left"></i> 命令行效率手册
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/vue-advanced-guide/" rel="next" title="Vue 进阶：组合式开发与性能优化">
+                  Vue 进阶：组合式开发与性能优化 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

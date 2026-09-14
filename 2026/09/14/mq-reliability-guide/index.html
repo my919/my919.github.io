@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="消息队列 · 可靠性保障 入门篇之后的工程实战。消息丢失链路分析 · 生产者&#x2F;消费者可靠性 · 幂等消费 · 顺序消息 · 死信与重试 · 全链路案例。代码带详细注释。  技术栈速查   类别 选型 用途    队列 Kafka 4.x &#x2F; RabbitMQ 4.x 消息中间件   幂等 Redis + 业务表唯一键 去重   重试 延迟队列 &#x2F; Kafka 重试 t">
+<meta property="og:type" content="article">
+<meta property="og:title" content="消息队列可靠性保障实战">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/mq-reliability-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="消息队列 · 可靠性保障 入门篇之后的工程实战。消息丢失链路分析 · 生产者&#x2F;消费者可靠性 · 幂等消费 · 顺序消息 · 死信与重试 · 全链路案例。代码带详细注释。  技术栈速查   类别 选型 用途    队列 Kafka 4.x &#x2F; RabbitMQ 4.x 消息中间件   幂等 Redis + 业务表唯一键 去重   重试 延迟队列 &#x2F; Kafka 重试 t">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T11:10:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.919Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/mq-reliability-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/mq-reliability-guide/","path":"2026/09/14/mq-reliability-guide/","title":"消息队列可靠性保障实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>消息队列可靠性保障实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97-%C2%B7-%E5%8F%AF%E9%9D%A0%E6%80%A7%E4%BF%9D%E9%9A%9C"><span class="nav-number">1.</span> <span class="nav-text">消息队列 · 可靠性保障</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E7%8E%AF%E8%8A%82%E4%B8%80%EF%BC%9A%E7%94%9F%E4%BA%A7%E8%80%85%E5%8F%AF%E9%9D%A0%E6%80%A7"><span class="nav-number">1.3.</span> <span class="nav-text">2. 环节一：生产者可靠性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-Kafka-%E7%94%9F%E4%BA%A7%E8%80%85"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 Kafka 生产者</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-RabbitMQ-%E7%94%9F%E4%BA%A7%E8%80%85"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 RabbitMQ 生产者</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E7%BB%88%E6%9E%81%E5%85%9C%E5%BA%95%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%B6%88%E6%81%AF%E8%A1%A8%EF%BC%88%E5%8F%91%E9%80%81%E5%BF%85%E7%84%B6%E6%88%90%E5%8A%9F%EF%BC%89"><span class="nav-number">1.3.3.</span> <span class="nav-text">2.3 终极兜底：本地消息表（发送必然成功）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%8E%AF%E8%8A%82%E4%BA%8C%EF%BC%9ABroker-%E5%8F%AF%E9%9D%A0%E6%80%A7"><span class="nav-number">1.4.</span> <span class="nav-text">3. 环节二：Broker 可靠性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-Kafka-%E6%8C%81%E4%B9%85%E5%8C%96%E9%85%8D%E7%BD%AE"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 Kafka 持久化配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-RabbitMQ-%E6%8C%81%E4%B9%85%E5%8C%96"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 RabbitMQ 持久化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E7%8E%AF%E8%8A%82%E4%B8%89%EF%BC%9A%E6%B6%88%E8%B4%B9%E8%80%85%E5%8F%AF%E9%9D%A0%E6%80%A7"><span class="nav-number">1.5.</span> <span class="nav-text">4. 环节三：消费者可靠性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-Kafka-%E6%B6%88%E8%B4%B9%EF%BC%88%E5%85%88%E5%A4%84%E7%90%86%E5%90%8E%E6%8F%90%E4%BA%A4%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 Kafka 消费（先处理后提交）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E9%87%8D%E5%A4%8D%E6%B6%88%E8%B4%B9%E5%9C%BA%E6%99%AF%EF%BC%88%E5%BF%85%E7%84%B6%E5%8F%91%E7%94%9F%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 重复消费场景（必然发生）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%B9%82%E7%AD%89%E6%B6%88%E8%B4%B9%E4%B8%89%E6%96%B9%E6%A1%88"><span class="nav-number">1.6.</span> <span class="nav-text">5. 幂等消费三方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E9%87%8D%E8%AF%95%E4%B8%8E%E6%AD%BB%E4%BF%A1"><span class="nav-number">1.7.</span> <span class="nav-text">6. 重试与死信</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-Kafka%EF%BC%9A%E9%87%8D%E8%AF%95-topic-%E6%AD%BB%E4%BF%A1-topic"><span class="nav-number">1.7.1.</span> <span class="nav-text">6.1 Kafka：重试 topic + 死信 topic</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-RabbitMQ%EF%BC%9A%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97%E9%87%8D%E8%AF%95"><span class="nav-number">1.7.2.</span> <span class="nav-text">6.2 RabbitMQ：延迟队列重试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E6%AD%BB%E4%BF%A1%E7%9B%91%E6%8E%A7%EF%BC%88%E5%BF%85%E9%A1%BB%E5%91%8A%E8%AD%A6%EF%BC%89"><span class="nav-number">1.7.3.</span> <span class="nav-text">6.3 死信监控（必须告警）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E9%A1%BA%E5%BA%8F%E6%B6%88%E6%81%AF"><span class="nav-number">1.8.</span> <span class="nav-text">7. 顺序消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%85%A8%E9%93%BE%E8%B7%AF%E5%8F%AF%E9%9D%A0%E6%80%A7%E6%B8%85%E5%8D%95"><span class="nav-number">1.9.</span> <span class="nav-text">8. 全链路可靠性清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/mq-reliability-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="消息队列可靠性保障实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          消息队列可靠性保障实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 19:10:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T19:10:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="消息队列-·-可靠性保障"><a href="#消息队列-·-可靠性保障" class="headerlink" title="消息队列 · 可靠性保障"></a>消息队列 · 可靠性保障</h1><blockquote>
+<p>入门篇之后的工程实战。消息丢失链路分析 · 生产者&#x2F;消费者可靠性 · 幂等消费 · 顺序消息 · 死信与重试 · 全链路案例。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>队列</td>
+<td>Kafka 4.x &#x2F; RabbitMQ 4.x</td>
+<td>消息中间件</td>
+</tr>
+<tr>
+<td>幂等</td>
+<td>Redis + 业务表唯一键</td>
+<td>去重</td>
+</tr>
+<tr>
+<td>重试</td>
+<td>延迟队列 &#x2F; Kafka 重试 topic</td>
+<td>失败恢复</td>
+</tr>
+<tr>
+<td>监控</td>
+<td>消费者 lag 监控</td>
+<td>健康检查</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>消息可靠性三问</strong>（面试与生产核心）：</p>
+<ol>
+<li><strong>不丢</strong>：消息从生产 → broker → 消费，任何环节都不能丢。</li>
+<li><strong>不重</strong>：网络重试导致重复投递，消费端必须幂等。</li>
+<li><strong>不乱</strong>：需要顺序的场景保证按序处理。</li>
+</ol>
+<p><strong>丢消息的三个环节</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">生产者 →（环节1）→ Broker →（环节2）→ 消费者</span><br><span class="line">   ①发送失败       ②存储丢失       ③消费失败</span><br></pre></td></tr></table></figure>
+
+<p><strong>可靠性铁律</strong>：消息丢失的责任最终在<strong>消费端兜底</strong>——生产者&#x2F;Broker 尽量可靠，但消费端必须能容忍任意环节的重复与乱序（幂等 + 重试 + 对账）。</p>
+<h2 id="2-环节一：生产者可靠性"><a href="#2-环节一：生产者可靠性" class="headerlink" title="2. 环节一：生产者可靠性"></a>2. 环节一：生产者可靠性</h2><h3 id="2-1-Kafka-生产者"><a href="#2-1-Kafka-生产者" class="headerlink" title="2.1 Kafka 生产者"></a>2.1 Kafka 生产者</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 关键配置：确认机制 + 重试</span></span><br><span class="line">Map&lt;String, Object&gt; props = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">props.put(ProducerConfig.ACKS_CONFIG, <span class="string">&quot;all&quot;</span>);         <span class="comment">// 所有副本确认才成功</span></span><br><span class="line">props.put(ProducerConfig.RETRIES_CONFIG, <span class="number">10</span>);          <span class="comment">// 发送失败重试</span></span><br><span class="line">props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, <span class="literal">true</span>);  <span class="comment">// 幂等生产者（去重）</span></span><br><span class="line">props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, <span class="number">120000</span>);   <span class="comment">// 投递超时</span></span><br><span class="line"></span><br><span class="line">KafkaProducer&lt;String, String&gt; producer = <span class="keyword">new</span> <span class="title class_">KafkaProducer</span>&lt;&gt;(props);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 发送 + 回调（失败必须处理，不能忽略！）</span></span><br><span class="line">producer.send(<span class="keyword">new</span> <span class="title class_">ProducerRecord</span>&lt;&gt;(<span class="string">&quot;order-events&quot;</span>, key, value),</span><br><span class="line">    (metadata, exception) -&gt; &#123;</span><br><span class="line">        <span class="keyword">if</span> (exception != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="comment">// 落盘/进本地表，定时补发（可靠消息模式）</span></span><br><span class="line">            saveToOutbox(key, value);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-RabbitMQ-生产者"><a href="#2-2-RabbitMQ-生产者" class="headerlink" title="2.2 RabbitMQ 生产者"></a>2.2 RabbitMQ 生产者</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 开启 Publisher Confirms（RabbitMQ 确认机制）</span></span><br><span class="line">rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -&gt; &#123;</span><br><span class="line">    <span class="keyword">if</span> (!ack) &#123;</span><br><span class="line">        <span class="comment">// 发送失败：落本地表补发</span></span><br><span class="line">        saveToOutbox(correlationData.getId());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-终极兜底：本地消息表（发送必然成功）"><a href="#2-3-终极兜底：本地消息表（发送必然成功）" class="headerlink" title="2.3 终极兜底：本地消息表（发送必然成功）"></a>2.3 终极兜底：本地消息表（发送必然成功）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">createOrderAndSend</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">    orderMapper.insert(order);                        <span class="comment">// 写业务</span></span><br><span class="line">    outboxMapper.insert(<span class="keyword">new</span> <span class="title class_">Outbox</span>(order.getId(), <span class="string">&quot;ORDER_CREATED&quot;</span>, payload));   <span class="comment">// 写消息表（同事务）</span></span><br><span class="line">    <span class="comment">// 事务提交后，定时任务扫表补发 → 保证&quot;要么都成功，要么都失败&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-环节二：Broker-可靠性"><a href="#3-环节二：Broker-可靠性" class="headerlink" title="3. 环节二：Broker 可靠性"></a>3. 环节二：Broker 可靠性</h2><h3 id="3-1-Kafka-持久化配置"><a href="#3-1-Kafka-持久化配置" class="headerlink" title="3.1 Kafka 持久化配置"></a>3.1 Kafka 持久化配置</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># broker 配置（server.properties）</span></span><br><span class="line"><span class="comment"># 副本数（生产至少 3）</span></span><br><span class="line"><span class="attr">default.replication.factor:</span> <span class="number">3</span></span><br><span class="line"><span class="comment"># ISR 最小同步副本（防 leader 独裁丢数据）</span></span><br><span class="line"><span class="attr">min.insync.replicas:</span> <span class="number">2</span></span><br><span class="line"><span class="comment"># 关闭自动创建（防笔误 topic）</span></span><br><span class="line"><span class="attr">auto.create.topics.enable:</span> <span class="literal">false</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建 topic 时指定（\ 为续行符整段复制）</span></span><br><span class="line">kafka-topics.sh --create --topic order-events \</span><br><span class="line">  --partitions 12 --replication-factor 3 --bootstrap-server kafka:9092</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong>：<code>acks=all</code> + <code>min.insync.replicas=2</code> + 副本数 3 三者配合才有效——缺一个都可能丢。</p>
+<h3 id="3-2-RabbitMQ-持久化"><a href="#3-2-RabbitMQ-持久化" class="headerlink" title="3.2 RabbitMQ 持久化"></a>3.2 RabbitMQ 持久化</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 队列持久化 + 消息持久化（默认 deliveryMode=PERSISTENT）</span></span><br><span class="line"><span class="meta">@Bean</span></span><br><span class="line"><span class="keyword">public</span> Queue <span class="title function_">orderQueue</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> QueueBuilder.durable(<span class="string">&quot;order.queue&quot;</span>).build();   <span class="comment">// durable 持久队列</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 发送持久化消息</span></span><br><span class="line">rabbitTemplate.convertAndSend(<span class="string">&quot;order.exchange&quot;</span>, <span class="string">&quot;order.rk&quot;</span>, payload,</span><br><span class="line">    msg -&gt; &#123; msg.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT); <span class="keyword">return</span> msg; &#125;);</span><br><span class="line"><span class="comment">// 消息标记持久化</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="4-环节三：消费者可靠性"><a href="#4-环节三：消费者可靠性" class="headerlink" title="4. 环节三：消费者可靠性"></a>4. 环节三：消费者可靠性</h2><h3 id="4-1-Kafka-消费（先处理后提交）"><a href="#4-1-Kafka-消费（先处理后提交）" class="headerlink" title="4.1 Kafka 消费（先处理后提交）"></a>4.1 Kafka 消费（先处理后提交）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@KafkaListener(topics = &quot;order-events&quot;, groupId = &quot;inventory-service&quot;,</span></span><br><span class="line"><span class="meta">               concurrency = &quot;3&quot;)</span>            <span class="comment">// 3 个并发线程</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onOrderCreated</span><span class="params">(ConsumerRecord&lt;String, String&gt; record)</span> &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">orderId</span> <span class="operator">=</span> record.key();           <span class="comment">// 业务主键</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (consumeLog.exist(orderId)) <span class="keyword">return</span>;        <span class="comment">// ① 幂等（见 §5）</span></span><br><span class="line">        inventoryService.deduct(parse(record.value())); <span class="comment">// ② 业务处理</span></span><br><span class="line">        consumeLog.record(orderId);                    <span class="comment">// ③ 记录成功</span></span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">        <span class="comment">// 处理失败：不提交 offset → 自动重试；或转死信（见 §6）</span></span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">RuntimeException</span>(<span class="string">&quot;处理失败，重试&quot;</span>, e);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">kafka:</span></span><br><span class="line">    <span class="attr">consumer:</span></span><br><span class="line">      <span class="attr">enable-auto-commit:</span> <span class="literal">false</span>        <span class="comment"># 手动提交（关键）</span></span><br><span class="line">      <span class="attr">auto-offset-reset:</span> <span class="string">earliest</span>      <span class="comment"># 新消费者从头消费</span></span><br><span class="line">    <span class="attr">listener:</span></span><br><span class="line">      <span class="attr">ack-mode:</span> <span class="string">manual</span>                 <span class="comment"># 手动 ack</span></span><br><span class="line">      <span class="attr">concurrency:</span> <span class="number">3</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-重复消费场景（必然发生）"><a href="#4-2-重复消费场景（必然发生）" class="headerlink" title="4.2 重复消费场景（必然发生）"></a>4.2 重复消费场景（必然发生）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">生产者重试 → broker 重发 → 消费者收到 2 次</span><br><span class="line">消费者处理成功但 ack 超时 → 重新投递 → 收到 2 次</span><br><span class="line">→ 幂等是唯一解</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-幂等消费三方案"><a href="#5-幂等消费三方案" class="headerlink" title="5. 幂等消费三方案"></a>5. 幂等消费三方案</h2><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>实现</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>唯一键 + 数据库</td>
+<td><code>INSERT IGNORE</code> &#x2F; 唯一索引冲突即已处理</td>
+<td>通用</td>
+</tr>
+<tr>
+<td>Redis SETNX</td>
+<td><code>setIfAbsent(orderId, 1, TTL)</code></td>
+<td>高频</td>
+</tr>
+<tr>
+<td>状态机校验</td>
+<td>业务状态前置校验（已支付不再支付）</td>
+<td>状态明确</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 数据库唯一键幂等（最可靠）</span></span><br><span class="line"><span class="comment">// 表 consume_log(order_id PRIMARY KEY, processed_at)</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">deduct</span><span class="params">(String orderId, SkuReq req)</span> &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">inserted</span> <span class="operator">=</span> consumeLogMapper.insertIgnore(orderId);   <span class="comment">// 唯一键冲突=已处理</span></span><br><span class="line">    <span class="keyword">if</span> (inserted == <span class="number">0</span>) &#123;</span><br><span class="line">        log.info(<span class="string">&quot;重复消息跳过 orderId=&#123;&#125;&quot;</span>, orderId);        <span class="comment">// 已处理过</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    inventoryMapper.deduct(req.getSkuId(), req.getQty());    <span class="comment">// 正常扣减</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="6-重试与死信"><a href="#6-重试与死信" class="headerlink" title="6. 重试与死信"></a>6. 重试与死信</h2><h3 id="6-1-Kafka：重试-topic-死信-topic"><a href="#6-1-Kafka：重试-topic-死信-topic" class="headerlink" title="6.1 Kafka：重试 topic + 死信 topic"></a>6.1 Kafka：重试 topic + 死信 topic</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@KafkaListener(topics = &quot;order-events&quot;, groupId = &quot;inventory-service&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">onMessage</span><span class="params">(ConsumerRecord&lt;String, String&gt; record)</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        handle(record);                    <span class="comment">// 业务处理</span></span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">retries</span> <span class="operator">=</span> getRetryCount(record);   <span class="comment">// 已重试次数</span></span><br><span class="line">        <span class="keyword">if</span> (retries &lt; <span class="number">3</span>) &#123;</span><br><span class="line">            <span class="comment">// 发到延迟重试 topic（或用重试队列）</span></span><br><span class="line">            retryProducer.send(<span class="string">&quot;order-events-retry&quot;</span>, record.key(),</span><br><span class="line">                record.value() + <span class="string">&quot;|retry=&quot;</span> + (retries + <span class="number">1</span>));</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 超过次数 → 死信（人工介入/告警）</span></span><br><span class="line">            deadLetterProducer.send(<span class="string">&quot;order-events-dlq&quot;</span>, record.key(), record.value());</span><br><span class="line">            log.error(<span class="string">&quot;消息进入死信 orderId=&#123;&#125;&quot;</span>, record.key(), e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-RabbitMQ：延迟队列重试"><a href="#6-2-RabbitMQ：延迟队列重试" class="headerlink" title="6.2 RabbitMQ：延迟队列重试"></a>6.2 RabbitMQ：延迟队列重试</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 死信 + TTL 实现延迟重试</span></span><br><span class="line"><span class="meta">@Bean</span></span><br><span class="line"><span class="keyword">public</span> Queue <span class="title function_">retryQueue</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> QueueBuilder.durable(<span class="string">&quot;order.retry&quot;</span>)</span><br><span class="line">        .ttl(<span class="number">30000</span>)                                    <span class="comment">// 30 秒后过期</span></span><br><span class="line">        .deadLetterExchange(<span class="string">&quot;order.exchange&quot;</span>)          <span class="comment">// 过期回到主队列</span></span><br><span class="line">        .deadLetterRoutingKey(<span class="string">&quot;order.rk&quot;</span>)</span><br><span class="line">        .build();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 失败消息发到 retry 队列，30 秒后自动回到主队列重试</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-死信监控（必须告警）"><a href="#6-3-死信监控（必须告警）" class="headerlink" title="6.3 死信监控（必须告警）"></a>6.3 死信监控（必须告警）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">□ 死信 topic/队列有消费者或监控</span><br><span class="line">□ 死信数量 &gt; 0 即告警（企业微信/钉钉）</span><br><span class="line">□ 定期人工处理死信（重放工具）</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-顺序消息"><a href="#7-顺序消息" class="headerlink" title="7. 顺序消息"></a>7. 顺序消息</h2><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>实现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kafka 分区有序</td>
+<td>同一 key（如 orderId）发同一分区，单分区内有序</td>
+</tr>
+<tr>
+<td>RabbitMQ 单队列</td>
+<td>单队列天然有序（多消费者会乱）</td>
+</tr>
+<tr>
+<td>全局锁 + 版本号</td>
+<td>特殊场景兜底</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Kafka：按业务 key 分区（同一订单消息进同一分区）</span></span><br><span class="line">producer.send(<span class="keyword">new</span> <span class="title class_">ProducerRecord</span>&lt;&gt;(<span class="string">&quot;order-events&quot;</span>, orderId, payload));   <span class="comment">// key=orderId</span></span><br><span class="line"><span class="comment">// 消费端并发度 = 分区数（同一 key 不会并发消费）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>顺序注意</strong>：顺序消息与高吞吐冲突（并发度受限）；只有强顺序场景（资金流水）才用。</p>
+<h2 id="8-全链路可靠性清单"><a href="#8-全链路可靠性清单" class="headerlink" title="8. 全链路可靠性清单"></a>8. 全链路可靠性清单</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">生产者：</span><br><span class="line">□ acks=all + 重试 + 幂等生产者</span><br><span class="line">□ 发送失败落本地表补发</span><br><span class="line"></span><br><span class="line">Broker：</span><br><span class="line">□ 副本 3 + min.insync.replicas=2</span><br><span class="line">□ topic 分区数按吞吐设计</span><br><span class="line">□ 磁盘监控（磁盘满会丢消息）</span><br><span class="line"></span><br><span class="line">消费者：</span><br><span class="line">□ 手动提交 + 处理成功才 ack</span><br><span class="line">□ 幂等（唯一键/Redis/状态机）</span><br><span class="line">□ 重试（延迟队列/重试 topic）+ 死信</span><br><span class="line">□ lag 监控（消费积压告警）</span><br><span class="line"></span><br><span class="line">对账（兜底）：</span><br><span class="line">□ 定时核对&quot;业务结果&quot;与&quot;消息处理结果&quot;</span><br><span class="line">□ 不一致自动补偿或人工介入</span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看消费积压（lag，\ 为续行符整段复制）</span></span><br><span class="line">kafka-consumer-groups.sh --bootstrap-server kafka:9092 \</span><br><span class="line">  --group inventory-service --describe</span><br><span class="line"><span class="comment"># 手动重置 offset（死信重放后，\ 为续行符整段复制）</span></span><br><span class="line">kafka-consumer-groups.sh --bootstrap-server kafka:9092 \</span><br><span class="line">  --group inventory-service --reset-offsets --to-earliest --topic order-events --execute</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/logging-tracing-guide/" rel="prev" title="日志聚合与链路追踪实战">
+                  <i class="fa fa-angle-left"></i> 日志聚合与链路追踪实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/netty-protocol-guide/" rel="next" title="Netty 自定义协议与编解码实战">
+                  Netty 自定义协议与编解码实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

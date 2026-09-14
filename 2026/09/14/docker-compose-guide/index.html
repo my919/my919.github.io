@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="Docker · Compose 生产实践 入门篇之后的工程化落地。Compose 语法精讲 · 服务编排 · 环境分层 · 健康检查与依赖 · 配置与密钥 · 日志与监控 · 生产部署。  技术栈速查   类别 选型 用途    编排 Docker Compose 2.30+ 多容器编排   部署 Docker Swarm &#x2F; 单机 Compose 生产运行   密钥 Docker S">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Docker Compose 生产实践">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/docker-compose-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="Docker · Compose 生产实践 入门篇之后的工程化落地。Compose 语法精讲 · 服务编排 · 环境分层 · 健康检查与依赖 · 配置与密钥 · 日志与监控 · 生产部署。  技术栈速查   类别 选型 用途    编排 Docker Compose 2.30+ 多容器编排   部署 Docker Swarm &#x2F; 单机 Compose 生产运行   密钥 Docker S">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T10:30:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.846Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/docker-compose-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/docker-compose-guide/","path":"2026/09/14/docker-compose-guide/","title":"Docker Compose 生产实践"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Docker Compose 生产实践 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Docker-%C2%B7-Compose-%E7%94%9F%E4%BA%A7%E5%AE%9E%E8%B7%B5"><span class="nav-number">1.</span> <span class="nav-text">Docker · Compose 生产实践</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E8%AF%AD%E6%B3%95%E7%B2%BE%E8%AE%B2%EF%BC%88compose-yaml%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">2. 语法精讲（compose.yaml）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%8E%AF%E5%A2%83%E5%88%86%E5%B1%82%EF%BC%88dev-test-prod%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. 环境分层（dev &#x2F; test &#x2F; prod）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%AF%86%E9%92%A5%E7%AE%A1%E7%90%86"><span class="nav-number">1.5.</span> <span class="nav-text">4. 配置与密钥管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-env-%E6%96%87%E4%BB%B6%EF%BC%88%E9%9D%9E%E6%95%8F%E6%84%9F%E9%85%8D%E7%BD%AE%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 .env 文件（非敏感配置）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-Docker-Secrets%EF%BC%88%E6%95%8F%E6%84%9F%E4%BF%A1%E6%81%AF%EF%BC%8CSwarm-%E7%8E%AF%E5%A2%83%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 Docker Secrets（敏感信息，Swarm 环境）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E5%AF%86%E9%92%A5%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 密钥检查清单</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5%E4%B8%8E%E6%BB%9A%E5%8A%A8%E5%8F%91%E5%B8%83"><span class="nav-number">1.6.</span> <span class="nav-text">5. 健康检查与滚动发布</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%BA%94%E7%94%A8%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5%EF%BC%88%E9%85%8D%E5%90%88%E4%BE%9D%E8%B5%96%E4%B8%8E%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%EF%BC%89"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 应用健康检查（配合依赖与负载均衡）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E5%8F%91%E5%B8%83%E6%96%B0%E7%89%88%E6%9C%AC%EF%BC%88%E4%B8%8D%E5%81%9C%E6%9C%BA%E6%80%9D%E8%B7%AF%EF%BC%89"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 发布新版本（不停机思路）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E6%97%A5%E5%BF%97%E4%B8%8E%E7%9B%91%E6%8E%A7"><span class="nav-number">1.7.</span> <span class="nav-text">6. 日志与监控</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E7%94%9F%E4%BA%A7%E9%83%A8%E7%BD%B2%E6%89%8B%E5%86%8C%EF%BC%88%E4%B8%80%E9%94%AE%E8%84%9A%E6%9C%AC%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">7. 生产部署手册（一键脚本）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-number">1.9.</span> <span class="nav-text">8. 常见问题排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/docker-compose-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Docker Compose 生产实践 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Docker Compose 生产实践
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 18:30:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T18:30:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.3k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="Docker-·-Compose-生产实践"><a href="#Docker-·-Compose-生产实践" class="headerlink" title="Docker · Compose 生产实践"></a>Docker · Compose 生产实践</h1><blockquote>
+<p>入门篇之后的工程化落地。Compose 语法精讲 · 服务编排 · 环境分层 · 健康检查与依赖 · 配置与密钥 · 日志与监控 · 生产部署。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>编排</td>
+<td>Docker Compose 2.30+</td>
+<td>多容器编排</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>Docker Swarm &#x2F; 单机 Compose</td>
+<td>生产运行</td>
+</tr>
+<tr>
+<td>密钥</td>
+<td>Docker Secrets &#x2F; .env</td>
+<td>敏感配置</td>
+</tr>
+<tr>
+<td>监控</td>
+<td>cAdvisor + Prometheus</td>
+<td>容器监控</td>
+</tr>
+<tr>
+<td>日志</td>
+<td>Docker logging driver</td>
+<td>日志收集</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>Compose</strong> 用一份 <code>compose.yaml</code> 声明”一组容器如何运行”：镜像、端口、卷、环境、依赖、网络——一条命令 <code>docker compose up</code> 拉起整个应用栈。</p>
+<p><strong>Compose vs K8s</strong>：单机多容器 → Compose；集群&#x2F;自动扩缩容&#x2F;自愈 → K8s。生产小团队用 Compose 完全够用（单机高可用靠 Swarm 或外部负载均衡）。</p>
+<p><strong>核心概念</strong>：service（服务）、network（网络）、volume（数据卷）、dependency（依赖）、healthcheck（健康检查）。</p>
+<h2 id="2-语法精讲（compose-yaml）"><a href="#2-语法精讲（compose-yaml）" class="headerlink" title="2. 语法精讲（compose.yaml）"></a>2. 语法精讲（compose.yaml）</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">name:</span> <span class="string">shop-stack</span>                    <span class="comment"># 项目名</span></span><br><span class="line"></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">mysql:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">mysql:8.4</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">shop-mysql</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">unless-stopped</span>         <span class="comment"># 崩溃自动拉起</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">MYSQL_ROOT_PASSWORD:</span> <span class="string">$&#123;MYSQL_ROOT_PASSWORD&#125;</span></span><br><span class="line">      <span class="attr">MYSQL_DATABASE:</span> <span class="string">shop</span></span><br><span class="line">      <span class="attr">MYSQL_USER:</span> <span class="string">shop</span></span><br><span class="line">      <span class="attr">MYSQL_PASSWORD:</span> <span class="string">$&#123;MYSQL_PASSWORD&#125;</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">mysql-data:/var/lib/mysql</span>        <span class="comment"># 数据卷：容器删数据不丢</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./init:/docker-entrypoint-initdb.d:ro</span>   <span class="comment"># 初始化 SQL</span></span><br><span class="line">    <span class="attr">healthcheck:</span>                           <span class="comment"># 健康检查（下游依赖它）</span></span><br><span class="line">      <span class="attr">test:</span> [<span class="string">&quot;CMD&quot;</span>, <span class="string">&quot;mysqladmin&quot;</span>, <span class="string">&quot;ping&quot;</span>, <span class="string">&quot;-h&quot;</span>, <span class="string">&quot;localhost&quot;</span>]</span><br><span class="line">      <span class="attr">interval:</span> <span class="string">10s</span></span><br><span class="line">      <span class="attr">timeout:</span> <span class="string">5s</span></span><br><span class="line">      <span class="attr">retries:</span> <span class="number">5</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">backend</span>]</span><br><span class="line"></span><br><span class="line">  <span class="attr">redis:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">redis:8-alpine</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">unless-stopped</span></span><br><span class="line">    <span class="attr">command:</span> [<span class="string">&quot;redis-server&quot;</span>, <span class="string">&quot;--appendonly&quot;</span>, <span class="string">&quot;yes&quot;</span>, <span class="string">&quot;--requirepass&quot;</span>, <span class="string">&quot;$&#123;REDIS_PASSWORD&#125;&quot;</span>]</span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">redis-data:/data</span></span><br><span class="line">    <span class="attr">healthcheck:</span></span><br><span class="line">      <span class="attr">test:</span> [<span class="string">&quot;CMD&quot;</span>, <span class="string">&quot;redis-cli&quot;</span>, <span class="string">&quot;-a&quot;</span>, <span class="string">&quot;$&#123;REDIS_PASSWORD&#125;&quot;</span>, <span class="string">&quot;ping&quot;</span>]</span><br><span class="line">      <span class="attr">interval:</span> <span class="string">10s</span></span><br><span class="line">      <span class="attr">retries:</span> <span class="number">5</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">backend</span>]</span><br><span class="line"></span><br><span class="line">  <span class="attr">app:</span></span><br><span class="line">    <span class="attr">build:</span> <span class="string">./app</span>                        <span class="comment"># 本地构建（开发）或 image:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">registry.example.com/shop/app:$&#123;APP_TAG:-latest&#125;</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">unless-stopped</span></span><br><span class="line">    <span class="attr">depends_on:</span>                         <span class="comment"># 依赖（配 condition 才等健康）</span></span><br><span class="line">      <span class="attr">mysql:</span></span><br><span class="line">        <span class="attr">condition:</span> <span class="string">service_healthy</span></span><br><span class="line">      <span class="attr">redis:</span></span><br><span class="line">        <span class="attr">condition:</span> <span class="string">service_healthy</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">SPRING_DATASOURCE_URL:</span> <span class="string">jdbc:mysql://mysql:3306/shop</span></span><br><span class="line">      <span class="attr">SPRING_DATA_REDIS_HOST:</span> <span class="string">redis</span></span><br><span class="line">      <span class="attr">SPRING_PROFILES_ACTIVE:</span> <span class="string">$&#123;PROFILE:-prod&#125;</span></span><br><span class="line">      <span class="attr">JAVA_OPTS:</span> <span class="string">&quot;-Xms512m -Xmx1g&quot;</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;8080:8080&quot;</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">backend</span>]</span><br><span class="line">    <span class="attr">logging:</span></span><br><span class="line">      <span class="attr">driver:</span> <span class="string">json-file</span></span><br><span class="line">      <span class="attr">options:</span></span><br><span class="line">        <span class="attr">max-size:</span> <span class="string">&quot;50m&quot;</span>                 <span class="comment"># 日志轮转，防磁盘爆</span></span><br><span class="line">        <span class="attr">max-file:</span> <span class="string">&quot;5&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">nginx:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">nginx:1.28-alpine</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">unless-stopped</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;80:80&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;443:443&quot;</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./nginx/conf.d:/etc/nginx/conf.d:ro</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./nginx/certs:/etc/nginx/certs:ro</span></span><br><span class="line">    <span class="attr">depends_on:</span></span><br><span class="line">      <span class="attr">app:</span></span><br><span class="line">        <span class="attr">condition:</span> <span class="string">service_started</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">frontend</span>, <span class="string">backend</span>]</span><br><span class="line"></span><br><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="attr">mysql-data:</span></span><br><span class="line">  <span class="attr">redis-data:</span></span><br><span class="line"></span><br><span class="line"><span class="attr">networks:</span></span><br><span class="line">  <span class="attr">frontend:</span></span><br><span class="line">  <span class="attr">backend:</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-环境分层（dev-test-prod）"><a href="#3-环境分层（dev-test-prod）" class="headerlink" title="3. 环境分层（dev &#x2F; test &#x2F; prod）"></a>3. 环境分层（dev &#x2F; test &#x2F; prod）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 目录结构</span></span><br><span class="line">deploy/</span><br><span class="line">├── .env.prod                 <span class="comment"># 生产密钥（不入 git）</span></span><br><span class="line">├── .env.example              <span class="comment"># 模板（入 git）</span></span><br><span class="line">├── compose.yaml              <span class="comment"># 基础</span></span><br><span class="line">├── compose.prod.yaml         <span class="comment"># 生产覆盖</span></span><br><span class="line">└── compose.test.yaml         <span class="comment"># 测试覆盖</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># compose.prod.yaml（覆盖）</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">app:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">registry.example.com/shop/app:$&#123;APP_TAG&#125;</span></span><br><span class="line">    <span class="attr">deploy:</span></span><br><span class="line">      <span class="attr">resources:</span></span><br><span class="line">        <span class="attr">limits:</span></span><br><span class="line">          <span class="attr">memory:</span> <span class="string">2g</span>          <span class="comment"># 生产资源限制</span></span><br><span class="line">          <span class="attr">cpus:</span> <span class="string">&quot;2.0&quot;</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">SPRING_PROFILES_ACTIVE:</span> <span class="string">prod</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">always</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 按环境启动</span></span><br><span class="line">docker compose -f compose.yaml -f compose.prod.yaml --env-file .env.prod up -d</span><br><span class="line">docker compose -f compose.yaml -f compose.test.yaml up -d</span><br></pre></td></tr></table></figure>
+
+<p><strong>合并规则</strong>：后加载的覆盖前加载的同名配置；<code>list</code> 类型（如 ports）是追加。</p>
+<h2 id="4-配置与密钥管理"><a href="#4-配置与密钥管理" class="headerlink" title="4. 配置与密钥管理"></a>4. 配置与密钥管理</h2><h3 id="4-1-env-文件（非敏感配置）"><a href="#4-1-env-文件（非敏感配置）" class="headerlink" title="4.1 .env 文件（非敏感配置）"></a>4.1 .env 文件（非敏感配置）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># .env.prod（chmod 600）</span></span><br><span class="line">MYSQL_ROOT_PASSWORD=$(openssl rand -<span class="built_in">base64</span> 24)</span><br><span class="line">MYSQL_PASSWORD=Shop#2026!</span><br><span class="line">REDIS_PASSWORD=Redis#2026!</span><br><span class="line">PROFILE=prod</span><br><span class="line">APP_TAG=v1.4.2</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成随机密钥</span></span><br><span class="line">openssl rand -<span class="built_in">base64</span> 24</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-Docker-Secrets（敏感信息，Swarm-环境）"><a href="#4-2-Docker-Secrets（敏感信息，Swarm-环境）" class="headerlink" title="4.2 Docker Secrets（敏感信息，Swarm 环境）"></a>4.2 Docker Secrets（敏感信息，Swarm 环境）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">app:</span></span><br><span class="line">    <span class="attr">secrets:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">db_password</span></span><br><span class="line"><span class="attr">secrets:</span></span><br><span class="line">  <span class="attr">db_password:</span></span><br><span class="line">    <span class="attr">file:</span> <span class="string">./secrets/db_password.txt</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 容器内读取 /run/secrets/db_password</span></span><br><span class="line"><span class="comment"># Swarm 模式：echo &quot;xxx&quot; | docker secret create db_password -</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-密钥检查清单"><a href="#4-3-密钥检查清单" class="headerlink" title="4.3 密钥检查清单"></a>4.3 密钥检查清单</h3><table>
+<thead>
+<tr>
+<th>项</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>.env*</td>
+<td>加 .gitignore，禁止提交</td>
+</tr>
+<tr>
+<td>容器环境变量</td>
+<td>日志会打印，避免放密钥</td>
+</tr>
+<tr>
+<td>镜像</td>
+<td>不内置密钥（构建参数要小心）</td>
+</tr>
+<tr>
+<td>权限</td>
+<td>密钥文件 600</td>
+</tr>
+</tbody></table>
+<h2 id="5-健康检查与滚动发布"><a href="#5-健康检查与滚动发布" class="headerlink" title="5. 健康检查与滚动发布"></a>5. 健康检查与滚动发布</h2><h3 id="5-1-应用健康检查（配合依赖与负载均衡）"><a href="#5-1-应用健康检查（配合依赖与负载均衡）" class="headerlink" title="5.1 应用健康检查（配合依赖与负载均衡）"></a>5.1 应用健康检查（配合依赖与负载均衡）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">app:</span></span><br><span class="line">    <span class="attr">healthcheck:</span></span><br><span class="line">      <span class="attr">test:</span> [<span class="string">&quot;CMD&quot;</span>, <span class="string">&quot;wget&quot;</span>, <span class="string">&quot;-qO-&quot;</span>, <span class="string">&quot;http://localhost:8080/actuator/health&quot;</span>]</span><br><span class="line">      <span class="attr">interval:</span> <span class="string">15s</span></span><br><span class="line">      <span class="attr">timeout:</span> <span class="string">5s</span></span><br><span class="line">      <span class="attr">retries:</span> <span class="number">5</span></span><br><span class="line">      <span class="attr">start_period:</span> <span class="string">60s</span>        <span class="comment"># 启动宽限期（JVM 启动慢）</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Spring Boot 引入 actuator 即自动提供 /actuator/health</span></span><br><span class="line"><span class="comment">// &lt;dependency&gt;&lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span></span><br><span class="line"><span class="comment">// &lt;artifactId&gt;spring-boot-starter-actuator&lt;/artifactId&gt;&lt;/dependency&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-发布新版本（不停机思路）"><a href="#5-2-发布新版本（不停机思路）" class="headerlink" title="5.2 发布新版本（不停机思路）"></a>5.2 发布新版本（不停机思路）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 构建推送新镜像</span></span><br><span class="line">docker build -t registry.example.com/shop/app:v1.5.0 .</span><br><span class="line">docker push registry.example.com/shop/app:v1.5.0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 更新 .env 的 APP_TAG=v1.5.0</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 滚动更新（Swarm）或 蓝绿（单机 nginx 切换）</span></span><br><span class="line">docker compose -f compose.yaml -f compose.prod.yaml --env-file .env.prod up -d --no-deps app</span><br><span class="line"><span class="comment"># --no-deps 只更新 app，不动依赖</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>回滚</strong>：改回旧 TAG 再 up 一次；DB 迁移失败场景要配合 Flyway 降级方案。</p>
+<h2 id="6-日志与监控"><a href="#6-日志与监控" class="headerlink" title="6. 日志与监控"></a>6. 日志与监控</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">app:</span></span><br><span class="line">    <span class="attr">logging:</span></span><br><span class="line">      <span class="attr">driver:</span> <span class="string">json-file</span></span><br><span class="line">      <span class="attr">options:</span></span><br><span class="line">        <span class="attr">max-size:</span> <span class="string">&quot;100m&quot;</span></span><br><span class="line">        <span class="attr">max-file:</span> <span class="string">&quot;5&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看日志</span></span><br><span class="line">docker compose logs -f --<span class="built_in">tail</span>=100 app</span><br><span class="line">docker compose logs app | grep -i error</span><br><span class="line"></span><br><span class="line"><span class="comment"># 容器资源监控</span></span><br><span class="line">docker stats</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志集中：filebeat → ELK 或 Loki（详见监控篇）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-生产部署手册（一键脚本）"><a href="#7-生产部署手册（一键脚本）" class="headerlink" title="7. 生产部署手册（一键脚本）"></a>7. 生产部署手册（一键脚本）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/usr/bin/env bash</span></span><br><span class="line"><span class="comment"># deploy.sh：拉新镜像 → 健康等待 → 切换</span></span><br><span class="line"><span class="built_in">set</span> -euo pipefail</span><br><span class="line"><span class="built_in">export</span> APP_TAG=<span class="variable">$&#123;1:-latest&#125;</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;==&gt; 拉取镜像 <span class="variable">$APP_TAG</span>&quot;</span></span><br><span class="line">docker compose -f compose.yaml -f compose.prod.yaml \</span><br><span class="line">  --env-file .env.prod pull app</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;==&gt; 启动新容器&quot;</span></span><br><span class="line">docker compose -f compose.yaml -f compose.prod.yaml \</span><br><span class="line">  --env-file .env.prod up -d --no-deps app</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;==&gt; 等待健康&quot;</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> $(<span class="built_in">seq</span> 1 30); <span class="keyword">do</span></span><br><span class="line">  <span class="keyword">if</span> curl -sf http://localhost:8080/actuator/health | grep -q <span class="string">&#x27;&quot;status&quot;:&quot;UP&quot;&#x27;</span>; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;健康检查通过&quot;</span>; <span class="built_in">exit</span> 0</span><br><span class="line">  <span class="keyword">fi</span></span><br><span class="line">  <span class="built_in">sleep</span> 2</span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;健康检查超时，请检查日志&quot;</span>; <span class="built_in">exit</span> 1</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-常见问题排查"><a href="#8-常见问题排查" class="headerlink" title="8. 常见问题排查"></a>8. 常见问题排查</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>原因</th>
+<th>解决</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>端口占用</td>
+<td>宿主机端口冲突</td>
+<td>改 ports 映射或停旧容器</td>
+</tr>
+<tr>
+<td>容器启动即退出</td>
+<td>配置&#x2F;依赖问题</td>
+<td><code>docker compose logs 服务名</code></td>
+</tr>
+<tr>
+<td>数据丢失</td>
+<td>未挂载卷</td>
+<td>volumes 持久化</td>
+</tr>
+<tr>
+<td>连不上数据库</td>
+<td>网络&#x2F;依赖顺序</td>
+<td>健康检查 + condition</td>
+</tr>
+<tr>
+<td>权限拒绝</td>
+<td>容器内 UID 问题</td>
+<td>挂载卷加 <code>:delegated</code>，或 user 配置</td>
+</tr>
+<tr>
+<td>磁盘爆满</td>
+<td>镜像&#x2F;日志堆积</td>
+<td><code>docker system prune</code> + 日志轮转</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 排障三板斧</span></span><br><span class="line">docker compose ps              <span class="comment"># 状态</span></span><br><span class="line">docker compose logs -f app     <span class="comment"># 日志</span></span><br><span class="line">docker inspect app             <span class="comment"># 配置详情</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">docker compose up -d                    <span class="comment"># 启动</span></span><br><span class="line">docker compose ps                       <span class="comment"># 状态</span></span><br><span class="line">docker compose logs -f app              <span class="comment"># 日志</span></span><br><span class="line">docker compose down                     <span class="comment"># 停止（保留卷）</span></span><br><span class="line">docker compose down -v                  <span class="comment"># 停止并删卷（慎用！）</span></span><br><span class="line">docker compose config                   <span class="comment"># 校验合并后的配置</span></span><br><span class="line">docker compose <span class="built_in">exec</span> app bash            <span class="comment"># 进入容器</span></span><br><span class="line">docker system prune -a                  <span class="comment"># 清理无用镜像</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/distributed-transaction-guide/" rel="prev" title="分布式事务专题：Seata 与最终一致">
+                  <i class="fa fa-angle-left"></i> 分布式事务专题：Seata 与最终一致
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/git-workflow-guide/" rel="next" title="Git 团队协作与分支工作流">
+                  Git 团队协作与分支工作流 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

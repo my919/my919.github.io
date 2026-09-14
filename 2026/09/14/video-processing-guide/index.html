@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="视频 · 处理 从 0 到批量处理流水线。视频编码基础 · FFmpeg 7 · 转码&#x2F;裁剪&#x2F;拼接 · 水印与字幕 · 抽帧 · 批量脚本 · 转码服务落地。代码带详细注释。  技术栈速查   类别 选型 用途    命令行 FFmpeg 7 视频处理全能工具   编码 H.264 &#x2F; H.265 &#x2F; AV1 视频压缩标准   分析 ffprobe 视频信息">
+<meta property="og:type" content="article">
+<meta property="og:title" content="视频处理从入门到落地">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/video-processing-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="视频 · 处理 从 0 到批量处理流水线。视频编码基础 · FFmpeg 7 · 转码&#x2F;裁剪&#x2F;拼接 · 水印与字幕 · 抽帧 · 批量脚本 · 转码服务落地。代码带详细注释。  技术栈速查   类别 选型 用途    命令行 FFmpeg 7 视频处理全能工具   编码 H.264 &#x2F; H.265 &#x2F; AV1 视频压缩标准   分析 ffprobe 视频信息">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T09:05:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.934Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/video-processing-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/video-processing-guide/","path":"2026/09/14/video-processing-guide/","title":"视频处理从入门到落地"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>视频处理从入门到落地 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%A7%86%E9%A2%91-%C2%B7-%E5%A4%84%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">视频 · 处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%AE%89%E8%A3%85-FFmpeg"><span class="nav-number">1.3.</span> <span class="nav-text">2. 安装 FFmpeg</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E4%BF%A1%E6%81%AF%E6%8E%A2%E6%B5%8B%EF%BC%88ffprobe%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. 信息探测（ffprobe）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E6%A0%B8%E5%BF%83%E6%93%8D%E4%BD%9C%E5%91%BD%E4%BB%A4%EF%BC%88%E7%94%B1%E6%B5%85%E5%85%A5%E6%B7%B1%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 核心操作命令（由浅入深）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E8%BD%AC%E7%A0%81%EF%BC%88H-264-%E5%85%BC%E5%AE%B9%E6%A0%BC%E5%BC%8F%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 转码（H.264 兼容格式）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E8%A3%81%E5%89%AA%E4%B8%8E%E6%8B%BC%E6%8E%A5"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 裁剪与拼接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E6%B0%B4%E5%8D%B0%E4%B8%8E%E6%96%87%E5%AD%97"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 水印与文字</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-%E5%AD%97%E5%B9%95%E7%83%A7%E5%BD%95%E4%B8%8E%E6%8F%90%E5%8F%96"><span class="nav-number">1.5.4.</span> <span class="nav-text">4.4 字幕烧录与提取</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-5-%E6%8A%BD%E5%B8%A7%EF%BC%88%E8%A7%86%E9%A2%91%E7%90%86%E8%A7%A3-%E5%B0%81%E9%9D%A2%EF%BC%89"><span class="nav-number">1.5.5.</span> <span class="nav-text">4.5 抽帧（视频理解&#x2F;封面）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-6-%E9%9F%B3%E9%A2%91%E5%A4%84%E7%90%86"><span class="nav-number">1.5.6.</span> <span class="nav-text">4.6 音频处理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E6%89%B9%E9%87%8F%E5%A4%84%E7%90%86%E8%84%9A%E6%9C%AC%EF%BC%88%E8%90%BD%E5%9C%B0%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 批量处理脚本（落地）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-Python-moviepy-%E8%84%9A%E6%9C%AC%E5%8C%96%E5%89%AA%E8%BE%91"><span class="nav-number">1.7.</span> <span class="nav-text">6. Python moviepy 脚本化剪辑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E8%90%BD%E5%9C%B0%EF%BC%9A%E8%BD%AC%E7%A0%81-API-%E6%9C%8D%E5%8A%A1%EF%BC%88FastAPI-FFmpeg%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">7. 落地：转码 API 服务（FastAPI + FFmpeg）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E7%BC%96%E7%A0%81%E9%80%89%E5%9E%8B%E5%86%B3%E7%AD%96"><span class="nav-number">1.9.</span> <span class="nav-text">8. 编码选型决策</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/video-processing-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="视频处理从入门到落地 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          视频处理从入门到落地
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 17:05:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T17:05:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.3k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="视频-·-处理"><a href="#视频-·-处理" class="headerlink" title="视频 · 处理"></a>视频 · 处理</h1><blockquote>
+<p>从 0 到批量处理流水线。视频编码基础 · FFmpeg 7 · 转码&#x2F;裁剪&#x2F;拼接 · 水印与字幕 · 抽帧 · 批量脚本 · 转码服务落地。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>命令行</td>
+<td>FFmpeg 7</td>
+<td>视频处理全能工具</td>
+</tr>
+<tr>
+<td>编码</td>
+<td>H.264 &#x2F; H.265 &#x2F; AV1</td>
+<td>视频压缩标准</td>
+</tr>
+<tr>
+<td>分析</td>
+<td>ffprobe</td>
+<td>视频信息探测</td>
+</tr>
+<tr>
+<td>Python</td>
+<td>moviepy</td>
+<td>脚本化剪辑</td>
+</tr>
+<tr>
+<td>服务化</td>
+<td>FastAPI + FFmpeg</td>
+<td>转码 API</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p>视频 &#x3D; <strong>连续图像帧 + 音频</strong>，通过**编码（Codec）**压缩存储。三个核心概念：</p>
+<ul>
+<li><strong>编码标准</strong>：H.264（兼容性最好）、H.265&#x2F;HEVC（同画质省 50% 码率）、AV1（新一代开源，省更多但编码慢）、VP9。</li>
+<li><strong>封装格式（Container）</strong>：MP4（通用）、MKV（多轨）、WebM（网页）。编码与封装独立组合：<code>H.264 视频 + AAC 音频 → MP4</code>。</li>
+<li><strong>关键参数</strong>：分辨率（1080p）、帧率（fps）、码率（bitrate，决定画质与体积）、GOP（关键帧间隔）。</li>
+</ul>
+<p><strong>转码为什么重要</strong>：源视频（如手机 4K）码率高、格式杂，服务端需统一转成 H.264&#x2F;AAC + MP4 便于全端播放；按分辨率出多档（1080p&#x2F;720p&#x2F;480p）做自适应。</p>
+<h2 id="2-安装-FFmpeg"><a href="#2-安装-FFmpeg" class="headerlink" title="2. 安装 FFmpeg"></a>2. 安装 FFmpeg</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Windows</span></span><br><span class="line">winget install Gyan.FFmpeg</span><br><span class="line"></span><br><span class="line"><span class="comment"># macOS</span></span><br><span class="line">brew install ffmpeg</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu</span></span><br><span class="line"><span class="built_in">sudo</span> apt update &amp;&amp; <span class="built_in">sudo</span> apt install -y ffmpeg</span><br><span class="line"></span><br><span class="line">ffmpeg -version | <span class="built_in">head</span> -1    <span class="comment"># ffmpeg version 7.x</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-信息探测（ffprobe）"><a href="#3-信息探测（ffprobe）" class="headerlink" title="3. 信息探测（ffprobe）"></a>3. 信息探测（ffprobe）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ffprobe -v quiet -print_format json -show_format -show_streams input.mp4</span><br><span class="line"></span><br><span class="line"><span class="comment"># 只看关键信息（编码/宽高/帧率）</span></span><br><span class="line">ffprobe -v quiet -show_entries stream=codec_name,width,height,r_frame_rate \</span><br><span class="line">  -of csv input.mp4</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-核心操作命令（由浅入深）"><a href="#4-核心操作命令（由浅入深）" class="headerlink" title="4. 核心操作命令（由浅入深）"></a>4. 核心操作命令（由浅入深）</h2><h3 id="4-1-转码（H-264-兼容格式）"><a href="#4-1-转码（H-264-兼容格式）" class="headerlink" title="4.1 转码（H.264 兼容格式）"></a>4.1 转码（H.264 兼容格式）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 最简转码（保持原分辨率，\ 为续行符整段复制）</span></span><br><span class="line">ffmpeg -i input.mp4 -c:v libx264 -preset medium -crf 23 -c:a aac -b:a 128k output.mp4</span><br><span class="line"><span class="comment"># -crf 18-28：数值越小画质越好体积越大，23 为默认平衡点</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 指定分辨率（720p）</span></span><br><span class="line">ffmpeg -i input.mp4 -vf scale=-2:720 -c:v libx264 -crf 23 -c:a aac output_720p.mp4</span><br><span class="line"><span class="comment"># scale=-2 保持宽高比（偶数对齐）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 硬件加速转码（快 10 倍，Intel QSV / NVIDIA NVENC）</span></span><br><span class="line">ffmpeg -i input.mp4 -c:v h264_nvenc -preset p4 -cq 23 -c:a aac output_hw.mp4</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-裁剪与拼接"><a href="#4-2-裁剪与拼接" class="headerlink" title="4.2 裁剪与拼接"></a>4.2 裁剪与拼接</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 裁剪片段（10s - 40s）</span></span><br><span class="line">ffmpeg -i input.mp4 -ss 10 -to 40 -c copy clip.mp4</span><br><span class="line"><span class="comment"># 注意：-c copy 无损快速，但切点可能不准；需要精确切点去掉 -c copy</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 拼接（文件列表）</span></span><br><span class="line"><span class="comment"># 1. 写 concat.txt：file &#x27;a.mp4&#x27; / file &#x27;b.mp4&#x27;</span></span><br><span class="line">ffmpeg -f concat -safe 0 -i concat.txt -c copy merged.mp4</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-水印与文字"><a href="#4-3-水印与文字" class="headerlink" title="4.3 水印与文字"></a>4.3 水印与文字</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 图片水印（右下角，\ 为续行符整段复制）</span></span><br><span class="line">ffmpeg -i input.mp4 -i logo.png \</span><br><span class="line">  -filter_complex <span class="string">&quot;overlay=W-w-20:H-h-20&quot;</span> output_watermark.mp4</span><br><span class="line"><span class="comment"># overlay 坐标：画面宽-水印宽-20</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 文字水印（\ 为续行符整段复制）</span></span><br><span class="line">ffmpeg -i input.mp4 -vf \</span><br><span class="line">  <span class="string">&quot;drawtext=text=&#x27;MY CHANNEL&#x27;:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5:x=20:y=20&quot;</span> \</span><br><span class="line">  output_text.mp4</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-字幕烧录与提取"><a href="#4-4-字幕烧录与提取" class="headerlink" title="4.4 字幕烧录与提取"></a>4.4 字幕烧录与提取</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 烧录硬字幕（不可移除，播放器兼容）</span></span><br><span class="line">ffmpeg -i input.mp4 -vf subtitles=subs.srt -c:a copy output_subs.mp4</span><br><span class="line"></span><br><span class="line"><span class="comment"># 提取软字幕（流 0 的字幕轨）</span></span><br><span class="line">ffmpeg -i input.mp4 -map 0:s:0 subs.srt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 常见编码坑：Windows 下 srt 需 UTF-8，转换用</span></span><br><span class="line">iconv -f GBK -t UTF-8 subs_gbk.srt &gt; subs.srt</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-5-抽帧（视频理解-封面）"><a href="#4-5-抽帧（视频理解-封面）" class="headerlink" title="4.5 抽帧（视频理解&#x2F;封面）"></a>4.5 抽帧（视频理解&#x2F;封面）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 每 2 秒抽一帧</span></span><br><span class="line">ffmpeg -i input.mp4 -vf fps=1/2 frame_%03d.jpg</span><br><span class="line"></span><br><span class="line"><span class="comment"># 抽第 10 秒一帧做封面</span></span><br><span class="line">ffmpeg -ss 10 -i input.mp4 -vframes 1 cover.jpg</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-6-音频处理"><a href="#4-6-音频处理" class="headerlink" title="4.6 音频处理"></a>4.6 音频处理</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 提取音频</span></span><br><span class="line">ffmpeg -i input.mp4 -vn -c:a aac audio.m4a</span><br><span class="line"></span><br><span class="line"><span class="comment"># 去掉音频（保留视频流）</span></span><br><span class="line">ffmpeg -i input.mp4 -vn -an -c copy video_noaudio.mp4</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-批量处理脚本（落地）"><a href="#5-批量处理脚本（落地）" class="headerlink" title="5. 批量处理脚本（落地）"></a>5. 批量处理脚本（落地）</h2><p>创建 <code>batch.py</code>，遍历目录转码多分辨率：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> subprocess</span><br><span class="line"><span class="keyword">from</span> pathlib <span class="keyword">import</span> Path</span><br><span class="line"></span><br><span class="line">RESOLUTIONS = [                         <span class="comment"># 目标分辨率列表</span></span><br><span class="line">    (<span class="string">&quot;720p&quot;</span>, <span class="string">&quot;scale=-2:720&quot;</span>),</span><br><span class="line">    (<span class="string">&quot;480p&quot;</span>, <span class="string">&quot;scale=-2:480&quot;</span>),</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">transcode</span>(<span class="params">src: Path, dst_dir: Path</span>):</span><br><span class="line">    <span class="keyword">for</span> label, vf <span class="keyword">in</span> RESOLUTIONS:       <span class="comment"># 每个分辨率各出一档</span></span><br><span class="line">        out = dst_dir / <span class="string">f&quot;<span class="subst">&#123;src.stem&#125;</span>_<span class="subst">&#123;label&#125;</span>.mp4&quot;</span>   <span class="comment"># 输出文件名</span></span><br><span class="line">        subprocess.run([</span><br><span class="line">            <span class="string">&quot;ffmpeg&quot;</span>, <span class="string">&quot;-y&quot;</span>, <span class="string">&quot;-i&quot;</span>, <span class="built_in">str</span>(src),</span><br><span class="line">            <span class="string">&quot;-vf&quot;</span>, vf,                              <span class="comment"># 缩放滤镜</span></span><br><span class="line">            <span class="string">&quot;-c:v&quot;</span>, <span class="string">&quot;libx264&quot;</span>, <span class="string">&quot;-preset&quot;</span>, <span class="string">&quot;medium&quot;</span>, <span class="string">&quot;-crf&quot;</span>, <span class="string">&quot;23&quot;</span>,</span><br><span class="line">            <span class="string">&quot;-c:a&quot;</span>, <span class="string">&quot;aac&quot;</span>, <span class="string">&quot;-b:a&quot;</span>, <span class="string">&quot;128k&quot;</span>,</span><br><span class="line">            <span class="built_in">str</span>(out)</span><br><span class="line">        ], check=<span class="literal">True</span>, capture_output=<span class="literal">True</span>)         <span class="comment"># 失败抛异常</span></span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;done: <span class="subst">&#123;out.name&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&quot;__main__&quot;</span>:</span><br><span class="line">    src_dir, dst_dir = Path(<span class="string">&quot;raw&quot;</span>), Path(<span class="string">&quot;converted&quot;</span>)</span><br><span class="line">    dst_dir.mkdir(exist_ok=<span class="literal">True</span>)                    <span class="comment"># 建输出目录</span></span><br><span class="line">    <span class="keyword">for</span> f <span class="keyword">in</span> src_dir.glob(<span class="string">&quot;*.mp4&quot;</span>):                 <span class="comment"># 遍历源视频</span></span><br><span class="line">        transcode(f, dst_dir)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python batch.py</span><br></pre></td></tr></table></figure>
+
+<h2 id="6-Python-moviepy-脚本化剪辑"><a href="#6-Python-moviepy-脚本化剪辑" class="headerlink" title="6. Python moviepy 脚本化剪辑"></a>6. Python moviepy 脚本化剪辑</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uv add moviepy</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> moviepy <span class="keyword">import</span> VideoFileClip, concatenate_videoclips</span><br><span class="line"></span><br><span class="line">clip1 = VideoFileClip(<span class="string">&quot;a.mp4&quot;</span>).subclipped(<span class="number">0</span>, <span class="number">10</span>)      <span class="comment"># 取前 10 秒</span></span><br><span class="line">clip2 = VideoFileClip(<span class="string">&quot;b.mp4&quot;</span>).subclipped(<span class="number">0</span>, <span class="number">10</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 拼接 + 淡入淡出</span></span><br><span class="line">final = concatenate_videoclips([clip1, clip2], method=<span class="string">&quot;fadein&quot;</span>)</span><br><span class="line">final.write_videofile(<span class="string">&quot;merged.mp4&quot;</span>, codec=<span class="string">&quot;libx264&quot;</span>, audio_codec=<span class="string">&quot;aac&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-落地：转码-API-服务（FastAPI-FFmpeg）"><a href="#7-落地：转码-API-服务（FastAPI-FFmpeg）" class="headerlink" title="7. 落地：转码 API 服务（FastAPI + FFmpeg）"></a>7. 落地：转码 API 服务（FastAPI + FFmpeg）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> fastapi <span class="keyword">import</span> FastAPI, UploadFile</span><br><span class="line"><span class="keyword">from</span> pathlib <span class="keyword">import</span> Path</span><br><span class="line"><span class="keyword">import</span> subprocess, uuid</span><br><span class="line"></span><br><span class="line">app = FastAPI(title=<span class="string">&quot;Video Transcode API&quot;</span>)</span><br><span class="line">TMP = Path(<span class="string">&quot;tmp&quot;</span>); TMP.mkdir(exist_ok=<span class="literal">True</span>)      <span class="comment"># 临时目录</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.post(<span class="params"><span class="string">&quot;/transcode&quot;</span></span>)</span></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">transcode</span>(<span class="params">file: UploadFile, height: <span class="built_in">int</span> = <span class="number">720</span></span>):</span><br><span class="line">    src = TMP / <span class="string">f&quot;<span class="subst">&#123;uuid.uuid4()&#125;</span><span class="subst">&#123;Path(file.filename).suffix&#125;</span>&quot;</span>   <span class="comment"># 唯一文件名</span></span><br><span class="line">    src.write_bytes(<span class="keyword">await</span> file.read())           <span class="comment"># 保存上传文件</span></span><br><span class="line"></span><br><span class="line">    out = TMP / <span class="string">f&quot;<span class="subst">&#123;src.stem&#125;</span>_<span class="subst">&#123;height&#125;</span>p.mp4&quot;</span></span><br><span class="line">    subprocess.run([                             <span class="comment"># 调用 FFmpeg 转码</span></span><br><span class="line">        <span class="string">&quot;ffmpeg&quot;</span>, <span class="string">&quot;-y&quot;</span>, <span class="string">&quot;-i&quot;</span>, <span class="built_in">str</span>(src),</span><br><span class="line">        <span class="string">&quot;-vf&quot;</span>, <span class="string">f&quot;scale=-2:<span class="subst">&#123;height&#125;</span>&quot;</span>,             <span class="comment"># 缩放到目标高度</span></span><br><span class="line">        <span class="string">&quot;-c:v&quot;</span>, <span class="string">&quot;libx264&quot;</span>, <span class="string">&quot;-crf&quot;</span>, <span class="string">&quot;23&quot;</span>, <span class="string">&quot;-c:a&quot;</span>, <span class="string">&quot;aac&quot;</span>,</span><br><span class="line">        <span class="built_in">str</span>(out)</span><br><span class="line">    ], check=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> &#123;<span class="string">&quot;url&quot;</span>: <span class="string">f&quot;/files/<span class="subst">&#123;out.name&#125;</span>&quot;</span>&#125;         <span class="comment"># 返回下载路径</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">uvicorn main:app --port 8000</span><br><span class="line">curl -F <span class="string">&quot;file=@input.mp4&quot;</span> http://localhost:8000/transcode</span><br></pre></td></tr></table></figure>
+
+<p><strong>生产扩展</strong>：接任务队列（Celery）+ 对象存储；Web 端播放用 HLS 分片（<code>-f hls</code> 输出 m3u8）。</p>
+<h2 id="8-编码选型决策"><a href="#8-编码选型决策" class="headerlink" title="8. 编码选型决策"></a>8. 编码选型决策</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全端兼容（Web&#x2F;移动）</td>
+<td>H.264 + AAC + MP4</td>
+</tr>
+<tr>
+<td>存储成本优先</td>
+<td>H.265 &#x2F; AV1</td>
+</tr>
+<tr>
+<td>实时直播</td>
+<td>H.264（低延迟）</td>
+</tr>
+<tr>
+<td>归档母版</td>
+<td>原始 ProRes &#x2F; 高码率 H.264</td>
+</tr>
+</tbody></table>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ffprobe -show_streams input.mp4           <span class="comment"># 查看信息</span></span><br><span class="line">ffmpeg -i in.mp4 -crf 23 out.mp4          <span class="comment"># 转码</span></span><br><span class="line">ffmpeg -i in.mp4 -ss 10 -to 40 -c copy clip.mp4  <span class="comment"># 快速裁剪</span></span><br><span class="line">ffmpeg -i in.mp4 -vf fps=1/2 f_%03d.jpg   <span class="comment"># 抽帧</span></span><br><span class="line">ffmpeg -i in.mp4 -f hls -hls_time 6 out.m3u8     <span class="comment"># HLS 分片</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/dev-tools-guide/" rel="prev" title="开发工具链">
+                  <i class="fa fa-angle-left"></i> 开发工具链
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/vue-guide/" rel="next" title="Vue 3 从入门到落地">
+                  Vue 3 从入门到落地 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="Netty · 自定义协议 入门篇之后的专项实战。粘包拆包 · 自定义协议设计 · 编解码器实现 · 心跳与断线重连 · 业务处理器 · 压测。代码带详细注释。  技术栈速查   类别 选型 用途    语言 Java 21 实现   框架 Netty 4.1 网络框架   序列化 Protobuf 3.29 消息编码   压测 JMeter &#x2F; wrk 性能验证   构建 Maven">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Netty 自定义协议与编解码实战">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/netty-protocol-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="Netty · 自定义协议 入门篇之后的专项实战。粘包拆包 · 自定义协议设计 · 编解码器实现 · 心跳与断线重连 · 业务处理器 · 压测。代码带详细注释。  技术栈速查   类别 选型 用途    语言 Java 21 实现   框架 Netty 4.1 网络框架   序列化 Protobuf 3.29 消息编码   压测 JMeter &#x2F; wrk 性能验证   构建 Maven">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T11:15:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.059Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/netty-protocol-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/netty-protocol-guide/","path":"2026/09/14/netty-protocol-guide/","title":"Netty 自定义协议与编解码实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Netty 自定义协议与编解码实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Netty-%C2%B7-%E8%87%AA%E5%AE%9A%E4%B9%89%E5%8D%8F%E8%AE%AE"><span class="nav-number">1.</span> <span class="nav-text">Netty · 自定义协议</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E9%A1%B9%E7%9B%AE%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">1.3.</span> <span class="nav-text">2. 项目初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%8D%8F%E8%AE%AE%E6%B6%88%E6%81%AF%E5%AE%9A%E4%B9%89%EF%BC%88Java-%E7%B1%BB%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. 协议消息定义（Java 类）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E7%BC%96%E7%A0%81%E5%99%A8%EF%BC%88%E5%8F%91%E9%80%81%E4%BE%A7%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 编码器（发送侧）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E8%A7%A3%E7%A0%81%E5%99%A8%EF%BC%88%E8%A7%A3%E5%86%B3%E7%B2%98%E5%8C%85%E6%8B%86%E5%8C%85%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 解码器（解决粘包拆包）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E4%B8%9A%E5%8A%A1%E5%A4%84%E7%90%86%E5%99%A8"><span class="nav-number">1.7.</span> <span class="nav-text">6. 业务处理器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%90%AF%E5%8A%A8-%E5%BF%83%E8%B7%B3%E4%BF%9D%E6%B4%BB"><span class="nav-number">1.8.</span> <span class="nav-text">7. 服务端启动 + 心跳保活</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%B8%8E%E6%B5%8B%E8%AF%95"><span class="nav-number">1.9.</span> <span class="nav-text">8. 客户端与测试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E5%8E%8B%E6%B5%8B%E4%B8%8E%E4%BC%98%E5%8C%96"><span class="nav-number">1.10.</span> <span class="nav-text">9. 压测与优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.11.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/netty-protocol-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Netty 自定义协议与编解码实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Netty 自定义协议与编解码实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 19:15:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T19:15:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="Netty-·-自定义协议"><a href="#Netty-·-自定义协议" class="headerlink" title="Netty · 自定义协议"></a>Netty · 自定义协议</h1><blockquote>
+<p>入门篇之后的专项实战。粘包拆包 · 自定义协议设计 · 编解码器实现 · 心跳与断线重连 · 业务处理器 · 压测。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>语言</td>
+<td>Java 21</td>
+<td>实现</td>
+</tr>
+<tr>
+<td>框架</td>
+<td>Netty 4.1</td>
+<td>网络框架</td>
+</tr>
+<tr>
+<td>序列化</td>
+<td>Protobuf 3.29</td>
+<td>消息编码</td>
+</tr>
+<tr>
+<td>压测</td>
+<td>JMeter &#x2F; wrk</td>
+<td>性能验证</td>
+</tr>
+<tr>
+<td>构建</td>
+<td>Maven 3.9</td>
+<td>管理</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>TCP 是字节流，没有消息边界</strong>——这是网络编程第一难题：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">客户端发两条消息: &quot;HELLO&quot; &quot;WORLD&quot;</span><br><span class="line">TCP 可能收到: &quot;HELLOWORLD&quot;（粘包） 或 &quot;HEL&quot; &quot;LOWORLD&quot;（拆包）</span><br></pre></td></tr></table></figure>
+
+<p><strong>解决方案</strong>：设计协议格式（消息边界），用<strong>编解码器</strong>（Decoder&#x2F;Encoder）在应用层还原消息。</p>
+<p><strong>自定义协议设计</strong>（经典二进制协议）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">+--------+----------+----------+----------+----------------+</span><br><span class="line">| magic  | version  |  type    |  length  |     payload     |</span><br><span class="line">| 2字节   |  1字节    |  1字节   |  4字节   |   N 字节        |</span><br><span class="line">| 0xCAFE |   1      | 0x01     |  N       |  JSON/PB 数据   |</span><br><span class="line">+--------+----------+----------+----------+----------------+</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么自定义协议</strong>：HTTP 头开销大、纯文本；自定义二进制协议省流量、低延迟，适合 IoT、游戏、IM、RPC。</p>
+<h2 id="2-项目初始化"><a href="#2-项目初始化" class="headerlink" title="2. 项目初始化"></a>2. 项目初始化</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成 Maven 骨架项目（\ 为续行符整段复制）</span></span><br><span class="line">mvn archetype:generate -DgroupId=com.example \</span><br><span class="line">  -DartifactId=im-server -DarchetypeArtifactId=maven-archetype-quickstart</span><br><span class="line"><span class="built_in">cd</span> im-server</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.netty<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>netty-all<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>4.1.118.Final<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Netty 全家桶 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.google.protobuf<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>protobuf-java<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.29.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Protobuf 序列化 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-协议消息定义（Java-类）"><a href="#3-协议消息定义（Java-类）" class="headerlink" title="3. 协议消息定义（Java 类）"></a>3. 协议消息定义（Java 类）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 消息类型</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">enum</span> <span class="title class_">MsgType</span> &#123;</span><br><span class="line">    HEARTBEAT(<span class="number">0x01</span>), LOGIN(<span class="number">0x02</span>), CHAT(<span class="number">0x03</span>), ACK(<span class="number">0x04</span>);   <span class="comment">// 心跳/登录/聊天/确认</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">byte</span> code;             <span class="comment">// 类型码</span></span><br><span class="line">    MsgType(<span class="type">int</span> code) &#123; <span class="built_in">this</span>.code = (<span class="type">byte</span>) code; &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">byte</span> <span class="title function_">code</span><span class="params">()</span> &#123; <span class="keyword">return</span> code; &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 协议消息</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ProtocolMessage</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">short</span> <span class="variable">magic</span> <span class="operator">=</span> <span class="number">0xCAFE</span>;        <span class="comment">// 魔数：识别协议</span></span><br><span class="line">    <span class="keyword">private</span> <span class="type">byte</span> <span class="variable">version</span> <span class="operator">=</span> <span class="number">1</span>;            <span class="comment">// 版本</span></span><br><span class="line">    <span class="keyword">private</span> <span class="type">byte</span> type;          <span class="comment">// 消息类型</span></span><br><span class="line">    <span class="keyword">private</span> <span class="type">int</span> length;         <span class="comment">// payload 长度</span></span><br><span class="line">    <span class="keyword">private</span> <span class="type">byte</span>[] payload;     <span class="comment">// 数据</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">ProtocolMessage</span><span class="params">(<span class="type">byte</span> type, <span class="type">byte</span>[] payload)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.type = type;                <span class="comment">// 类型</span></span><br><span class="line">        <span class="built_in">this</span>.payload = payload;          <span class="comment">// 数据</span></span><br><span class="line">        <span class="built_in">this</span>.length = payload.length;    <span class="comment">// 长度</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// getter/setter</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-编码器（发送侧）"><a href="#4-编码器（发送侧）" class="headerlink" title="4. 编码器（发送侧）"></a>4. 编码器（发送侧）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> io.netty.buffer.ByteBuf;</span><br><span class="line"><span class="keyword">import</span> io.netty.channel.ChannelHandlerContext;</span><br><span class="line"><span class="keyword">import</span> io.netty.handler.codec.MessageToByteEncoder;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 对象 → 字节流（出站）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ProtocolEncoder</span> <span class="keyword">extends</span> <span class="title class_">MessageToByteEncoder</span>&lt;ProtocolMessage&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">encode</span><span class="params">(ChannelHandlerContext ctx, ProtocolMessage msg, ByteBuf out)</span> &#123;</span><br><span class="line">        out.writeShort(msg.getMagic());          <span class="comment">// ① magic（2 字节）</span></span><br><span class="line">        out.writeByte(msg.getVersion());         <span class="comment">// ② version（1 字节）</span></span><br><span class="line">        out.writeByte(msg.getType());            <span class="comment">// ③ type（1 字节）</span></span><br><span class="line">        out.writeInt(msg.getLength());           <span class="comment">// ④ length（4 字节）</span></span><br><span class="line">        out.writeBytes(msg.getPayload());        <span class="comment">// ⑤ payload（N 字节）</span></span><br><span class="line">        <span class="comment">// 严格按协议顺序写，解码端才能正确解析</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-解码器（解决粘包拆包）"><a href="#5-解码器（解决粘包拆包）" class="headerlink" title="5. 解码器（解决粘包拆包）"></a>5. 解码器（解决粘包拆包）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> io.netty.handler.codec.LengthFieldBasedFrameDecoder;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Netty 提供的最优解：按长度字段拆帧</span></span><br><span class="line"><span class="comment">// 字段布局: magic(2) version(1) type(1) length(4) payload(N)</span></span><br><span class="line"><span class="comment">// 长度字段偏移 = 4（magic+version+type），长度字段大小 = 4</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ProtocolDecoder</span> <span class="keyword">extends</span> <span class="title class_">LengthFieldBasedFrameDecoder</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">ProtocolDecoder</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="comment">// maxFrameLength(最大帧) lengthFieldOffset(长度字段偏移)</span></span><br><span class="line">        <span class="comment">// lengthFieldLength(长度字段大小) lengthAdjustment(修正)</span></span><br><span class="line">        <span class="comment">// initialBytesToStrip(剥离长度)</span></span><br><span class="line">        <span class="built_in">super</span>(<span class="number">64</span> * <span class="number">1024</span>, <span class="number">4</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">        <span class="comment">// 最大 64KB；长度字段从第 4 字节开始；长度占 4 字节；无修正；不剥离</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> Object <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in)</span> &#123;</span><br><span class="line">        <span class="type">ByteBuf</span> <span class="variable">frame</span> <span class="operator">=</span> (ByteBuf) <span class="built_in">super</span>.decode(ctx, in);   <span class="comment">// 拆出完整一帧</span></span><br><span class="line">        <span class="keyword">if</span> (frame == <span class="literal">null</span>) <span class="keyword">return</span> <span class="literal">null</span>;              <span class="comment">// 数据不足，等待下一批</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            frame.skipBytes(<span class="number">2</span>);                      <span class="comment">// 跳过 magic</span></span><br><span class="line">            frame.skipBytes(<span class="number">1</span>);                      <span class="comment">// 跳过 version</span></span><br><span class="line">            <span class="type">byte</span> <span class="variable">type</span> <span class="operator">=</span> frame.readByte();            <span class="comment">// 读类型</span></span><br><span class="line">            <span class="type">int</span> <span class="variable">length</span> <span class="operator">=</span> frame.readInt();            <span class="comment">// 读长度</span></span><br><span class="line">            <span class="type">byte</span>[] payload = <span class="keyword">new</span> <span class="title class_">byte</span>[length];       <span class="comment">// 分配载荷</span></span><br><span class="line">            frame.readBytes(payload);                <span class="comment">// 读载荷</span></span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">ProtocolMessage</span>(type, payload);   <span class="comment">// 还原消息对象</span></span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            frame.release();                         <span class="comment">// 释放 ByteBuf（防泄漏）</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>LengthFieldBasedFrameDecoder 原理</strong>：读 length → 等待凑够 length 字节 → 还原一整帧；不足则缓冲，<strong>粘包拆包自动解决</strong>。</p>
+<h2 id="6-业务处理器"><a href="#6-业务处理器" class="headerlink" title="6. 业务处理器"></a>6. 业务处理器</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> io.netty.channel.ChannelHandlerContext;</span><br><span class="line"><span class="keyword">import</span> io.netty.channel.SimpleChannelInboundHandler;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 用户连接管理（自动释放消息）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ChatServerHandler</span> <span class="keyword">extends</span> <span class="title class_">SimpleChannelInboundHandler</span>&lt;ProtocolMessage&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">channelActive</span><span class="params">(ChannelHandlerContext ctx)</span> &#123;   <span class="comment">// 新连接建立</span></span><br><span class="line">        System.out.println(<span class="string">&quot;客户端接入: &quot;</span> + ctx.channel().remoteAddress());</span><br><span class="line">        UserRegistry.add(ctx.channel());             <span class="comment">// 注册在线用户</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">channelRead0</span><span class="params">(ChannelHandlerContext ctx, ProtocolMessage msg)</span> &#123;</span><br><span class="line">        <span class="comment">// 收到完整消息，按类型分发</span></span><br><span class="line">        <span class="keyword">switch</span> (msg.getType()) &#123;</span><br><span class="line">            <span class="keyword">case</span> <span class="number">0x01</span> -&gt; handleHeartbeat(ctx);       <span class="comment">// 心跳：回复 ACK</span></span><br><span class="line">            <span class="keyword">case</span> <span class="number">0x02</span> -&gt; handleLogin(ctx, msg);      <span class="comment">// 登录</span></span><br><span class="line">            <span class="keyword">case</span> <span class="number">0x03</span> -&gt; handleChat(ctx, msg);       <span class="comment">// 聊天：转发</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">handleHeartbeat</span><span class="params">(ChannelHandlerContext ctx)</span> &#123;</span><br><span class="line">        ctx.writeAndFlush(<span class="keyword">new</span> <span class="title class_">ProtocolMessage</span>(MsgType.ACK.code(), <span class="string">&quot;pong&quot;</span>.getBytes()));</span><br><span class="line">        <span class="comment">// 回复 pong</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">exceptionCaught</span><span class="params">(ChannelHandlerContext ctx, Throwable cause)</span> &#123;</span><br><span class="line">        cause.printStackTrace();     <span class="comment">// 打印异常</span></span><br><span class="line">        ctx.close();                 <span class="comment">// 关闭连接</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-服务端启动-心跳保活"><a href="#7-服务端启动-心跳保活" class="headerlink" title="7. 服务端启动 + 心跳保活"></a>7. 服务端启动 + 心跳保活</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> io.netty.bootstrap.ServerBootstrap;</span><br><span class="line"><span class="keyword">import</span> io.netty.channel.*;</span><br><span class="line"><span class="keyword">import</span> io.netty.channel.nio.NioEventLoopGroup;</span><br><span class="line"><span class="keyword">import</span> io.netty.channel.socket.nio.NioServerSocketChannel;</span><br><span class="line"><span class="keyword">import</span> io.netty.handler.timeout.IdleStateHandler;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ImServer</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="type">EventLoopGroup</span> <span class="variable">boss</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">NioEventLoopGroup</span>(<span class="number">1</span>);      <span class="comment">// 接受连接</span></span><br><span class="line">        <span class="type">EventLoopGroup</span> <span class="variable">worker</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">NioEventLoopGroup</span>();     <span class="comment">// 处理 IO（默认 2*核）</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="type">ServerBootstrap</span> <span class="variable">b</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ServerBootstrap</span>();</span><br><span class="line">            b.group(boss, worker)</span><br><span class="line">             .channel(NioServerSocketChannel.class)</span><br><span class="line">             .childHandler(<span class="keyword">new</span> <span class="title class_">ChannelInitializer</span>&lt;Channel&gt;() &#123;</span><br><span class="line">                 <span class="meta">@Override</span></span><br><span class="line">                 <span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">initChannel</span><span class="params">(Channel ch)</span> &#123;</span><br><span class="line">                     ch.pipeline()</span><br><span class="line">                       <span class="comment">// 心跳检测：60s 无读 → 触发 userEventTriggered</span></span><br><span class="line">                       .addLast(<span class="keyword">new</span> <span class="title class_">IdleStateHandler</span>(<span class="number">60</span>, <span class="number">0</span>, <span class="number">0</span>))</span><br><span class="line">                       .addLast(<span class="keyword">new</span> <span class="title class_">ProtocolDecoder</span>())     <span class="comment">// 解码（入站）</span></span><br><span class="line">                       .addLast(<span class="keyword">new</span> <span class="title class_">ProtocolEncoder</span>())     <span class="comment">// 编码（出站）</span></span><br><span class="line">                       .addLast(<span class="keyword">new</span> <span class="title class_">ChatServerHandler</span>());  <span class="comment">// 业务</span></span><br><span class="line">                 &#125;</span><br><span class="line">             &#125;)</span><br><span class="line">             .option(ChannelOption.SO_BACKLOG, <span class="number">1024</span>)          <span class="comment">// 连接队列</span></span><br><span class="line">             .childOption(ChannelOption.TCP_NODELAY, <span class="literal">true</span>)   <span class="comment">// 低延迟</span></span><br><span class="line"></span><br><span class="line">             .bind(<span class="number">8080</span>).sync()                              <span class="comment">// 绑定端口</span></span><br><span class="line">             .channel().closeFuture().sync();                <span class="comment">// 阻塞到关闭</span></span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            boss.shutdownGracefully();       <span class="comment">// 优雅关闭</span></span><br><span class="line">            worker.shutdownGracefully();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>心跳原理</strong>：服务端 <code>IdleStateHandler</code> 检测读超时 → 关连接回收；客户端定时发 HEARTBEAT 保活 + 断线重连：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 客户端心跳（每 30 秒）</span></span><br><span class="line">channel.writeAndFlush(<span class="keyword">new</span> <span class="title class_">ProtocolMessage</span>(MsgType.HEARTBEAT.code(), <span class="keyword">new</span> <span class="title class_">byte</span>[<span class="number">0</span>]));</span><br><span class="line"><span class="comment">// 客户端断线重连</span></span><br><span class="line">channel.closeFuture().addListener(f -&gt; &#123;</span><br><span class="line">    Thread.sleep(<span class="number">3000</span>);      <span class="comment">// 等 3 秒再重连</span></span><br><span class="line">    connect();   <span class="comment">// 指数退避重连</span></span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-客户端与测试"><a href="#8-客户端与测试" class="headerlink" title="8. 客户端与测试"></a>8. 客户端与测试</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 客户端（简单版）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ImClient</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="type">NioEventLoopGroup</span> <span class="variable">group</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">NioEventLoopGroup</span>();   <span class="comment">// 客户端线程组</span></span><br><span class="line">        <span class="type">Bootstrap</span> <span class="variable">b</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Bootstrap</span>();                       <span class="comment">// 客户端引导</span></span><br><span class="line">        b.group(group).channel(NioSocketChannel.class)</span><br><span class="line">         .handler(<span class="keyword">new</span> <span class="title class_">ChannelInitializer</span>&lt;Channel&gt;() &#123;</span><br><span class="line">             <span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">initChannel</span><span class="params">(Channel ch)</span> &#123;</span><br><span class="line">                 ch.pipeline().addLast(<span class="keyword">new</span> <span class="title class_">ProtocolDecoder</span>())   <span class="comment">// 解码</span></span><br><span class="line">                              .addLast(<span class="keyword">new</span> <span class="title class_">ProtocolEncoder</span>())   <span class="comment">// 编码</span></span><br><span class="line">                              .addLast(<span class="keyword">new</span> <span class="title class_">ClientHandler</span>());    <span class="comment">// 业务</span></span><br><span class="line">             &#125;</span><br><span class="line">         &#125;);</span><br><span class="line">        <span class="type">Channel</span> <span class="variable">ch</span> <span class="operator">=</span> b.connect(<span class="string">&quot;localhost&quot;</span>, <span class="number">8080</span>).sync().channel();   <span class="comment">// 连接</span></span><br><span class="line">        ch.writeAndFlush(<span class="keyword">new</span> <span class="title class_">ProtocolMessage</span>(MsgType.LOGIN.code(), <span class="string">&quot;&#123;\&quot;user\&quot;:\&quot;alice\&quot;&#125;&quot;</span>.getBytes()));</span><br><span class="line">        ch.writeAndFlush(<span class="keyword">new</span> <span class="title class_">ProtocolMessage</span>(MsgType.CHAT.code(), <span class="string">&quot;你好&quot;</span>.getBytes()));</span><br><span class="line">        <span class="comment">// 发送登录与聊天消息</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mvn compile <span class="built_in">exec</span>:java -Dexec.mainClass=com.example.ImServer   <span class="comment"># 启动服务端</span></span><br><span class="line">mvn compile <span class="built_in">exec</span>:java -Dexec.mainClass=com.example.ImClient   <span class="comment"># 启动客户端</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="9-压测与优化"><a href="#9-压测与优化" class="headerlink" title="9. 压测与优化"></a>9. 压测与优化</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 连接数压测（验证高并发连接）</span></span><br><span class="line"><span class="comment"># 用 netty 自带 example 或自定义压测客户端</span></span><br><span class="line"><span class="comment"># 2. 吞吐压测</span></span><br><span class="line">wrk -t8 -c200 -d30s http://localhost:8080/   <span class="comment"># HTTP 通道</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>优化项</th>
+<th>手段</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>背压</td>
+<td>channelWritabilityChanged 停止读</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>池化 ByteBuf（默认开启）</td>
+</tr>
+<tr>
+<td>超时</td>
+<td>IdleStateHandler 清理僵尸连接</td>
+</tr>
+<tr>
+<td>线程</td>
+<td>EventLoop 数默认最优，勿乱调</td>
+</tr>
+<tr>
+<td>大消息</td>
+<td>分片传输，避免超大帧</td>
+</tr>
+</tbody></table>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mvn compile <span class="built_in">exec</span>:java -Dexec.mainClass=com.example.ImServer</span><br><span class="line">mvn <span class="built_in">test</span></span><br><span class="line"><span class="comment"># 抓包验证协议（可选）</span></span><br><span class="line">tcpdump -i lo -X port 8080</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/mq-reliability-guide/" rel="prev" title="消息队列可靠性保障实战">
+                  <i class="fa fa-angle-left"></i> 消息队列可靠性保障实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/network-troubleshooting-guide/" rel="next" title="网络问题排查实战">
+                  网络问题排查实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

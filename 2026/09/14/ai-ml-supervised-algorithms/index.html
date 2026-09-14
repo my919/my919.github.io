@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="AI · 监督学习算法详解与落地 线性回归 · 逻辑回归 · K 近邻 · 朴素贝叶斯 · 决策树 · SVM。每个算法：原理 → 训练算法 → PyTorch CPU 落地代码（含详细注释）→ 应用。  前置：环境与数据集123# Python 3.12+，CPU 版 PyTorch（本系列所有代码 CPU 可跑）pip install torch numpy matplotlibpython">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI 监督学习算法详解与落地（PyTorch CPU）">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/ai-ml-supervised-algorithms/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="AI · 监督学习算法详解与落地 线性回归 · 逻辑回归 · K 近邻 · 朴素贝叶斯 · 决策树 · SVM。每个算法：原理 → 训练算法 → PyTorch CPU 落地代码（含详细注释）→ 应用。  前置：环境与数据集123# Python 3.12+，CPU 版 PyTorch（本系列所有代码 CPU 可跑）pip install torch numpy matplotlibpython">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T15:30:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.603Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/ai-ml-supervised-algorithms/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/ai-ml-supervised-algorithms/","path":"2026/09/14/ai-ml-supervised-algorithms/","title":"AI 监督学习算法详解与落地（PyTorch CPU）"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>AI 监督学习算法详解与落地（PyTorch CPU） | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AI-%C2%B7-%E7%9B%91%E7%9D%A3%E5%AD%A6%E4%B9%A0%E7%AE%97%E6%B3%95%E8%AF%A6%E8%A7%A3%E4%B8%8E%E8%90%BD%E5%9C%B0"><span class="nav-number">1.</span> <span class="nav-text">AI · 监督学习算法详解与落地</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%EF%BC%9A%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%95%B0%E6%8D%AE%E9%9B%86"><span class="nav-number">1.1.</span> <span class="nav-text">前置：环境与数据集</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%EF%BC%88Linear-Regression%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">1. 线性回归（Linear Regression）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.2.1.</span> <span class="nav-text">1.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">1.2 落地代码（PyTorch，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.2.3.</span> <span class="nav-text">1.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%EF%BC%88Logistic-Regression%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">2. 逻辑回归（Logistic Regression）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 落地代码（PyTorch，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.3.3.</span> <span class="nav-text">2.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-K-%E8%BF%91%E9%82%BB%EF%BC%88KNN%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. K 近邻（KNN）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch-%E5%BC%A0%E9%87%8F%E5%AE%9E%E7%8E%B0%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 落地代码（PyTorch 张量实现，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.4.3.</span> <span class="nav-text">3.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%EF%BC%88Naive-Bayes%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 朴素贝叶斯（Naive Bayes）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch-%E5%AE%9E%E7%8E%B0%E9%AB%98%E6%96%AF%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 落地代码（PyTorch 实现高斯朴素贝叶斯，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%86%B3%E7%AD%96%E6%A0%91%EF%BC%88Decision-Tree%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 决策树（Decision Tree）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch-%E5%BC%A0%E9%87%8F%E8%AE%A1%E7%AE%97%E5%9F%BA%E5%B0%BC-%E9%80%92%E5%BD%92%E5%BB%BA%E6%A0%91%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 落地代码（PyTorch 张量计算基尼 + 递归建树，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.6.3.</span> <span class="nav-text">5.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA%EF%BC%88SVM%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">6. 支持向量机（SVM）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.7.1.</span> <span class="nav-text">6.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch-%E7%BA%BF%E6%80%A7-SVM%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.7.2.</span> <span class="nav-text">6.2 落地代码（PyTorch 线性 SVM，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.7.3.</span> <span class="nav-text">6.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E7%AE%97%E6%B3%95%E9%80%89%E6%8B%A9%E9%80%9F%E6%9F%A5"><span class="nav-number">1.8.</span> <span class="nav-text">7. 算法选择速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%AD%E7%BB%83%E7%AE%97%E6%B3%95%E5%B0%8F%E7%BB%93%EF%BC%88%E6%9C%AC%E7%89%87%E6%A0%B8%E5%BF%83%EF%BC%89"><span class="nav-number">1.9.</span> <span class="nav-text">训练算法小结（本片核心）</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/ai-ml-supervised-algorithms/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="AI 监督学习算法详解与落地（PyTorch CPU） | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          AI 监督学习算法详解与落地（PyTorch CPU）
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 23:30:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T23:30:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>4.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>14 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="AI-·-监督学习算法详解与落地"><a href="#AI-·-监督学习算法详解与落地" class="headerlink" title="AI · 监督学习算法详解与落地"></a>AI · 监督学习算法详解与落地</h1><blockquote>
+<p>线性回归 · 逻辑回归 · K 近邻 · 朴素贝叶斯 · 决策树 · SVM。每个算法：原理 → 训练算法 → PyTorch CPU 落地代码（含详细注释）→ 应用。</p>
+</blockquote>
+<h2 id="前置：环境与数据集"><a href="#前置：环境与数据集" class="headerlink" title="前置：环境与数据集"></a>前置：环境与数据集</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Python 3.12+，CPU 版 PyTorch（本系列所有代码 CPU 可跑）</span></span><br><span class="line">pip install torch numpy matplotlib</span><br><span class="line">python -c <span class="string">&quot;import torch; print(torch.__version__)&quot;</span>   <span class="comment"># 2.x</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>监督学习</strong>：训练数据带标签 <code>(x, y)</code>，模型学习 <code>x → y</code> 的映射，用于预测新样本。回归预测连续值，分类预测类别。</p>
+</blockquote>
+<hr>
+<h2 id="1-线性回归（Linear-Regression）"><a href="#1-线性回归（Linear-Regression）" class="headerlink" title="1. 线性回归（Linear Regression）"></a>1. 线性回归（Linear Regression）</h2><h3 id="1-1-原理"><a href="#1-1-原理" class="headerlink" title="1.1 原理"></a>1.1 原理</h3><p>假设输出是输入的线性组合：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">y = w·x + b</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>w</code> 权重，<code>b</code> 偏置</li>
+<li>训练目标：找一组 <code>(w, b)</code> 使预测误差最小</li>
+</ul>
+<p><strong>损失函数（MSE 均方误差）</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">L = (1/n) · Σ(y_pred - y_true)²</span><br></pre></td></tr></table></figure>
+
+<p><strong>训练算法（梯度下降）</strong>：沿损失下降最快的方向更新参数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">w ← w - lr · ∂L/∂w</span><br></pre></td></tr></table></figure>
+
+<p><code>lr</code> 是学习率，控制每次迈多大步。</p>
+<h3 id="1-2-落地代码（PyTorch，逐行注释）"><a href="#1-2-落地代码（PyTorch，逐行注释）" class="headerlink" title="1.2 落地代码（PyTorch，逐行注释）"></a>1.2 落地代码（PyTorch，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch                      <span class="comment"># 张量库：多维数组 + 自动求导</span></span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn             <span class="comment"># 神经网络模块：Linear、损失函数等</span></span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)             <span class="comment"># 固定随机种子，保证结果可复现</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 1. 造数据：真实关系 y = 2x + 1，加一点噪声 ----------</span></span><br><span class="line">X = torch.linspace(-<span class="number">1</span>, <span class="number">1</span>, <span class="number">200</span>).reshape(-<span class="number">1</span>, <span class="number">1</span>)</span><br><span class="line"><span class="comment"># 生成 200 个等距点 -1~1，reshape 成 (200,1) 列向量（每个样本 1 个特征）</span></span><br><span class="line">y = <span class="number">2</span> * X + <span class="number">1</span> + <span class="number">0.2</span> * torch.randn_like(X)</span><br><span class="line"><span class="comment"># 真实规律是 y=2x+1，再加 0.2 倍的高斯噪声模拟&quot;现实中的误差&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 2. 定义模型：y = w·x + b（单层线性） ----------</span></span><br><span class="line">model = nn.Linear(<span class="number">1</span>, <span class="number">1</span>)</span><br><span class="line"><span class="comment"># 参数：weight 初始 (1,1) 即 w，bias 即 b —— 这就是要&quot;学习&quot;的东西</span></span><br><span class="line">loss_fn = nn.MSELoss()</span><br><span class="line"><span class="comment"># 均方误差损失：对应原理中的 L = (1/n)·Σ(y_pred-y_true)²</span></span><br><span class="line">optimizer = torch.optim.SGD(model.parameters(), lr=<span class="number">0.1</span>)</span><br><span class="line"><span class="comment"># 随机梯度下降优化器：负责执行公式 w ← w - lr·∂L/∂w</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 3. 训练循环（核心四步，每个神经网络都长这样） ----------</span></span><br><span class="line"><span class="keyword">for</span> epoch <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">200</span>):          <span class="comment"># 把整个数据集反复&quot;学&quot; 200 遍</span></span><br><span class="line">    optimizer.zero_grad()         <span class="comment"># ① 清零梯度：PyTorch 默认累加梯度，不清会叠加出错</span></span><br><span class="line">    pred = model(X)               <span class="comment"># ② 前向传播：用当前 w,b 算出 200 个预测值</span></span><br><span class="line">    loss = loss_fn(pred, y)       <span class="comment"># ③ 计算损失：预测值 vs 真实值差距有多大</span></span><br><span class="line">    loss.backward()               <span class="comment"># ④ 反向传播：自动算出 ∂L/∂w 和 ∂L/∂b（存进 grad）</span></span><br><span class="line">    optimizer.step()              <span class="comment"># ⑤ 更新参数：真正执行 w ← w - lr·∂L/∂w</span></span><br><span class="line">    <span class="comment"># 每轮循环后损失应越来越小，说明 w,b 在逼近真实值 (2, 1)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 4. 看学习结果 ----------</span></span><br><span class="line">w, b = model.weight.item(), model.bias.item()</span><br><span class="line"><span class="comment"># item() 把单元素张量转成普通数字</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;学到的参数: w=<span class="subst">&#123;w:<span class="number">.3</span>f&#125;</span>, b=<span class="subst">&#123;b:<span class="number">.3</span>f&#125;</span>  （真实: w=2, b=1）&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;最终损失: <span class="subst">&#123;loss.item():<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># 输出示例：w=1.998, b=1.003 —— 和真实关系几乎一致，模型&quot;学会&quot;了</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-原理的应用"><a href="#1-3-原理的应用" class="headerlink" title="1.3 原理的应用"></a>1.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>销量预测</td>
+<td>广告投入 → 销量</td>
+</tr>
+<tr>
+<td>房价预测</td>
+<td>面积&#x2F;位置 → 价格</td>
+</tr>
+<tr>
+<td>趋势分析</td>
+<td>时间 → 指标</td>
+</tr>
+<tr>
+<td>回归类数据预测</td>
+<td>一切”预测连续值”的起点</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-逻辑回归（Logistic-Regression）"><a href="#2-逻辑回归（Logistic-Regression）" class="headerlink" title="2. 逻辑回归（Logistic Regression）"></a>2. 逻辑回归（Logistic Regression）</h2><h3 id="2-1-原理"><a href="#2-1-原理" class="headerlink" title="2.1 原理"></a>2.1 原理</h3><p>名字带”回归”，实际是<strong>分类</strong>。把线性结果压到 (0,1) 区间当概率：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">z = w·x + b</span><br><span class="line">p = σ(z) = 1 / (1 + e^(-z))     # sigmoid 函数</span><br><span class="line">预测类别 = p &gt; 0.5 ? 1 : 0</span><br></pre></td></tr></table></figure>
+
+<p><strong>损失函数（交叉熵）</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">L = -[ y·log(p) + (1-y)·log(1-p) ]</span><br></pre></td></tr></table></figure>
+
+<p><strong>训练算法</strong>：同样是梯度下降（<code>w ← w - lr·∂L/∂w</code>），PyTorch 自动求导。</p>
+<h3 id="2-2-落地代码（PyTorch，逐行注释）"><a href="#2-2-落地代码（PyTorch，逐行注释）" class="headerlink" title="2.2 落地代码（PyTorch，逐行注释）"></a>2.2 落地代码（PyTorch，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 1. 造二分类数据：两个特征，可分但不完全线性 ----------</span></span><br><span class="line">X = torch.randn(<span class="number">400</span>, <span class="number">2</span>)</span><br><span class="line"><span class="comment"># 400 个样本，每个 2 个特征（形状 (400,2)）</span></span><br><span class="line">y = (<span class="number">2</span> * X[:, <span class="number">0</span>] - X[:, <span class="number">1</span>] &gt; <span class="number">0</span>).<span class="built_in">float</span>().reshape(-<span class="number">1</span>, <span class="number">1</span>)</span><br><span class="line"><span class="comment"># 标签规则：第0列×2 减 第1列 大于0 则类别=1，否则0；.float()转浮点，(400,1)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 2. 模型：线性 + sigmoid ----------</span></span><br><span class="line">model = nn.Sequential(            <span class="comment"># 按顺序执行的网络容器</span></span><br><span class="line">    nn.Linear(<span class="number">2</span>, <span class="number">1</span>),              <span class="comment"># 第一层：2个特征 → 1个输出 z = w·x + b</span></span><br><span class="line">    nn.Sigmoid(),                 <span class="comment"># 第二层：把 z 压到 (0,1) 得到概率 p</span></span><br><span class="line">)</span><br><span class="line">loss_fn = nn.BCELoss()            <span class="comment"># 二分类交叉熵：对应原理公式 L = -[y·log p + ...]</span></span><br><span class="line">optimizer = torch.optim.SGD(model.parameters(), lr=<span class="number">0.5</span>)</span><br><span class="line"><span class="comment"># SGD 优化器，学习率 0.5（逻辑回归简单，可以大步走）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 3. 训练 ----------</span></span><br><span class="line"><span class="keyword">for</span> epoch <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">300</span>):          <span class="comment"># 学 300 遍</span></span><br><span class="line">    optimizer.zero_grad()         <span class="comment"># 清零上一步的梯度（重要！否则梯度会累加）</span></span><br><span class="line">    pred = model(X)               <span class="comment"># 前向：得到 400 个&quot;属于类别1的概率&quot;</span></span><br><span class="line">    loss = loss_fn(pred, y)       <span class="comment"># 交叉熵损失：预测概率 vs 真实标签</span></span><br><span class="line">    loss.backward()               <span class="comment"># 反向：自动求 ∂L/∂w</span></span><br><span class="line">    optimizer.step()              <span class="comment"># 更新：w ← w - lr·∂L/∂w</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 4. 评估 ----------</span></span><br><span class="line">acc = ((model(X) &gt; <span class="number">0.5</span>).<span class="built_in">float</span>() == y).<span class="built_in">float</span>().mean().item()</span><br><span class="line"><span class="comment"># 概率&gt;0.5 判为类别1 → 与真实标签逐元素比较 → 相等的比例即准确率</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;训练准确率: <span class="subst">&#123;acc:<span class="number">.3</span>f&#125;</span>  损失: <span class="subst">&#123;loss.item():<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 5. 预测新样本 ----------</span></span><br><span class="line">new = torch.tensor([[<span class="number">1.0</span>, -<span class="number">0.5</span>]])  <span class="comment"># 一个新样本：2 个特征</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;新样本属于类别1的概率: <span class="subst">&#123;model(new).item():<span class="number">.3</span>f&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># 输出 0~1 之间的数，可直接当&quot;置信度/概率&quot;用</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-原理的应用"><a href="#2-3-原理的应用" class="headerlink" title="2.3 原理的应用"></a>2.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>垃圾邮件识别</td>
+<td>文本特征 → 垃圾&#x2F;正常</td>
+</tr>
+<tr>
+<td>风控评分</td>
+<td>用户特征 → 违约概率</td>
+</tr>
+<tr>
+<td>点击率预测</td>
+<td>广告特征 → 点击概率</td>
+</tr>
+<tr>
+<td>医疗诊断</td>
+<td>指标 → 患病概率</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-K-近邻（KNN）"><a href="#3-K-近邻（KNN）" class="headerlink" title="3. K 近邻（KNN）"></a>3. K 近邻（KNN）</h2><h3 id="3-1-原理"><a href="#3-1-原理" class="headerlink" title="3.1 原理"></a>3.1 原理</h3><p><strong>惰性学习</strong>：不训练，预测时直接找<strong>距离最近的 K 个样本</strong>投票。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">预测新样本：</span><br><span class="line">1. 计算它与所有训练样本的距离（常用欧氏距离）</span><br><span class="line">2. 取距离最近的 K 个</span><br><span class="line">3. 分类：K 个邻居中票数最多的类别；回归：K 个邻居均值</span><br></pre></td></tr></table></figure>
+
+<p><strong>训练算法</strong>：无（训练阶段只是”记住”数据）。K 和距离度量是超参数。</p>
+<h3 id="3-2-落地代码（PyTorch-张量实现，逐行注释）"><a href="#3-2-落地代码（PyTorch-张量实现，逐行注释）" class="headerlink" title="3.2 落地代码（PyTorch 张量实现，逐行注释）"></a>3.2 落地代码（PyTorch 张量实现，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">knn_predict</span>(<span class="params">X_train, y_train, X_test, k=<span class="number">3</span></span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;KNN 预测：张量实现，无训练过程</span></span><br><span class="line"><span class="string">    X_train: 训练特征 (n_train, d)</span></span><br><span class="line"><span class="string">    y_train: 训练标签 (n_train,)</span></span><br><span class="line"><span class="string">    X_test:  待预测特征 (n_test, d)</span></span><br><span class="line"><span class="string">    k:       取最近的 k 个邻居投票</span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line">    <span class="comment"># 1. 距离矩阵：cdist 自动算&quot;每对测试样本×训练样本&quot;的欧氏距离</span></span><br><span class="line">    dist = torch.cdist(X_test, X_train)</span><br><span class="line">    <span class="comment"># 形状 (n_test, n_train)：第 i 行是第 i 个测试样本到所有训练样本的距离</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2. 每行取距离最小的 k 个的下标</span></span><br><span class="line">    _, idx = dist.topk(k, largest=<span class="literal">False</span>)</span><br><span class="line">    <span class="comment"># topk(largest=False) 取最小 k 个；idx 形状 (n_test, k)</span></span><br><span class="line">    <span class="comment"># 返回的 _ 是距离值本身，这里用不到，用 _ 占位</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3. 用下标取邻居标签：idx 里存的是训练样本的&quot;行号&quot;</span></span><br><span class="line">    neighbors = y_train[idx]</span><br><span class="line">    <span class="comment"># 形状 (n_test, k)：每行是第 i 个测试样本的 k 个邻居标签</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 4. 投票：one-hot 展开后按行求和，取票数最多的类别</span></span><br><span class="line">    votes = torch.nn.functional.one_hot(neighbors.long(), num_classes=<span class="number">2</span>).<span class="built_in">sum</span>(dim=<span class="number">1</span>)</span><br><span class="line">    <span class="comment"># one_hot: 标签0→[1,0]，标签1→[0,1]，求和后 (n_test, 2) 是两类票数</span></span><br><span class="line">    <span class="keyword">return</span> votes.argmax(dim=<span class="number">1</span>)</span><br><span class="line">    <span class="comment"># argmax 返回每行票数最多的列下标，即预测类别</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造数据并测试 ----------</span></span><br><span class="line">X = torch.randn(<span class="number">200</span>, <span class="number">2</span>)                        <span class="comment"># 200 个样本，2 个特征</span></span><br><span class="line">y = (X[:, <span class="number">0</span>] + X[:, <span class="number">1</span>] &gt; <span class="number">0</span>).long()             <span class="comment"># 类别规则：两特征和&gt;0 为 1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 前 150 个当&quot;记忆库&quot;（训练集），后 50 个当测试</span></span><br><span class="line">X_train, y_train, X_test, y_test = X[:<span class="number">150</span>], y[:<span class="number">150</span>], X[<span class="number">150</span>:], y[<span class="number">150</span>:]</span><br><span class="line">pred = knn_predict(X_train, y_train, X_test, k=<span class="number">5</span>)</span><br><span class="line"><span class="comment"># KNN 不需要 fit 函数——&quot;训练&quot;就是把训练集存着，预测时才计算</span></span><br><span class="line"></span><br><span class="line">acc = (pred == y_test).<span class="built_in">float</span>().mean().item()</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;KNN(K=5) 测试准确率: <span class="subst">&#123;acc:<span class="number">.3</span>f&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-原理的应用"><a href="#3-3-原理的应用" class="headerlink" title="3.3 原理的应用"></a>3.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>推荐系统</td>
+<td>找相似用户&#x2F;商品</td>
+</tr>
+<tr>
+<td>图像识别</td>
+<td>像素特征相似度</td>
+</tr>
+<tr>
+<td>异常检测</td>
+<td>离群点（邻居都远）</td>
+</tr>
+<tr>
+<td>小样本分类</td>
+<td>数据量不大时效果好</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-朴素贝叶斯（Naive-Bayes）"><a href="#4-朴素贝叶斯（Naive-Bayes）" class="headerlink" title="4. 朴素贝叶斯（Naive Bayes）"></a>4. 朴素贝叶斯（Naive Bayes）</h2><h3 id="4-1-原理"><a href="#4-1-原理" class="headerlink" title="4.1 原理"></a>4.1 原理</h3><p>基于<strong>贝叶斯定理</strong> + <strong>特征独立假设</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">P(类别|样本) ∝ P(类别) · Π P(特征i|类别)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>P(类别)</code>：先验（各类占比）</li>
+<li><code>P(特征i|类别)</code>：似然（该类别下某特征出现的概率）</li>
+<li>预测：取后验概率最大的类别</li>
+</ul>
+<p><strong>训练算法</strong>：从数据<strong>统计</strong>出先验和似然（连续特征假设高斯分布：算每类的均值、方差），无需梯度下降。</p>
+<h3 id="4-2-落地代码（PyTorch-实现高斯朴素贝叶斯，逐行注释）"><a href="#4-2-落地代码（PyTorch-实现高斯朴素贝叶斯，逐行注释）" class="headerlink" title="4.2 落地代码（PyTorch 实现高斯朴素贝叶斯，逐行注释）"></a>4.2 落地代码（PyTorch 实现高斯朴素贝叶斯，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">GaussianNB</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;高斯朴素贝叶斯：连续特征，假设每类特征服从正态分布&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">fit</span>(<span class="params">self, X, y</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;训练阶段 = 统计每类的均值/方差/先验概率（没有梯度下降！）&quot;&quot;&quot;</span></span><br><span class="line">        <span class="variable language_">self</span>.classes = torch.unique(y)</span><br><span class="line">        <span class="comment"># 数据里出现的所有类别（如 [0,1]）</span></span><br><span class="line">        <span class="variable language_">self</span>.means, <span class="variable language_">self</span>.<span class="built_in">vars</span>, <span class="variable language_">self</span>.priors = &#123;&#125;, &#123;&#125;, &#123;&#125;</span><br><span class="line">        <span class="comment"># 三个字典：每类 → 均值/方差/占比</span></span><br><span class="line">        <span class="keyword">for</span> c <span class="keyword">in</span> <span class="variable language_">self</span>.classes:                    <span class="comment"># 遍历每个类别</span></span><br><span class="line">            Xc = X[y == c]                        <span class="comment"># 取出该类的所有样本</span></span><br><span class="line">            <span class="variable language_">self</span>.means[c.item()] = Xc.mean(dim=<span class="number">0</span>)</span><br><span class="line">            <span class="comment"># 均值向量：该类别每个特征的均值（高斯分布参数 μ）</span></span><br><span class="line">            <span class="variable language_">self</span>.<span class="built_in">vars</span>[c.item()]  = Xc.var(dim=<span class="number">0</span>, unbiased=<span class="literal">False</span>) + <span class="number">1e-6</span></span><br><span class="line">            <span class="comment"># 方差向量 + 1e-6 防止除零（高斯分布参数 σ²）</span></span><br><span class="line">            <span class="variable language_">self</span>.priors[c.item()] = <span class="built_in">len</span>(Xc) / <span class="built_in">len</span>(X)</span><br><span class="line">            <span class="comment"># 先验 P(类别) = 该类样本数 / 总样本数</span></span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_gaussian_pdf</span>(<span class="params">self, x, mean, var</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;正态分布概率密度函数：给定 x，算它在 N(μ,σ²) 下的概率密度</span></span><br><span class="line"><span class="string">        公式：f(x) = exp(-(x-μ)²/(2σ²)) / √(2πσ²)&quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">return</span> torch.exp(-(x - mean) ** <span class="number">2</span> / (<span class="number">2</span> * var)) / torch.sqrt(<span class="number">2</span> * torch.pi * var)</span><br><span class="line">        <span class="comment"># 对应原理中的 P(特征i|类别)，这里假设特征服从高斯分布</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">predict</span>(<span class="params">self, X</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;预测：对每个类别算后验概率（取对数防止下溢），取最大者&quot;&quot;&quot;</span></span><br><span class="line">        log_probs = []</span><br><span class="line">        <span class="comment"># 收集每个类别的对数后验（log 后乘法变加法，数值更稳）</span></span><br><span class="line">        <span class="keyword">for</span> c <span class="keyword">in</span> <span class="variable language_">self</span>.classes:                    <span class="comment"># 对每个类别都算一遍</span></span><br><span class="line">            lp = torch.log(torch.tensor(<span class="variable language_">self</span>.priors[c.item()]))</span><br><span class="line">            <span class="comment"># log P(类别)：先验取对数</span></span><br><span class="line">            lp = lp + <span class="variable language_">self</span>._gaussian_pdf(</span><br><span class="line">                X, <span class="variable language_">self</span>.means[c.item()], <span class="variable language_">self</span>.<span class="built_in">vars</span>[c.item()]).log().<span class="built_in">sum</span>(dim=<span class="number">1</span>)</span><br><span class="line">            <span class="comment"># Σ log P(特征i|类别)：每个特征的概率密度取对数后求和</span></span><br><span class="line">            <span class="comment"># 这正是原理中的 log[P(类)·Π P(特征i|类)] 展开</span></span><br><span class="line">            log_probs.append(lp)</span><br><span class="line">        <span class="keyword">return</span> torch.stack(log_probs, dim=<span class="number">1</span>).argmax(dim=<span class="number">1</span>)</span><br><span class="line">        <span class="comment"># 堆成 (n, 类别数)，取每行最大值下标 = 后验最大的类别</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造数据（两个高斯簇） ----------</span></span><br><span class="line">torch.manual_seed(<span class="number">0</span>)</span><br><span class="line">X0 = torch.randn(<span class="number">100</span>, <span class="number">2</span>) + torch.tensor([<span class="number">2.0</span>, <span class="number">2.0</span>])   <span class="comment"># 类别0：中心在(2,2)</span></span><br><span class="line">X1 = torch.randn(<span class="number">100</span>, <span class="number">2</span>) + torch.tensor([-<span class="number">2.0</span>, -<span class="number">2.0</span>]) <span class="comment"># 类别1：中心在(-2,-2)</span></span><br><span class="line">X = torch.cat([X0, X1])                                <span class="comment"># 拼成 (200,2)</span></span><br><span class="line">y = torch.cat([torch.zeros(<span class="number">100</span>), torch.ones(<span class="number">100</span>)]).long()  <span class="comment"># 前100标签0，后100标签1</span></span><br><span class="line"></span><br><span class="line">model = GaussianNB().fit(X, y)   <span class="comment"># &quot;训练&quot;：就是统计均值/方差/先验</span></span><br><span class="line">pred = model.predict(X)          <span class="comment"># 预测</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;训练准确率: <span class="subst">&#123;(pred == y).<span class="built_in">float</span>().mean().item():<span class="number">.3</span>f&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-原理的应用"><a href="#4-3-原理的应用" class="headerlink" title="4.3 原理的应用"></a>4.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>垃圾邮件过滤</td>
+<td>词频 → 垃圾概率</td>
+</tr>
+<tr>
+<td>文本分类</td>
+<td>新闻&#x2F;评论分类</td>
+</tr>
+<tr>
+<td>实时分类</td>
+<td>训练快，适合流式数据</td>
+</tr>
+<tr>
+<td>医疗初筛</td>
+<td>症状 → 疾病先验推断</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="5-决策树（Decision-Tree）"><a href="#5-决策树（Decision-Tree）" class="headerlink" title="5. 决策树（Decision Tree）"></a>5. 决策树（Decision Tree）</h2><h3 id="5-1-原理"><a href="#5-1-原理" class="headerlink" title="5.1 原理"></a>5.1 原理</h3><p>用<strong>一系列 if-else 规则</strong>递归划分数据：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">选择最佳特征和阈值切分数据</span><br><span class="line">  └─ 使切分后&quot;纯度&quot;最高（基尼系数/信息增益最小）</span><br><span class="line">递归直到：叶子纯净 / 深度达上限 / 样本太少</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>基尼系数</strong>：<code>Gini = 1 - Σ p²</code>，越小越纯</li>
+<li><strong>训练算法</strong>：贪心搜索最优划分（枚举特征×阈值），非梯度方法</li>
+</ul>
+<h3 id="5-2-落地代码（PyTorch-张量计算基尼-递归建树，逐行注释）"><a href="#5-2-落地代码（PyTorch-张量计算基尼-递归建树，逐行注释）" class="headerlink" title="5.2 落地代码（PyTorch 张量计算基尼 + 递归建树，逐行注释）"></a>5.2 落地代码（PyTorch 张量计算基尼 + 递归建树，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">gini</span>(<span class="params">y</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;基尼系数：衡量标签纯度，越小越纯</span></span><br><span class="line"><span class="string">    公式：Gini = 1 - Σ p_k²，p_k 是第 k 类占比&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">if</span> <span class="built_in">len</span>(y) == <span class="number">0</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0.0</span>                 <span class="comment"># 空集定义纯度为 0</span></span><br><span class="line">    probs = torch.bincount(y).<span class="built_in">float</span>() / <span class="built_in">len</span>(y)</span><br><span class="line">    <span class="comment"># bincount 数出每个类别的数量，除以总数得到占比 p_k</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">1.0</span> - (probs ** <span class="number">2</span>).<span class="built_in">sum</span>().item()</span><br><span class="line">    <span class="comment"># 1 - Σp²：全是一类时 =0（最纯），均匀分布时最大（最乱）</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">DecisionTree</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;最简单的分类决策树（限深，防过拟合）&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, max_depth=<span class="number">3</span>, min_samples=<span class="number">2</span></span>):</span><br><span class="line">        <span class="variable language_">self</span>.max_depth, <span class="variable language_">self</span>.min_samples = max_depth, min_samples</span><br><span class="line">        <span class="comment"># max_depth 限制树深；min_samples 样本太少就不再分裂</span></span><br><span class="line">        <span class="variable language_">self</span>.tree = <span class="literal">None</span>           <span class="comment"># 树结构：嵌套字典</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">fit</span>(<span class="params">self, X, y</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;训练：从根节点开始递归建树&quot;&quot;&quot;</span></span><br><span class="line">        <span class="variable language_">self</span>.tree = <span class="variable language_">self</span>._build(X, y, depth=<span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_build</span>(<span class="params">self, X, y, depth</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;递归建树：返回一个节点（字典）</span></span><br><span class="line"><span class="string">        节点有两种：叶子 &#123;&quot;leaf&quot;: 类别&#125; 或 分支 &#123;&quot;feat&quot;, &quot;thr&quot;, &quot;left&quot;, &quot;right&quot;&#125;&quot;&quot;&quot;</span></span><br><span class="line">        node = &#123;&#125;                  <span class="comment"># 当前节点</span></span><br><span class="line">        <span class="comment"># ---- 终止条件：不满足就停止分裂，直接当叶子 ----</span></span><br><span class="line">        <span class="keyword">if</span> depth &gt;= <span class="variable language_">self</span>.max_depth <span class="keyword">or</span> <span class="built_in">len</span>(y) &lt; <span class="variable language_">self</span>.min_samples <span class="keyword">or</span> gini(y) == <span class="number">0</span>:</span><br><span class="line">            node[<span class="string">&quot;leaf&quot;</span>] = y.mode().values.item()</span><br><span class="line">            <span class="comment"># mode() 取众数：叶子直接给&quot;样本最多的类别&quot;</span></span><br><span class="line">            <span class="keyword">return</span> node</span><br><span class="line"></span><br><span class="line">        <span class="comment"># ---- 贪心搜索最优划分：遍历每个特征 × 每两个相邻值的中点 ----</span></span><br><span class="line">        best = <span class="literal">None</span>                <span class="comment"># 记录 (信息增益, 特征下标, 阈值)</span></span><br><span class="line">        <span class="keyword">for</span> f <span class="keyword">in</span> <span class="built_in">range</span>(X.shape[<span class="number">1</span>]):                  <span class="comment"># 遍历特征列</span></span><br><span class="line">            vals = torch.unique(X[:, f])             <span class="comment"># 该特征去重后的取值</span></span><br><span class="line">            <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="built_in">len</span>(vals) - <span class="number">1</span>):           <span class="comment"># 取相邻值的中间当候选阈值</span></span><br><span class="line">                t = (vals[i] + vals[i + <span class="number">1</span>]) / <span class="number">2</span>      <span class="comment"># 候选切分点</span></span><br><span class="line">                left, right = y[X[:, f] &lt;= t], y[X[:, f] &gt; t]</span><br><span class="line">                <span class="comment"># 按阈值把样本切成左右两堆</span></span><br><span class="line">                <span class="keyword">if</span> <span class="built_in">len</span>(left) == <span class="number">0</span> <span class="keyword">or</span> <span class="built_in">len</span>(right) == <span class="number">0</span>:</span><br><span class="line">                    <span class="keyword">continue</span>                          <span class="comment"># 切出空堆没意义，跳过</span></span><br><span class="line">                <span class="comment"># 信息增益 = 切之前的纯度 - 切之后加权纯度</span></span><br><span class="line">                gain = gini(y) - (<span class="built_in">len</span>(left) * gini(left) + <span class="built_in">len</span>(right) * gini(right)) / <span class="built_in">len</span>(y)</span><br><span class="line">                <span class="keyword">if</span> best <span class="keyword">is</span> <span class="literal">None</span> <span class="keyword">or</span> gain &gt; best[<span class="number">0</span>]:</span><br><span class="line">                    best = (gain, f, t)              <span class="comment"># 保留增益最大的切法</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># ---- 找不到有效切分（增益≤0）就停，当叶子 ----</span></span><br><span class="line">        <span class="keyword">if</span> best <span class="keyword">is</span> <span class="literal">None</span> <span class="keyword">or</span> best[<span class="number">0</span>] &lt;= <span class="number">0</span>:</span><br><span class="line">            node[<span class="string">&quot;leaf&quot;</span>] = y.mode().values.item()</span><br><span class="line">            <span class="keyword">return</span> node</span><br><span class="line"></span><br><span class="line">        <span class="comment"># ---- 按最优切分递归建左右子树 ----</span></span><br><span class="line">        _, f, t = best                               <span class="comment"># 解包最优 (增益, 特征, 阈值)</span></span><br><span class="line">        node[<span class="string">&quot;feat&quot;</span>], node[<span class="string">&quot;thr&quot;</span>] = f, t             <span class="comment"># 记录本节点的判断规则</span></span><br><span class="line">        node[<span class="string">&quot;left&quot;</span>]  = <span class="variable language_">self</span>._build(X[X[:, f] &lt;= t], y[X[:, f] &lt;= t], depth + <span class="number">1</span>)</span><br><span class="line">        node[<span class="string">&quot;right&quot;</span>] = <span class="variable language_">self</span>._build(X[X[:, f] &gt; t],  y[X[:, f] &gt; t],  depth + <span class="number">1</span>)</span><br><span class="line">        <span class="comment"># 左右子树用各自子集递归建（深度+1）</span></span><br><span class="line">        <span class="keyword">return</span> node</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_predict_one</span>(<span class="params">self, x, node</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;单个样本走树：从根节点一路判断到叶子&quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">if</span> <span class="string">&quot;leaf&quot;</span> <span class="keyword">in</span> node:                           <span class="comment"># 到叶子了</span></span><br><span class="line">            <span class="keyword">return</span> node[<span class="string">&quot;leaf&quot;</span>]                      <span class="comment"># 叶子存的就是预测类别</span></span><br><span class="line">        <span class="comment"># 非叶子：按本节点的特征和阈值决定往左还是往右走</span></span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>._predict_one(x, node[<span class="string">&quot;left&quot;</span> <span class="keyword">if</span> x[node[<span class="string">&quot;feat&quot;</span>]] &lt;= node[<span class="string">&quot;thr&quot;</span>] <span class="keyword">else</span> <span class="string">&quot;right&quot;</span>])</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">predict</span>(<span class="params">self, X</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;批量预测：每个样本都走一遍树&quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">return</span> torch.tensor([<span class="variable language_">self</span>._predict_one(x, <span class="variable language_">self</span>.tree) <span class="keyword">for</span> x <span class="keyword">in</span> X])</span><br><span class="line">        <span class="comment"># 列表推导：对 X 的每一行 x 调用 _predict_one</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造数据并测试 ----------</span></span><br><span class="line">X = torch.randn(<span class="number">200</span>, <span class="number">2</span>)                        <span class="comment"># 200 样本 2 特征</span></span><br><span class="line">y = (X[:, <span class="number">0</span>] + X[:, <span class="number">1</span>] &gt; <span class="number">0</span>).long()             <span class="comment"># 线性可分规则</span></span><br><span class="line"></span><br><span class="line">tree = DecisionTree(max_depth=<span class="number">4</span>).fit(X, y)     <span class="comment"># 训练=建树</span></span><br><span class="line">pred = tree.predict(X)                         <span class="comment"># 预测</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;决策树训练准确率: <span class="subst">&#123;(pred == y).<span class="built_in">float</span>().mean().item():<span class="number">.3</span>f&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-原理的应用"><a href="#5-3-原理的应用" class="headerlink" title="5.3 原理的应用"></a>5.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>风控规则</td>
+<td>可解释的审批规则</td>
+</tr>
+<tr>
+<td>特征筛选</td>
+<td>决策树可看特征重要性</td>
+</tr>
+<tr>
+<td>可解释 AI</td>
+<td>医疗&#x2F;金融需要”为什么”</td>
+</tr>
+<tr>
+<td>随机森林基座</td>
+<td>集成学习的基础模型</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="6-支持向量机（SVM）"><a href="#6-支持向量机（SVM）" class="headerlink" title="6. 支持向量机（SVM）"></a>6. 支持向量机（SVM）</h2><h3 id="6-1-原理"><a href="#6-1-原理" class="headerlink" title="6.1 原理"></a>6.1 原理</h3><p>找一个<strong>最大间隔超平面</strong>分开两类：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">目标：最大化间隔 2/‖w‖  ⇔  最小化 ‖w‖²</span><br><span class="line">约束：y·(w·x + b) ≥ 1（每个样本都正确分类且离边界够远）</span><br></pre></td></tr></table></figure>
+
+<p>对不可分数据用<strong>合页损失（hinge loss）</strong> + 正则项：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">L = (1/n)·Σ max(0, 1 - y·(w·x + b)) + λ·‖w‖²</span><br></pre></td></tr></table></figure>
+
+<p><strong>训练算法</strong>：梯度下降（现代实现）；经典是 SMO 对偶求解。</p>
+<h3 id="6-2-落地代码（PyTorch-线性-SVM，逐行注释）"><a href="#6-2-落地代码（PyTorch-线性-SVM，逐行注释）" class="headerlink" title="6.2 落地代码（PyTorch 线性 SVM，逐行注释）"></a>6.2 落地代码（PyTorch 线性 SVM，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 1. 造数据：标签用 ±1（SVM 的数学形式要求 ±1） ----------</span></span><br><span class="line">X = torch.randn(<span class="number">300</span>, <span class="number">2</span>)                                  <span class="comment"># 300 样本 2 特征</span></span><br><span class="line">y = (X[:, <span class="number">0</span>] * <span class="number">1.5</span> - X[:, <span class="number">1</span>] &gt; <span class="number">0</span>).<span class="built_in">float</span>() * <span class="number">2</span> - <span class="number">1</span></span><br><span class="line"><span class="comment"># 先把布尔转成 0/1，再 ×2-1 变成 -1/+1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 2. 模型：线性层（输出 y_pred = w·x + b，不套激活） ----------</span></span><br><span class="line">model = nn.Linear(<span class="number">2</span>, <span class="number">1</span>)</span><br><span class="line">optimizer = torch.optim.SGD(model.parameters(), lr=<span class="number">0.05</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">hinge_loss</span>(<span class="params">pred, y_true</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;合页损失：对应原理 L = max(0, 1 - y·(w·x+b))</span></span><br><span class="line"><span class="string">    直觉：预测符号正确且置信度≥1 → 损失0；否则按偏差线性惩罚&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> torch.mean(torch.clamp(<span class="number">1</span> - y_true * pred, <span class="built_in">min</span>=<span class="number">0</span>))</span><br><span class="line">    <span class="comment"># y·pred：同号为正（分类对），异号为负（分类错）</span></span><br><span class="line">    <span class="comment"># clamp(min=0)：max(0, ·) 截断负值 → 只有 y·pred&lt;1 的样本才产生损失</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 3. 训练 ----------</span></span><br><span class="line"><span class="keyword">for</span> epoch <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">300</span>):</span><br><span class="line">    optimizer.zero_grad()                        <span class="comment"># 清零梯度</span></span><br><span class="line">    pred = model(X).squeeze()</span><br><span class="line">    <span class="comment"># squeeze() 去掉形状里多余的维度1：(300,1) → (300,)，方便和 y 逐元素运算</span></span><br><span class="line">    loss = hinge_loss(pred, y) + <span class="number">0.01</span> * (model.weight ** <span class="number">2</span>).<span class="built_in">sum</span>()</span><br><span class="line">    <span class="comment"># 损失 = 合页损失 + λ‖w‖²（L2 正则，鼓励大间隔，λ=0.01）</span></span><br><span class="line">    loss.backward()                              <span class="comment"># 反向传播求梯度</span></span><br><span class="line">    optimizer.step()                             <span class="comment"># 梯度下降更新 w,b</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 4. 评估 ----------</span></span><br><span class="line">pred_label = torch.sign(model(X).squeeze())</span><br><span class="line"><span class="comment"># sign：预测值&gt;0 → +1，&lt;0 → -1，转成类别标签</span></span><br><span class="line">acc = (pred_label == y).<span class="built_in">float</span>().mean().item()</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;SVM 训练准确率: <span class="subst">&#123;acc:<span class="number">.3</span>f&#125;</span>  损失: <span class="subst">&#123;loss.item():<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-原理的应用"><a href="#6-3-原理的应用" class="headerlink" title="6.3 原理的应用"></a>6.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>文本分类</td>
+<td>高维稀疏特征效果好</td>
+</tr>
+<tr>
+<td>图像分类（小规模）</td>
+<td>手写数字识别经典案例</td>
+</tr>
+<tr>
+<td>异常检测</td>
+<td>一类 SVM 找离群</td>
+</tr>
+<tr>
+<td>小样本高维</td>
+<td>特征多、样本少时稳</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="7-算法选择速查"><a href="#7-算法选择速查" class="headerlink" title="7. 算法选择速查"></a>7. 算法选择速查</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>首选算法</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>预测连续值</td>
+<td>线性回归</td>
+<td>简单可解释</td>
+</tr>
+<tr>
+<td>二分类概率输出</td>
+<td>逻辑回归</td>
+<td>输出可当概率</td>
+</tr>
+<tr>
+<td>数据少、可解释</td>
+<td>决策树</td>
+<td>规则透明</td>
+</tr>
+<tr>
+<td>文本&#x2F;高维稀疏</td>
+<td>朴素贝叶斯 &#x2F; SVM</td>
+<td>训练快、抗过拟合</td>
+</tr>
+<tr>
+<td>低维小样本</td>
+<td>KNN</td>
+<td>无需训练</td>
+</tr>
+<tr>
+<td>特征工程强</td>
+<td>SVM</td>
+<td>核技巧强</td>
+</tr>
+<tr>
+<td>大数据非线性</td>
+<td>（见集成&#x2F;神经网络篇）</td>
+<td>下一篇</td>
+</tr>
+</tbody></table>
+<h2 id="训练算法小结（本片核心）"><a href="#训练算法小结（本片核心）" class="headerlink" title="训练算法小结（本片核心）"></a>训练算法小结（本片核心）</h2><table>
+<thead>
+<tr>
+<th>训练算法</th>
+<th>适用</th>
+<th>一句话原理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>梯度下降</td>
+<td>线性&#x2F;逻辑回归、SVM、神经网络</td>
+<td>沿负梯度更新参数</td>
+</tr>
+<tr>
+<td>统计估计</td>
+<td>朴素贝叶斯</td>
+<td>直接统计先验与似然</td>
+</tr>
+<tr>
+<td>贪心搜索</td>
+<td>决策树</td>
+<td>枚举最优划分</td>
+</tr>
+<tr>
+<td>惰性记忆</td>
+<td>KNN</td>
+<td>不训练，预测时查邻居</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/linux-common-commands/" rel="prev" title="Linux 运维常用命令手册">
+                  <i class="fa fa-angle-left"></i> Linux 运维常用命令手册
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/ai-ml-unsupervised-algorithms/" rel="next" title="AI 无监督学习算法详解与落地（PyTorch CPU）">
+                  AI 无监督学习算法详解与落地（PyTorch CPU） <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

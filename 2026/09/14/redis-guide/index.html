@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="Redis · 缓存 从 0 到生产实践。Redis 8 · 五种核心数据结构 · 安装部署 · 持久化 · 缓存三兄弟 · Spring Boot 集成 · 分布式锁。代码带详细注释。  技术栈速查   类别 选型 用途    数据库 Redis 8.x 内存键值数据库   部署 Docker 本地与生产   客户端 redis-cli &#x2F; RedisInsight 命令行与 GUI">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis 从入门到落地">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/redis-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="Redis · 缓存 从 0 到生产实践。Redis 8 · 五种核心数据结构 · 安装部署 · 持久化 · 缓存三兄弟 · Spring Boot 集成 · 分布式锁。代码带详细注释。  技术栈速查   类别 选型 用途    数据库 Redis 8.x 内存键值数据库   部署 Docker 本地与生产   客户端 redis-cli &#x2F; RedisInsight 命令行与 GUI">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T08:25:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.915Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/redis-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/redis-guide/","path":"2026/09/14/redis-guide/","title":"Redis 从入门到落地"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Redis 从入门到落地 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Redis-%C2%B7-%E7%BC%93%E5%AD%98"><span class="nav-number">1.</span> <span class="nav-text">Redis · 缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2"><span class="nav-number">1.3.</span> <span class="nav-text">2. 安装部署</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E6%A0%B8%E5%BF%83%E5%91%BD%E4%BB%A4%E5%AE%9E%E6%88%98"><span class="nav-number">1.4.</span> <span class="nav-text">3. 核心命令实战</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E6%8C%81%E4%B9%85%E5%8C%96%EF%BC%88RDB-AOF%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 持久化（RDB + AOF）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E7%BC%93%E5%AD%98%E4%B8%89%E5%A4%A7%E9%97%AE%E9%A2%98%EF%BC%88%E5%BF%85%E8%80%83%E5%BF%85%E4%BC%9A%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 缓存三大问题（必考必会）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E7%BC%93%E5%AD%98%E7%A9%BF%E9%80%8F%EF%BC%88%E6%9F%A5%E4%B8%8D%E5%AD%98%E5%9C%A8%E7%9A%84%E6%95%B0%E6%8D%AE%EF%BC%89"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 缓存穿透（查不存在的数据）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E7%BC%93%E5%AD%98%E5%87%BB%E7%A9%BF%EF%BC%88%E7%83%AD%E7%82%B9-key-%E8%BF%87%E6%9C%9F%E7%9E%AC%E9%97%B4%EF%BC%89"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 缓存击穿（热点 key 过期瞬间）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E7%BC%93%E5%AD%98%E9%9B%AA%E5%B4%A9%EF%BC%88%E5%A4%A7%E9%87%8F-key-%E5%90%8C%E6%97%B6%E8%BF%87%E6%9C%9F-Redis-%E5%AE%95%E6%9C%BA%EF%BC%89"><span class="nav-number">1.6.3.</span> <span class="nav-text">5.3 缓存雪崩（大量 key 同时过期 &#x2F; Redis 宕机）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-Spring-Boot-%E9%9B%86%E6%88%90"><span class="nav-number">1.7.</span> <span class="nav-text">6. Spring Boot 集成</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E4%BE%9D%E8%B5%96%E4%B8%8E%E9%85%8D%E7%BD%AE"><span class="nav-number">1.7.1.</span> <span class="nav-text">6.1 依赖与配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-%E4%B8%9A%E5%8A%A1%E5%B0%81%E8%A3%85%EF%BC%88%E7%BC%93%E5%AD%98-%E7%A9%BA%E5%80%BC%E9%98%B2%E6%8A%A4-%E9%9A%8F%E6%9C%BA%E8%BF%87%E6%9C%9F%EF%BC%89"><span class="nav-number">1.7.2.</span> <span class="nav-text">6.2 业务封装（缓存 + 空值防护 + 随机过期）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%EF%BC%88Redisson%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">7. 分布式锁（Redisson）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E7%BC%93%E5%AD%98%E4%B8%80%E8%87%B4%E6%80%A7%E6%96%B9%E6%A1%88"><span class="nav-number">1.9.</span> <span class="nav-text">8. 缓存一致性方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E7%94%9F%E4%BA%A7%E8%90%BD%E5%9C%B0%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="nav-number">1.10.</span> <span class="nav-text">9. 生产落地检查清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.11.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/redis-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Redis 从入门到落地 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Redis 从入门到落地
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 16:25:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T16:25:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="Redis-·-缓存"><a href="#Redis-·-缓存" class="headerlink" title="Redis · 缓存"></a>Redis · 缓存</h1><blockquote>
+<p>从 0 到生产实践。Redis 8 · 五种核心数据结构 · 安装部署 · 持久化 · 缓存三兄弟 · Spring Boot 集成 · 分布式锁。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数据库</td>
+<td>Redis 8.x</td>
+<td>内存键值数据库</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>Docker</td>
+<td>本地与生产</td>
+</tr>
+<tr>
+<td>客户端</td>
+<td>redis-cli &#x2F; RedisInsight</td>
+<td>命令行与 GUI</td>
+</tr>
+<tr>
+<td>Java</td>
+<td>spring-boot-starter-data-redis</td>
+<td>应用集成</td>
+</tr>
+<tr>
+<td>锁</td>
+<td>Redisson</td>
+<td>分布式锁</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p>Redis 是<strong>基于内存的高性能键值数据库</strong>：单线程（6.x 前）事件循环 + IO 多路复用，吞吐可达 10 万+ QPS。定位是<strong>缓存与中间件</strong>，不是主存储（数据可丢失场景除外）。</p>
+<p><strong>五种核心数据结构</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>结构</th>
+<th>说明</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>String</td>
+<td>字符串&#x2F;数字</td>
+<td>缓存、计数器、分布式锁</td>
+</tr>
+<tr>
+<td>Hash</td>
+<td>字段-值映射</td>
+<td>对象存储、购物车</td>
+</tr>
+<tr>
+<td>List</td>
+<td>双向链表</td>
+<td>消息队列、时间线</td>
+</tr>
+<tr>
+<td>Set</td>
+<td>无序去重集合</td>
+<td>标签、共同好友</td>
+</tr>
+<tr>
+<td>ZSet</td>
+<td>有序集合（分数排序）</td>
+<td>排行榜、延迟队列</td>
+</tr>
+</tbody></table>
+<p><strong>Redis 8 新增</strong>：Redis 8.0（2025 年发布）带来原生向量检索（Redis Vector Sets）、增强持久化等能力，是当前主推版本。</p>
+<h2 id="2-安装部署"><a href="#2-安装部署" class="headerlink" title="2. 安装部署"></a>2. 安装部署</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动 Redis（\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name redis -p 6379:6379 \</span><br><span class="line">  -v redis-data:/data \</span><br><span class="line">  redis:8 redis-server --appendonly <span class="built_in">yes</span>   <span class="comment"># 开启 AOF 持久化</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 进入客户端</span></span><br><span class="line">docker <span class="built_in">exec</span> -it redis redis-cli</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-核心命令实战"><a href="#3-核心命令实战" class="headerlink" title="3. 核心命令实战"></a>3. 核心命令实战</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># String：缓存与计数器</span></span><br><span class="line">SET user:1001 <span class="string">&#x27;&#123;&quot;name&quot;:&quot;alice&quot;&#125;&#x27;</span> EX 300    <span class="comment"># 缓存 300 秒</span></span><br><span class="line">GET user:1001</span><br><span class="line">INCR views:article:9                       <span class="comment"># 自增（点赞/浏览量）</span></span><br><span class="line">SETNX lock:order:1 1                       <span class="comment"># 不存在才设置（锁原语）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Hash：对象</span></span><br><span class="line">HSET cart:1001 apple 2 banana 3</span><br><span class="line">HGETALL cart:1001</span><br><span class="line">HINCRBY cart:1001 apple 1</span><br><span class="line"></span><br><span class="line"><span class="comment"># List：队列</span></span><br><span class="line">LPUSH queue:email a@x.com</span><br><span class="line">BRPOP queue:email 0                        <span class="comment"># 阻塞取（队列）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set：去重与集合运算</span></span><br><span class="line">SADD tags:java spring boot</span><br><span class="line">SINTER tags:java tags:backend               <span class="comment"># 交集</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ZSet：排行榜</span></span><br><span class="line">ZADD rank:score 100 alice 90 bob</span><br><span class="line">ZREVRANGE rank:score 0 9 WITHSCORES         <span class="comment"># 前 10 名</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 通用</span></span><br><span class="line">KEYS user:*                               <span class="comment"># 慎用（生产用 SCAN）</span></span><br><span class="line">SCAN 0 MATCH user:* COUNT 100              <span class="comment"># 游标遍历</span></span><br><span class="line">TTL user:1001                             <span class="comment"># 剩余过期时间</span></span><br><span class="line">EXPIRE user:1001 600                      <span class="comment"># 设过期</span></span><br><span class="line">DEL user:1001</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-持久化（RDB-AOF）"><a href="#4-持久化（RDB-AOF）" class="headerlink" title="4. 持久化（RDB + AOF）"></a>4. 持久化（RDB + AOF）</h2><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>原理</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RDB</td>
+<td>定时生成全量快照</td>
+<td>文件小、恢复快，可能丢最后一次快照后数据</td>
+</tr>
+<tr>
+<td>AOF</td>
+<td>追加写命令日志</td>
+<td>数据更安全，文件大、恢复慢</td>
+</tr>
+<tr>
+<td>混合（推荐）</td>
+<td>RDB 全量 + AOF 增量</td>
+<td>兼顾两者</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生产建议配置（redis.conf）</span></span><br><span class="line">appendonly <span class="built_in">yes</span></span><br><span class="line">appendfsync everysec          <span class="comment"># 每秒刷盘（折中）</span></span><br><span class="line">save 900 1                    <span class="comment"># RDB：900 秒内 1 次变更</span></span><br><span class="line">save 300 10</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-缓存三大问题（必考必会）"><a href="#5-缓存三大问题（必考必会）" class="headerlink" title="5. 缓存三大问题（必考必会）"></a>5. 缓存三大问题（必考必会）</h2><h3 id="5-1-缓存穿透（查不存在的数据）"><a href="#5-1-缓存穿透（查不存在的数据）" class="headerlink" title="5.1 缓存穿透（查不存在的数据）"></a>5.1 缓存穿透（查不存在的数据）</h3><p>现象：恶意查询不存在的 key，每次都打到数据库。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方案一：缓存空值</span></span><br><span class="line">SET user:9999 <span class="string">&quot;&quot;</span> EX 120</span><br><span class="line"><span class="comment"># 方案二：布隆过滤器（多层过滤不存在 key）</span></span><br><span class="line"><span class="comment"># 方案三：参数校验（非法 id 直接拒绝）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-缓存击穿（热点-key-过期瞬间）"><a href="#5-2-缓存击穿（热点-key-过期瞬间）" class="headerlink" title="5.2 缓存击穿（热点 key 过期瞬间）"></a>5.2 缓存击穿（热点 key 过期瞬间）</h3><p>现象：热点 key 过期，大量请求同时打到数据库。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 互斥锁重建缓存</span></span><br><span class="line"><span class="type">String</span> <span class="variable">lockKey</span> <span class="operator">=</span> <span class="string">&quot;lock:product:&quot;</span> + id;                       <span class="comment">// 锁 key</span></span><br><span class="line"><span class="keyword">if</span> (redis.setIfAbsent(lockKey, <span class="string">&quot;1&quot;</span>, Duration.ofSeconds(<span class="number">5</span>))) &#123;   <span class="comment">// 抢锁（只一个成功）</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="type">Product</span> <span class="variable">p</span> <span class="operator">=</span> db.query(id);          <span class="comment">// 只有一个线程查库</span></span><br><span class="line">        redis.set(cacheKey, json(p), Duration.ofMinutes(<span class="number">30</span>));   <span class="comment">// 回填</span></span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        redis.delete(lockKey);             <span class="comment">// 释放锁</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 其他线程短暂返回旧值或等待</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-缓存雪崩（大量-key-同时过期-Redis-宕机）"><a href="#5-3-缓存雪崩（大量-key-同时过期-Redis-宕机）" class="headerlink" title="5.3 缓存雪崩（大量 key 同时过期 &#x2F; Redis 宕机）"></a>5.3 缓存雪崩（大量 key 同时过期 &#x2F; Redis 宕机）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方案一：过期时间加随机值（避免同时过期）</span></span><br><span class="line">SET key value EX 300    <span class="comment"># 实际 300 + random(0,60)</span></span><br><span class="line"><span class="comment"># 方案二：多级缓存（本地缓存 Caffeine + Redis）</span></span><br><span class="line"><span class="comment"># 方案三：Redis 高可用（哨兵/集群）+ 限流降级</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="6-Spring-Boot-集成"><a href="#6-Spring-Boot-集成" class="headerlink" title="6. Spring Boot 集成"></a>6. Spring Boot 集成</h2><h3 id="6-1-依赖与配置"><a href="#6-1-依赖与配置" class="headerlink" title="6.1 依赖与配置"></a>6.1 依赖与配置</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-data-redis<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Redis 客户端 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.redisson<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>redisson-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.47.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Redisson 分布式锁 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">data:</span></span><br><span class="line">    <span class="attr">redis:</span></span><br><span class="line">      <span class="attr">host:</span> <span class="string">localhost</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">6379</span></span><br><span class="line">      <span class="attr">timeout:</span> <span class="string">3s</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-业务封装（缓存-空值防护-随机过期）"><a href="#6-2-业务封装（缓存-空值防护-随机过期）" class="headerlink" title="6.2 业务封装（缓存 + 空值防护 + 随机过期）"></a>6.2 业务封装（缓存 + 空值防护 + 随机过期）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="meta">@RequiredArgsConstructor</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">CacheService</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> StringRedisTemplate redis;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">ObjectMapper</span> <span class="variable">OM</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ObjectMapper</span>();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; T <span class="title function_">getWithCache</span><span class="params">(String key, Class&lt;T&gt; type,</span></span><br><span class="line"><span class="params">                              <span class="type">long</span> ttlSeconds, Supplier&lt;T&gt; loader)</span> &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">json</span> <span class="operator">=</span> redis.opsForValue().get(key);   <span class="comment">// 1. 查缓存</span></span><br><span class="line">        <span class="keyword">if</span> (json != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (json.isEmpty()) <span class="keyword">return</span> <span class="literal">null</span>;         <span class="comment">// 空值缓存</span></span><br><span class="line">            <span class="keyword">return</span> OM.readValue(json, type);          <span class="comment">// 反序列化</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="type">T</span> <span class="variable">value</span> <span class="operator">=</span> loader.get();                       <span class="comment">// 2. 查数据库</span></span><br><span class="line">        <span class="keyword">if</span> (value == <span class="literal">null</span>) &#123;</span><br><span class="line">            redis.opsForValue().set(key, <span class="string">&quot;&quot;</span>, Duration.ofSeconds(<span class="number">60</span>)); <span class="comment">// 防空穿透</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="type">long</span> <span class="variable">ttl</span> <span class="operator">=</span> ttlSeconds + ThreadLocalRandom.current().nextLong(<span class="number">0</span>, <span class="number">60</span>);   <span class="comment">// 随机过期</span></span><br><span class="line">            redis.opsForValue().set(key, OM.writeValueAsString(value), Duration.ofSeconds(ttl));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> value;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-分布式锁（Redisson）"><a href="#7-分布式锁（Redisson）" class="headerlink" title="7. 分布式锁（Redisson）"></a>7. 分布式锁（Redisson）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="meta">@RequiredArgsConstructor</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">StockService</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> RedissonClient redisson;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">deduct</span><span class="params">(Long productId, <span class="type">int</span> qty)</span> &#123;</span><br><span class="line">        <span class="type">RLock</span> <span class="variable">lock</span> <span class="operator">=</span> redisson.getLock(<span class="string">&quot;lock:stock:&quot;</span> + productId);   <span class="comment">// 获取锁</span></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (!lock.tryLock(<span class="number">3</span>, TimeUnit.SECONDS)) <span class="keyword">return</span> <span class="literal">false</span>;   <span class="comment">// 抢锁（3 秒超时）</span></span><br><span class="line">            <span class="keyword">return</span> doDeduct(productId, qty);      <span class="comment">// 查库扣减</span></span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (lock.isHeldByCurrentThread()) lock.unlock();   <span class="comment">// 持锁才释放</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-缓存一致性方案"><a href="#8-缓存一致性方案" class="headerlink" title="8. 缓存一致性方案"></a>8. 缓存一致性方案</h2><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>做法</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cache Aside（推荐）</td>
+<td>读：先缓存后库；写：先更新库再删缓存</td>
+<td>简单，靠过期兜底</td>
+</tr>
+<tr>
+<td>延迟双删</td>
+<td>删缓存 → 更新库 → 延迟 500ms 再删</td>
+<td>缓解并发不一致</td>
+</tr>
+<tr>
+<td>订阅 binlog</td>
+<td>Canal 监听 MySQL binlog 同步删除缓存</td>
+<td>彻底解耦</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Cache Aside 写流程</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">updateProduct</span><span class="params">(Long id, Product p)</span> &#123;</span><br><span class="line">    productMapper.updateById(p);             <span class="comment">// 1. 更新数据库</span></span><br><span class="line">    redis.delete(<span class="string">&quot;cache:product:&quot;</span> + id);     <span class="comment">// 2. 删除缓存</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="9-生产落地检查清单"><a href="#9-生产落地检查清单" class="headerlink" title="9. 生产落地检查清单"></a>9. 生产落地检查清单</h2><table>
+<thead>
+<tr>
+<th>项</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>密码与 ACL</td>
+<td>生产必须 requirepass + 独立用户</td>
+</tr>
+<tr>
+<td>内存上限</td>
+<td><code>maxmemory 4gb</code> + 淘汰策略 <code>allkeys-lru</code></td>
+</tr>
+<tr>
+<td>持久化</td>
+<td>appendonly yes</td>
+</tr>
+<tr>
+<td>禁用命令</td>
+<td><code>rename-command KEYS &quot;&quot;</code>（防误用阻塞）</td>
+</tr>
+<tr>
+<td>慢查询监控</td>
+<td><code>SLOWLOG GET 10</code></td>
+</tr>
+<tr>
+<td>高可用</td>
+<td>生产用哨兵或集群（见进阶篇）</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动参数示例（\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name redis -p 6379:6379 \</span><br><span class="line">  -v /etc/redis/redis.conf:/usr/local/etc/redis/redis.conf \</span><br><span class="line">  redis:8 redis-server /usr/local/etc/redis/redis.conf</span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">redis-cli PING                     <span class="comment"># 连通</span></span><br><span class="line">redis-cli INFO memory              <span class="comment"># 内存</span></span><br><span class="line">redis-cli MONITOR                  <span class="comment"># 实时命令（排障，生产慎用）</span></span><br><span class="line">redis-cli SLOWLOG GET 5            <span class="comment"># 慢查询</span></span><br><span class="line">docker <span class="built_in">exec</span> redis redis-cli --<span class="built_in">stat</span> <span class="comment"># 实时统计</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/python-guide/" rel="prev" title="Python 从入门到落地">
+                  <i class="fa fa-angle-left"></i> Python 从入门到落地
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/redis-advanced-guide/" rel="next" title="Redis 进阶实战">
+                  Redis 进阶实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

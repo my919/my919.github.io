@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="分布式 · 系统 从 0 到落地实践。CAP&#x2F;BASE 理论 · 分布式锁 · 分布式 ID · 幂等设计 · 分布式事务 · 链路追踪 · 高可用架构。代码带详细注释。  技术栈速查   类别 选型 用途    分布式锁 Redisson Redis 分布式锁   分布式 ID 雪花算法 &#x2F; 号段模式 全局唯一 ID   分布式事务 Seata AT 模式 跨服务事务   链">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式系统从入门到落地">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/distributed-system-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="分布式 · 系统 从 0 到落地实践。CAP&#x2F;BASE 理论 · 分布式锁 · 分布式 ID · 幂等设计 · 分布式事务 · 链路追踪 · 高可用架构。代码带详细注释。  技术栈速查   类别 选型 用途    分布式锁 Redisson Redis 分布式锁   分布式 ID 雪花算法 &#x2F; 号段模式 全局唯一 ID   分布式事务 Seata AT 模式 跨服务事务   链">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T07:00:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.125Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/distributed-system-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/distributed-system-guide/","path":"2026/09/14/distributed-system-guide/","title":"分布式系统从入门到落地"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>分布式系统从入门到落地 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F-%C2%B7-%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.</span> <span class="nav-text">分布式 · 系统</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%EF%BC%88Redis-Redisson%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">2. 分布式锁（Redis + Redisson）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E4%BE%9D%E8%B5%96%E4%B8%8E%E9%85%8D%E7%BD%AE"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 依赖与配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E4%BD%BF%E7%94%A8-Redisson-%E9%94%81"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 使用 Redisson 锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%88%86%E5%B8%83%E5%BC%8F-ID-%E6%96%B9%E6%A1%88"><span class="nav-number">1.4.</span> <span class="nav-text">3. 分布式 ID 方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E5%B9%82%E7%AD%89%E8%AE%BE%E8%AE%A1%EF%BC%88%E5%88%86%E5%B8%83%E5%BC%8F%E5%BF%85%E8%80%83%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 幂等设计（分布式必考）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%EF%BC%88Seata-AT-%E6%A8%A1%E5%BC%8F%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 分布式事务（Seata AT 模式）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E9%83%A8%E7%BD%B2-Seata-Server"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 部署 Seata Server</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E5%BC%95%E5%85%A5%E4%BE%9D%E8%B5%96%E4%B8%8E%E9%85%8D%E7%BD%AE"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 引入依赖与配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%85%A8%E5%B1%80%E4%BA%8B%E5%8A%A1%E6%B3%A8%E8%A7%A3"><span class="nav-number">1.6.3.</span> <span class="nav-text">5.3 全局事务注解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E9%93%BE%E8%B7%AF%E8%BF%BD%E8%B8%AA%EF%BC%88Micrometer-Tracing-Zipkin%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">6. 链路追踪（Micrometer Tracing + Zipkin）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9E%B6%E6%9E%84%E8%90%BD%E5%9C%B0"><span class="nav-number">1.8.</span> <span class="nav-text">7. 高可用架构落地</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%B8%B8%E8%A7%81%E5%88%86%E5%B8%83%E5%BC%8F%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5"><span class="nav-number">1.9.</span> <span class="nav-text">8. 常见分布式故障排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/distributed-system-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="分布式系统从入门到落地 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          分布式系统从入门到落地
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 15:00:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T15:00:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="分布式-·-系统"><a href="#分布式-·-系统" class="headerlink" title="分布式 · 系统"></a>分布式 · 系统</h1><blockquote>
+<p>从 0 到落地实践。CAP&#x2F;BASE 理论 · 分布式锁 · 分布式 ID · 幂等设计 · 分布式事务 · 链路追踪 · 高可用架构。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>分布式锁</td>
+<td>Redisson</td>
+<td>Redis 分布式锁</td>
+</tr>
+<tr>
+<td>分布式 ID</td>
+<td>雪花算法 &#x2F; 号段模式</td>
+<td>全局唯一 ID</td>
+</tr>
+<tr>
+<td>分布式事务</td>
+<td>Seata AT 模式</td>
+<td>跨服务事务</td>
+</tr>
+<tr>
+<td>链路追踪</td>
+<td>Micrometer Tracing + Zipkin</td>
+<td>调用链观测</td>
+</tr>
+<tr>
+<td>注册中心</td>
+<td>Nacos</td>
+<td>服务发现与配置</td>
+</tr>
+<tr>
+<td>语言</td>
+<td>Java 21 + Spring Boot 4</td>
+<td>落地载体</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>分布式系统</strong>是把一个系统拆成多个独立部署、通过网络协作的节点。带来的核心矛盾：<strong>网络不可靠 + 节点会失败</strong>。</p>
+<p><strong>CAP 定理</strong>：分布式系统无法同时保证一致性（C）、可用性（A）、分区容错性（P），网络分区必然发生（P 必选），只能在 C 和 A 之间取舍。</p>
+<p><strong>BASE 理论</strong>（AP 系统的落地指导）：</p>
+<ul>
+<li><strong>Basically Available</strong>：基本可用（降级、限流）</li>
+<li><strong>Soft State</strong>：软状态（允许中间态）</li>
+<li><strong>Eventually Consistent</strong>：最终一致</li>
+</ul>
+<p><strong>分布式系统三大基础设施问题</strong>：分布式锁（多节点互斥）、分布式 ID（全局唯一）、分布式事务（跨库一致性）。</p>
+<h2 id="2-分布式锁（Redis-Redisson）"><a href="#2-分布式锁（Redis-Redisson）" class="headerlink" title="2. 分布式锁（Redis + Redisson）"></a>2. 分布式锁（Redis + Redisson）</h2><p>场景：多个实例同时扣减库存，本地锁失效，必须用分布式锁。</p>
+<h3 id="2-1-依赖与配置"><a href="#2-1-依赖与配置" class="headerlink" title="2.1 依赖与配置"></a>2.1 依赖与配置</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.redisson<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>redisson-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.47.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Redisson 分布式锁 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">data:</span></span><br><span class="line">    <span class="attr">redis:</span></span><br><span class="line">      <span class="attr">host:</span> <span class="string">localhost</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">6379</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-使用-Redisson-锁"><a href="#2-2-使用-Redisson-锁" class="headerlink" title="2.2 使用 Redisson 锁"></a>2.2 使用 Redisson 锁</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="meta">@RequiredArgsConstructor</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">StockService</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> RedissonClient redisson;   <span class="comment">// Redisson 客户端</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">deduct</span><span class="params">(Long productId, <span class="type">int</span> qty)</span> &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">lockKey</span> <span class="operator">=</span> <span class="string">&quot;lock:stock:&quot;</span> + productId;   <span class="comment">// 锁键（按商品）</span></span><br><span class="line">        <span class="type">RLock</span> <span class="variable">lock</span> <span class="operator">=</span> redisson.getLock(lockKey);       <span class="comment">// 获取锁对象</span></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 等待 3 秒拿锁，锁自动续期 30 秒（看门狗）</span></span><br><span class="line">            <span class="keyword">if</span> (!lock.tryLock(<span class="number">3</span>, TimeUnit.SECONDS)) &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">false</span>;   <span class="comment">// 拿不到锁直接失败</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 业务：查库存 → 扣减（此时其他实例被互斥）</span></span><br><span class="line">            <span class="keyword">return</span> doDeduct(productId, qty);</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (lock.isHeldByCurrentThread()) &#123;   <span class="comment">// 当前线程持有才释放</span></span><br><span class="line">                lock.unlock();   <span class="comment">// 必须释放</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么不用 SETNX 手写</strong>：Redisson 自带<strong>看门狗自动续期</strong>（防止业务未完成锁过期）与<strong>可重入</strong>，手写容易踩坑（超时删除别人锁、锁泄漏）。</p>
+<h2 id="3-分布式-ID-方案"><a href="#3-分布式-ID-方案" class="headerlink" title="3. 分布式 ID 方案"></a>3. 分布式 ID 方案</h2><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>特点</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>UUID</td>
+<td>无序、长、无业务含义</td>
+<td>内部标识</td>
+</tr>
+<tr>
+<td>数据库自增</td>
+<td>单点瓶颈</td>
+<td>小并发</td>
+</tr>
+<tr>
+<td>号段模式（Leaf）</td>
+<td>批量取号、性能好</td>
+<td>中大型业务</td>
+</tr>
+<tr>
+<td>雪花算法</td>
+<td>趋势递增、全局唯一</td>
+<td>主流默认</td>
+</tr>
+</tbody></table>
+<p>雪花算法 ID &#x3D; 1bit 符号 + 41bit 时间戳 + 10bit 机器 + 12bit 序列。用 MyBatis-Plus 内置实现：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Bean</span></span><br><span class="line"><span class="keyword">public</span> IdentifierGenerator <span class="title function_">idGenerator</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">DefaultIdentifierGenerator</span>();   <span class="comment">// 基于雪花算法</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 实体主键自动填充</span></span><br><span class="line"><span class="meta">@TableId(type = IdType.ASSIGN_ID)</span>   <span class="comment">// 由雪花算法生成</span></span><br><span class="line"><span class="keyword">private</span> Long id;</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-幂等设计（分布式必考）"><a href="#4-幂等设计（分布式必考）" class="headerlink" title="4. 幂等设计（分布式必考）"></a>4. 幂等设计（分布式必考）</h2><p><strong>幂等</strong>：同一请求执行一次和多次结果一致。防重复提交三件套：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="meta">@RequiredArgsConstructor</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderIdempotentService</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> StringRedisTemplate redis;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 下单前获取幂等令牌</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getToken</span><span class="params">(Long userId)</span> &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">token</span> <span class="operator">=</span> UUID.randomUUID().toString();   <span class="comment">// 唯一令牌</span></span><br><span class="line">        redis.opsForValue().set(<span class="string">&quot;idem:&quot;</span> + userId + <span class="string">&quot;:&quot;</span> + token, <span class="string">&quot;1&quot;</span>, Duration.ofMinutes(<span class="number">10</span>));</span><br><span class="line">        <span class="comment">// 存 10 分钟</span></span><br><span class="line">        <span class="keyword">return</span> token;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 提交时校验并删除（原子操作防并发重复）</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">checkAndConsume</span><span class="params">(Long userId, String token)</span> &#123;</span><br><span class="line">        <span class="type">Boolean</span> <span class="variable">ok</span> <span class="operator">=</span> redis.delete(<span class="string">&quot;idem:&quot;</span> + userId + <span class="string">&quot;:&quot;</span> + token);   <span class="comment">// 原子删除</span></span><br><span class="line">        <span class="keyword">return</span> Boolean.TRUE.equals(ok);   <span class="comment">// delete 成功=唯一一次</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其他幂等手段：数据库唯一索引（重复插入报错）、状态机（只有特定状态可转移）、版本号（乐观锁）。</p>
+<h2 id="5-分布式事务（Seata-AT-模式）"><a href="#5-分布式事务（Seata-AT-模式）" class="headerlink" title="5. 分布式事务（Seata AT 模式）"></a>5. 分布式事务（Seata AT 模式）</h2><p>跨库扣库存 + 减余额必须保证一致性。</p>
+<h3 id="5-1-部署-Seata-Server"><a href="#5-1-部署-Seata-Server" class="headerlink" title="5.1 部署 Seata Server"></a>5.1 部署 Seata Server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动 Seata 服务端（\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name seata-server -p 8091:8091 \</span><br><span class="line">  -e SEATA_IP=127.0.0.1 \</span><br><span class="line">  seataio/seata-server:1.7.0</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-引入依赖与配置"><a href="#5-2-引入依赖与配置" class="headerlink" title="5.2 引入依赖与配置"></a>5.2 引入依赖与配置</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.alibaba.cloud<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-cloud-starter-alibaba-seata<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Seata 分布式事务 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">seata:</span></span><br><span class="line">  <span class="attr">tx-service-group:</span> <span class="string">default_tx_group</span>   <span class="comment"># 事务组</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">    <span class="attr">vgroup-mapping:</span></span><br><span class="line">      <span class="attr">default_tx_group:</span> <span class="string">default</span>        <span class="comment"># 组映射到集群</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-全局事务注解"><a href="#5-3-全局事务注解" class="headerlink" title="5.3 全局事务注解"></a>5.3 全局事务注解</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderServiceImpl</span> &#123;</span><br><span class="line">    <span class="meta">@GlobalTransactional(rollbackFor = Exception.class)</span>   <span class="comment">// 开启全局事务</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">createOrder</span><span class="params">(Long userId, Long productId)</span> &#123;</span><br><span class="line">        orderMapper.insert(order);          <span class="comment">// 本地事务 1：订单库</span></span><br><span class="line">        stockService.deduct(productId);     <span class="comment">// 本地事务 2：库存服务（AT 自动回滚）</span></span><br><span class="line">        accountService.deduct(userId, price);<span class="comment">// 本地事务 3：账户服务</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>AT 模式原理</strong>：Seata 拦截 SQL，生成 undo_log 镜像，任一服务失败则反向补偿回滚——业务代码零侵入。</p>
+<h2 id="6-链路追踪（Micrometer-Tracing-Zipkin）"><a href="#6-链路追踪（Micrometer-Tracing-Zipkin）" class="headerlink" title="6. 链路追踪（Micrometer Tracing + Zipkin）"></a>6. 链路追踪（Micrometer Tracing + Zipkin）</h2><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.micrometer<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>micrometer-tracing-bridge-brave<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- 追踪桥接 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.zipkin.reporter2<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>zipkin-reporter-brave<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Zipkin 上报 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 9411:9411 openzipkin/zipkin   <span class="comment"># 启动 Zipkin</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">management:</span></span><br><span class="line">  <span class="attr">tracing:</span></span><br><span class="line">    <span class="attr">sampling:</span></span><br><span class="line">      <span class="attr">probability:</span> <span class="number">1.0</span>   <span class="comment"># 采样率：生产建议 0.1 以下</span></span><br><span class="line">  <span class="attr">zipkin:</span></span><br><span class="line">    <span class="attr">tracing:</span></span><br><span class="line">      <span class="attr">endpoint:</span> <span class="string">http://localhost:9411/api/v2/spans</span>   <span class="comment"># 上报地址</span></span><br></pre></td></tr></table></figure>
+
+<p>启动服务后调用接口，访问 <code>http://localhost:9411</code> 查看完整调用链（每个跨服务调用自动生成 span）。</p>
+<h2 id="7-高可用架构落地"><a href="#7-高可用架构落地" class="headerlink" title="7. 高可用架构落地"></a>7. 高可用架构落地</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">┌───────────┐      ┌───────────┐</span><br><span class="line">│ LB 负载均衡│─────▶│ 服务实例 A │</span><br><span class="line">│ (Nginx)   │      ├───────────┤</span><br><span class="line">│           │─────▶│ 服务实例 B │   ← 多实例 + 注册中心</span><br><span class="line">└───────────┘      └───────────┘</span><br><span class="line">      │</span><br><span class="line">      ▼</span><br><span class="line">┌───────────┐ 主   ┌───────────┐</span><br><span class="line">│ MySQL 主  │─────▶│ MySQL 从  │   ← 读写分离</span><br><span class="line">└───────────┘      └───────────┘</span><br><span class="line">      ▲</span><br><span class="line">      │ 缓存</span><br><span class="line">┌───────────┐</span><br><span class="line">│ Redis 哨兵│   ← 高可用缓存</span><br><span class="line">└───────────┘</span><br></pre></td></tr></table></figure>
+
+<p>落地清单：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 多实例部署（至少 2 个）</span></span><br><span class="line">docker run -d -p 8081:8080 my-service</span><br><span class="line">docker run -d -p 8082:8080 my-service</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. Nginx 负载均衡</span></span><br><span class="line"><span class="comment"># upstream myapp &#123; server 127.0.0.1:8081; server 127.0.0.1:8082; &#125;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. Redis 哨兵模式（\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name redis-sentinel -p 26379:26379 \</span><br><span class="line">  -v ./sentinel.conf:/etc/redis/sentinel.conf \</span><br><span class="line">  redis:8 redis-server /etc/redis/sentinel.conf --sentinel</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-常见分布式故障排查"><a href="#8-常见分布式故障排查" class="headerlink" title="8. 常见分布式故障排查"></a>8. 常见分布式故障排查</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 看服务注册情况</span></span><br><span class="line">curl http://localhost:8848/nacos/v1/ns/service/list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 看分布式锁占用</span></span><br><span class="line">redis-cli -h localhost GET lock:stock:1001</span><br><span class="line"></span><br><span class="line"><span class="comment"># 看调用链慢在哪</span></span><br><span class="line"><span class="comment"># Zipkin UI → 按 Trace 查询 → 定位最慢 Span</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name seata-server -p 8091:8091 seataio/seata-server:1.7.0</span><br><span class="line">docker run -d -p 9411:9411 openzipkin/zipkin</span><br><span class="line">mvn spring-boot:run</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/design-patterns-guide/" rel="prev" title="设计模式从入门到实战">
+                  <i class="fa fa-angle-left"></i> 设计模式从入门到实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/docker-guide/" rel="next" title="Docker 从入门到落地">
+                  Docker 从入门到落地 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

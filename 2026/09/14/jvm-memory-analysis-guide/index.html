@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="JVM · 内存排查实战 入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析 · CPU 飙高排查 · GC 日志解读 · 线上问题排查工具箱。  技术栈速查   类别 选型 用途    JDK 21 LTS 运行环境   分析工具 MAT &#x2F; jvisualvm 堆转储分析   命令行 jcmd &#x2F; jmap &#x2F; jstat 运行时诊断   GC 分析 GCe">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JVM 内存问题排查实战">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/jvm-memory-analysis-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="JVM · 内存排查实战 入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析 · CPU 飙高排查 · GC 日志解读 · 线上问题排查工具箱。  技术栈速查   类别 选型 用途    JDK 21 LTS 运行环境   分析工具 MAT &#x2F; jvisualvm 堆转储分析   命令行 jcmd &#x2F; jmap &#x2F; jstat 运行时诊断   GC 分析 GCe">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T10:45:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.627Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/jvm-memory-analysis-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/jvm-memory-analysis-guide/","path":"2026/09/14/jvm-memory-analysis-guide/","title":"JVM 内存问题排查实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>JVM 内存问题排查实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#JVM-%C2%B7-%E5%86%85%E5%AD%98%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">JVM · 内存排查实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-OOM-%E5%88%86%E7%B1%BB"><span class="nav-number">1.3.</span> <span class="nav-text">2. OOM 分类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%A0%86%E8%BD%AC%E5%82%A8%E5%88%86%E6%9E%90%EF%BC%88%E5%AE%9A%E4%BD%8D%E6%B3%84%E6%BC%8F%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. 堆转储分析（定位泄漏）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E8%8E%B7%E5%8F%96%E5%A0%86%E8%BD%AC%E5%82%A8"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 获取堆转储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E7%94%A8-MAT-%E5%88%86%E6%9E%90%EF%BC%88Eclipse-Memory-Analyzer%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 用 MAT 分析（Eclipse Memory Analyzer）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-CPU-%E9%A3%99%E9%AB%98%E6%8E%92%E6%9F%A5%EF%BC%88%E7%BA%BF%E7%A8%8B%E6%A0%88%E5%88%86%E6%9E%90%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. CPU 飙高排查（线程栈分析）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-GC-%E6%97%A5%E5%BF%97%E8%A7%A3%E8%AF%BB"><span class="nav-number">1.6.</span> <span class="nav-text">5. GC 日志解读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E7%94%9F%E4%BA%A7-JVM-%E5%8F%82%E6%95%B0%E6%A8%A1%E6%9D%BF"><span class="nav-number">1.7.</span> <span class="nav-text">6. 生产 JVM 参数模板</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E6%8E%92%E6%9F%A5%E5%B7%A5%E5%85%B7%E7%AE%B1%E9%80%9F%E6%9F%A5"><span class="nav-number">1.8.</span> <span class="nav-text">7. 排查工具箱速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%AE%8C%E6%95%B4%E6%8E%92%E6%9F%A5%E6%A1%88%E4%BE%8B"><span class="nav-number">1.9.</span> <span class="nav-text">8. 完整排查案例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/jvm-memory-analysis-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="JVM 内存问题排查实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          JVM 内存问题排查实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 18:45:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T18:45:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="JVM-·-内存排查实战"><a href="#JVM-·-内存排查实战" class="headerlink" title="JVM · 内存排查实战"></a>JVM · 内存排查实战</h1><blockquote>
+<p>入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析 · CPU 飙高排查 · GC 日志解读 · 线上问题排查工具箱。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>JDK</td>
+<td>21 LTS</td>
+<td>运行环境</td>
+</tr>
+<tr>
+<td>分析工具</td>
+<td>MAT &#x2F; jvisualvm</td>
+<td>堆转储分析</td>
+</tr>
+<tr>
+<td>命令行</td>
+<td>jcmd &#x2F; jmap &#x2F; jstat</td>
+<td>运行时诊断</td>
+</tr>
+<tr>
+<td>GC 分析</td>
+<td>GCeasy &#x2F; gceasy.io</td>
+<td>GC 日志</td>
+</tr>
+<tr>
+<td>线程分析</td>
+<td>jstack &#x2F; async-profiler</td>
+<td>CPU 与锁</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>线上排障方法论</strong>：先保留现场 → 收集证据（日志&#x2F;转储&#x2F;指标）→ 定位根因 → 修复 → 复盘。切忌重启了事（现场丢失）。</p>
+<p><strong>JVM 排查两类核心问题</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>表现</th>
+<th>工具</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内存问题</td>
+<td>OOM、频繁 Full GC、内存缓慢增长</td>
+<td>jmap&#x2F;MAT、jstat</td>
+</tr>
+<tr>
+<td>CPU 问题</td>
+<td>某进程 CPU 100%、响应变慢</td>
+<td>top、jstack、async-profiler</td>
+</tr>
+</tbody></table>
+<p><strong>诊断前提</strong>：启动参数必须开对（见 §6），否则事后无法分析。</p>
+<h2 id="2-OOM-分类"><a href="#2-OOM-分类" class="headerlink" title="2. OOM 分类"></a>2. OOM 分类</h2><table>
+<thead>
+<tr>
+<th>错误</th>
+<th>原因</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Java heap space</td>
+<td>堆满（泄漏或过大对象）</td>
+<td>堆转储分析</td>
+</tr>
+<tr>
+<td>GC overhead limit exceeded</td>
+<td>98% 时间在 GC</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>Metaspace</td>
+<td>类加载过多（热部署&#x2F;反射）</td>
+<td>检查类加载器泄漏</td>
+</tr>
+<tr>
+<td>Unable to create native thread</td>
+<td>线程数超 OS 限制</td>
+<td>检查线程创建、ulimit</td>
+</tr>
+<tr>
+<td>Direct buffer memory</td>
+<td>堆外内存超限</td>
+<td>检查 NIO 缓冲区</td>
+</tr>
+</tbody></table>
+<h2 id="3-堆转储分析（定位泄漏）"><a href="#3-堆转储分析（定位泄漏）" class="headerlink" title="3. 堆转储分析（定位泄漏）"></a>3. 堆转储分析（定位泄漏）</h2><h3 id="3-1-获取堆转储"><a href="#3-1-获取堆转储" class="headerlink" title="3.1 获取堆转储"></a>3.1 获取堆转储</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方式1：OOM 时自动 dump（生产必须配置！）</span></span><br><span class="line"><span class="comment"># 启动参数</span></span><br><span class="line">java -Xmx2g \</span><br><span class="line">  -XX:+HeapDumpOnOutOfMemoryError \</span><br><span class="line">  -XX:HeapDumpPath=/data/dumps \</span><br><span class="line">  -jar app.jar</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方式2：运行中手动 dump（保留现场）</span></span><br><span class="line">jcmd &lt;pid&gt; GC.heap_dump /data/dumps/manual.hprof</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方式3：容器内（先找到 pid）</span></span><br><span class="line">docker <span class="built_in">exec</span> &lt;container&gt; jcmd 1 GC.heap_dump /tmp/dump.hprof</span><br><span class="line">docker <span class="built_in">cp</span> &lt;container&gt;:/tmp/dump.hprof ./</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-用-MAT-分析（Eclipse-Memory-Analyzer）"><a href="#3-2-用-MAT-分析（Eclipse-Memory-Analyzer）" class="headerlink" title="3.2 用 MAT 分析（Eclipse Memory Analyzer）"></a>3.2 用 MAT 分析（Eclipse Memory Analyzer）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载 MAT（eclipse.org/mat），打开 .hprof</span></span><br><span class="line"><span class="comment"># 关键视图：</span></span><br><span class="line"><span class="comment"># 1. Leak Suspects：自动报告嫌疑泄漏点</span></span><br><span class="line"><span class="comment"># 2. Dominator Tree：谁占的内存最多（Retained Heap 大 = 根）</span></span><br><span class="line"><span class="comment"># 3. Path to GC Roots：确认是否被意外持有</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>典型泄漏模式</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>特征</th>
+<th>修复</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>静态集合持有</td>
+<td>Dominator 树到静态字段</td>
+<td>清理或弱引用</td>
+</tr>
+<tr>
+<td>线程本地变量</td>
+<td>线程长期存活持有大对象</td>
+<td>用后置空</td>
+</tr>
+<tr>
+<td>未关闭资源</td>
+<td>InputStream&#x2F;Connection</td>
+<td>try-with-resources</td>
+</tr>
+<tr>
+<td>缓存无上限</td>
+<td>Map 只增不减</td>
+<td>用 Caffeine 带淘汰</td>
+</tr>
+<tr>
+<td>监听器未注销</td>
+<td>事件监听累积</td>
+<td>显式注销&#x2F;弱引用</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 泄漏示例：静态缓存只加不减</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">CacheHolder</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Map&lt;String, <span class="type">byte</span>[]&gt; CACHE = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">put</span><span class="params">(String k, <span class="type">byte</span>[] v)</span> &#123; CACHE.put(k, v); &#125;   <span class="comment">// 永不清理</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 修复：Caffeine 带 TTL/容量上限</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="4-CPU-飙高排查（线程栈分析）"><a href="#4-CPU-飙高排查（线程栈分析）" class="headerlink" title="4. CPU 飙高排查（线程栈分析）"></a>4. CPU 飙高排查（线程栈分析）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 找到 CPU 高的进程</span></span><br><span class="line">top -Hp &lt;pid&gt;        <span class="comment"># 或 top 后按 P；容器: docker stats</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 找到 CPU 高的线程号（十进制的 nid）</span></span><br><span class="line"><span class="comment"># top -H 里第一列是线程 PID</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 转十六进制</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;%x\n&#x27;</span> &lt;线程PID&gt;      <span class="comment"># 12345 → 3039</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 抓线程栈</span></span><br><span class="line">jstack &lt;pid&gt; &gt; /tmp/stack.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 在栈文件里搜线程 nid</span></span><br><span class="line">grep -A 20 <span class="string">&#x27;nid=0x3039&#x27;</span> /tmp/stack.txt</span><br><span class="line"><span class="comment"># 输出会显示该线程当前代码位置——死循环/热点方法一眼可见</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>定位要点</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 多抓几次（间隔 3-5s），确认线程一直在同一位置（死循环）还是频繁切换</span></span><br><span class="line">jstack &lt;pid&gt; &gt; /tmp/s1.txt; <span class="built_in">sleep</span> 3; jstack &lt;pid&gt; &gt; /tmp/s2.txt</span><br><span class="line">diff /tmp/s1.txt /tmp/s2.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 火焰图（async-profiler，精准定位热方法）</span></span><br><span class="line">./profiler.sh -d 30 -o flamegraph &lt;pid&gt; &gt; /tmp/flame.svg</span><br><span class="line"><span class="comment"># 浏览器打开 flame.svg，宽条 = 热点</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>常见 CPU 高根因</strong>：死循环（while 条件永不满足）、正则回溯、大对象序列化、GC 频繁（假 CPU 高）、锁竞争自旋。</p>
+<h2 id="5-GC-日志解读"><a href="#5-GC-日志解读" class="headerlink" title="5. GC 日志解读"></a>5. GC 日志解读</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动参数（JDK 17+ 推荐）</span></span><br><span class="line">java -Xlog:gc*:file=/data/logs/gc.log:<span class="keyword">time</span>,<span class="built_in">uptime</span>,level,tags:filecount=5,filesize=20m \</span><br><span class="line">  -jar app.jar</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看当前堆与 GC 情况</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000     <span class="comment"># 每秒刷一次</span></span><br><span class="line"><span class="comment"># 关注: FGC（Full GC 次数）、FGCT（耗时）、O（老年代使用率）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>GC 日志关键行</strong>：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[GC (Allocation Failure) [PSYoungGen: 51200K-&gt;5120K(59392K)] 204800K-&gt;169856K(198656K), 0.008s]</span><br><span class="line"># 年轻代 51200K → 5120K，总堆 204800K → 169856K，耗时 0.008s</span><br><span class="line"></span><br><span class="line">[Full GC (Metadata GC Threshold) ... 0.5s]</span><br><span class="line"># Full GC 频繁出现 = 大问题</span><br></pre></td></tr></table></figure>
+
+<p><strong>健康指标</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>健康值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Full GC 频率</td>
+<td>生产 &lt; 1 次&#x2F;小时</td>
+</tr>
+<tr>
+<td>Full GC 单次耗时</td>
+<td>&lt; 500ms</td>
+</tr>
+<tr>
+<td>GC 总暂停占比</td>
+<td>&lt; 5%</td>
+</tr>
+<tr>
+<td>老年代使用率</td>
+<td>稳定在 60-70% 以下</td>
+</tr>
+</tbody></table>
+<p><strong>常见异常模式</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>含义</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>连续 Full GC 且老年代涨</td>
+<td>内存泄漏</td>
+<td>堆转储分析</td>
+</tr>
+<tr>
+<td>老年代持续 90%+ 但平稳</td>
+<td>堆给小了</td>
+<td>加 Xmx（配合容量规划）</td>
+</tr>
+<tr>
+<td>GC 频繁但堆不高</td>
+<td>对象分配过快</td>
+<td>检查大对象&#x2F;短生命周期对象</td>
+</tr>
+<tr>
+<td>Metaspace Full GC</td>
+<td>类加载器泄漏</td>
+<td>检查动态代理&#x2F;热部署</td>
+</tr>
+</tbody></table>
+<h2 id="6-生产-JVM-参数模板"><a href="#6-生产-JVM-参数模板" class="headerlink" title="6. 生产 JVM 参数模板"></a>6. 生产 JVM 参数模板</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生产推荐（JDK 21，G1 默认）</span></span><br><span class="line">JAVA_OPTS=<span class="string">&quot;-Xms2g -Xmx2g \</span></span><br><span class="line"><span class="string">  -XX:MaxMetaspaceSize=512m \</span></span><br><span class="line"><span class="string">  -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/dumps \</span></span><br><span class="line"><span class="string">  -Xlog:gc*:file=/data/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20m \</span></span><br><span class="line"><span class="string">  -Duser.timezone=Asia/Shanghai&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>要点</strong>：<code>-Xms = -Xmx</code>（避免启动期扩容抖动）；容器环境用 <code>-XX:MaxRAMPercentage=75</code> 让 JVM 感知容器内存限制。</p>
+<h2 id="7-排查工具箱速查"><a href="#7-排查工具箱速查" class="headerlink" title="7. 排查工具箱速查"></a>7. 排查工具箱速查</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">jps -l                          <span class="comment"># 列出 Java 进程</span></span><br><span class="line">jcmd &lt;pid&gt; VM.version           <span class="comment"># 运行参数</span></span><br><span class="line">jmap -heap &lt;pid&gt;                <span class="comment"># 堆配置与使用概览</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000        <span class="comment"># GC 实时监控</span></span><br><span class="line">jstack &lt;pid&gt;                    <span class="comment"># 线程栈（死锁检测 jstack -l）</span></span><br><span class="line">jcmd &lt;pid&gt; Thread.<span class="built_in">print</span>         <span class="comment"># 同上</span></span><br><span class="line">jcmd &lt;pid&gt; VM.native_memory     <span class="comment"># 本机内存（需 -XX:NativeMemoryTracking=summary）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="8-完整排查案例"><a href="#8-完整排查案例" class="headerlink" title="8. 完整排查案例"></a>8. 完整排查案例</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">症状：服务响应变慢，监控显示 GC 时间高</span><br><span class="line">步骤：</span><br><span class="line">1. jstat -gcutil &lt;pid&gt; 1000 → 老年代 95%，FGC 持续</span><br><span class="line">2. jcmd &lt;pid&gt; GC.heap_dump dump.hprof（保留现场）</span><br><span class="line">3. MAT 打开 → Leak Suspects → 定位到 OrderCache 静态 Map</span><br><span class="line">4. 代码审查：定时任务每天写入缓存但无清理 → 确认泄漏</span><br><span class="line">5. 修复：改用 Caffeine（maximumSize + expireAfterWrite）</span><br><span class="line">6. 上线观察 GC 曲线恢复正常；保留 dump 复盘</span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">top -Hp &lt;pid&gt;                    <span class="comment"># 找热点线程</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;%x\n&#x27;</span> &lt;pid&gt;              <span class="comment"># 转十六进制</span></span><br><span class="line">jstack &lt;pid&gt; | grep -A20 <span class="string">&#x27;nid=0x3039&#x27;</span></span><br><span class="line">jmap -dump:format=b,file=dump.hprof &lt;pid&gt;    <span class="comment"># 手动 dump</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000         <span class="comment"># GC 监控</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/java-advanced-guide/" rel="prev" title="Java 进阶特性实战：Stream 与函数式">
+                  <i class="fa fa-angle-left"></i> Java 进阶特性实战：Stream 与函数式
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/linux-devops-guide/" rel="next" title="Linux 运维自动化实战">
+                  Linux 运维自动化实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

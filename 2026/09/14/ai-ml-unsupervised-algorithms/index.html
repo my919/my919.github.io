@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="AI · 无监督学习算法详解与落地 K-Means 聚类 · 层次聚类 · DBSCAN · PCA 降维。每个算法：原理 → 训练算法 → PyTorch CPU 落地代码（含详细注释）→ 应用。   无监督学习：训练数据没有标签，算法自己发现数据中的结构（分组、分布、内在维度）。常用于探索数据、特征压缩、异常发现。   1. K-Means 聚类1.1 原理把 N 个样本分成 K 个簇，使”每">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI 无监督学习算法详解与落地（PyTorch CPU）">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/ai-ml-unsupervised-algorithms/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="AI · 无监督学习算法详解与落地 K-Means 聚类 · 层次聚类 · DBSCAN · PCA 降维。每个算法：原理 → 训练算法 → PyTorch CPU 落地代码（含详细注释）→ 应用。   无监督学习：训练数据没有标签，算法自己发现数据中的结构（分组、分布、内在维度）。常用于探索数据、特征压缩、异常发现。   1. K-Means 聚类1.1 原理把 N 个样本分成 K 个簇，使”每">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T15:40:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.598Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/ai-ml-unsupervised-algorithms/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/ai-ml-unsupervised-algorithms/","path":"2026/09/14/ai-ml-unsupervised-algorithms/","title":"AI 无监督学习算法详解与落地（PyTorch CPU）"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>AI 无监督学习算法详解与落地（PyTorch CPU） | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AI-%C2%B7-%E6%97%A0%E7%9B%91%E7%9D%A3%E5%AD%A6%E4%B9%A0%E7%AE%97%E6%B3%95%E8%AF%A6%E8%A7%A3%E4%B8%8E%E8%90%BD%E5%9C%B0"><span class="nav-number">1.</span> <span class="nav-text">AI · 无监督学习算法详解与落地</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-K-Means-%E8%81%9A%E7%B1%BB"><span class="nav-number">1.1.</span> <span class="nav-text">1. K-Means 聚类</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.1.1.</span> <span class="nav-text">1.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.1.2.</span> <span class="nav-text">1.2 落地代码（PyTorch，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.1.3.</span> <span class="nav-text">1.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%B1%82%E6%AC%A1%E8%81%9A%E7%B1%BB%EF%BC%88Hierarchical-Clustering%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">2. 层次聚类（Hierarchical Clustering）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.2.1.</span> <span class="nav-text">2.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch-%E5%8D%95%E9%93%BE%E6%8E%A5%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">2.2 落地代码（PyTorch 单链接，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.2.3.</span> <span class="nav-text">2.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-DBSCAN-%E5%AF%86%E5%BA%A6%E8%81%9A%E7%B1%BB"><span class="nav-number">1.3.</span> <span class="nav-text">3. DBSCAN 密度聚类</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.3.1.</span> <span class="nav-text">3.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">3.2 落地代码（PyTorch，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.3.3.</span> <span class="nav-text">3.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E4%B8%BB%E6%88%90%E5%88%86%E5%88%86%E6%9E%90%EF%BC%88PCA%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">4. 主成分分析（PCA）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.4.1.</span> <span class="nav-text">4.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch%EF%BC%8CSVD-%E5%AE%9E%E7%8E%B0%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">4.2 落地代码（PyTorch，SVD 实现，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E5%8E%9F%E7%90%86%E7%9A%84%E5%BA%94%E7%94%A8"><span class="nav-number">1.4.3.</span> <span class="nav-text">4.3 原理的应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E6%97%A0%E7%9B%91%E7%9D%A3%E7%AE%97%E6%B3%95%E9%80%89%E6%8B%A9%E9%80%9F%E6%9F%A5"><span class="nav-number">1.5.</span> <span class="nav-text">5. 无监督算法选择速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%AD%E7%BB%83%E7%AE%97%E6%B3%95%E5%B0%8F%E7%BB%93"><span class="nav-number">1.6.</span> <span class="nav-text">训练算法小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/ai-ml-unsupervised-algorithms/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="AI 无监督学习算法详解与落地（PyTorch CPU） | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          AI 无监督学习算法详解与落地（PyTorch CPU）
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 23:40:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T23:40:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>2.7k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>9 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="AI-·-无监督学习算法详解与落地"><a href="#AI-·-无监督学习算法详解与落地" class="headerlink" title="AI · 无监督学习算法详解与落地"></a>AI · 无监督学习算法详解与落地</h1><blockquote>
+<p>K-Means 聚类 · 层次聚类 · DBSCAN · PCA 降维。每个算法：原理 → 训练算法 → PyTorch CPU 落地代码（含详细注释）→ 应用。</p>
+</blockquote>
+<blockquote>
+<p><strong>无监督学习</strong>：训练数据<strong>没有标签</strong>，算法自己发现数据中的结构（分组、分布、内在维度）。常用于探索数据、特征压缩、异常发现。</p>
+</blockquote>
+<hr>
+<h2 id="1-K-Means-聚类"><a href="#1-K-Means-聚类" class="headerlink" title="1. K-Means 聚类"></a>1. K-Means 聚类</h2><h3 id="1-1-原理"><a href="#1-1-原理" class="headerlink" title="1.1 原理"></a>1.1 原理</h3><p>把 N 个样本分成 <strong>K 个簇</strong>，使”每个样本到所属簇中心的距离平方和”最小：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">目标：min Σ_k Σ_&#123;x∈簇k&#125; ‖x - μ_k‖²</span><br></pre></td></tr></table></figure>
+
+<p><strong>训练算法（EM 迭代，两步交替）</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">1. 分配（E 步）：每个样本归到最近的中心</span><br><span class="line">2. 更新（M 步）：把簇中心 μ_k 移到簇内样本均值</span><br><span class="line">重复直到中心不再变化</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-落地代码（PyTorch，逐行注释）"><a href="#1-2-落地代码（PyTorch，逐行注释）" class="headerlink" title="1.2 落地代码（PyTorch，逐行注释）"></a>1.2 落地代码（PyTorch，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">kmeans</span>(<span class="params">X, k, max_iter=<span class="number">100</span>, tol=<span class="number">1e-4</span></span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;K-Means：张量实现</span></span><br><span class="line"><span class="string">    X: (n, d) 样本</span></span><br><span class="line"><span class="string">    k: 簇数量</span></span><br><span class="line"><span class="string">    max_iter: 最大迭代轮数</span></span><br><span class="line"><span class="string">    tol: 中心位移小于它就认为收敛</span></span><br><span class="line"><span class="string">    返回: 每个样本的簇标签 + 最终簇中心</span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line">    n = X.shape[<span class="number">0</span>]                     <span class="comment"># 样本数</span></span><br><span class="line">    <span class="comment"># 1. 随机初始化中心：直接从样本里随机挑 k 个</span></span><br><span class="line">    centers = X[torch.randperm(n)[:k]]</span><br><span class="line">    <span class="comment"># randperm(n) 打乱 0..n-1，取前 k 个当中心下标</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(max_iter):          <span class="comment"># 反复迭代直到收敛</span></span><br><span class="line">        <span class="comment"># ---- E 步（分配）：每个样本分到最近的中心 ----</span></span><br><span class="line">        dist = torch.cdist(X, centers)</span><br><span class="line">        <span class="comment"># 距离矩阵 (n, k)：第 i 行是样本 i 到 k 个中心的距离</span></span><br><span class="line">        labels = dist.argmin(dim=<span class="number">1</span>)</span><br><span class="line">        <span class="comment"># 每行取最小距离的下标 = 最近的中心编号 = 样本的簇标签</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># ---- M 步（更新）：中心移到簇内样本均值 ----</span></span><br><span class="line">        new_centers = torch.stack([</span><br><span class="line">            X[labels == c].mean(dim=<span class="number">0</span>) <span class="keyword">for</span> c <span class="keyword">in</span> <span class="built_in">range</span>(k)</span><br><span class="line">        ])</span><br><span class="line">        <span class="comment"># 对每个簇 c：挑出该簇所有样本 → 按特征求平均 → 新中心</span></span><br><span class="line">        <span class="comment"># torch.stack 把 k 个均值向量堆成 (k, d)</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># ---- 收敛判断：中心几乎不动就提前停 ----</span></span><br><span class="line">        <span class="keyword">if</span> torch.norm(new_centers - centers) &lt; tol:</span><br><span class="line">            centers = new_centers      <span class="comment"># 记录最终中心</span></span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line">        centers = new_centers          <span class="comment"># 否则用新中心继续下一轮</span></span><br><span class="line">    <span class="keyword">return</span> labels, centers</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造 3 个高斯簇数据 ----------</span></span><br><span class="line">X0 = torch.randn(<span class="number">100</span>, <span class="number">2</span>) + torch.tensor([<span class="number">3.0</span>, <span class="number">3.0</span>])     <span class="comment"># 簇1：中心(3,3)</span></span><br><span class="line">X1 = torch.randn(<span class="number">100</span>, <span class="number">2</span>) + torch.tensor([-<span class="number">3.0</span>, <span class="number">3.0</span>])    <span class="comment"># 簇2：中心(-3,3)</span></span><br><span class="line">X2 = torch.randn(<span class="number">100</span>, <span class="number">2</span>) + torch.tensor([<span class="number">0.0</span>, -<span class="number">3.0</span>])    <span class="comment"># 簇3：中心(0,-3)</span></span><br><span class="line">X = torch.cat([X0, X1, X2])            <span class="comment"># 拼成 (300,2)</span></span><br><span class="line"></span><br><span class="line">labels, centers = kmeans(X, k=<span class="number">3</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;聚类中心:\n<span class="subst">&#123;centers&#125;</span>&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;各簇样本数: <span class="subst">&#123;torch.bincount(labels)&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># bincount 统计每个簇标签出现次数，期望接近 [100,100,100]</span></span><br><span class="line"><span class="comment"># 说明算法正确地把 3 个簇分开了（标签编号顺序可能不同）</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>K 怎么选</strong>：画”K-损失”肘部图，取拐点；或用轮廓系数评估。</p>
+</blockquote>
+<h3 id="1-3-原理的应用"><a href="#1-3-原理的应用" class="headerlink" title="1.3 原理的应用"></a>1.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>用户分群</td>
+<td>行为特征 → 客户细分</td>
+</tr>
+<tr>
+<td>图像压缩</td>
+<td>颜色聚类成 K 个代表色</td>
+</tr>
+<tr>
+<td>异常发现</td>
+<td>远离任何中心的点</td>
+</tr>
+<tr>
+<td>数据探索</td>
+<td>先聚类看数据长什么样</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-层次聚类（Hierarchical-Clustering）"><a href="#2-层次聚类（Hierarchical-Clustering）" class="headerlink" title="2. 层次聚类（Hierarchical Clustering）"></a>2. 层次聚类（Hierarchical Clustering）</h2><h3 id="2-1-原理"><a href="#2-1-原理" class="headerlink" title="2.1 原理"></a>2.1 原理</h3><p><strong>不指定 K</strong>，逐步合并（自底向上）或分裂（自顶向下），生成一棵<strong>聚类树（树状图）</strong>，之后按树切任意层数。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">自底向上（AGNES）：</span><br><span class="line">1. 每个样本自己是一个簇</span><br><span class="line">2. 每次合并距离最近的两个簇</span><br><span class="line">3. 重复直到只剩一个簇</span><br><span class="line"></span><br><span class="line">簇间距离定义：单链接(最近)、全链接(最远)、平均链接(平均)</span><br></pre></td></tr></table></figure>
+
+<p><strong>训练算法</strong>：贪心合并，无梯度。</p>
+<h3 id="2-2-落地代码（PyTorch-单链接，逐行注释）"><a href="#2-2-落地代码（PyTorch-单链接，逐行注释）" class="headerlink" title="2.2 落地代码（PyTorch 单链接，逐行注释）"></a>2.2 落地代码（PyTorch 单链接，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">agglomerative</span>(<span class="params">X, n_clusters</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;层次聚类（单链接）：自底向上合并到只剩 n_clusters 个簇</span></span><br><span class="line"><span class="string">    单链接：两簇的距离 = 两簇中最近的一对样本的距离&quot;&quot;&quot;</span></span><br><span class="line">    n = X.shape[<span class="number">0</span>]                            <span class="comment"># 样本数</span></span><br><span class="line">    D = torch.cdist(X, X)                     <span class="comment"># 距离矩阵 (n,n)：任意两样本的距离</span></span><br><span class="line">    labels = torch.arange(n)                  <span class="comment"># 初始：每个样本独自一簇（标签=自己下标）</span></span><br><span class="line">    current = n                               <span class="comment"># 当前簇数</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> current &gt; n_clusters:               <span class="comment"># 没合并到目标簇数就继续</span></span><br><span class="line">        <span class="comment"># ---- 在所有&quot;不同簇对&quot;里找距离最近的一对 ----</span></span><br><span class="line">        best_d, best_pair = <span class="built_in">float</span>(<span class="string">&quot;inf&quot;</span>), <span class="literal">None</span></span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(current):              <span class="comment"># 遍历簇 i</span></span><br><span class="line">            <span class="keyword">for</span> j <span class="keyword">in</span> <span class="built_in">range</span>(i + <span class="number">1</span>, current):   <span class="comment"># 遍历簇 j（只查 i&lt;j 避免重复）</span></span><br><span class="line">                mask = (labels == i) | (labels == j)</span><br><span class="line">                <span class="comment"># 布尔掩码：选出属于簇 i 或簇 j 的样本</span></span><br><span class="line">                dist = D[mask][:, mask]</span><br><span class="line">                <span class="comment"># 只保留这两簇样本之间的距离（子矩阵）</span></span><br><span class="line">                <span class="comment"># 单链接：两簇最近样本距离 = 子矩阵里最小的非零值</span></span><br><span class="line">                d = dist[dist &gt; <span class="number">0</span>].<span class="built_in">min</span>().item() <span class="keyword">if</span> (dist &gt; <span class="number">0</span>).<span class="built_in">any</span>() <span class="keyword">else</span> <span class="built_in">float</span>(<span class="string">&quot;inf&quot;</span>)</span><br><span class="line">                <span class="comment"># dist&gt;0 排除对角线上的 0（自己到自己的距离）</span></span><br><span class="line">                <span class="keyword">if</span> d &lt; best_d:</span><br><span class="line">                    best_d, best_pair = d, (i, j)   <span class="comment"># 记录更近的簇对</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># ---- 合并：把簇 j 的所有样本标签改成簇 i ----</span></span><br><span class="line">        i, j = best_pair</span><br><span class="line">        labels[labels == j] = i</span><br><span class="line"></span><br><span class="line">        <span class="comment"># ---- 重新编号：让簇标签连续 0..current-1（否则循环会乱） ----</span></span><br><span class="line">        uniq = torch.unique(labels)            <span class="comment"># 去重后的现存簇标签</span></span><br><span class="line">        <span class="keyword">for</span> new, old <span class="keyword">in</span> <span class="built_in">enumerate</span>(uniq):       <span class="comment"># 按顺序重排</span></span><br><span class="line">            labels[labels == old] = new</span><br><span class="line">        current -= <span class="number">1</span>                           <span class="comment"># 簇数 -1</span></span><br><span class="line">    <span class="keyword">return</span> labels</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造两个簇 ----------</span></span><br><span class="line">X = torch.cat([</span><br><span class="line">    torch.randn(<span class="number">30</span>, <span class="number">2</span>) + torch.tensor([<span class="number">2.0</span>, <span class="number">2.0</span>]),    <span class="comment"># 簇1：中心(2,2)</span></span><br><span class="line">    torch.randn(<span class="number">30</span>, <span class="number">2</span>) + torch.tensor([-<span class="number">2.0</span>, -<span class="number">2.0</span>]),  <span class="comment"># 簇2：中心(-2,-2)</span></span><br><span class="line">])</span><br><span class="line">labels = agglomerative(X, n_clusters=<span class="number">2</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;两簇样本数: <span class="subst">&#123;torch.bincount(labels)&#125;</span>   （期望 [30,30]）&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>实现为教学演示（O(n³) 朴素版）。生产数据量大时用 <code>scipy.cluster.hierarchy</code>。</p>
+</blockquote>
+<h3 id="2-3-原理的应用"><a href="#2-3-原理的应用" class="headerlink" title="2.3 原理的应用"></a>2.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>基因聚类</td>
+<td>生物学表达谱</td>
+</tr>
+<tr>
+<td>文档主题树</td>
+<td>逐层细分主题</td>
+</tr>
+<tr>
+<td>城市&#x2F;网点分层</td>
+<td>层级关系探索</td>
+</tr>
+<tr>
+<td>任意 K</td>
+<td>树状图切一刀即可</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-DBSCAN-密度聚类"><a href="#3-DBSCAN-密度聚类" class="headerlink" title="3. DBSCAN 密度聚类"></a>3. DBSCAN 密度聚类</h2><h3 id="3-1-原理"><a href="#3-1-原理" class="headerlink" title="3.1 原理"></a>3.1 原理</h3><p><strong>按密度</strong>找簇，不需要指定 K，且能识别<strong>噪声点</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">两个超参数：</span><br><span class="line">- eps：邻域半径</span><br><span class="line">- min_samples：成为核心点的最少邻居数</span><br><span class="line"></span><br><span class="line">规则：</span><br><span class="line">1. 核心点：半径 eps 内邻居 ≥ min_samples</span><br><span class="line">2. 从核心点出发，把密度相连的点都归入同一簇</span><br><span class="line">3. 不满足任何簇的样本 = 噪声（标 -1）</span><br></pre></td></tr></table></figure>
+
+<p><strong>训练算法</strong>：一次扫描 + 邻域扩展（无迭代、无梯度）。</p>
+<h3 id="3-2-落地代码（PyTorch，逐行注释）"><a href="#3-2-落地代码（PyTorch，逐行注释）" class="headerlink" title="3.2 落地代码（PyTorch，逐行注释）"></a>3.2 落地代码（PyTorch，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">dbscan</span>(<span class="params">X, eps=<span class="number">0.5</span>, min_samples=<span class="number">5</span></span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;DBSCAN：密度聚类，噪声标 -1</span></span><br><span class="line"><span class="string">    eps: 邻域半径</span></span><br><span class="line"><span class="string">    min_samples: 成为核心点的最少邻居数&quot;&quot;&quot;</span></span><br><span class="line">    n = X.shape[<span class="number">0</span>]                               <span class="comment"># 样本数</span></span><br><span class="line">    D = torch.cdist(X, X)                        <span class="comment"># 距离矩阵 (n,n)</span></span><br><span class="line">    neighbor = D &lt;= eps                          <span class="comment"># 布尔矩阵：谁在谁的 eps 邻域内</span></span><br><span class="line"></span><br><span class="line">    labels = torch.full((n,), -<span class="number">1</span>, dtype=torch.long)</span><br><span class="line">    <span class="comment"># 初始全部标 -1（未访问）；最终 -1 表示噪声</span></span><br><span class="line">    cluster_id = <span class="number">0</span>                               <span class="comment"># 当前簇编号</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(n):                           <span class="comment"># 逐个样本扫描</span></span><br><span class="line">        <span class="keyword">if</span> labels[i] != -<span class="number">1</span>:                      <span class="comment"># 已被访问过就跳过</span></span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        nbrs = torch.where(neighbor[i])[<span class="number">0</span>]       <span class="comment"># 样本 i 的邻居下标列表</span></span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(nbrs) &lt; min_samples:</span><br><span class="line">            labels[i] = -<span class="number">2</span>                       <span class="comment"># 邻居不够 → 暂标噪声</span></span><br><span class="line">            <span class="comment"># -2 是中间标记（已访问的噪声）；最后统一转成 -1</span></span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        <span class="comment"># ---- 样本 i 是核心点：BFS 扩展整个密度连通簇 ----</span></span><br><span class="line">        stack = nbrs.tolist()                    <span class="comment"># 待扩展队列（从邻居开始）</span></span><br><span class="line">        labels[i] = cluster_id                   <span class="comment"># 核心点归入当前簇</span></span><br><span class="line">        <span class="keyword">while</span> stack:                             <span class="comment"># 队列非空就继续扩展</span></span><br><span class="line">            j = stack.pop()                      <span class="comment"># 取出一个邻居 j</span></span><br><span class="line">            <span class="keyword">if</span> labels[j] == -<span class="number">2</span>:                  <span class="comment"># j 之前被判噪声，其实连上了 → 归入本簇</span></span><br><span class="line">                labels[j] = cluster_id</span><br><span class="line">            <span class="keyword">if</span> labels[j] != -<span class="number">1</span>:                  <span class="comment"># j 已归属某簇，跳过（防重复）</span></span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            labels[j] = cluster_id               <span class="comment"># 把 j 标进当前簇</span></span><br><span class="line">            j_nbrs = torch.where(neighbor[j])[<span class="number">0</span>] <span class="comment"># 看 j 的邻居</span></span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">len</span>(j_nbrs) &gt;= min_samples:       <span class="comment"># j 也是核心点</span></span><br><span class="line">                stack.extend(j_nbrs.tolist())    <span class="comment"># 它的邻居也加入扩展队列</span></span><br><span class="line">                <span class="comment"># 非核心点（边界点）不扩展，簇边界自然停住</span></span><br><span class="line">        cluster_id += <span class="number">1</span>                          <span class="comment"># 当前簇封顶，准备下一个</span></span><br><span class="line"></span><br><span class="line">    labels[labels == -<span class="number">2</span>] = -<span class="number">1</span>                    <span class="comment"># 中间噪声标记统一转成 -1</span></span><br><span class="line">    <span class="keyword">return</span> labels</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造&quot;月牙&quot;型数据（K-Means 处理不了的形状） ----------</span></span><br><span class="line">t = torch.linspace(<span class="number">0</span>, torch.pi, <span class="number">80</span>)              <span class="comment"># 0~π 的 80 个角度</span></span><br><span class="line"><span class="comment"># 两个半月形（月亮弧线），验证 DBSCAN 能抓任意形状</span></span><br><span class="line">moon1 = torch.stack([torch.cos(t), torch.sin(t)], dim=<span class="number">1</span>) * <span class="number">1.0</span> + torch.tensor([<span class="number">0.0</span>, <span class="number">0.0</span>])</span><br><span class="line">moon2 = torch.stack([torch.cos(t), torch.sin(t)], dim=<span class="number">1</span>) * <span class="number">1.0</span> + torch.tensor([<span class="number">1.5</span>, -<span class="number">0.3</span>])</span><br><span class="line">X = torch.cat([moon1 + <span class="number">0.05</span> * torch.randn_like(moon1),</span><br><span class="line">               moon2 + <span class="number">0.05</span> * torch.randn_like(moon2)])</span><br><span class="line"><span class="comment"># 两个弧线各加 0.05 噪声，肉眼看着像两个月牙</span></span><br><span class="line"></span><br><span class="line">labels = dbscan(X, eps=<span class="number">0.25</span>, min_samples=<span class="number">4</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;簇数: <span class="subst">&#123;labels.<span class="built_in">max</span>().item() + <span class="number">1</span>&#125;</span>   噪声数: <span class="subst">&#123;(labels == -<span class="number">1</span>).<span class="built_in">sum</span>().item()&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># 期望：2 个簇、0 个噪声（参数合适时）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-原理的应用"><a href="#3-3-原理的应用" class="headerlink" title="3.3 原理的应用"></a>3.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>不规则形状聚类</td>
+<td>任意形状簇（K-Means 做不到）</td>
+</tr>
+<tr>
+<td>异常检测</td>
+<td>噪声点就是异常</td>
+</tr>
+<tr>
+<td>地理数据</td>
+<td>位置聚类</td>
+</tr>
+<tr>
+<td>图像分割</td>
+<td>像素密度聚类</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-主成分分析（PCA）"><a href="#4-主成分分析（PCA）" class="headerlink" title="4. 主成分分析（PCA）"></a>4. 主成分分析（PCA）</h2><h3 id="4-1-原理"><a href="#4-1-原理" class="headerlink" title="4.1 原理"></a>4.1 原理</h3><p><strong>降维</strong>：把高维数据投影到”方差最大”的几个正交方向上，保留主要信息、去掉冗余。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">1. 数据去均值（中心化）</span><br><span class="line">2. 求协方差矩阵的特征向量（或对数据做 SVD）</span><br><span class="line">3. 取特征值最大的 k 个方向 = 主成分</span><br><span class="line">4. 投影：X_pca = X · V_k</span><br></pre></td></tr></table></figure>
+
+<p><strong>训练算法</strong>：SVD&#x2F;特征分解（一次计算，无迭代）。</p>
+<p><strong>保留信息量</strong>：<code>前k个特征值之和 / 全部特征值之和</code>，一般 ≥ 0.95 说明降维不丢信息。</p>
+<h3 id="4-2-落地代码（PyTorch，SVD-实现，逐行注释）"><a href="#4-2-落地代码（PyTorch，SVD-实现，逐行注释）" class="headerlink" title="4.2 落地代码（PyTorch，SVD 实现，逐行注释）"></a>4.2 落地代码（PyTorch，SVD 实现，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">pca</span>(<span class="params">X, k=<span class="number">2</span></span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;PCA：SVD 实现</span></span><br><span class="line"><span class="string">    X: (n, d) 高维数据</span></span><br><span class="line"><span class="string">    k: 降到几维</span></span><br><span class="line"><span class="string">    返回: 降维后的数据 (n, k) + 保留信息比例&quot;&quot;&quot;</span></span><br><span class="line">    <span class="comment"># 1. 中心化：减去每列均值，让数据中心在原点（SVD 前提）</span></span><br><span class="line">    X = X - X.mean(dim=<span class="number">0</span>)</span><br><span class="line">    <span class="comment"># 2. SVD 分解：X = U·S·Vᵀ</span></span><br><span class="line">    U, S, Vt = torch.linalg.svd(X)</span><br><span class="line">    <span class="comment"># S: 奇异值（从大到小），Vt 的行 = 主成分方向（按重要性排序）</span></span><br><span class="line">    <span class="comment"># 3. 取前 k 个主成分方向</span></span><br><span class="line">    components = Vt[:k]                      <span class="comment"># (k, d)</span></span><br><span class="line">    <span class="comment"># 4. 投影：把每个样本映射到 k 个主成分张成的空间</span></span><br><span class="line">    X_pca = X @ components.T                 <span class="comment"># (n, d) @ (d, k) = (n, k)</span></span><br><span class="line">    <span class="comment"># 每个主成分方向是单位向量，点积 = 样本在该方向上的坐标</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 5. 保留信息量 = 前 k 个奇异值平方占比</span></span><br><span class="line">    <span class="comment"># 奇异值平方 ∝ 该方向上的方差，占比高说明降维丢的信息少</span></span><br><span class="line">    explained = (S[:k] ** <span class="number">2</span>).<span class="built_in">sum</span>() / (S ** <span class="number">2</span>).<span class="built_in">sum</span>()</span><br><span class="line">    <span class="keyword">return</span> X_pca, explained.item()</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造高维相关数据（实际只有 2 个自由维度） ----------</span></span><br><span class="line">torch.manual_seed(<span class="number">0</span>)</span><br><span class="line">Z = torch.randn(<span class="number">200</span>, <span class="number">2</span>)                      <span class="comment"># 真实结构：只有 2 维</span></span><br><span class="line">W = torch.randn(<span class="number">2</span>, <span class="number">10</span>)                       <span class="comment"># 线性映射矩阵：2 → 10 维</span></span><br><span class="line">X = Z @ W + <span class="number">0.05</span> * torch.randn(<span class="number">200</span>, <span class="number">10</span>)      <span class="comment"># 10 维数据（含少量噪声）</span></span><br><span class="line"></span><br><span class="line">X_pca, ratio = pca(X, k=<span class="number">2</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;降到 2 维，保留信息量: <span class="subst">&#123;ratio:<span class="number">.3</span>f&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># 应接近 1.0 —— 说明 10 维数据本质只有 2 维，降维几乎不丢信息</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;降维后形状: <span class="subst">&#123;<span class="built_in">tuple</span>(X_pca.shape)&#125;</span>&quot;</span>)    <span class="comment"># (200, 2)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-原理的应用"><a href="#4-3-原理的应用" class="headerlink" title="4.3 原理的应用"></a>4.3 原理的应用</h3><table>
+<thead>
+<tr>
+<th>应用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>可视化</td>
+<td>高维降到 2&#x2F;3 维画图</td>
+</tr>
+<tr>
+<td>特征压缩</td>
+<td>减少维度防过拟合、加速训练</td>
+</tr>
+<tr>
+<td>数据去噪</td>
+<td>丢掉小方差方向</td>
+</tr>
+<tr>
+<td>人脸识别</td>
+<td>Eigenface（特征脸）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="5-无监督算法选择速查"><a href="#5-无监督算法选择速查" class="headerlink" title="5. 无监督算法选择速查"></a>5. 无监督算法选择速查</h2><table>
+<thead>
+<tr>
+<th>需求</th>
+<th>算法</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>球形簇、速度快</td>
+<td>K-Means</td>
+<td>简单高效</td>
+</tr>
+<tr>
+<td>任意形状、要噪声</td>
+<td>DBSCAN</td>
+<td>密度聚类</td>
+</tr>
+<tr>
+<td>不指定 K、要层级</td>
+<td>层次聚类</td>
+<td>树状图</td>
+</tr>
+<tr>
+<td>降维&#x2F;可视化</td>
+<td>PCA</td>
+<td>方差最大投影</td>
+</tr>
+<tr>
+<td>高维稀疏数据</td>
+<td>（可先 PCA 再聚类）</td>
+<td>组合使用</td>
+</tr>
+</tbody></table>
+<h2 id="训练算法小结"><a href="#训练算法小结" class="headerlink" title="训练算法小结"></a>训练算法小结</h2><table>
+<thead>
+<tr>
+<th>训练算法</th>
+<th>适用</th>
+<th>一句话原理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>EM 迭代</td>
+<td>K-Means</td>
+<td>分配-更新交替到收敛</td>
+</tr>
+<tr>
+<td>贪心合并</td>
+<td>层次聚类</td>
+<td>每次合并最近两簇</td>
+</tr>
+<tr>
+<td>邻域扩展</td>
+<td>DBSCAN</td>
+<td>从核心点密度连通</td>
+</tr>
+<tr>
+<td>SVD 分解</td>
+<td>PCA</td>
+<td>一次分解取主方向</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/ai-ml-supervised-algorithms/" rel="prev" title="AI 监督学习算法详解与落地（PyTorch CPU）">
+                  <i class="fa fa-angle-left"></i> AI 监督学习算法详解与落地（PyTorch CPU）
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/ai-ml-neural-training-algorithms/" rel="next" title="AI 神经网络与训练算法详解（PyTorch CPU）">
+                  AI 神经网络与训练算法详解（PyTorch CPU） <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

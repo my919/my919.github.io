@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="Redis · 进阶实战 从 0 到高可用与性能。主从复制 · 哨兵高可用 · 集群分片 · Lua 脚本 · Stream 消息 · 淘汰策略 · 秒杀落地案例。代码带详细注释。  技术栈速查   类别 选型 用途    高可用 哨兵 Sentinel 主从自动切换   水平扩展 Redis Cluster 分片 + 高可用   原子性 Lua 脚本 复杂操作原子执行   消息 Redis St">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis 进阶实战">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/redis-advanced-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="Redis · 进阶实战 从 0 到高可用与性能。主从复制 · 哨兵高可用 · 集群分片 · Lua 脚本 · Stream 消息 · 淘汰策略 · 秒杀落地案例。代码带详细注释。  技术栈速查   类别 选型 用途    高可用 哨兵 Sentinel 主从自动切换   水平扩展 Redis Cluster 分片 + 高可用   原子性 Lua 脚本 复杂操作原子执行   消息 Redis St">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T08:30:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.911Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/redis-advanced-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/redis-advanced-guide/","path":"2026/09/14/redis-advanced-guide/","title":"Redis 进阶实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Redis 进阶实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Redis-%C2%B7-%E8%BF%9B%E9%98%B6%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">Redis · 进阶实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6"><span class="nav-number">1.3.</span> <span class="nav-text">2. 主从复制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8"><span class="nav-number">1.4.</span> <span class="nav-text">3. 哨兵高可用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-Redis-Cluster-%E9%9B%86%E7%BE%A4"><span class="nav-number">1.5.</span> <span class="nav-text">4. Redis Cluster 集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-Lua-%E8%84%9A%E6%9C%AC%EF%BC%88%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. Lua 脚本（原子操作）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-Stream-%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97"><span class="nav-number">1.7.</span> <span class="nav-text">6. Stream 消息队列</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AD%96%E7%95%A5"><span class="nav-number">1.8.</span> <span class="nav-text">7. 内存淘汰策略</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E6%80%A7%E8%83%BD%E6%8E%92%E6%9F%A5"><span class="nav-number">1.9.</span> <span class="nav-text">8. 性能排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E8%90%BD%E5%9C%B0%E6%A1%88%E4%BE%8B%EF%BC%9A%E7%A7%92%E6%9D%80%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.10.</span> <span class="nav-text">9. 落地案例：秒杀系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9E%B6%E6%9E%84%E9%80%89%E5%9E%8B"><span class="nav-number">1.11.</span> <span class="nav-text">10. 高可用架构选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.12.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/redis-advanced-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Redis 进阶实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Redis 进阶实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 16:30:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T16:30:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="Redis-·-进阶实战"><a href="#Redis-·-进阶实战" class="headerlink" title="Redis · 进阶实战"></a>Redis · 进阶实战</h1><blockquote>
+<p>从 0 到高可用与性能。主从复制 · 哨兵高可用 · 集群分片 · Lua 脚本 · Stream 消息 · 淘汰策略 · 秒杀落地案例。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>高可用</td>
+<td>哨兵 Sentinel</td>
+<td>主从自动切换</td>
+</tr>
+<tr>
+<td>水平扩展</td>
+<td>Redis Cluster</td>
+<td>分片 + 高可用</td>
+</tr>
+<tr>
+<td>原子性</td>
+<td>Lua 脚本</td>
+<td>复杂操作原子执行</td>
+</tr>
+<tr>
+<td>消息</td>
+<td>Redis Stream</td>
+<td>可靠消息队列</td>
+</tr>
+<tr>
+<td>监控</td>
+<td>redis-cli INFO &#x2F; RedisInsight</td>
+<td>性能观测</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p>单机 Redis 有两大天花板：<strong>可用性</strong>（宕机全挂）和<strong>容量&#x2F;吞吐</strong>（单节点上限）。进阶要解决：</p>
+<ul>
+<li><strong>主从复制</strong>：数据冗余 + 读写分离（解决可用性基础）。</li>
+<li><strong>哨兵（Sentinel）</strong>：监控主节点，宕机自动选举新主（解决自动故障转移）。</li>
+<li><strong>集群（Cluster）</strong>：数据分片到多主多从（解决容量与吞吐）。</li>
+<li><strong>Lua 脚本</strong>：把多条命令打包原子执行（解决”检查-执行”竞态）。</li>
+</ul>
+<h2 id="2-主从复制"><a href="#2-主从复制" class="headerlink" title="2. 主从复制"></a>2. 主从复制</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 主库（默认配置）</span></span><br><span class="line">docker run -d --name redis-master -p 6379:6379 redis:8</span><br><span class="line"></span><br><span class="line"><span class="comment"># 从库（replicaof 指向主库，\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name redis-slave -p 6380:6379 \</span><br><span class="line">  redis:8 redis-server --replicaof 127.0.0.1 6379</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证</span></span><br><span class="line">redis-cli -p 6379 INFO replication</span><br><span class="line"><span class="comment"># role:master / connected_slaves:1</span></span><br><span class="line">redis-cli -p 6380 INFO replication</span><br><span class="line"><span class="comment"># role:slave / master_link_status:up</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>复制原理</strong>：全量同步（RDB 快照 + 增量）→ 增量同步（命令传播）。从库只读，默认 <code>replica-read-only yes</code>。</p>
+<h2 id="3-哨兵高可用"><a href="#3-哨兵高可用" class="headerlink" title="3. 哨兵高可用"></a>3. 哨兵高可用</h2><p>创建 <code>sentinel.conf</code>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sentinel monitor mymaster 127.0.0.1 6379 2    # 监控主库，2 个哨兵同意才判定宕机</span><br><span class="line">sentinel down-after-milliseconds mymaster 5000   # 5 秒无响应判宕</span><br><span class="line">sentinel failover-timeout mymaster 10000          # 故障转移超时</span><br><span class="line">sentinel parallel-syncs mymaster 1                # 同时同步的从库数</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动 3 个哨兵（生产必须奇数个 ≥3，\ 为续行符整段复制）</span></span><br><span class="line">docker run -d --name sentinel1 -p 26379:26379 \</span><br><span class="line">  -v $(<span class="built_in">pwd</span>)/sentinel.conf:/etc/redis/sentinel.conf \</span><br><span class="line">  redis:8 redis-sentinel /etc/redis/sentinel.conf</span><br></pre></td></tr></table></figure>
+
+<p><strong>验证故障转移</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 停掉主库</span></span><br><span class="line">docker stop redis-master</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 观察从库被自动提升</span></span><br><span class="line"><span class="built_in">sleep</span> 15</span><br><span class="line">redis-cli -p 6380 INFO replication   <span class="comment"># role 变为 master</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 业务连接改用哨兵地址，自动感知新主</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>应用接入哨兵</strong>（Spring Boot）：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">data:</span></span><br><span class="line">    <span class="attr">redis:</span></span><br><span class="line">      <span class="attr">sentinel:</span></span><br><span class="line">        <span class="attr">master:</span> <span class="string">mymaster</span></span><br><span class="line">        <span class="attr">nodes:</span> <span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span><span class="string">:26379,127.0.0.1:26380,127.0.0.1:26381</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="4-Redis-Cluster-集群"><a href="#4-Redis-Cluster-集群" class="headerlink" title="4. Redis Cluster 集群"></a>4. Redis Cluster 集群</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建 6 节点集群（3 主 3 从，每个主节点带从节点）</span></span><br><span class="line"><span class="keyword">for</span> port <span class="keyword">in</span> 7000 7001 7002 7003 7004 7005; <span class="keyword">do</span></span><br><span class="line">  docker run -d --name redis-cluster-<span class="variable">$port</span> -p <span class="variable">$port</span>:<span class="variable">$port</span> \</span><br><span class="line">    redis:8 redis-server --port <span class="variable">$port</span> \</span><br><span class="line">    --cluster-enabled <span class="built_in">yes</span> --cluster-config-file nodes.conf \</span><br><span class="line">    --cluster-node-timeout 5000 --appendonly <span class="built_in">yes</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 组建集群（自动分片 16384 个槽，\ 为续行符整段复制）</span></span><br><span class="line">docker <span class="built_in">exec</span> -it redis-cluster-7000 redis-cli --cluster create \</span><br><span class="line">  127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 \</span><br><span class="line">  127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 \</span><br><span class="line">  --cluster-replicas 1</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 验证集群</span></span><br><span class="line">redis-cli -c -p 7000 CLUSTER INFO      <span class="comment"># cluster_state:ok</span></span><br><span class="line">redis-cli -c -p 7000 CLUSTER NODES</span><br><span class="line">redis-cli -c -p 7000 SET k1 v1         <span class="comment"># -c 自动重定向</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>集群要点</strong>：key 按 <code>CRC16(key) % 16384</code> 落到槽位；多 key 操作需同槽（用 hash tag <code>{user:1001}</code>）；客户端需支持集群协议（Lettuce&#x2F;Redisson 开箱即用）。</p>
+<h2 id="5-Lua-脚本（原子操作）"><a href="#5-Lua-脚本（原子操作）" class="headerlink" title="5. Lua 脚本（原子操作）"></a>5. Lua 脚本（原子操作）</h2><p>场景：秒杀扣库存需要”检查库存 &gt; 0 再减 1”两步原子执行。</p>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- check_and_decr.lua</span></span><br><span class="line"><span class="keyword">local</span> stock = redis.call(<span class="string">&#x27;GET&#x27;</span>, KEYS[<span class="number">1</span>])          <span class="comment">-- 读库存</span></span><br><span class="line"><span class="keyword">if</span> <span class="keyword">not</span> stock <span class="keyword">or</span> <span class="built_in">tonumber</span>(stock) &lt;= <span class="number">0</span> <span class="keyword">then</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>                       <span class="comment">-- 库存不足</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="keyword">return</span> redis.call(<span class="string">&#x27;DECR&#x27;</span>, KEYS[<span class="number">1</span>])  <span class="comment">-- 原子扣减</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli EVAL <span class="string">&quot;<span class="subst">$(cat check_and_decr.lua)</span>&quot;</span> 1 stock:1001</span><br></pre></td></tr></table></figure>
+
+<p>Java（Spring Data Redis）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">tryDeduct</span><span class="params">(String key)</span> &#123;</span><br><span class="line">    DefaultRedisScript&lt;Long&gt; script = <span class="keyword">new</span> <span class="title class_">DefaultRedisScript</span>&lt;&gt;(<span class="string">&quot;&quot;&quot;</span></span><br><span class="line"><span class="string">        local stock = redis.call(&#x27;GET&#x27;, KEYS[1])          -- 读库存</span></span><br><span class="line"><span class="string">        if not stock or tonumber(stock) &lt;= 0 then return -1 end   -- 不足返回 -1</span></span><br><span class="line"><span class="string">        return redis.call(&#x27;DECR&#x27;, KEYS[1])                -- 原子扣减</span></span><br><span class="line"><span class="string">        &quot;&quot;&quot;</span>, Long.class);</span><br><span class="line">    <span class="type">Long</span> <span class="variable">r</span> <span class="operator">=</span> redis.execute(script, List.of(key));   <span class="comment">// 执行 Lua</span></span><br><span class="line">    <span class="keyword">return</span> r != <span class="literal">null</span> &amp;&amp; r &gt;= <span class="number">0</span>;                     <span class="comment">// 结果判断</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="6-Stream-消息队列"><a href="#6-Stream-消息队列" class="headerlink" title="6. Stream 消息队列"></a>6. Stream 消息队列</h2><p>Stream 是 Redis 5+ 的可靠消息结构（对比 List 队列：支持消费者组、消息持久化、ACK）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生产</span></span><br><span class="line">XADD events * <span class="built_in">type</span> order orderId 1001</span><br><span class="line"><span class="comment"># 消费（独立消费者）</span></span><br><span class="line">XREAD COUNT 10 STREAMS events 0</span><br><span class="line"><span class="comment"># 消费者组（类似 Kafka）</span></span><br><span class="line">XGROUP CREATE events group1 0</span><br><span class="line">XREADGROUP GROUP group1 consumer1 COUNT 1 STREAMS events &gt;</span><br><span class="line"><span class="comment"># 确认消费（防止丢失）</span></span><br><span class="line">XACK events group1 &lt;消息ID&gt;</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-内存淘汰策略"><a href="#7-内存淘汰策略" class="headerlink" title="7. 内存淘汰策略"></a>7. 内存淘汰策略</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看/设置</span></span><br><span class="line">redis-cli CONFIG GET maxmemory-policy</span><br><span class="line">redis-cli CONFIG SET maxmemory-policy allkeys-lru</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>说明</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>noeviction（默认）</td>
+<td>满则不写，直接报错</td>
+<td>不推荐生产</td>
+</tr>
+<tr>
+<td>allkeys-lru</td>
+<td>淘汰最久未使用</td>
+<td>通用缓存（推荐）</td>
+</tr>
+<tr>
+<td>allkeys-lfu</td>
+<td>淘汰使用频率最低</td>
+<td>热点明显的缓存</td>
+</tr>
+<tr>
+<td>volatile-ttl</td>
+<td>淘汰快过期的</td>
+<td>有设置过期时间的场景</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redis-cli INFO stats | grep evicted_keys   <span class="comment"># 观察淘汰量（过多说明容量不足）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="8-性能排查"><a href="#8-性能排查" class="headerlink" title="8. 性能排查"></a>8. 性能排查</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 慢查询（超过 10ms 的命令）</span></span><br><span class="line">redis-cli SLOWLOG GET 10</span><br><span class="line"></span><br><span class="line"><span class="comment"># 大 key 排查（生产注意：会阻塞）</span></span><br><span class="line">redis-cli --bigkeys</span><br><span class="line"></span><br><span class="line"><span class="comment"># 内存分布</span></span><br><span class="line">redis-cli MEMORY USAGE user:1001</span><br><span class="line">redis-cli MEMORY STATS</span><br><span class="line"></span><br><span class="line"><span class="comment"># 连接与命中率</span></span><br><span class="line">redis-cli INFO clients</span><br><span class="line">redis-cli INFO stats | grep -E <span class="string">&quot;keyspace_hits|keyspace_misses&quot;</span></span><br><span class="line"><span class="comment"># 命中率 = hits / (hits + misses)，低于 80% 需优化缓存策略</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>大 key 危害</strong>：阻塞单线程（删除&#x2F;迁移都慢）。应对：拆分、<code>UNLINK</code>（异步删除）。</p>
+<h2 id="9-落地案例：秒杀系统"><a href="#9-落地案例：秒杀系统" class="headerlink" title="9. 落地案例：秒杀系统"></a>9. 落地案例：秒杀系统</h2><p>需求：1 万件商品，瞬时 10 万请求，不能超卖、不能把数据库打爆。</p>
+<p><strong>方案</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">请求 → Nginx 限流 → 应用层令牌校验 → Lua 原子扣 Redis 库存</span><br><span class="line">    → 成功：写入消息队列（异步落库）→ 返回成功</span><br><span class="line">    → 失败：返回&quot;已售罄&quot;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 秒杀扣库存 + 防重复（原子）</span></span><br><span class="line"><span class="keyword">local</span> stock = redis.call(<span class="string">&#x27;GET&#x27;</span>, KEYS[<span class="number">1</span>])           <span class="comment">-- stock key（库存）</span></span><br><span class="line"><span class="keyword">if</span> <span class="keyword">not</span> stock <span class="keyword">or</span> <span class="built_in">tonumber</span>(stock) &lt;= <span class="number">0</span> <span class="keyword">then</span> <span class="keyword">return</span> <span class="number">-1</span> <span class="keyword">end</span>   <span class="comment">-- 无库存</span></span><br><span class="line"><span class="keyword">if</span> redis.call(<span class="string">&#x27;SISMEMBER&#x27;</span>, KEYS[<span class="number">2</span>], ARGV[<span class="number">1</span>]) == <span class="number">1</span> <span class="keyword">then</span> <span class="keyword">return</span> <span class="number">-2</span> <span class="keyword">end</span>  <span class="comment">-- 已买过</span></span><br><span class="line">redis.call(<span class="string">&#x27;DECR&#x27;</span>, KEYS[<span class="number">1</span>])                        <span class="comment">-- 扣库存</span></span><br><span class="line">redis.call(<span class="string">&#x27;SADD&#x27;</span>, KEYS[<span class="number">2</span>], ARGV[<span class="number">1</span>])               <span class="comment">-- 记录用户</span></span><br><span class="line"><span class="keyword">return</span> <span class="number">1</span>                                           <span class="comment">-- 成功</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SET seckill:stock:1001 10000</span><br><span class="line"><span class="comment"># 调用：EVAL script 2 seckill:stock:1001 seckill:users:1001 &lt;userId&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么这样设计</strong>：Lua 保证”查库存+扣减+防重复”原子执行（无超卖）；异步落库用 MQ 削峰（数据库只承受真实成交量）。</p>
+<h2 id="10-高可用架构选型"><a href="#10-高可用架构选型" class="headerlink" title="10. 高可用架构选型"></a>10. 高可用架构选型</h2><table>
+<thead>
+<tr>
+<th>规模</th>
+<th>方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单机开发</td>
+<td>单节点 + AOF</td>
+</tr>
+<tr>
+<td>读多写少（中小）</td>
+<td>主从 + 读写分离</td>
+</tr>
+<tr>
+<td>需要自动故障转移</td>
+<td>哨兵（1 主 2 从 3 哨兵）</td>
+</tr>
+<tr>
+<td>大数据量&#x2F;高吞吐</td>
+<td>Cluster（≥3 主 3 从）</td>
+</tr>
+<tr>
+<td>云上托管</td>
+<td>云 Redis（自带高可用与备份）</td>
+</tr>
+</tbody></table>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">redis-cli -p 6380 INFO replication    <span class="comment"># 从库状态</span></span><br><span class="line">redis-cli -p 7000 -c CLUSTER INFO     <span class="comment"># 集群状态</span></span><br><span class="line">redis-cli SLOWLOG GET 5               <span class="comment"># 慢查询</span></span><br><span class="line">redis-cli --bigkeys                   <span class="comment"># 大 key</span></span><br><span class="line">redis-cli INFO stats | grep evicted   <span class="comment"># 淘汰量</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/redis-guide/" rel="prev" title="Redis 从入门到落地">
+                  <i class="fa fa-angle-left"></i> Redis 从入门到落地
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/service-design-guide/" rel="next" title="服务设计与治理">
+                  服务设计与治理 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

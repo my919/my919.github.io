@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="Java · 进阶特性 入门篇之后的进阶。Stream 流式编程 · Optional 防空 · 新日期时间 API · 集合源码要点 · 泛型与类型擦除 · 反射与注解。代码带详细注释。  技术栈速查   类别 选型 用途    语言 Java 21 实现   构建 Maven 3.9 项目管理   测试 JUnit 5 验证   1. 概念说明Java 8 引入的函数式特性彻底改变了日常写法：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java 进阶特性实战：Stream 与函数式">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/java-advanced-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="Java · 进阶特性 入门篇之后的进阶。Stream 流式编程 · Optional 防空 · 新日期时间 API · 集合源码要点 · 泛型与类型擦除 · 反射与注解。代码带详细注释。  技术栈速查   类别 选型 用途    语言 Java 21 实现   构建 Maven 3.9 项目管理   测试 JUnit 5 验证   1. 概念说明Java 8 引入的函数式特性彻底改变了日常写法：">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T10:40:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.902Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/java-advanced-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/java-advanced-guide/","path":"2026/09/14/java-advanced-guide/","title":"Java 进阶特性实战：Stream 与函数式"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Java 进阶特性实战：Stream 与函数式 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Java-%C2%B7-%E8%BF%9B%E9%98%B6%E7%89%B9%E6%80%A7"><span class="nav-number">1.</span> <span class="nav-text">Java · 进阶特性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-Stream-%E7%B2%BE%E8%AE%B2"><span class="nav-number">1.3.</span> <span class="nav-text">2. Stream 精讲</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E9%80%9F%E6%9F%A5"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 常用操作速查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E7%BB%88%E7%BB%93%E6%93%8D%E4%BD%9C%EF%BC%88%E5%BF%85%E9%A1%BB%E6%9C%89%E7%9A%84%E7%BB%93%E5%B0%BE%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 终结操作（必须有的结尾）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%B9%B6%E8%A1%8C%E6%B5%81%EF%BC%88%E8%B0%A8%E6%85%8E%E7%94%A8%EF%BC%89"><span class="nav-number">1.3.3.</span> <span class="nav-text">2.3 并行流（谨慎用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-Stream-%E6%98%93%E9%94%99%E7%82%B9"><span class="nav-number">1.3.4.</span> <span class="nav-text">2.4 Stream 易错点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-Optional-%E9%98%B2%E7%A9%BA"><span class="nav-number">1.4.</span> <span class="nav-text">3. Optional 防空</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E6%96%B0%E6%97%A5%E6%9C%9F%E6%97%B6%E9%97%B4-API%EF%BC%88java-time%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 新日期时间 API（java.time）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E9%9B%86%E5%90%88%E6%BA%90%E7%A0%81%E8%A6%81%E7%82%B9%EF%BC%88%E9%9D%A2%E8%AF%95-%E6%8E%92%E9%9A%9C%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. 集合源码要点（面试+排障）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E6%B3%9B%E5%9E%8B%E4%B8%8E%E7%B1%BB%E5%9E%8B%E6%93%A6%E9%99%A4"><span class="nav-number">1.7.</span> <span class="nav-text">6. 泛型与类型擦除</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-record-%E4%B8%8E%E7%8E%B0%E4%BB%A3%E8%AF%AD%E6%B3%95%EF%BC%88Java-17-%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">7. record 与现代语法（Java 17+）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%8F%8D%E5%B0%84%E4%B8%8E%E6%B3%A8%E8%A7%A3%EF%BC%88%E6%A1%86%E6%9E%B6%E5%9F%BA%E7%A1%80%EF%BC%89"><span class="nav-number">1.9.</span> <span class="nav-text">8. 反射与注解（框架基础）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/java-advanced-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Java 进阶特性实战：Stream 与函数式 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java 进阶特性实战：Stream 与函数式
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 18:40:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T18:40:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="Java-·-进阶特性"><a href="#Java-·-进阶特性" class="headerlink" title="Java · 进阶特性"></a>Java · 进阶特性</h1><blockquote>
+<p>入门篇之后的进阶。Stream 流式编程 · Optional 防空 · 新日期时间 API · 集合源码要点 · 泛型与类型擦除 · 反射与注解。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>语言</td>
+<td>Java 21</td>
+<td>实现</td>
+</tr>
+<tr>
+<td>构建</td>
+<td>Maven 3.9</td>
+<td>项目管理</td>
+</tr>
+<tr>
+<td>测试</td>
+<td>JUnit 5</td>
+<td>验证</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p>Java 8 引入的函数式特性彻底改变了日常写法：<strong>Stream</strong>（声明式数据处理）、<strong>Optional</strong>（消灭空指针）、<strong>新时间 API</strong>（替代 Date&#x2F;Calendar）。Java 21 又带来<strong>虚拟线程、模式匹配、record</strong> 等现代特性。</p>
+<p><strong>核心思维转变</strong>：从”怎么一步步做”（命令式）到”我要什么结果”（声明式）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 命令式：循环+if+收集</span></span><br><span class="line">List&lt;String&gt; result = <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line"><span class="keyword">for</span> (User u : users) &#123;</span><br><span class="line">    <span class="keyword">if</span> (u.getAge() &gt; <span class="number">18</span>) result.add(u.getName().toUpperCase());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 声明式：一行链式</span></span><br><span class="line">List&lt;String&gt; result = users.stream()</span><br><span class="line">    .filter(u -&gt; u.getAge() &gt; <span class="number">18</span>)             <span class="comment">// 过滤</span></span><br><span class="line">    .map(u -&gt; u.getName().toUpperCase())      <span class="comment">// 转换</span></span><br><span class="line">    .toList();</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-Stream-精讲"><a href="#2-Stream-精讲" class="headerlink" title="2. Stream 精讲"></a>2. Stream 精讲</h2><h3 id="2-1-常用操作速查"><a href="#2-1-常用操作速查" class="headerlink" title="2.1 常用操作速查"></a>2.1 常用操作速查</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">List&lt;User&gt; users = List.of(</span><br><span class="line">    <span class="keyword">new</span> <span class="title class_">User</span>(<span class="string">&quot;alice&quot;</span>, <span class="number">25</span>), <span class="keyword">new</span> <span class="title class_">User</span>(<span class="string">&quot;bob&quot;</span>, <span class="number">17</span>), <span class="keyword">new</span> <span class="title class_">User</span>(<span class="string">&quot;carol&quot;</span>, <span class="number">30</span>));</span><br><span class="line"></span><br><span class="line"><span class="comment">// filter 过滤 + map 转换 + sorted 排序 + limit 截断</span></span><br><span class="line">List&lt;String&gt; names = users.stream()</span><br><span class="line">    .filter(u -&gt; u.age() &gt;= <span class="number">18</span>)      <span class="comment">// 只看成年人</span></span><br><span class="line">    .map(User::name)                 <span class="comment">// 取姓名</span></span><br><span class="line">    .sorted()                        <span class="comment">// 排序</span></span><br><span class="line">    .limit(<span class="number">10</span>)                       <span class="comment">// 最多 10 个</span></span><br><span class="line">    .toList();</span><br><span class="line"></span><br><span class="line"><span class="comment">// distinct 去重（依赖 equals）</span></span><br><span class="line"><span class="comment">// peek 调试（打印中间结果，不改变流）</span></span><br><span class="line">users.stream().peek(u -&gt; System.out.println(u)).count();</span><br><span class="line"></span><br><span class="line"><span class="comment">// flatMap 展平嵌套</span></span><br><span class="line">List&lt;List&lt;Integer&gt;&gt; matrix = List.of(List.of(<span class="number">1</span>,<span class="number">2</span>), List.of(<span class="number">3</span>,<span class="number">4</span>));</span><br><span class="line">List&lt;Integer&gt; flat = matrix.stream().flatMap(List::stream).toList();  <span class="comment">// [1,2,3,4]</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-终结操作（必须有的结尾）"><a href="#2-2-终结操作（必须有的结尾）" class="headerlink" title="2.2 终结操作（必须有的结尾）"></a>2.2 终结操作（必须有的结尾）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 收集</span></span><br><span class="line">List&lt;User&gt; list = users.stream().filter(...).toList();          <span class="comment">// 不可变</span></span><br><span class="line">List&lt;User&gt; mutable = users.stream().collect(Collectors.toList()); <span class="comment">// 可变</span></span><br><span class="line">Map&lt;String, Integer&gt; byName = users.stream()</span><br><span class="line">    .collect(Collectors.toMap(User::name, User::age));           <span class="comment">// 转 Map</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 分组（超常用）</span></span><br><span class="line">Map&lt;Integer, List&lt;User&gt;&gt; byAge = users.stream()</span><br><span class="line">    .collect(Collectors.groupingBy(User::age));      <span class="comment">// 按年龄分组</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 聚合</span></span><br><span class="line"><span class="type">long</span> <span class="variable">count</span> <span class="operator">=</span> users.stream().count();</span><br><span class="line"><span class="type">int</span> <span class="variable">maxAge</span> <span class="operator">=</span> users.stream().mapToInt(User::age).max().orElse(<span class="number">0</span>);      <span class="comment">// 最大</span></span><br><span class="line"><span class="type">double</span> <span class="variable">avg</span> <span class="operator">=</span> users.stream().mapToInt(User::age).average().orElse(<span class="number">0</span>);  <span class="comment">// 平均</span></span><br><span class="line"><span class="type">int</span> <span class="variable">sum</span> <span class="operator">=</span> users.stream().mapToInt(User::age).sum();                   <span class="comment">// 求和</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 归约</span></span><br><span class="line"><span class="type">int</span> <span class="variable">total</span> <span class="operator">=</span> users.stream().map(User::age).reduce(<span class="number">0</span>, Integer::sum);    <span class="comment">// 累加</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 匹配</span></span><br><span class="line"><span class="type">boolean</span> <span class="variable">anyAdult</span> <span class="operator">=</span> users.stream().anyMatch(u -&gt; u.age() &gt;= <span class="number">18</span>);   <span class="comment">// 任一满足</span></span><br><span class="line"><span class="type">boolean</span> <span class="variable">allAdult</span> <span class="operator">=</span> users.stream().allMatch(u -&gt; u.age() &gt;= <span class="number">18</span>);   <span class="comment">// 全部满足</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-并行流（谨慎用）"><a href="#2-3-并行流（谨慎用）" class="headerlink" title="2.3 并行流（谨慎用）"></a>2.3 并行流（谨慎用）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// parallelStream：多线程处理（数据量大且 CPU 密集才有收益）</span></span><br><span class="line">List&lt;String&gt; result = list.parallelStream()</span><br><span class="line">    .filter(...).map(...).toList();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 坑：共享可变状态是线程不安全的！容器默认使用公共 ForkJoinPool</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-Stream-易错点"><a href="#2-4-Stream-易错点" class="headerlink" title="2.4 Stream 易错点"></a>2.4 Stream 易错点</h3><table>
+<thead>
+<tr>
+<th>坑</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>流只能用一次</td>
+<td>用完即关闭，不能复用</td>
+</tr>
+<tr>
+<td>忘了终结操作</td>
+<td>中间操作惰性，不调用不执行</td>
+</tr>
+<tr>
+<td>空流 get()</td>
+<td><code>max()</code> 返回 Optional，用 orElse</td>
+</tr>
+<tr>
+<td>并行修改源数据</td>
+<td>报 ConcurrentModificationException</td>
+</tr>
+<tr>
+<td>复杂嵌套难读</td>
+<td>拆方法，别写超长链</td>
+</tr>
+</tbody></table>
+<h2 id="3-Optional-防空"><a href="#3-Optional-防空" class="headerlink" title="3. Optional 防空"></a>3. Optional 防空</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ❌ 传统：层层判空</span></span><br><span class="line"><span class="keyword">if</span> (user != <span class="literal">null</span>) &#123;</span><br><span class="line">    <span class="type">Address</span> <span class="variable">addr</span> <span class="operator">=</span> user.getAddress();</span><br><span class="line">    <span class="keyword">if</span> (addr != <span class="literal">null</span>) <span class="keyword">return</span> addr.getCity();</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> <span class="string">&quot;未知&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ✅ 函数式链式</span></span><br><span class="line"><span class="type">String</span> <span class="variable">city</span> <span class="operator">=</span> Optional.ofNullable(user)     <span class="comment">// 包装可能为 null 的对象</span></span><br><span class="line">    .map(User::getAddress)                  <span class="comment">// 取地址（空则跳过）</span></span><br><span class="line">    .map(Address::getCity)                  <span class="comment">// 取城市</span></span><br><span class="line">    .orElse(<span class="string">&quot;未知&quot;</span>);                         <span class="comment">// 兜底值</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 常用方法</span></span><br><span class="line">Optional&lt;User&gt; opt = findUser(id);</span><br><span class="line">opt.isPresent();                          <span class="comment">// 是否存在</span></span><br><span class="line">opt.ifPresent(u -&gt; sendEmail(u));        <span class="comment">// 存在才执行</span></span><br><span class="line">opt.orElse(defaultUser);                  <span class="comment">// 取默认（提前构造）</span></span><br><span class="line">opt.orElseGet(User::<span class="keyword">new</span>);                 <span class="comment">// 惰性默认（推荐）</span></span><br><span class="line">opt.orElseThrow(() -&gt; <span class="keyword">new</span> <span class="title class_">BusinessException</span>(<span class="string">&quot;用户不存在&quot;</span>));   <span class="comment">// 不存在抛异常</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>注意</strong>：Optional 用于返回值，<strong>不用作字段&#x2F;参数</strong>（序列化问题、API 污染）。</p>
+<h2 id="4-新日期时间-API（java-time）"><a href="#4-新日期时间-API（java-time）" class="headerlink" title="4. 新日期时间 API（java.time）"></a>4. 新日期时间 API（java.time）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> java.time.*;</span><br><span class="line"><span class="keyword">import</span> java.time.format.DateTimeFormatter;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 当前时间</span></span><br><span class="line"><span class="type">LocalDate</span> <span class="variable">today</span> <span class="operator">=</span> LocalDate.now();            <span class="comment">// 日期</span></span><br><span class="line"><span class="type">LocalDateTime</span> <span class="variable">now</span> <span class="operator">=</span> LocalDateTime.now();      <span class="comment">// 日期+时间</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 解析与格式化（线程安全，SimpleDateFormat 不是！）</span></span><br><span class="line"><span class="type">DateTimeFormatter</span> <span class="variable">fmt</span> <span class="operator">=</span> DateTimeFormatter.ofPattern(<span class="string">&quot;yyyy-MM-dd HH:mm:ss&quot;</span>);</span><br><span class="line"><span class="type">LocalDateTime</span> <span class="variable">t</span> <span class="operator">=</span> LocalDateTime.parse(<span class="string">&quot;2026-09-14 18:00:00&quot;</span>, fmt);   <span class="comment">// 解析</span></span><br><span class="line"><span class="type">String</span> <span class="variable">s</span> <span class="operator">=</span> now.format(fmt);                                          <span class="comment">// 格式化</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 计算（不可变，返回新对象）</span></span><br><span class="line"><span class="type">LocalDate</span> <span class="variable">tomorrow</span> <span class="operator">=</span> today.plusDays(<span class="number">1</span>);           <span class="comment">// 加 1 天</span></span><br><span class="line"><span class="type">LocalDateTime</span> <span class="variable">after30m</span> <span class="operator">=</span> now.plusMinutes(<span class="number">30</span>);     <span class="comment">// 加 30 分钟</span></span><br><span class="line"><span class="type">long</span> <span class="variable">days</span> <span class="operator">=</span> ChronoUnit.DAYS.between(start, end);  <span class="comment">// 间隔天数</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 时区（跨时区系统必用）</span></span><br><span class="line"><span class="type">ZonedDateTime</span> <span class="variable">zdt</span> <span class="operator">=</span> ZonedDateTime.now(ZoneId.of(<span class="string">&quot;Asia/Shanghai&quot;</span>));</span><br><span class="line"><span class="type">Instant</span> <span class="variable">instant</span> <span class="operator">=</span> zdt.toInstant();        <span class="comment">// 存储/传输用 Instant（UTC）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>规则</strong>：存储用 <code>Instant</code>&#x2F;UTC；展示用本地时区；数据库映射 <code>LocalDateTime</code>（MySQL DATETIME）。</p>
+<h2 id="5-集合源码要点（面试-排障）"><a href="#5-集合源码要点（面试-排障）" class="headerlink" title="5. 集合源码要点（面试+排障）"></a>5. 集合源码要点（面试+排障）</h2><table>
+<thead>
+<tr>
+<th>集合</th>
+<th>要点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>HashMap</td>
+<td>数组+链表+红黑树；负载因子 0.75；<strong>初始容量设预估</strong>（防扩容）</td>
+</tr>
+<tr>
+<td>ArrayList</td>
+<td>数组实现，扩容 1.5 倍；预估容量 <code>new ArrayList&lt;&gt;(n)</code></td>
+</tr>
+<tr>
+<td>HashSet</td>
+<td>基于 HashMap；元素需正确 equals&#x2F;hashCode</td>
+</tr>
+<tr>
+<td>TreeMap</td>
+<td>红黑树，有序；key 实现 Comparable</td>
+</tr>
+<tr>
+<td>ConcurrentHashMap</td>
+<td>桶级锁，读无锁；并发首选</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 容量预估：已知将存 10 万条</span></span><br><span class="line"><span class="comment">// HashMap 阈值 = 容量*0.75，直接 new HashMap&lt;&gt;(100000) 会扩一次</span></span><br><span class="line"><span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;(<span class="number">100000</span> / <span class="number">0.75</span> + <span class="number">1</span>);        <span class="comment">// ≈ 133334，四舍五入取 2 的幂</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="6-泛型与类型擦除"><a href="#6-泛型与类型擦除" class="headerlink" title="6. 泛型与类型擦除"></a>6. 泛型与类型擦除</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 泛型方法：T 在编译期确定，运行时擦除为 Object/上界</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> &lt;T <span class="keyword">extends</span> <span class="title class_">Comparable</span>&lt;T&gt;&gt; T <span class="title function_">max</span><span class="params">(T a, T b)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> a.compareTo(b) &gt;= <span class="number">0</span> ? a : b;    <span class="comment">// 返回较大者</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 通配符：? extends（读） / ? super（写）</span></span><br><span class="line"><span class="comment">// 生产者用 extends，消费者用 super（PECS）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">copy</span><span class="params">(List&lt;? extends Number&gt; src, List&lt;? <span class="built_in">super</span> Number&gt; dest)</span> &#123;</span><br><span class="line">    dest.addAll(src);                      <span class="comment">// 从 src 读到 dest</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 擦除后果</span></span><br><span class="line"><span class="comment">// List&lt;String&gt; 和 List&lt;Integer&gt; 运行时都是 List</span></span><br><span class="line"><span class="comment">// 不能 new T[]，用 (T[]) new Object[n] 强转</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-record-与现代语法（Java-17-）"><a href="#7-record-与现代语法（Java-17-）" class="headerlink" title="7. record 与现代语法（Java 17+）"></a>7. record 与现代语法（Java 17+）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// record：不可变数据传输对象（替代手写 getter/equals/hashCode）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">record</span> <span class="title class_">User</span><span class="params">(String name, <span class="type">int</span> age)</span> &#123;</span><br><span class="line">    <span class="comment">// 紧凑构造器：校验逻辑</span></span><br><span class="line">    <span class="keyword">public</span> User &#123;</span><br><span class="line">        <span class="keyword">if</span> (age &lt; <span class="number">0</span>) <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">IllegalArgumentException</span>(<span class="string">&quot;age 不能为负&quot;</span>);   <span class="comment">// 校验</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 可加方法</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">isAdult</span><span class="params">()</span> &#123; <span class="keyword">return</span> age &gt;= <span class="number">18</span>; &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 模式匹配 instanceof（Java 16+）</span></span><br><span class="line"><span class="keyword">if</span> (obj <span class="keyword">instanceof</span> User u &amp;&amp; u.isAdult()) &#123;    <span class="comment">// 匹配并绑定变量 u</span></span><br><span class="line">    System.out.println(u.name());         <span class="comment">// 无需强转</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// switch 表达式（Java 21）</span></span><br><span class="line"><span class="type">String</span> <span class="variable">label</span> <span class="operator">=</span> <span class="keyword">switch</span> (u.age() / <span class="number">10</span>) &#123;</span><br><span class="line">    <span class="keyword">case</span> <span class="number">0</span>, <span class="number">1</span> -&gt; <span class="string">&quot;少年&quot;</span>;</span><br><span class="line">    <span class="keyword">case</span> <span class="number">2</span>    -&gt; <span class="string">&quot;青年&quot;</span>;</span><br><span class="line">    <span class="keyword">default</span>   -&gt; <span class="string">&quot;中老年&quot;</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-反射与注解（框架基础）"><a href="#8-反射与注解（框架基础）" class="headerlink" title="8. 反射与注解（框架基础）"></a>8. 反射与注解（框架基础）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 反射：运行时获取类信息</span></span><br><span class="line">Class&lt;?&gt; clazz = User.class;</span><br><span class="line"><span class="type">Method</span> <span class="variable">m</span> <span class="operator">=</span> clazz.getMethod(<span class="string">&quot;isAdult&quot;</span>);</span><br><span class="line"><span class="type">boolean</span> <span class="variable">result</span> <span class="operator">=</span> (<span class="type">boolean</span>) m.invoke(<span class="keyword">new</span> <span class="title class_">User</span>(<span class="string">&quot;alice&quot;</span>, <span class="number">25</span>));   <span class="comment">// 动态调用</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 注解定义</span></span><br><span class="line"><span class="meta">@Retention(RetentionPolicy.RUNTIME)</span>       <span class="comment">// 运行时保留（反射可见）</span></span><br><span class="line"><span class="meta">@Target(ElementType.METHOD)</span>               <span class="comment">// 用在方法上</span></span><br><span class="line"><span class="keyword">public</span> <span class="meta">@interface</span> AuditLog &#123;</span><br><span class="line">    String <span class="title function_">action</span><span class="params">()</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 反射读取注解</span></span><br><span class="line"><span class="keyword">for</span> (Method method : clazz.getDeclaredMethods()) &#123;</span><br><span class="line">    <span class="type">AuditLog</span> <span class="variable">log</span> <span class="operator">=</span> method.getAnnotation(AuditLog.class);   <span class="comment">// 取注解</span></span><br><span class="line">    <span class="keyword">if</span> (log != <span class="literal">null</span>) System.out.println(method.getName() + <span class="string">&quot; → &quot;</span> + log.action());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>生产建议</strong>：业务代码少用反射（性能与可读性）；框架层（Spring 等）才需要。</p>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mvn <span class="built_in">test</span>                       <span class="comment"># 测试</span></span><br><span class="line">jshell                         <span class="comment"># 交互式实验（JDK 自带）</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/git-workflow-guide/" rel="prev" title="Git 团队协作与分支工作流">
+                  <i class="fa fa-angle-left"></i> Git 团队协作与分支工作流
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/jvm-memory-analysis-guide/" rel="next" title="JVM 内存问题排查实战">
+                  JVM 内存问题排查实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

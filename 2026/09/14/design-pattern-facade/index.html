@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="设计模式 · 外观模式 GoF 结构型模式。意图 · 结构 · 代码实现 · 应用场景 · 优缺点 · 与适配器&#x2F;中介者对比。代码带详细注释。  1. 模式概述（意图）外观模式（Facade）为子系统的一组接口提供一个统一的简化入口——客户端只跟”门面”打交道，不直接面对一堆子系统类。 123意图：为子系统中的一组接口提供一个一致的界面别名：门面模式分类：结构型（GoF 23）  2.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="外观模式详解（Facade）">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/design-pattern-facade/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="设计模式 · 外观模式 GoF 结构型模式。意图 · 结构 · 代码实现 · 应用场景 · 优缺点 · 与适配器&#x2F;中介者对比。代码带详细注释。  1. 模式概述（意图）外观模式（Facade）为子系统的一组接口提供一个统一的简化入口——客户端只跟”门面”打交道，不直接面对一堆子系统类。 123意图：为子系统中的一组接口提供一个一致的界面别名：门面模式分类：结构型（GoF 23）  2.">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T13:20:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.525Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/design-pattern-facade/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/design-pattern-facade/","path":"2026/09/14/design-pattern-facade/","title":"外观模式详解（Facade）"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>外观模式详解（Facade） | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-%C2%B7-%E5%A4%96%E8%A7%82%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.</span> <span class="nav-text">设计模式 · 外观模式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A8%A1%E5%BC%8F%E6%A6%82%E8%BF%B0%EF%BC%88%E6%84%8F%E5%9B%BE%EF%BC%89"><span class="nav-number">1.1.</span> <span class="nav-text">1. 模式概述（意图）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E8%A6%81%E8%A7%A3%E5%86%B3%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-number">1.2.</span> <span class="nav-text">2. 要解决的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%BB%93%E6%9E%84%EF%BC%88%E8%A7%92%E8%89%B2%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">3. 结构（角色）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%B8%8B%E5%8D%95%E9%97%A8%E9%9D%A2%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">4. 代码实现（下单门面）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">1.5.</span> <span class="nav-text">5. 应用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="nav-number">1.6.</span> <span class="nav-text">6. 优缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E4%B8%8E%E5%85%B6%E4%BB%96%E6%A8%A1%E5%BC%8F%E5%AF%B9%E6%AF%94"><span class="nav-number">1.7.</span> <span class="nav-text">7. 与其他模式对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E9%80%89%E6%8B%A9%E6%8C%87%E5%8D%97"><span class="nav-number">1.8.</span> <span class="nav-text">8. 选择指南</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/design-pattern-facade/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="外观模式详解（Facade） | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          外观模式详解（Facade）
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 21:20:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T21:20:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.1k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="设计模式-·-外观模式"><a href="#设计模式-·-外观模式" class="headerlink" title="设计模式 · 外观模式"></a>设计模式 · 外观模式</h1><blockquote>
+<p>GoF 结构型模式。意图 · 结构 · 代码实现 · 应用场景 · 优缺点 · 与适配器&#x2F;中介者对比。代码带详细注释。</p>
+</blockquote>
+<h2 id="1-模式概述（意图）"><a href="#1-模式概述（意图）" class="headerlink" title="1. 模式概述（意图）"></a>1. 模式概述（意图）</h2><p><strong>外观模式（Facade）<strong>为子系统的一组接口提供一个</strong>统一的简化入口</strong>——客户端只跟”门面”打交道，不直接面对一堆子系统类。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">意图：为子系统中的一组接口提供一个一致的界面</span><br><span class="line">别名：门面模式</span><br><span class="line">分类：结构型（GoF 23）</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-要解决的问题"><a href="#2-要解决的问题" class="headerlink" title="2. 要解决的问题"></a>2. 要解决的问题</h2><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>客户端与子系统强耦合</td>
+<td>一个操作要 new&#x2F;调用 5 个类</td>
+</tr>
+<tr>
+<td>调用顺序易错</td>
+<td>步骤多、顺序要求严（初始化→校验→执行→清理）</td>
+</tr>
+<tr>
+<td>职责暴露过多</td>
+<td>客户端不需要知道内部细节</td>
+</tr>
+</tbody></table>
+<p><strong>典型场景</strong>：下单要调”库存+支付+优惠券+物流”四个系统——业务代码不用知道细节；<code>java.net.URL</code> 封装协议细节；MyBatis <code>SqlSession</code> 封装 JDBC 细节。</p>
+<h2 id="3-结构（角色）"><a href="#3-结构（角色）" class="headerlink" title="3. 结构（角色）"></a>3. 结构（角色）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Facade（外观）── 简化接口，编排子系统调用</span><br><span class="line">SubsystemA/B/C（子系统）── 各自独立的复杂组件</span><br><span class="line"></span><br><span class="line">客户端 → Facade.doSomething() → 内部协调子系统（客户端只依赖 Facade）</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-代码实现（下单门面）"><a href="#4-代码实现（下单门面）" class="headerlink" title="4. 代码实现（下单门面）"></a>4. 代码实现（下单门面）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 子系统1：库存服务（负责库存校验与扣减）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">InventoryService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">checkStock</span><span class="params">(Long skuId, <span class="type">int</span> qty)</span> &#123;   <span class="comment">// 校验库存是否足够</span></span><br><span class="line">        System.out.println(<span class="string">&quot;校验库存: sku=&quot;</span> + skuId + <span class="string">&quot; qty=&quot;</span> + qty);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;                                    <span class="comment">// 简化：恒为充足</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">deduct</span><span class="params">(Long skuId, <span class="type">int</span> qty)</span> &#123;           <span class="comment">// 扣减库存</span></span><br><span class="line">        System.out.println(<span class="string">&quot;扣减库存: &quot;</span> + qty);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 子系统2：支付服务（负责收钱）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">PaymentService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">pay</span><span class="params">(Long orderId, BigDecimal amount)</span> &#123;   <span class="comment">// 发起支付</span></span><br><span class="line">        System.out.println(<span class="string">&quot;发起支付: 订单=&quot;</span> + orderId + <span class="string">&quot; 金额=&quot;</span> + amount);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;                                        <span class="comment">// 简化：恒成功</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 子系统3：优惠券服务（负责算优惠）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">CouponService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> BigDecimal <span class="title function_">calculate</span><span class="params">(Long userId, BigDecimal amount)</span> &#123;</span><br><span class="line">        <span class="comment">// 根据用户与金额计算实付（简化：固定抵扣 10 元）</span></span><br><span class="line">        <span class="type">BigDecimal</span> <span class="variable">discount</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BigDecimal</span>(<span class="string">&quot;10.00&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;优惠券抵扣: &quot;</span> + discount);</span><br><span class="line">        <span class="keyword">return</span> amount.subtract(discount);   <span class="comment">// 原价 - 优惠 = 实付</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4. 子系统4：物流服务（负责发货通知）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LogisticsService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">ship</span><span class="params">(Long orderId)</span> &#123;        <span class="comment">// 通知物流发货</span></span><br><span class="line">        System.out.println(<span class="string">&quot;通知物流发货: &quot;</span> + orderId);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 5. 外观：统一的下单门面（客户端只依赖它）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderFacade</span> &#123;</span><br><span class="line">    <span class="comment">// 内部持有所有子系统（对客户端隐藏）</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">InventoryService</span> <span class="variable">inventory</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">InventoryService</span>();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">PaymentService</span> <span class="variable">payment</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PaymentService</span>();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">CouponService</span> <span class="variable">coupon</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">CouponService</span>();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">LogisticsService</span> <span class="variable">logistics</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LogisticsService</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 编排整个下单流程：校验 → 优惠 → 支付 → 扣库存 → 发货</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">placeOrder</span><span class="params">(Long userId, Long skuId, <span class="type">int</span> qty, BigDecimal price)</span> &#123;</span><br><span class="line">        <span class="type">Long</span> <span class="variable">orderId</span> <span class="operator">=</span> generateOrderId();                 <span class="comment">// 生成订单号</span></span><br><span class="line">        <span class="keyword">if</span> (!inventory.checkStock(skuId, qty)) <span class="keyword">return</span> <span class="literal">false</span>;  <span class="comment">// ① 库存不足直接失败</span></span><br><span class="line"></span><br><span class="line">        <span class="type">BigDecimal</span> <span class="variable">payable</span> <span class="operator">=</span> coupon.calculate(userId, price.multiply(BigDecimal.valueOf(qty)));</span><br><span class="line">        <span class="comment">// ② 算优惠：单价×数量 - 优惠 = 实付</span></span><br><span class="line">        <span class="keyword">if</span> (!payment.pay(orderId, payable)) <span class="keyword">return</span> <span class="literal">false</span>;   <span class="comment">// ③ 支付失败直接失败</span></span><br><span class="line"></span><br><span class="line">        inventory.deduct(skuId, qty);                     <span class="comment">// ④ 扣库存</span></span><br><span class="line">        logistics.ship(orderId);                          <span class="comment">// ⑤ 通知发货</span></span><br><span class="line">        System.out.println(<span class="string">&quot;下单成功: 订单=&quot;</span> + orderId + <span class="string">&quot; 实付=&quot;</span> + payable);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> Long <span class="title function_">generateOrderId</span><span class="params">()</span> &#123; <span class="keyword">return</span> System.currentTimeMillis(); &#125;  <span class="comment">// 简化订单号</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 6. 客户端：一行完成（对比之前要手动调 4 个系统）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Client</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="type">OrderFacade</span> <span class="variable">facade</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">OrderFacade</span>();          <span class="comment">// 只依赖门面</span></span><br><span class="line">        facade.placeOrder(<span class="number">1001L</span>, <span class="number">888L</span>, <span class="number">2</span>, <span class="keyword">new</span> <span class="title class_">BigDecimal</span>(<span class="string">&quot;50.00&quot;</span>));</span><br><span class="line">        <span class="comment">// 一行下单：内部细节全部由门面编排</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-应用场景"><a href="#5-应用场景" class="headerlink" title="5. 应用场景"></a>5. 应用场景</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>业务编排</td>
+<td>下单、注册、导出等组合操作</td>
+</tr>
+<tr>
+<td>框架封装</td>
+<td><code>SqlSession</code>、<code>RestTemplate</code> 内部复杂对外简单</td>
+</tr>
+<tr>
+<td>老系统包装</td>
+<td>把分散接口收敛成友好 API</td>
+</tr>
+<tr>
+<td>分层架构</td>
+<td>Service 层就是 Repository+外部调用的门面</td>
+</tr>
+</tbody></table>
+<h2 id="6-优缺点"><a href="#6-优缺点" class="headerlink" title="6. 优缺点"></a>6. 优缺点</h2><table>
+<thead>
+<tr>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>客户端简单（一个入口）</td>
+<td>门面可能膨胀成”上帝类”</td>
+</tr>
+<tr>
+<td>解耦（客户端不碰子系统）</td>
+<td>隐藏了子系统细节（想精细控制时不便）</td>
+</tr>
+<tr>
+<td>集中管理调用顺序&#x2F;事务</td>
+<td>需要与业务分层配合，否则混乱</td>
+</tr>
+<tr>
+<td>便于测试（mock 门面）</td>
+<td>门面职责边界要清晰</td>
+</tr>
+</tbody></table>
+<h2 id="7-与其他模式对比"><a href="#7-与其他模式对比" class="headerlink" title="7. 与其他模式对比"></a>7. 与其他模式对比</h2><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>区别</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>适配器</td>
+<td>适配器转换接口（一对一）；外观聚合简化（一对多）</td>
+</tr>
+<tr>
+<td>中介者</td>
+<td>中介者协调对象间通信（网状）；外观是单向入口</td>
+</tr>
+<tr>
+<td>单例</td>
+<td>外观常配合单例（一个门面实例）</td>
+</tr>
+</tbody></table>
+<h2 id="8-选择指南"><a href="#8-选择指南" class="headerlink" title="8. 选择指南"></a>8. 选择指南</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">子系统调用复杂、客户端需要简单入口 → 外观</span><br><span class="line">需要聚合编排多个服务 → 外观（如应用服务层）</span><br><span class="line">多个类协同完成一件事 → 外观收敛</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/design-pattern-decorator/" rel="prev" title="装饰器模式详解（Decorator）">
+                  <i class="fa fa-angle-left"></i> 装饰器模式详解（Decorator）
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/design-pattern-flyweight/" rel="next" title="享元模式详解（Flyweight）">
+                  享元模式详解（Flyweight） <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

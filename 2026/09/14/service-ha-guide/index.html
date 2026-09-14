@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="服务 · 高可用保障 从 0 到生产级稳定性。可用性度量 · 冗余与故障转移 · 超时重试熔断 · 限流降级 · 容量规划 · 故障演练与复盘。代码带详细注释。  技术栈速查   类别 选型 用途    容错 Resilience4j 2.x 熔断&#x2F;重试&#x2F;限流   负载 Nginx &#x2F; Spring Cloud LoadBalancer 冗余分发   调度 多可用区&amp;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="服务高可用与稳定性保障">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/service-ha-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="服务 · 高可用保障 从 0 到生产级稳定性。可用性度量 · 冗余与故障转移 · 超时重试熔断 · 限流降级 · 容量规划 · 故障演练与复盘。代码带详细注释。  技术栈速查   类别 选型 用途    容错 Resilience4j 2.x 熔断&#x2F;重试&#x2F;限流   负载 Nginx &#x2F; Spring Cloud LoadBalancer 冗余分发   调度 多可用区&amp;">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T11:45:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.930Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/service-ha-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/service-ha-guide/","path":"2026/09/14/service-ha-guide/","title":"服务高可用与稳定性保障"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>服务高可用与稳定性保障 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1-%C2%B7-%E9%AB%98%E5%8F%AF%E7%94%A8%E4%BF%9D%E9%9A%9C"><span class="nav-number">1.</span> <span class="nav-text">服务 · 高可用保障</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%86%97%E4%BD%99%E6%9E%B6%E6%9E%84%EF%BC%88%E6%B6%88%E9%99%A4%E5%8D%95%E7%82%B9%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">2. 冗余架构（消除单点）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB%E4%B8%8E%E4%BC%98%E9%9B%85%E5%A4%84%E7%90%86"><span class="nav-number">1.4.</span> <span class="nav-text">3. 故障转移与优雅处理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%9C%8D%E5%8A%A1%E5%A4%9A%E5%AE%9E%E4%BE%8B%EF%BC%88%E6%97%A0%E7%8A%B6%E6%80%81%E6%98%AF%E5%85%B3%E9%94%AE%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 服务多实例（无状态是关键）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E4%BC%98%E9%9B%85%E5%81%9C%E6%9C%BA%EF%BC%88%E5%8F%91%E5%B8%83%E4%B8%8D%E4%B8%AD%E6%96%AD%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 优雅停机（发布不中断）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E5%AE%B9%E9%94%99%E5%9B%9B%E4%BB%B6%E5%A5%97%EF%BC%9A%E8%B6%85%E6%97%B6-%E9%87%8D%E8%AF%95-%E7%86%94%E6%96%AD-%E9%99%90%E6%B5%81"><span class="nav-number">1.5.</span> <span class="nav-text">4. 容错四件套：超时&#x2F;重试&#x2F;熔断&#x2F;限流</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E8%B6%85%E6%97%B6%EF%BC%88%E5%BF%85%E9%A1%BB%E6%9C%89%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 超时（必须有）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E9%87%8D%E8%AF%95%EF%BC%88%E5%8F%AA%E5%AF%B9%E5%B9%82%E7%AD%89%E6%8E%A5%E5%8F%A3%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 重试（只对幂等接口）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E7%86%94%E6%96%AD%EF%BC%88%E9%98%B2%E6%AD%A2%E9%9B%AA%E5%B4%A9%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 熔断（防止雪崩）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-%E9%99%90%E6%B5%81%EF%BC%88%E4%BF%9D%E6%8A%A4%E8%87%AA%E5%B7%B1%EF%BC%89"><span class="nav-number">1.5.4.</span> <span class="nav-text">4.4 限流（保护自己）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%AE%B9%E9%87%8F%E8%A7%84%E5%88%92"><span class="nav-number">1.6.</span> <span class="nav-text">5. 容量规划</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E6%95%85%E9%9A%9C%E6%BC%94%E7%BB%83%EF%BC%88%E9%AA%8C%E8%AF%81%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B8%8D%E6%98%AF%E6%91%86%E8%AE%BE%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">6. 故障演练（验证高可用不是摆设）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E6%95%85%E9%9A%9C%E5%A4%8D%E7%9B%98%E6%A8%A1%E6%9D%BF%EF%BC%88After-Action-Review%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">7. 故障复盘模板（After Action Review）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E7%A8%B3%E5%AE%9A%E6%80%A7%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="nav-number">1.9.</span> <span class="nav-text">8. 稳定性检查清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.10.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/service-ha-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="服务高可用与稳定性保障 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          服务高可用与稳定性保障
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 19:45:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T19:45:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="服务-·-高可用保障"><a href="#服务-·-高可用保障" class="headerlink" title="服务 · 高可用保障"></a>服务 · 高可用保障</h1><blockquote>
+<p>从 0 到生产级稳定性。可用性度量 · 冗余与故障转移 · 超时重试熔断 · 限流降级 · 容量规划 · 故障演练与复盘。代码带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>容错</td>
+<td>Resilience4j 2.x</td>
+<td>熔断&#x2F;重试&#x2F;限流</td>
+</tr>
+<tr>
+<td>负载</td>
+<td>Nginx &#x2F; Spring Cloud LoadBalancer</td>
+<td>冗余分发</td>
+</tr>
+<tr>
+<td>调度</td>
+<td>多可用区&#x2F;多机房</td>
+<td>故障隔离</td>
+</tr>
+<tr>
+<td>监控</td>
+<td>Prometheus + Grafana</td>
+<td>可用性观测</td>
+</tr>
+<tr>
+<td>演练</td>
+<td>Chaos Mesh &#x2F; 手动注入</td>
+<td>故障验证</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>高可用（HA）目标</strong>：服务持续可用，单点故障不影响整体。核心思想是<strong>冗余 + 故障转移 + 优雅降级</strong>。</p>
+<p><strong>可用性度量（SLA）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>可用性</th>
+<th>年停机时间</th>
+<th>俗称</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>99%</td>
+<td>3.65 天</td>
+<td>2 个 9</td>
+</tr>
+<tr>
+<td>99.9%</td>
+<td>8.76 小时</td>
+<td>3 个 9</td>
+</tr>
+<tr>
+<td>99.99%</td>
+<td>52.6 分钟</td>
+<td>4 个 9</td>
+</tr>
+<tr>
+<td>99.999%</td>
+<td>5.26 分钟</td>
+<td>5 个 9</td>
+</tr>
+</tbody></table>
+<p><strong>可用性公式</strong>：<code>MTBF / (MTBF + MTTR)</code>——<strong>减少故障次数（MTBF）与缩短恢复时间（MTTR）同样重要</strong>。99.9% 靠自动化监控+快速回滚即可实现，无需过度设计。</p>
+<h2 id="2-冗余架构（消除单点）"><a href="#2-冗余架构（消除单点）" class="headerlink" title="2. 冗余架构（消除单点）"></a>2. 冗余架构（消除单点）</h2><table>
+<thead>
+<tr>
+<th>层</th>
+<th>冗余方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>入口</td>
+<td>多 Nginx + Keepalived VIP（见 Nginx 篇）</td>
+</tr>
+<tr>
+<td>应用</td>
+<td>多实例负载均衡（≥2 副本）</td>
+</tr>
+<tr>
+<td>注册中心</td>
+<td>Nacos 集群（≥3 节点）</td>
+</tr>
+<tr>
+<td>数据库</td>
+<td>主从 + 半同步 &#x2F; 集群</td>
+</tr>
+<tr>
+<td>Redis</td>
+<td>主从 + 哨兵 &#x2F; 集群</td>
+</tr>
+<tr>
+<td>MQ</td>
+<td>多副本（Kafka 副本 ≥3）</td>
+</tr>
+<tr>
+<td>机房</td>
+<td>多可用区部署（跨区容灾）</td>
+</tr>
+</tbody></table>
+<p><strong>反单点检查</strong>：架构图里找”唯一实例”——任何只有一份的组件都要冗余。</p>
+<h2 id="3-故障转移与优雅处理"><a href="#3-故障转移与优雅处理" class="headerlink" title="3. 故障转移与优雅处理"></a>3. 故障转移与优雅处理</h2><h3 id="3-1-服务多实例（无状态是关键）"><a href="#3-1-服务多实例（无状态是关键）" class="headerlink" title="3.1 服务多实例（无状态是关键）"></a>3.1 服务多实例（无状态是关键）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">前提：应用无状态（Session 存 Redis、配置走配置中心）</span><br><span class="line">部署：同一服务 ≥2 实例，负载均衡分发</span><br><span class="line">故障：实例 A 挂 → 负载均衡自动摘除 → 请求全走 B</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-优雅停机（发布不中断）"><a href="#3-2-优雅停机（发布不中断）" class="headerlink" title="3.2 优雅停机（发布不中断）"></a>3.2 优雅停机（发布不中断）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Spring Boot</span></span><br><span class="line"><span class="attr">server.shutdown:</span> <span class="string">graceful</span>        <span class="comment"># 优雅停机：不再接收新请求，处理完存量</span></span><br><span class="line"><span class="attr">spring.lifecycle.timeout-per-shutdown-phase:</span> <span class="string">30s</span>   <span class="comment"># 最多等 30 秒</span></span><br><span class="line"></span><br><span class="line"><span class="attr">management.endpoint.shutdown.enabled:</span> <span class="literal">true</span>   <span class="comment"># 运维触发</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 发布流程</span></span><br><span class="line"><span class="comment"># 1. 从负载均衡摘除实例（K8s 自动/手动）</span></span><br><span class="line"><span class="comment"># 2. 发送 SIGTERM → 应用完成存量请求后退出</span></span><br><span class="line"><span class="comment"># 3. 新版本启动 → 健康检查通过 → 重新接入流量</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="4-容错四件套：超时-重试-熔断-限流"><a href="#4-容错四件套：超时-重试-熔断-限流" class="headerlink" title="4. 容错四件套：超时&#x2F;重试&#x2F;熔断&#x2F;限流"></a>4. 容错四件套：超时&#x2F;重试&#x2F;熔断&#x2F;限流</h2><h3 id="4-1-超时（必须有）"><a href="#4-1-超时（必须有）" class="headerlink" title="4.1 超时（必须有）"></a>4.1 超时（必须有）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 每个远程调用必须有超时（默认无超时 = 线程挂死）</span></span><br><span class="line"><span class="comment">// Feign</span></span><br><span class="line"><span class="meta">@FeignClient(name = &quot;inventory-service&quot;,</span></span><br><span class="line"><span class="meta">    configuration = InventoryClientConfig.class)</span>   <span class="comment">// 指定配置类</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">InventoryClient</span> &#123; ... &#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">InventoryClientConfig</span> &#123;</span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> Request.Options <span class="title function_">options</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">Request</span>.Options(<span class="number">3_000</span>, <span class="number">5_000</span>);   <span class="comment">// 连接 3s / 读 5s</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-重试（只对幂等接口）"><a href="#4-2-重试（只对幂等接口）" class="headerlink" title="4.2 重试（只对幂等接口）"></a>4.2 重试（只对幂等接口）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Resilience4j Retry：连接失败重试 2 次，业务失败不重试</span></span><br><span class="line"><span class="meta">@Retry(name = &quot;inventoryRetry&quot;, fallbackMethod = &quot;fallback&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">deduct</span><span class="params">(SkuReq req)</span> &#123; inventoryClient.deduct(req); &#125;   <span class="comment">// 被保护方法</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">fallback</span><span class="params">(SkuReq req, Exception e)</span> &#123;</span><br><span class="line">    <span class="comment">// 降级：发补偿消息/标记待重试</span></span><br><span class="line">    log.error(<span class="string">&quot;库存扣减失败，进入补偿&quot;</span>, e);   <span class="comment">// 记录并补偿</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-熔断（防止雪崩）"><a href="#4-3-熔断（防止雪崩）" class="headerlink" title="4.3 熔断（防止雪崩）"></a>4.3 熔断（防止雪崩）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Resilience4j CircuitBreaker：失败率超阈值 → 打开 → 快速失败</span></span><br><span class="line"><span class="comment">// 50% 请求在 10s 内失败 → 熔断 30s → 半开试探</span></span><br><span class="line"><span class="meta">@CircuitBreaker(name = &quot;inventoryCB&quot;, fallbackMethod = &quot;fallback&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">deduct</span><span class="params">(SkuReq req)</span> &#123; inventoryClient.deduct(req); &#125;   <span class="comment">// 受熔断保护</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">resilience4j:</span></span><br><span class="line">  <span class="attr">circuitbreaker:</span></span><br><span class="line">    <span class="attr">instances:</span></span><br><span class="line">      <span class="attr">inventoryCB:</span></span><br><span class="line">        <span class="attr">slidingWindowSize:</span> <span class="number">10</span>        <span class="comment"># 统计窗口（10 次调用）</span></span><br><span class="line">        <span class="attr">failureRateThreshold:</span> <span class="number">50</span>     <span class="comment"># 失败率阈值 %</span></span><br><span class="line">        <span class="attr">waitDurationInOpenState:</span> <span class="string">30s</span> <span class="comment"># 熔断时间</span></span><br><span class="line">        <span class="attr">permittedNumberOfCallsInHalfOpenState:</span> <span class="number">3</span>   <span class="comment"># 半开试探次数</span></span><br><span class="line">  <span class="attr">retry:</span></span><br><span class="line">    <span class="attr">instances:</span></span><br><span class="line">      <span class="attr">inventoryRetry:</span></span><br><span class="line">        <span class="attr">maxAttempts:</span> <span class="number">2</span>               <span class="comment"># 最多 2 次</span></span><br><span class="line">        <span class="attr">waitDuration:</span> <span class="string">500ms</span>          <span class="comment"># 间隔</span></span><br><span class="line">        <span class="attr">retryExceptions:</span>             <span class="comment"># 只重试连接类异常</span></span><br><span class="line">          <span class="bullet">-</span> <span class="string">org.springframework.web.client.ResourceAccessException</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-限流（保护自己）"><a href="#4-4-限流（保护自己）" class="headerlink" title="4.4 限流（保护自己）"></a>4.4 限流（保护自己）</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 按 QPS 限流（每秒最多 100 请求）</span></span><br><span class="line"><span class="meta">@RateLimiter(name = &quot;apiLimiter&quot;, fallbackMethod = &quot;fallback&quot;)</span></span><br><span class="line"><span class="keyword">public</span> R&lt;?&gt; api() &#123; ... &#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">resilience4j:</span></span><br><span class="line">  <span class="attr">ratelimiter:</span></span><br><span class="line">    <span class="attr">instances:</span></span><br><span class="line">      <span class="attr">apiLimiter:</span></span><br><span class="line">        <span class="attr">limitForPeriod:</span> <span class="number">100</span>          <span class="comment"># 每窗口 100 次</span></span><br><span class="line">        <span class="attr">limitRefreshPeriod:</span> <span class="string">1s</span>       <span class="comment"># 窗口 1 秒</span></span><br><span class="line">        <span class="attr">timeoutDuration:</span> <span class="number">0</span>           <span class="comment"># 等待超时</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>降级策略</strong>：返回兜底数据（缓存旧数据）、空结果+提示、排队等待。</p>
+<h2 id="5-容量规划"><a href="#5-容量规划" class="headerlink" title="5. 容量规划"></a>5. 容量规划</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">峰值 QPS 估算 = 日活 × 人均请求 × 峰值系数（一般 3-5 倍均值）</span><br><span class="line"></span><br><span class="line">实例数 = 单实例能力 / 单实例 QPS</span><br><span class="line">例如：单实例 500 QPS，峰值 5000 QPS → 10 实例 + 20% 冗余 = 12 实例</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 压测验证（wrk / JMeter）</span></span><br><span class="line">wrk -t8 -c200 -d60s http://app:8080/api/orders</span><br><span class="line"><span class="comment"># 观察: QPS、P99 延迟、错误率——P99 &lt; 500ms 为目标</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 压测结论记录: 单实例能力 = X QPS @ P99=Yms</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>容量监控</strong>：CPU &gt; 70%、连接数、队列长度持续上涨 → 扩容告警。</p>
+<h2 id="6-故障演练（验证高可用不是摆设）"><a href="#6-故障演练（验证高可用不是摆设）" class="headerlink" title="6. 故障演练（验证高可用不是摆设）"></a>6. 故障演练（验证高可用不是摆设）</h2><table>
+<thead>
+<tr>
+<th>演练</th>
+<th>验证</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>杀一个应用实例</td>
+<td>流量自动转移</td>
+</tr>
+<tr>
+<td>停主库&#x2F;主 Redis</td>
+<td>自动切换，业务无感或短暂中断</td>
+</tr>
+<tr>
+<td>断一台 Nginx</td>
+<td>VIP 漂移</td>
+</tr>
+<tr>
+<td>打满 CPU（压测）</td>
+<td>限流生效，不雪崩</td>
+</tr>
+<tr>
+<td>依赖服务挂掉</td>
+<td>熔断+降级生效</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 混沌演练工具（Chaos Mesh，K8s 环境）</span></span><br><span class="line"><span class="comment"># 注入: 杀 pod、网络延迟、CPU 打满</span></span><br><span class="line">kubectl apply -f chaos-pod-kill.yaml</span><br></pre></td></tr></table></figure>
+
+<p><strong>演练要求</strong>：灰度环境先试；生产演练要报备；<strong>演练后发现的问题就是上线前必须修的</strong>。</p>
+<h2 id="7-故障复盘模板（After-Action-Review）"><a href="#7-故障复盘模板（After-Action-Review）" class="headerlink" title="7. 故障复盘模板（After Action Review）"></a>7. 故障复盘模板（After Action Review）</h2><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">## 故障复盘：XX 服务不可用 25 分钟</span></span><br><span class="line"><span class="section">### 时间线</span></span><br><span class="line"><span class="bullet">-</span> 14:00 监控告警 5xx 上升</span><br><span class="line"><span class="bullet">-</span> 14:02 定位：Redis 连接池耗尽</span><br><span class="line"><span class="bullet">-</span> 14:20 扩容连接池 + 重启实例恢复</span><br><span class="line"><span class="section">### 根因</span></span><br><span class="line"><span class="bullet">-</span> 促销活动流量 3 倍，连接池默认 8 不够</span><br><span class="line"><span class="section">### 为什么没有提前发现</span></span><br><span class="line"><span class="bullet">-</span> 连接池水位无监控；容量未随活动预案调整</span><br><span class="line"><span class="section">### 行动项（负责人+期限）</span></span><br><span class="line"><span class="bullet">-</span> [ ] Redis 连接池水位加监控告警（张三，本周）</span><br><span class="line"><span class="bullet">-</span> [ ] 大促容量预案模板（李四，下月）</span><br><span class="line"><span class="section">### 验证</span></span><br><span class="line"><span class="bullet">-</span> 下次活动压测复现验证</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-稳定性检查清单"><a href="#8-稳定性检查清单" class="headerlink" title="8. 稳定性检查清单"></a>8. 稳定性检查清单</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">□ 无单点（应用/DB/Redis/MQ/注册中心）</span><br><span class="line">□ 所有远程调用有超时</span><br><span class="line">□ 幂等接口配置重试</span><br><span class="line">□ 核心依赖配置熔断+降级</span><br><span class="line">□ 入口与依赖有限流</span><br><span class="line">□ 发布有回滚预案</span><br><span class="line">□ 监控告警覆盖 5xx/延迟/连接池/GC</span><br><span class="line">□ 每季度至少一次故障演练</span><br><span class="line">□ 有故障复盘机制与行动项跟踪</span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">wrk -t8 -c200 -d60s http://localhost:8080/api/health   <span class="comment"># 压测</span></span><br><span class="line">curl -sf http://localhost:8080/actuator/health         <span class="comment"># 健康检查</span></span><br><span class="line"><span class="comment"># 查看熔断器状态（Resilience4j actuator）</span></span><br><span class="line">curl http://localhost:8080/actuator/circuitbreakers</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/redis-cache-arch-guide/" rel="prev" title="Redis 缓存架构实战">
+                  <i class="fa fa-angle-left"></i> Redis 缓存架构实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/springboot-security-guide/" rel="next" title="Spring Security + JWT 认证授权实战">
+                  Spring Security + JWT 认证授权实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

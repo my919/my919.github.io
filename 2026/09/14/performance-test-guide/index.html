@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="测试 · 性能测试 从 0 到可落地的性能验证。性能指标 · 测试流程 · JMeter 脚本 · 压测执行 · 瓶颈定位 · 容量评估与报告。命令带详细注释。  技术栈速查   类别 选型 用途    压测工具 JMeter 5.6 &#x2F; wrk &#x2F; k6 负载生成   监控 Prometheus + Grafana 资源与业务指标   分析 Arthas &#x2F; asy">
+<meta property="og:type" content="article">
+<meta property="og:title" content="性能测试实战">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/performance-test-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="测试 · 性能测试 从 0 到可落地的性能验证。性能指标 · 测试流程 · JMeter 脚本 · 压测执行 · 瓶颈定位 · 容量评估与报告。命令带详细注释。  技术栈速查   类别 选型 用途    压测工具 JMeter 5.6 &#x2F; wrk &#x2F; k6 负载生成   监控 Prometheus + Grafana 资源与业务指标   分析 Arthas &#x2F; asy">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T12:05:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.886Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/performance-test-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/performance-test-guide/","path":"2026/09/14/performance-test-guide/","title":"性能测试实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>性能测试实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95-%C2%B7-%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95"><span class="nav-number">1.</span> <span class="nav-text">测试 · 性能测试</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95%E6%B5%81%E7%A8%8B%EF%BC%88%E4%BA%94%E6%AD%A5%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">2. 性能测试流程（五步）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-JMeter-%E5%BF%AB%E9%80%9F%E4%B8%8A%E6%89%8B"><span class="nav-number">1.4.</span> <span class="nav-text">3. JMeter 快速上手</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%91%BD%E4%BB%A4%E8%A1%8C%E8%84%9A%E6%9C%AC"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 命令行脚本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E5%8E%8B%E5%8A%9B%E9%98%B6%E6%A2%AF%E8%AE%BE%E8%AE%A1%EF%BC%88%E6%89%BE%E6%8B%90%E7%82%B9%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 压力阶梯设计（找拐点）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E5%B8%B8%E8%A7%81%E5%8E%8B%E6%B5%8B%E8%84%9A%E6%9C%AC%E6%A8%A1%E6%9D%BF%EF%BC%88HTTP%EF%BC%89"><span class="nav-number">1.4.3.</span> <span class="nav-text">3.3 常见压测脚本模板（HTTP）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E8%BD%BB%E9%87%8F%E6%9B%BF%E4%BB%A3%EF%BC%9Awrk%EF%BC%88%E5%BF%AB%E9%80%9F%E5%9F%BA%E7%BA%BF%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 轻量替代：wrk（快速基线）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E7%93%B6%E9%A2%88%E5%AE%9A%E4%BD%8D%E6%96%B9%E6%B3%95%E8%AE%BA"><span class="nav-number">1.6.</span> <span class="nav-text">5. 瓶颈定位方法论</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E5%AE%B9%E9%87%8F%E8%AF%84%E4%BC%B0%E6%8A%A5%E5%91%8A%E6%A8%A1%E6%9D%BF"><span class="nav-number">1.7.</span> <span class="nav-text">6. 容量评估报告模板</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="nav-number">1.8.</span> <span class="nav-text">7. 性能测试最佳实践</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.9.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/performance-test-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="性能测试实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          性能测试实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 20:05:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T20:05:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.3k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="测试-·-性能测试"><a href="#测试-·-性能测试" class="headerlink" title="测试 · 性能测试"></a>测试 · 性能测试</h1><blockquote>
+<p>从 0 到可落地的性能验证。性能指标 · 测试流程 · JMeter 脚本 · 压测执行 · 瓶颈定位 · 容量评估与报告。命令带详细注释。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>压测工具</td>
+<td>JMeter 5.6 &#x2F; wrk &#x2F; k6</td>
+<td>负载生成</td>
+</tr>
+<tr>
+<td>监控</td>
+<td>Prometheus + Grafana</td>
+<td>资源与业务指标</td>
+</tr>
+<tr>
+<td>分析</td>
+<td>Arthas &#x2F; async-profiler</td>
+<td>应用瓶颈</td>
+</tr>
+<tr>
+<td>数据库</td>
+<td>慢查询 + EXPLAIN</td>
+<td>存储瓶颈</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>性能测试目的</strong>：验证系统在预期负载下是否达标 + 找出瓶颈 + 给出容量结论（”能抗多少 QPS”）。</p>
+<p><strong>关键指标</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>含义</th>
+<th>常见目标</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>QPS&#x2F;TPS</td>
+<td>每秒请求&#x2F;事务数</td>
+<td>按业务</td>
+</tr>
+<tr>
+<td>并发数</td>
+<td>同时在处理的请求</td>
+<td>与 QPS 关联</td>
+</tr>
+<tr>
+<td>RT（响应时间）</td>
+<td>平均&#x2F;P90&#x2F;P99</td>
+<td>P99 &lt; 500ms</td>
+</tr>
+<tr>
+<td>错误率</td>
+<td>失败请求占比</td>
+<td>&lt; 0.1%</td>
+</tr>
+<tr>
+<td>吞吐量</td>
+<td>每秒处理字节数</td>
+<td>大文件场景</td>
+</tr>
+</tbody></table>
+<p><strong>测试类型</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">冒烟（小压力验证链路）</span><br><span class="line">  → 基准（单接口基线）</span><br><span class="line">  → 负载（逐步加压找拐点）</span><br><span class="line">  → 压峰（目标负载持续验证稳定性）</span><br><span class="line">  → 容量（找到极限，供规划）</span><br></pre></td></tr></table></figure>
+
+<p><strong>最重要概念</strong>：<strong>P99 而不是平均值</strong>——平均延迟被长尾掩盖；P99 反映真实体验。</p>
+<h2 id="2-性能测试流程（五步）"><a href="#2-性能测试流程（五步）" class="headerlink" title="2. 性能测试流程（五步）"></a>2. 性能测试流程（五步）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">1. 确定目标：业务方给出预期 QPS、P99、错误率</span><br><span class="line">2. 准备环境：测试环境（与生产同配置，或按比例评估）</span><br><span class="line">3. 准备数据：真实分布的数据量（空表压测没意义）</span><br><span class="line">4. 执行压测：逐步加压，同步采集指标</span><br><span class="line">5. 输出报告：结论 + 瓶颈 + 建议</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-JMeter-快速上手"><a href="#3-JMeter-快速上手" class="headerlink" title="3. JMeter 快速上手"></a>3. JMeter 快速上手</h2><h3 id="3-1-命令行脚本"><a href="#3-1-命令行脚本" class="headerlink" title="3.1 命令行脚本"></a>3.1 命令行脚本</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载 JMeter（apache.org/jmeter）</span></span><br><span class="line"><span class="comment"># 1. 创建测试计划（GUI 或直接写 jmx）</span></span><br><span class="line"><span class="comment"># 线程组: 线程数=100, Ramp-up=10s, 循环=100</span></span><br><span class="line"><span class="comment"># HTTP 请求: GET /api/orders?page=1</span></span><br><span class="line"><span class="comment"># 聚合报告: 查看 QPS/RT/错误率</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 命令行执行（生产环境用 CLI，不用 GUI，\ 为续行符整段复制）</span></span><br><span class="line">jmeter -n -t test_plan.jmx \</span><br><span class="line">  -l results.jtl \</span><br><span class="line">  -e -o ./report_html \</span><br><span class="line">  -Jthreads=100 -Jrampup=10 -Jloops=100</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 查看报告</span></span><br><span class="line"><span class="comment"># report_html/index.html（浏览器打开）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-压力阶梯设计（找拐点）"><a href="#3-2-压力阶梯设计（找拐点）" class="headerlink" title="3.2 压力阶梯设计（找拐点）"></a>3.2 压力阶梯设计（找拐点）</h3><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>并发</th>
+<th>时长</th>
+<th>观察</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>冒烟</td>
+<td>10</td>
+<td>1min</td>
+<td>链路通</td>
+</tr>
+<tr>
+<td>基准</td>
+<td>50</td>
+<td>2min</td>
+<td>基线数据</td>
+</tr>
+<tr>
+<td>负载1</td>
+<td>100</td>
+<td>5min</td>
+<td>RT 是否线性</td>
+</tr>
+<tr>
+<td>负载2</td>
+<td>200</td>
+<td>5min</td>
+<td>RT 拐点在哪</td>
+</tr>
+<tr>
+<td>负载3</td>
+<td>400</td>
+<td>5min</td>
+<td>超时&#x2F;错误开始</td>
+</tr>
+<tr>
+<td>容量</td>
+<td>500+</td>
+<td>5min</td>
+<td>极限</td>
+</tr>
+</tbody></table>
+<p><strong>判定</strong>：RT 急剧上升 + 错误率增加的交界 &#x3D; 系统拐点。</p>
+<h3 id="3-3-常见压测脚本模板（HTTP）"><a href="#3-3-常见压测脚本模板（HTTP）" class="headerlink" title="3.3 常见压测脚本模板（HTTP）"></a>3.3 常见压测脚本模板（HTTP）</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 简化 jmx：一个线程组 + 一个 HTTP 采样器 + 聚合报告 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">ThreadGroup</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">stringProp</span> <span class="attr">name</span>=<span class="string">&quot;ThreadGroup.num_threads&quot;</span>&gt;</span>$&#123;threads&#125;<span class="tag">&lt;/<span class="name">stringProp</span>&gt;</span>   <span class="comment">&lt;!-- 线程数（-J 参数注入） --&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">stringProp</span> <span class="attr">name</span>=<span class="string">&quot;ThreadGroup.ramp_time&quot;</span>&gt;</span>$&#123;rampup&#125;<span class="tag">&lt;/<span class="name">stringProp</span>&gt;</span>      <span class="comment">&lt;!-- 爬坡时间 --&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">HTTPSamplerProxy</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">stringProp</span> <span class="attr">name</span>=<span class="string">&quot;HTTPSampler.path&quot;</span>&gt;</span>/api/orders<span class="tag">&lt;/<span class="name">stringProp</span>&gt;</span>       <span class="comment">&lt;!-- 请求路径 --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">stringProp</span> <span class="attr">name</span>=<span class="string">&quot;HTTPSampler.method&quot;</span>&gt;</span>GET<span class="tag">&lt;/<span class="name">stringProp</span>&gt;</span>             <span class="comment">&lt;!-- 请求方法 --&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">HTTPSamplerProxy</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">ThreadGroup</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="4-轻量替代：wrk（快速基线）"><a href="#4-轻量替代：wrk（快速基线）" class="headerlink" title="4. 轻量替代：wrk（快速基线）"></a>4. 轻量替代：wrk（快速基线）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 单接口快速压测（适合基线对比）</span></span><br><span class="line">wrk -t8 -c200 -d60s --latency http://localhost:8080/api/orders</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出解读</span></span><br><span class="line"><span class="comment"># Requests/sec: 2350        ← QPS</span></span><br><span class="line"><span class="comment"># Latency Distribution</span></span><br><span class="line"><span class="comment">#  50% 45.2ms</span></span><br><span class="line"><span class="comment">#  99% 128.6ms              ← P99</span></span><br><span class="line"><span class="comment">#  99.9% 230ms</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 带 POST body 的压测</span></span><br><span class="line">wrk -t4 -c100 -d30s -s post.lua http://localhost:8080/api/orders</span><br><span class="line"><span class="comment"># post.lua: wrk.method=&quot;POST&quot;; wrk.body=&#x27;&#123;&quot;skuId&quot;:1,&quot;qty&quot;:1&#125;&#x27;; wrk.headers[&quot;Content-Type&quot;]=&quot;application/json&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="5-瓶颈定位方法论"><a href="#5-瓶颈定位方法论" class="headerlink" title="5. 瓶颈定位方法论"></a>5. 瓶颈定位方法论</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">压测时观察（四层递进）：</span><br><span class="line">1. 应用层：QPS 上不去？RT 高？</span><br><span class="line">2. 应用资源：CPU？内存？GC？线程？</span><br><span class="line">3. 依赖层：数据库？Redis？外部调用？</span><br><span class="line">4. 网络层：带宽？连接池？</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 系统资源</span></span><br><span class="line">top -Hp &lt;pid&gt;                  <span class="comment"># CPU 热点线程</span></span><br><span class="line">free -h                        <span class="comment"># 内存</span></span><br><span class="line">vmstat 1                       <span class="comment"># CPU/IO 状态</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. JVM（Java）</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000       <span class="comment"># GC：频繁 = 内存问题</span></span><br><span class="line">jstack &lt;pid&gt; | grep -A5 <span class="string">&quot;http-nio&quot;</span> | <span class="built_in">head</span>   <span class="comment"># 线程状态</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 数据库（最常见瓶颈）</span></span><br><span class="line">SHOW PROCESSLIST;              <span class="comment"># 慢查询/锁等待</span></span><br><span class="line">EXPLAIN SELECT ...;            <span class="comment"># 执行计划</span></span><br><span class="line">SELECT * FROM information_schema.INNODB_TRX;   <span class="comment"># 长事务</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 网络/连接池</span></span><br><span class="line">ss -tan | grep 8080 | <span class="built_in">wc</span> -l    <span class="comment"># 连接数</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>常见瓶颈速查</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>瓶颈</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CPU 100% 且 GC 少</td>
+<td>业务热点&#x2F;死循环 → 火焰图</td>
+</tr>
+<tr>
+<td>GC 频繁</td>
+<td>堆配置&#x2F;对象过多 → 堆转储</td>
+</tr>
+<tr>
+<td>RT 高但 CPU 低</td>
+<td>锁竞争&#x2F;IO 等待&#x2F;依赖慢</td>
+</tr>
+<tr>
+<td>连接池耗尽</td>
+<td>连接池小&#x2F;慢查询占连接</td>
+</tr>
+<tr>
+<td>QPS 到某值上不去</td>
+<td>数据库&#x2F;Redis&#x2F;网络带宽瓶颈</td>
+</tr>
+</tbody></table>
+<h2 id="6-容量评估报告模板"><a href="#6-容量评估报告模板" class="headerlink" title="6. 容量评估报告模板"></a>6. 容量评估报告模板</h2><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">## 性能测试报告：订单接口</span></span><br><span class="line"><span class="section">### 目标</span></span><br><span class="line"><span class="bullet">-</span> 峰值 3000 QPS，P99 &lt; 500ms，错误率 &lt; 0.1%</span><br><span class="line"><span class="section">### 环境</span></span><br><span class="line"><span class="bullet">-</span> 4 实例 × 4C8G，MySQL 主从，Redis 集群</span><br><span class="line"><span class="section">### 结果</span></span><br><span class="line">| 并发 | QPS | P99 | 错误率 | 结论 |</span><br><span class="line">|------|-----|-----|--------|------|</span><br><span class="line">| 100 | 980 | 120ms | 0% | 正常 |</span><br><span class="line">| 300 | 2850 | 260ms | 0% | 接近目标 |</span><br><span class="line">| 500 | 3200 | 780ms | 0.3% | 拐点 |</span><br><span class="line">| 800 | 3100 | 1500ms | 2.1% | 超限 |</span><br><span class="line"><span class="section">### 瓶颈</span></span><br><span class="line"><span class="bullet">-</span> 数据库连接池满（默认 10 → 满）</span><br><span class="line"><span class="bullet">-</span> 慢查询：订单列表未走 user<span class="emphasis">_id 索引</span></span><br><span class="line"><span class="emphasis">### 建议</span></span><br><span class="line"><span class="emphasis">- 连接池 10 → 50，加监控告警</span></span><br><span class="line"><span class="emphasis">- 补复合索引 (user_</span>id, status)</span><br><span class="line"><span class="bullet">-</span> 扩容到 6 实例可满足 5000 QPS 预案</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-性能测试最佳实践"><a href="#7-性能测试最佳实践" class="headerlink" title="7. 性能测试最佳实践"></a>7. 性能测试最佳实践</h2><table>
+<thead>
+<tr>
+<th>实践</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数据量真实</td>
+<td>100 万条与 10 条的查询性能天差地别</td>
+</tr>
+<tr>
+<td>环境隔离</td>
+<td>压测不要影响生产（独立环境&#x2F;集群）</td>
+</tr>
+<tr>
+<td>逐步加压</td>
+<td>一次打满无法定位拐点</td>
+</tr>
+<tr>
+<td>同步监控</td>
+<td>压测同时采集资源，否则无法归因</td>
+</tr>
+<tr>
+<td>关注长尾</td>
+<td>P99&#x2F;P999 而非平均</td>
+</tr>
+<tr>
+<td>结果可复现</td>
+<td>记录环境、脚本、参数</td>
+</tr>
+<tr>
+<td>回归基线</td>
+<td>大版本前后对比基线</td>
+</tr>
+</tbody></table>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">jmeter -n -t plan.jmx -l result.jtl -e -o report/    <span class="comment"># JMeter 压测</span></span><br><span class="line">wrk -t8 -c200 -d60s --latency &lt;url&gt;                  <span class="comment"># 快速压测</span></span><br><span class="line">k6 run script.js                                     <span class="comment"># k6（云原生，脚本化）</span></span><br><span class="line">top -Hp &lt;pid&gt;                                        <span class="comment"># 压测时看资源</span></span><br><span class="line">mysql&gt; SHOW PROCESSLIST;                             <span class="comment"># 压测时看数据库</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/security-coding-guide/" rel="prev" title="安全编码规范实战">
+                  <i class="fa fa-angle-left"></i> 安全编码规范实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/cli-productivity-guide/" rel="next" title="命令行效率手册">
+                  命令行效率手册 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

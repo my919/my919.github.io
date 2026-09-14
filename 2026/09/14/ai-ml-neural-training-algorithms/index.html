@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="AI · 神经网络与训练算法详解 感知机 · 多层感知机(MLP) · 反向传播 · 梯度下降变体(SGD&#x2F;Momentum&#x2F;Adam) · 集成学习。原理 + PyTorch CPU 落地代码（含详细注释）+ 应用。   1. 感知机（Perceptron）1.1 原理最简神经网络：输入加权求和，过阶跃&#x2F;符号函数输出： 1y &#x3D; sign(w·x + b)   权重">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI 神经网络与训练算法详解（PyTorch CPU）">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/ai-ml-neural-training-algorithms/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="AI · 神经网络与训练算法详解 感知机 · 多层感知机(MLP) · 反向传播 · 梯度下降变体(SGD&#x2F;Momentum&#x2F;Adam) · 集成学习。原理 + PyTorch CPU 落地代码（含详细注释）+ 应用。   1. 感知机（Perceptron）1.1 原理最简神经网络：输入加权求和，过阶跃&#x2F;符号函数输出： 1y &#x3D; sign(w·x + b)   权重">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T15:50:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:44.595Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/ai-ml-neural-training-algorithms/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/ai-ml-neural-training-algorithms/","path":"2026/09/14/ai-ml-neural-training-algorithms/","title":"AI 神经网络与训练算法详解（PyTorch CPU）"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>AI 神经网络与训练算法详解（PyTorch CPU） | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AI-%C2%B7-%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E4%B8%8E%E8%AE%AD%E7%BB%83%E7%AE%97%E6%B3%95%E8%AF%A6%E8%A7%A3"><span class="nav-number">1.</span> <span class="nav-text">AI · 神经网络与训练算法详解</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%84%9F%E7%9F%A5%E6%9C%BA%EF%BC%88Perceptron%EF%BC%89"><span class="nav-number">1.1.</span> <span class="nav-text">1. 感知机（Perceptron）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.1.1.</span> <span class="nav-text">1.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch-%E5%BC%A0%E9%87%8F%E5%AE%9E%E7%8E%B0%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.1.2.</span> <span class="nav-text">1.2 落地代码（PyTorch 张量实现，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E5%BA%94%E7%94%A8"><span class="nav-number">1.1.3.</span> <span class="nav-text">1.3 应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%A4%9A%E5%B1%82%E6%84%9F%E7%9F%A5%E6%9C%BA%EF%BC%88MLP%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">2. 多层感知机（MLP）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.2.1.</span> <span class="nav-text">2.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">2.2 落地代码（PyTorch，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%BA%94%E7%94%A8"><span class="nav-number">1.2.3.</span> <span class="nav-text">2.3 应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%8F%8D%E5%90%91%E4%BC%A0%E6%92%AD%E8%AF%A6%E8%A7%A3%EF%BC%88%E6%89%8B%E5%86%99-autograd-%E5%AF%B9%E6%AF%94%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">3. 反向传播详解（手写 + autograd 对比）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%8E%9F%E7%90%86%EF%BC%88%E9%93%BE%E5%BC%8F%E6%B3%95%E5%88%99%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">3.1 原理（链式法则）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E6%89%8B%E5%86%99%E4%B8%80%E4%B8%AA-2-%E5%B1%82%E7%BD%91%E7%BB%9C%EF%BC%88%E4%B8%80%E6%AC%A1%E5%89%8D%E5%90%91-%E5%8F%8D%E5%90%91%EF%BC%8C%E4%B8%8E-autograd-%E5%AF%B9%E7%85%A7%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">3.2 手写一个 2 层网络（一次前向+反向，与 autograd 对照，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E5%BA%94%E7%94%A8"><span class="nav-number">1.3.3.</span> <span class="nav-text">3.3 应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E5%8F%98%E4%BD%93%EF%BC%88SGD-Momentum-Adam%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">4. 梯度下降变体（SGD &#x2F; Momentum &#x2F; Adam）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.4.1.</span> <span class="nav-text">4.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88%E4%B8%89%E7%A7%8D%E4%BC%98%E5%8C%96%E5%99%A8%E5%AF%B9%E6%AF%94%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">4.2 落地代码（三种优化器对比，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E5%BA%94%E7%94%A8"><span class="nav-number">1.4.3.</span> <span class="nav-text">4.3 应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E9%9B%86%E6%88%90%E5%AD%A6%E4%B9%A0%EF%BC%88Ensemble%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">5. 集成学习（Ensemble）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.5.1.</span> <span class="nav-text">5.1 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E8%90%BD%E5%9C%B0%E4%BB%A3%E7%A0%81%EF%BC%88PyTorch-Bagging%EF%BC%8C%E9%80%90%E8%A1%8C%E6%B3%A8%E9%87%8A%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">5.2 落地代码（PyTorch Bagging，逐行注释）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%BA%94%E7%94%A8"><span class="nav-number">1.5.3.</span> <span class="nav-text">5.3 应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E8%AE%AD%E7%BB%83%E7%AE%97%E6%B3%95%E5%85%A8%E6%99%AF%E5%B0%8F%E7%BB%93"><span class="nav-number">1.6.</span> <span class="nav-text">6. 训练算法全景小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%90%BD%E5%9C%B0%E5%BB%BA%E8%AE%AE"><span class="nav-number">1.7.</span> <span class="nav-text">落地建议</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/ai-ml-neural-training-algorithms/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="AI 神经网络与训练算法详解（PyTorch CPU） | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          AI 神经网络与训练算法详解（PyTorch CPU）
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 23:50:00 / 修改时间：22:18:44" itemprop="dateCreated datePublished" datetime="2026-09-14T23:50:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>2.7k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>9 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="AI-·-神经网络与训练算法详解"><a href="#AI-·-神经网络与训练算法详解" class="headerlink" title="AI · 神经网络与训练算法详解"></a>AI · 神经网络与训练算法详解</h1><blockquote>
+<p>感知机 · 多层感知机(MLP) · 反向传播 · 梯度下降变体(SGD&#x2F;Momentum&#x2F;Adam) · 集成学习。原理 + PyTorch CPU 落地代码（含详细注释）+ 应用。</p>
+</blockquote>
+<hr>
+<h2 id="1-感知机（Perceptron）"><a href="#1-感知机（Perceptron）" class="headerlink" title="1. 感知机（Perceptron）"></a>1. 感知机（Perceptron）</h2><h3 id="1-1-原理"><a href="#1-1-原理" class="headerlink" title="1.1 原理"></a>1.1 原理</h3><p><strong>最简神经网络</strong>：输入加权求和，过阶跃&#x2F;符号函数输出：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">y = sign(w·x + b)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>权重 w 决定每个特征的”重要程度”</li>
+<li><strong>训练算法</strong>：预测错了才更新，一次只纠正一个样本</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">w ← w + lr · (y_true - y_pred) · x</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-落地代码（PyTorch-张量实现，逐行注释）"><a href="#1-2-落地代码（PyTorch-张量实现，逐行注释）" class="headerlink" title="1.2 落地代码（PyTorch 张量实现，逐行注释）"></a>1.2 落地代码（PyTorch 张量实现，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">perceptron</span>(<span class="params">X, y, lr=<span class="number">0.1</span>, epochs=<span class="number">50</span></span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;感知机：线性可分数据必收敛</span></span><br><span class="line"><span class="string">    X: (n, d) 特征；y: (n,) 标签取 ±1</span></span><br><span class="line"><span class="string">    lr: 学习率；epochs: 扫几遍数据集</span></span><br><span class="line"><span class="string">    返回: 学到的权重 w 和偏置 b&quot;&quot;&quot;</span></span><br><span class="line">    n, d = X.shape                     <span class="comment"># n 样本数，d 特征数</span></span><br><span class="line">    w = torch.zeros(d, dtype=torch.float64)   <span class="comment"># 权重从 0 开始</span></span><br><span class="line">    b = torch.zeros(<span class="number">1</span>, dtype=torch.float64)   <span class="comment"># 偏置从 0 开始</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> epoch <span class="keyword">in</span> <span class="built_in">range</span>(epochs):       <span class="comment"># 反复扫描数据集</span></span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(n):            <span class="comment"># 一次看一个样本</span></span><br><span class="line">            pred = torch.sign(X[i] @ w + b).item()</span><br><span class="line">            <span class="comment"># @ 是矩阵乘法：X[i]·w + b 是线性得分，sign 转成 ±1 预测</span></span><br><span class="line">            <span class="keyword">if</span> pred != y[i].item():   <span class="comment"># 预测错了才更新（正确就跳过）</span></span><br><span class="line">                w = w + lr * y[i] * X[i]</span><br><span class="line">                <span class="comment"># 更新公式 w ← w + lr·y·x：向&quot;正确方向&quot;挪一步</span></span><br><span class="line">                b = b + lr * y[i]</span><br><span class="line">                <span class="comment"># 偏置同步更新：b ← b + lr·y</span></span><br><span class="line">    <span class="keyword">return</span> w, b</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造线性可分数据（标签 ±1） ----------</span></span><br><span class="line">X = torch.randn(<span class="number">200</span>, <span class="number">2</span>)                              <span class="comment"># 200 样本 2 特征</span></span><br><span class="line">y = (X[:, <span class="number">0</span>] + X[:, <span class="number">1</span>] &gt; <span class="number">0</span>).<span class="built_in">float</span>() * <span class="number">2</span> - <span class="number">1</span></span><br><span class="line"><span class="comment"># 规则：两特征和&gt;0 为 +1，否则 -1（线性可分）</span></span><br><span class="line"></span><br><span class="line">w, b = perceptron(X, y)</span><br><span class="line">pred = torch.sign(X @ w + b)</span><br><span class="line"><span class="comment"># 训练完用同一套公式预测</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;感知机训练准确率: <span class="subst">&#123;(pred == y).<span class="built_in">float</span>().mean().item():<span class="number">.3</span>f&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># 线性可分时理论必达 100%</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-应用"><a href="#1-3-应用" class="headerlink" title="1.3 应用"></a>1.3 应用</h3><table>
+<thead>
+<tr>
+<th>应用</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>线性分类</td>
+<td>简单二分类</td>
+</tr>
+<tr>
+<td>神经网络启蒙</td>
+<td>理解权重与更新</td>
+</tr>
+<tr>
+<td>逻辑门模拟</td>
+<td>AND&#x2F;OR 门</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>局限</strong>：无法解决异或（XOR）等线性不可分问题——这催生了多层网络（MLP）。</p>
+</blockquote>
+<hr>
+<h2 id="2-多层感知机（MLP）"><a href="#2-多层感知机（MLP）" class="headerlink" title="2. 多层感知机（MLP）"></a>2. 多层感知机（MLP）</h2><h3 id="2-1-原理"><a href="#2-1-原理" class="headerlink" title="2.1 原理"></a>2.1 原理</h3><p>在输入和输出之间加<strong>隐藏层</strong> + <strong>非线性激活函数</strong>，就能拟合任意非线性函数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">输入层 → [线性 + ReLU] → 隐藏层 → [线性 + sigmoid/softmax] → 输出</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>激活函数</strong>（非线性关键）：ReLU&#x3D;max(0,x)、sigmoid、tanh</li>
+<li><strong>训练算法</strong>：<strong>反向传播（Backpropagation）</strong>——从输出层向前逐层计算梯度，用链式法则更新每层权重</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">前向：x → h → y_pred（逐层计算）</span><br><span class="line">反向：∂L/∂w_后层 → 链式 → ∂L/∂w_前层</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-落地代码（PyTorch，逐行注释）"><a href="#2-2-落地代码（PyTorch，逐行注释）" class="headerlink" title="2.2 落地代码（PyTorch，逐行注释）"></a>2.2 落地代码（PyTorch，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 1. 造非线性可分数据 ----------</span></span><br><span class="line">X = torch.randn(<span class="number">400</span>, <span class="number">2</span>)                          <span class="comment"># 400 样本 2 特征</span></span><br><span class="line">y = (torch.sin(X[:, <span class="number">0</span>] * <span class="number">2</span>) + X[:, <span class="number">1</span>] &gt; <span class="number">0</span>).<span class="built_in">float</span>().reshape(-<span class="number">1</span>, <span class="number">1</span>)</span><br><span class="line"><span class="comment"># 规则含 sin（弯曲边界）：线性模型分不开，必须靠隐藏层非线性</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 2. 模型：2 → 16 → 1，中间 ReLU ----------</span></span><br><span class="line">model = nn.Sequential(           <span class="comment"># 顺序容器，一层接一层</span></span><br><span class="line">    nn.Linear(<span class="number">2</span>, <span class="number">16</span>),            <span class="comment"># 输入层→隐藏层：2 特征映射到 16 个神经元</span></span><br><span class="line">    nn.ReLU(),                   <span class="comment"># 激活函数：把负值截成 0，引入非线性</span></span><br><span class="line">    nn.Linear(<span class="number">16</span>, <span class="number">1</span>),            <span class="comment"># 隐藏层→输出：16 个神经元汇聚成 1 个得分</span></span><br><span class="line">)</span><br><span class="line">loss_fn = nn.BCEWithLogitsLoss()</span><br><span class="line"><span class="comment"># 二分类损失（内部整合 sigmoid，比&quot;sigmoid+BCELoss&quot;数值更稳定）</span></span><br><span class="line">optimizer = torch.optim.Adam(model.parameters(), lr=<span class="number">0.02</span>)</span><br><span class="line"><span class="comment"># Adam 优化器：自适应学习率，收敛快（见第 4 节）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 3. 训练 ----------</span></span><br><span class="line"><span class="keyword">for</span> epoch <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">200</span>):         <span class="comment"># 学 200 遍</span></span><br><span class="line">    optimizer.zero_grad()        <span class="comment"># 清零梯度（不清会跨轮累加）</span></span><br><span class="line">    pred = model(X)              <span class="comment"># 前向传播：逐层计算到输出（400,1）</span></span><br><span class="line">    loss = loss_fn(pred, y)      <span class="comment"># 计算损失：预测得分 vs 真实标签</span></span><br><span class="line">    loss.backward()              <span class="comment"># 反向传播：逐层算出每层 ∂L/∂w（链式法则）</span></span><br><span class="line">    optimizer.step()             <span class="comment"># 更新：所有参数按梯度迈一步</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 4. 评估 ----------</span></span><br><span class="line">acc = ((torch.sigmoid(model(X)) &gt; <span class="number">0.5</span>).<span class="built_in">float</span>() == y).<span class="built_in">float</span>().mean().item()</span><br><span class="line"><span class="comment"># 模型输出是&quot;得分&quot;，过 sigmoid 变概率，&gt;0.5 判类别 1，再和真实标签比</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;MLP 训练准确率: <span class="subst">&#123;acc:<span class="number">.3</span>f&#125;</span>  损失: <span class="subst">&#123;loss.item():<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>换成线性模型（去掉隐藏层）准确率会明显下降——这就是”深度”的意义。</p>
+</blockquote>
+<h3 id="2-3-应用"><a href="#2-3-应用" class="headerlink" title="2.3 应用"></a>2.3 应用</h3><table>
+<thead>
+<tr>
+<th>应用</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>非线性分类&#x2F;回归</td>
+<td>表格数据的万能拟合器</td>
+</tr>
+<tr>
+<td>图像分类（CNN 前身）</td>
+<td>像素 → 类别</td>
+</tr>
+<tr>
+<td>推荐系统</td>
+<td>特征交互建模</td>
+</tr>
+<tr>
+<td>一切深度模型基座</td>
+<td>CNN&#x2F;RNN&#x2F;Transformer 都含 MLP 块</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-反向传播详解（手写-autograd-对比）"><a href="#3-反向传播详解（手写-autograd-对比）" class="headerlink" title="3. 反向传播详解（手写 + autograd 对比）"></a>3. 反向传播详解（手写 + autograd 对比）</h2><h3 id="3-1-原理（链式法则）"><a href="#3-1-原理（链式法则）" class="headerlink" title="3.1 原理（链式法则）"></a>3.1 原理（链式法则）</h3><p>以两层网络为例，损失对第一层权重的梯度要<strong>穿过</strong>第二层：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">∂L/∂W1 = ∂L/∂y_pred · ∂y_pred/∂h · ∂h/∂W1</span><br></pre></td></tr></table></figure>
+
+<p>每层只需要”本地梯度 × 上游梯度”，从后往前逐层相乘。</p>
+<h3 id="3-2-手写一个-2-层网络（一次前向-反向，与-autograd-对照，逐行注释）"><a href="#3-2-手写一个-2-层网络（一次前向-反向，与-autograd-对照，逐行注释）" class="headerlink" title="3.2 手写一个 2 层网络（一次前向+反向，与 autograd 对照，逐行注释）"></a>3.2 手写一个 2 层网络（一次前向+反向，与 autograd 对照，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">0</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 网络结构：输入2 → 隐藏2(tanh) → 输出1，MSE 损失，单样本</span></span><br><span class="line">X = torch.tensor([[<span class="number">1.0</span>, -<span class="number">1.0</span>]])        <span class="comment"># 输入样本 (1,2)</span></span><br><span class="line">y = torch.tensor([[<span class="number">1.0</span>]])              <span class="comment"># 目标值 (1,1)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 参数（固定随机初始化，方便对照）</span></span><br><span class="line">W1 = torch.randn(<span class="number">2</span>, <span class="number">2</span>)                 <span class="comment"># 第一层权重 (2,2)</span></span><br><span class="line">b1 = torch.zeros(<span class="number">2</span>)                    <span class="comment"># 第一层偏置</span></span><br><span class="line">W2 = torch.randn(<span class="number">2</span>, <span class="number">1</span>)                 <span class="comment"># 第二层权重 (2,1)</span></span><br><span class="line">b2 = torch.zeros(<span class="number">1</span>)                    <span class="comment"># 第二层偏置</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ================= 手写反向传播（链式法则） =================</span></span><br><span class="line">h = X @ W1 + b1                        <span class="comment"># 前向1：隐藏层线性 z1 = X·W1 + b1</span></span><br><span class="line">a = torch.tanh(h)                      <span class="comment"># 前向2：激活 a = tanh(z1)</span></span><br><span class="line">y_pred = a @ W2 + b2                   <span class="comment"># 前向3：输出 y_pred = a·W2 + b2</span></span><br><span class="line">loss = (y_pred - y) ** <span class="number">2</span>               <span class="comment"># 损失：MSE</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---- 反向：从后往前逐层求梯度 ----</span></span><br><span class="line">dL_dyp = <span class="number">2</span> * (y_pred - y)              <span class="comment"># ∂L/∂y_pred = 2(y_pred - y)（MSE 导数）</span></span><br><span class="line">dL_da = dL_dyp @ W2.T                  <span class="comment"># ∂L/∂a = ∂L/∂y_pred · W2ᵀ（穿过第二层）</span></span><br><span class="line">dL_dW2 = a.T @ dL_dyp                  <span class="comment"># ∂L/∂W2 = aᵀ · ∂L/∂y_pred（第二层权重梯度）</span></span><br><span class="line">dL_dh = dL_da * (<span class="number">1</span> - a ** <span class="number">2</span>)           <span class="comment"># ∂a/∂h = 1 - tanh²(h)（tanh 导数）</span></span><br><span class="line">dL_dW1 = X.T @ dL_dh                   <span class="comment"># ∂L/∂W1 = Xᵀ · ∂L/∂h（第一层权重梯度）</span></span><br><span class="line"><span class="comment"># 注意：W1 的梯度确实&quot;穿过&quot;了 W2 —— 这就是链式法则</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;手写梯度 dL/dW1 第1行:&quot;</span>, dL_dW1[<span class="number">0</span>].tolist())</span><br><span class="line"></span><br><span class="line"><span class="comment"># ================= autograd 自动求导 =================</span></span><br><span class="line"><span class="comment"># 把参数设成 requires_grad=True，PyTorch 自动追踪计算图</span></span><br><span class="line">W1g = W1.clone().requires_grad_(<span class="literal">True</span>)</span><br><span class="line">W2g = W2.clone().requires_grad_(<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line">h = X @ W1g                            <span class="comment"># 同样的前向计算</span></span><br><span class="line">a = torch.tanh(h)</span><br><span class="line">y_pred = a @ W2g + b2</span><br><span class="line">((y_pred - y) ** <span class="number">2</span>).backward()         <span class="comment"># 反向：PyTorch 内部帮你做链式法则</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;autograd 梯度 dL/dW1 第1行:&quot;</span>, W1g.grad[<span class="number">0</span>].tolist())</span><br><span class="line"><span class="comment"># 两行数字应完全一致 —— 证明手写推导正确，也说明 autograd 在做什么</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-应用"><a href="#3-3-应用" class="headerlink" title="3.3 应用"></a>3.3 应用</h3><table>
+<thead>
+<tr>
+<th>应用</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>所有深度学习训练</td>
+<td>梯度是训练的”方向盘”</td>
+</tr>
+<tr>
+<td>梯度检查</td>
+<td>手写 vs autograd 对比验证</td>
+</tr>
+<tr>
+<td>理解优化器</td>
+<td>知道梯度从哪来</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-梯度下降变体（SGD-Momentum-Adam）"><a href="#4-梯度下降变体（SGD-Momentum-Adam）" class="headerlink" title="4. 梯度下降变体（SGD &#x2F; Momentum &#x2F; Adam）"></a>4. 梯度下降变体（SGD &#x2F; Momentum &#x2F; Adam）</h2><h3 id="4-1-原理"><a href="#4-1-原理" class="headerlink" title="4.1 原理"></a>4.1 原理</h3><table>
+<thead>
+<tr>
+<th>优化器</th>
+<th>更新规则（直觉）</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SGD</td>
+<td><code>w ← w - lr·g</code></td>
+<td>简单，可能震荡</td>
+</tr>
+<tr>
+<td>Momentum</td>
+<td>带”惯性”：累加历史梯度方向</td>
+<td>加速收敛、减少震荡</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>自适应每参数学习率 + 动量</td>
+<td><strong>默认首选</strong>，收敛快且稳</td>
+</tr>
+</tbody></table>
+<p><code>g</code> 是梯度；Adam 为每个参数动态调整步长，几乎不用调 lr。</p>
+<h3 id="4-2-落地代码（三种优化器对比，逐行注释）"><a href="#4-2-落地代码（三种优化器对比，逐行注释）" class="headerlink" title="4.2 落地代码（三种优化器对比，逐行注释）"></a>4.2 落地代码（三种优化器对比，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造一个非线性回归任务 ----------</span></span><br><span class="line">X = torch.randn(<span class="number">500</span>, <span class="number">5</span>)                              <span class="comment"># 500 样本 5 特征</span></span><br><span class="line">y = torch.sin(X[:, <span class="number">0</span>]) + X[:, <span class="number">1</span>] * X[:, <span class="number">2</span>] + <span class="number">0.1</span> * torch.randn(<span class="number">500</span>)</span><br><span class="line"><span class="comment"># 目标含 sin 和特征交叉，需要隐藏层才能拟合</span></span><br><span class="line">y = y.reshape(-<span class="number">1</span>, <span class="number">1</span>)                                 <span class="comment"># 转成 (500,1)</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">train</span>(<span class="params">optimizer_name, lr=<span class="number">0.05</span>, epochs=<span class="number">150</span></span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;用指定优化器训练同一结构的 MLP，返回最终损失&quot;&quot;&quot;</span></span><br><span class="line">    <span class="comment"># 每次新建一模一样的模型（保证公平对比）</span></span><br><span class="line">    model = nn.Sequential(nn.Linear(<span class="number">5</span>, <span class="number">32</span>), nn.ReLU(), nn.Linear(<span class="number">32</span>, <span class="number">1</span>))</span><br><span class="line">    loss_fn = nn.MSELoss()</span><br><span class="line">    <span class="comment"># 按名字选优化器</span></span><br><span class="line">    opt_cls = &#123;<span class="string">&quot;sgd&quot;</span>: torch.optim.SGD, <span class="string">&quot;momentum&quot;</span>: torch.optim.SGD,</span><br><span class="line">               <span class="string">&quot;adam&quot;</span>: torch.optim.Adam&#125;[optimizer_name]</span><br><span class="line">    kwargs = &#123;<span class="string">&quot;momentum&quot;</span>: <span class="number">0.9</span>&#125; <span class="keyword">if</span> optimizer_name == <span class="string">&quot;momentum&quot;</span> <span class="keyword">else</span> &#123;&#125;</span><br><span class="line">    <span class="comment"># 只有 momentum 选项额外传 momentum=0.9（SGD 的惯性系数）</span></span><br><span class="line">    opt = opt_cls(model.parameters(), lr=lr, **kwargs)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(epochs):        <span class="comment"># 标准训练四步</span></span><br><span class="line">        opt.zero_grad()</span><br><span class="line">        loss = loss_fn(model(X), y)</span><br><span class="line">        loss.backward()</span><br><span class="line">        opt.step()</span><br><span class="line">    <span class="keyword">return</span> loss.item()</span><br><span class="line"></span><br><span class="line"><span class="comment"># 同一学习率下跑三个优化器</span></span><br><span class="line"><span class="keyword">for</span> name <span class="keyword">in</span> [<span class="string">&quot;sgd&quot;</span>, <span class="string">&quot;momentum&quot;</span>, <span class="string">&quot;adam&quot;</span>]:</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;<span class="subst">&#123;name:10s&#125;</span> 最终损失: <span class="subst">&#123;train(name):<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># 通常结果：adam ≤ momentum &lt; sgd（损失越小拟合越好）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-应用"><a href="#4-3-应用" class="headerlink" title="4.3 应用"></a>4.3 应用</h3><table>
+<thead>
+<tr>
+<th>优化器</th>
+<th>使用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Adam</td>
+<td><strong>默认选择</strong>（CNN&#x2F;Transformer&#x2F;MLP 都适用）</td>
+</tr>
+<tr>
+<td>SGD+Momentum</td>
+<td>需要更好泛化的大模型微调</td>
+</tr>
+<tr>
+<td>SGD</td>
+<td>教学、极小网络</td>
+</tr>
+<tr>
+<td>AdamW</td>
+<td>Transformer 类模型首选（带权重衰减修正）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="5-集成学习（Ensemble）"><a href="#5-集成学习（Ensemble）" class="headerlink" title="5. 集成学习（Ensemble）"></a>5. 集成学习（Ensemble）</h2><h3 id="5-1-原理"><a href="#5-1-原理" class="headerlink" title="5.1 原理"></a>5.1 原理</h3><p><strong>多个弱模型一起决策</strong>，比单个强模型更稳：</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>思想</th>
+<th>典型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bagging</td>
+<td>并行训练多个模型（不同子样本），投票&#x2F;平均</td>
+<td>随机森林</td>
+</tr>
+<tr>
+<td>Boosting</td>
+<td>串行训练，后一个纠正前一个的错误</td>
+<td>AdaBoost、GBDT</td>
+</tr>
+<tr>
+<td>Stacking</td>
+<td>多个模型输出再喂给一个元模型</td>
+<td>竞赛常用</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>随机森林、GBDT 生产上直接用 LightGBM&#x2F;XGBoost&#x2F;sklearn；下面用 PyTorch 演示 <strong>Bagging 思想</strong>：训练 5 个小 MLP 投票。</p>
+</blockquote>
+<h3 id="5-2-落地代码（PyTorch-Bagging，逐行注释）"><a href="#5-2-落地代码（PyTorch-Bagging，逐行注释）" class="headerlink" title="5.2 落地代码（PyTorch Bagging，逐行注释）"></a>5.2 落地代码（PyTorch Bagging，逐行注释）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line">torch.manual_seed(<span class="number">42</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 造数据 ----------</span></span><br><span class="line">X = torch.randn(<span class="number">600</span>, <span class="number">4</span>)                              <span class="comment"># 600 样本 4 特征</span></span><br><span class="line">y = (X[:, <span class="number">0</span>] * X[:, <span class="number">1</span>] + X[:, <span class="number">2</span>] &gt; <span class="number">0</span>).<span class="built_in">float</span>().reshape(-<span class="number">1</span>, <span class="number">1</span>)</span><br><span class="line"><span class="comment"># 规则含特征相乘（非线性），单个小网络容易欠拟合</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">make_model</span>():</span><br><span class="line">    <span class="string">&quot;&quot;&quot;每次返回一个结构相同、初始权重不同的 MLP&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> nn.Sequential(nn.Linear(<span class="number">4</span>, <span class="number">16</span>), nn.ReLU(), nn.Linear(<span class="number">16</span>, <span class="number">1</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">train_one</span>(<span class="params">model, Xs, ys, epochs=<span class="number">100</span></span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;训练单个模型&quot;&quot;&quot;</span></span><br><span class="line">    opt = torch.optim.Adam(model.parameters(), lr=<span class="number">0.02</span>)</span><br><span class="line">    loss_fn = nn.BCEWithLogitsLoss()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(epochs):        <span class="comment"># 标准四步</span></span><br><span class="line">        opt.zero_grad()</span><br><span class="line">        loss = loss_fn(model(Xs), ys)</span><br><span class="line">        loss.backward()</span><br><span class="line">        opt.step()</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- Bagging：每个模型用不同的随机子集训练 ----------</span></span><br><span class="line">n_models = <span class="number">5</span>                       <span class="comment"># 集成 5 个模型</span></span><br><span class="line">models = []</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(n_models):</span><br><span class="line">    idx = torch.randint(<span class="number">0</span>, <span class="built_in">len</span>(X), (<span class="built_in">len</span>(X),))</span><br><span class="line">    <span class="comment"># 自助采样（有放回）：每次随机抽 600 个下标，允许重复</span></span><br><span class="line">    <span class="comment"># 不同模型看到的数据分布略有不同 → 训练出&quot;有差异&quot;的模型</span></span><br><span class="line">    m = make_model()               <span class="comment"># 新建模型</span></span><br><span class="line">    train_one(m, X[idx], y[idx])   <span class="comment"># 用它的专属子集训练</span></span><br><span class="line">    models.append(m)               <span class="comment"># 收集进集成</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 投票（集成预测） ----------</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">ensemble_predict</span>(<span class="params">X</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;把 5 个模型的概率输出取平均，再判类别&quot;&quot;&quot;</span></span><br><span class="line">    votes = torch.stack([torch.sigmoid(m(X)) <span class="keyword">for</span> m <span class="keyword">in</span> models]).mean(dim=<span class="number">0</span>)</span><br><span class="line">    <span class="comment"># 每个模型输出&quot;属于类别1的概率&quot;→ 堆成 (5,600,1) → 沿 dim=0 取平均</span></span><br><span class="line">    <span class="comment"># 平均概率代表&quot;集体意见&quot;，比单个模型更稳</span></span><br><span class="line">    <span class="keyword">return</span> (votes &gt; <span class="number">0.5</span>).<span class="built_in">float</span>()   <span class="comment"># 平均概率 &gt;0.5 判类别1</span></span><br><span class="line"></span><br><span class="line">acc = (ensemble_predict(X) == y).<span class="built_in">float</span>().mean().item()</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;5 模型 Bagging 集成准确率: <span class="subst">&#123;acc:<span class="number">.3</span>f&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-应用"><a href="#5-3-应用" class="headerlink" title="5.3 应用"></a>5.3 应用</h3><table>
+<thead>
+<tr>
+<th>应用</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>表格数据竞赛</td>
+<td>GBDT 系（LightGBM&#x2F;XGBoost）统治</td>
+</tr>
+<tr>
+<td>降低方差</td>
+<td>Bagging 稳（树&#x2F;网络都行）</td>
+</tr>
+<tr>
+<td>提升准确率</td>
+<td>弱学习器组合</td>
+</tr>
+<tr>
+<td>生产稳健性</td>
+<td>多模型投票抗噪</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="6-训练算法全景小结"><a href="#6-训练算法全景小结" class="headerlink" title="6. 训练算法全景小结"></a>6. 训练算法全景小结</h2><table>
+<thead>
+<tr>
+<th>训练算法</th>
+<th>核心思想</th>
+<th>本系列位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>梯度下降</td>
+<td>沿负梯度更新</td>
+<td>监督篇（线性&#x2F;逻辑&#x2F;SVM）</td>
+</tr>
+<tr>
+<td>反向传播</td>
+<td>链式法则逐层求梯度</td>
+<td>本篇</td>
+</tr>
+<tr>
+<td>SGD &#x2F; Momentum &#x2F; Adam</td>
+<td>梯度更新的加速与自适应</td>
+<td>本篇</td>
+</tr>
+<tr>
+<td>EM 迭代</td>
+<td>分配-更新交替</td>
+<td>无监督篇（K-Means）</td>
+</tr>
+<tr>
+<td>贪心搜索</td>
+<td>局部最优划分</td>
+<td>监督篇（决策树）</td>
+</tr>
+<tr>
+<td>统计估计</td>
+<td>直接统计分布参数</td>
+<td>监督篇（朴素贝叶斯）</td>
+</tr>
+<tr>
+<td>惰性记忆</td>
+<td>不训练只检索</td>
+<td>监督篇（KNN）</td>
+</tr>
+<tr>
+<td>Bagging&#x2F;Boosting</td>
+<td>多模型组合</td>
+<td>本篇</td>
+</tr>
+</tbody></table>
+<h2 id="落地建议"><a href="#落地建议" class="headerlink" title="落地建议"></a>落地建议</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 统一环境</span></span><br><span class="line">pip install torch numpy matplotlib</span><br><span class="line"></span><br><span class="line"><span class="comment"># 通用训练模板（所有神经网络都长这样，四步注释见上）</span></span><br><span class="line">model = nn.Sequential(...)</span><br><span class="line">optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)</span><br><span class="line"><span class="keyword">for</span> epoch <span class="keyword">in</span> range(epochs):</span><br><span class="line">    optimizer.zero_grad()</span><br><span class="line">    loss = loss_fn(model(X), y)</span><br><span class="line">    loss.backward()</span><br><span class="line">    optimizer.step()</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/ai-ml-unsupervised-algorithms/" rel="prev" title="AI 无监督学习算法详解与落地（PyTorch CPU）">
+                  <i class="fa fa-angle-left"></i> AI 无监督学习算法详解与落地（PyTorch CPU）
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>

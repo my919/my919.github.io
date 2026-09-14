@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"stackoverflow-dark","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":true}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="数据库 · 设计规范 从 0 到可落地的建模规范。范式与反范式 · 索引设计 · 命名规范 · 分库分表 · 大表优化 · 建模工具。  技术栈速查   类别 选型 用途    数据库 MySQL 8.4 LTS 主存储   建模 dbdiagram.io &#x2F; JetBrains DataGrip ER 图   迁移 Flyway 10 版本化 DDL   设计检查 手动 Review">
+<meta property="og:type" content="article">
+<meta property="og:title" content="数据库设计规范与建模实战">
+<meta property="og:url" content="https://my919.github.io/2026/09/14/database-design-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="数据库 · 设计规范 从 0 到可落地的建模规范。范式与反范式 · 索引设计 · 命名规范 · 分库分表 · 大表优化 · 建模工具。  技术栈速查   类别 选型 用途    数据库 MySQL 8.4 LTS 主存储   建模 dbdiagram.io &#x2F; JetBrains DataGrip ER 图   迁移 Flyway 10 版本化 DDL   设计检查 手动 Review">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T10:10:00.000Z">
+<meta property="article:modified_time" content="2026-09-14T14:18:43.850Z">
+<meta property="article:author" content="miracle">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/2026/09/14/database-design-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/2026/09/14/database-design-guide/","path":"2026/09/14/database-design-guide/","title":"数据库设计规范与建模实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>数据库设计规范与建模实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="my" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-server fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-wrench fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-folder-open fa-fw"></i>项目</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%BA%93-%C2%B7-%E8%AE%BE%E8%AE%A1%E8%A7%84%E8%8C%83"><span class="nav-number">1.</span> <span class="nav-text">数据库 · 设计规范</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%91%BD%E5%90%8D%E4%B8%8E%E7%B1%BB%E5%9E%8B%E8%A7%84%E8%8C%83"><span class="nav-number">1.3.</span> <span class="nav-text">2. 命名与类型规范</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%91%BD%E5%90%8D%E8%A7%84%E8%8C%83"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 命名规范</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E7%B1%BB%E5%9E%8B%E9%80%89%E6%8B%A9"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 类型选择</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E8%8C%83%E5%BC%8F-vs-%E5%8F%8D%E8%8C%83%E5%BC%8F"><span class="nav-number">1.4.</span> <span class="nav-text">3. 范式 vs 反范式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E4%B8%89%E8%8C%83%E5%BC%8F%E9%80%9F%E8%AE%B0"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 三范式速记</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E5%AE%9E%E6%88%98%E5%8F%96%E8%88%8D"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 实战取舍</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E7%B4%A2%E5%BC%95%E8%AE%BE%E8%AE%A1%E8%A7%84%E8%8C%83"><span class="nav-number">1.5.</span> <span class="nav-text">4. 索引设计规范</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E5%BB%BA%E7%B4%A2%E5%BC%95"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 什么时候建索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E7%B4%A2%E5%BC%95%E5%A4%B1%E6%95%88%E4%B8%8E%E6%85%A2%E6%9F%A5%E8%AF%A2%EF%BC%88%E9%AB%98%E9%A2%91%E6%8E%92%E6%9F%A5%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 索引失效与慢查询（高频排查）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E5%AE%9A%E4%BD%8D%E6%85%A2%E6%9F%A5%E8%AF%A2"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 定位慢查询</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%A4%A7%E8%A1%A8%E4%B8%8E%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8"><span class="nav-number">1.6.</span> <span class="nav-text">5. 大表与分库分表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E4%BC%98%E5%8C%96%E9%A1%BA%E5%BA%8F%EF%BC%88%E5%85%88%E6%98%93%E5%90%8E%E9%9A%BE%EF%BC%89"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 优化顺序（先易后难）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E5%88%86%E8%A1%A8%E7%AD%96%E7%95%A5"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 分表策略</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E8%BF%81%E7%A7%BB%E4%B8%8E%E7%89%88%E6%9C%AC%E7%AE%A1%E7%90%86%EF%BC%88Flyway%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">6. 迁移与版本管理（Flyway）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E8%AE%BE%E8%AE%A1%E8%AF%84%E5%AE%A1%E6%B8%85%E5%8D%95"><span class="nav-number">1.8.</span> <span class="nav-text">7. 设计评审清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.9.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">miracle</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">400</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">44</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">186</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me external nofollow noreferrer" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/2026/09/14/database-design-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="miracle">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="数据库设计规范与建模实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          数据库设计规范与建模实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-14 18:10:00 / 修改时间：22:18:43" itemprop="dateCreated datePublished" datetime="2026-09-14T18:10:00+08:00">2026-09-14</time>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="数据库-·-设计规范"><a href="#数据库-·-设计规范" class="headerlink" title="数据库 · 设计规范"></a>数据库 · 设计规范</h1><blockquote>
+<p>从 0 到可落地的建模规范。范式与反范式 · 索引设计 · 命名规范 · 分库分表 · 大表优化 · 建模工具。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数据库</td>
+<td>MySQL 8.4 LTS</td>
+<td>主存储</td>
+</tr>
+<tr>
+<td>建模</td>
+<td>dbdiagram.io &#x2F; JetBrains DataGrip</td>
+<td>ER 图</td>
+</tr>
+<tr>
+<td>迁移</td>
+<td>Flyway 10</td>
+<td>版本化 DDL</td>
+</tr>
+<tr>
+<td>设计检查</td>
+<td>手动 Review 清单</td>
+<td>规范落地</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><p><strong>数据库设计的目标</strong>：数据一致、查询高效、易维护、可扩展。</p>
+<p><strong>核心矛盾</strong>：<strong>范式化</strong>（消除冗余，写友好）vs <strong>反范式化</strong>（冗余加速读）。生产实践：<strong>逻辑上按范式设计，物理上按查询反范式</strong>（冗余字段、汇总表）。</p>
+<p><strong>设计五步</strong>：需求分析（实体与关系）→ 概念设计（ER 图）→ 逻辑设计（表结构）→ 物理设计（索引&#x2F;存储）→ 评审上线。</p>
+<h2 id="2-命名与类型规范"><a href="#2-命名与类型规范" class="headerlink" title="2. 命名与类型规范"></a>2. 命名与类型规范</h2><h3 id="2-1-命名规范"><a href="#2-1-命名规范" class="headerlink" title="2.1 命名规范"></a>2.1 命名规范</h3><table>
+<thead>
+<tr>
+<th>对象</th>
+<th>规范</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>表</td>
+<td>复数蛇形，业务模块前缀</td>
+<td><code>order_item</code>、<code>user_account</code></td>
+</tr>
+<tr>
+<td>字段</td>
+<td>蛇形，全小写</td>
+<td><code>created_at</code>、<code>user_id</code></td>
+</tr>
+<tr>
+<td>主键</td>
+<td><code>id</code>（自增或雪花）</td>
+<td><code>id BIGINT UNSIGNED</code></td>
+</tr>
+<tr>
+<td>外键关联</td>
+<td>关联表名_id</td>
+<td><code>order_id</code></td>
+</tr>
+<tr>
+<td>索引</td>
+<td><code>idx_列名</code> &#x2F; <code>uk_列名</code></td>
+<td><code>idx_user_id</code>、<code>uk_email</code></td>
+</tr>
+<tr>
+<td>时间</td>
+<td><code>created_at</code> &#x2F; <code>updated_at</code></td>
+<td>DATETIME</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-类型选择"><a href="#2-2-类型选择" class="headerlink" title="2.2 类型选择"></a>2.2 类型选择</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 整数：BIGINT（主键/金额分）、INT</span></span><br><span class="line"><span class="comment">-- 金额：DECIMAL(18,2)，禁止 FLOAT/DOUBLE（精度丢失）！</span></span><br><span class="line"><span class="comment">-- 字符串：短用 VARCHAR(n)，超长用 TEXT</span></span><br><span class="line"><span class="comment">-- 时间：DATETIME（不用 TIMESTAMP，2038 问题且有时区坑）</span></span><br><span class="line"><span class="comment">-- 布尔：TINYINT(1)</span></span><br><span class="line"><span class="comment">-- 枚举：小规模用 ENUM，易变用 TINYINT + 字典表</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE TABLE</span> `<span class="keyword">user</span>` (</span><br><span class="line">  `id`         <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span> AUTO_INCREMENT,</span><br><span class="line">  `username`   <span class="type">VARCHAR</span>(<span class="number">32</span>)  <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;用户名&#x27;</span>,</span><br><span class="line">  `email`      <span class="type">VARCHAR</span>(<span class="number">128</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;邮箱&#x27;</span>,</span><br><span class="line">  `balance`    <span class="type">DECIMAL</span>(<span class="number">18</span>,<span class="number">2</span>) <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="number">0.00</span> COMMENT <span class="string">&#x27;余额&#x27;</span>,</span><br><span class="line">  `status`     TINYINT      <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="number">1</span> COMMENT <span class="string">&#x27;1正常 2冻结&#x27;</span>,</span><br><span class="line">  `created_at` DATETIME     <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span>,</span><br><span class="line">  `updated_at` DATETIME     <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span> <span class="keyword">ON</span> <span class="keyword">UPDATE</span> <span class="built_in">CURRENT_TIMESTAMP</span>,</span><br><span class="line">  <span class="keyword">PRIMARY KEY</span> (`id`),</span><br><span class="line">  <span class="keyword">UNIQUE</span> KEY `uk_email` (`email`),</span><br><span class="line">  KEY `idx_created_at` (`created_at`)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4 <span class="keyword">COLLATE</span><span class="operator">=</span>utf8mb4_0900_ai_ci COMMENT<span class="operator">=</span><span class="string">&#x27;用户表&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-范式-vs-反范式"><a href="#3-范式-vs-反范式" class="headerlink" title="3. 范式 vs 反范式"></a>3. 范式 vs 反范式</h2><h3 id="3-1-三范式速记"><a href="#3-1-三范式速记" class="headerlink" title="3.1 三范式速记"></a>3.1 三范式速记</h3><table>
+<thead>
+<tr>
+<th>范式</th>
+<th>要求</th>
+<th>反例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1NF</td>
+<td>字段原子，不可再分</td>
+<td>一个字段存”北京,朝阳”</td>
+</tr>
+<tr>
+<td>2NF</td>
+<td>非主键完全依赖主键</td>
+<td>订单表存了用户名</td>
+</tr>
+<tr>
+<td>3NF</td>
+<td>非主键不传递依赖</td>
+<td>订单表通过用户ID存了用户电话</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-实战取舍"><a href="#3-2-实战取舍" class="headerlink" title="3.2 实战取舍"></a>3.2 实战取舍</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 反范式示例：订单冗余商品快照（商品改名/下架不影响历史订单）</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> `order_item` (</span><br><span class="line">  `id`         <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span> AUTO_INCREMENT,</span><br><span class="line">  `order_id`   <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `sku_id`     <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `sku_name`   <span class="type">VARCHAR</span>(<span class="number">128</span>) <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;商品名快照（反范式）&#x27;</span>,</span><br><span class="line">  `sku_price`  <span class="type">DECIMAL</span>(<span class="number">18</span>,<span class="number">2</span>) <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;成交价快照&#x27;</span>,</span><br><span class="line">  `qty`        <span class="type">INT</span> <span class="keyword">NOT NULL</span>,</span><br><span class="line">  <span class="keyword">PRIMARY KEY</span> (`id`),</span><br><span class="line">  KEY `idx_order_id` (`order_id`)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p><strong>冗余准则</strong>：快照类冗余（价格、名称）安全；可计算类冗余要保证一致性（更新点少）。</p>
+<h2 id="4-索引设计规范"><a href="#4-索引设计规范" class="headerlink" title="4. 索引设计规范"></a>4. 索引设计规范</h2><h3 id="4-1-什么时候建索引"><a href="#4-1-什么时候建索引" class="headerlink" title="4.1 什么时候建索引"></a>4.1 什么时候建索引</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 必须建：WHERE / JOIN / ORDER BY / GROUP BY 涉及的列</span></span><br><span class="line"><span class="comment">-- 区分度高优先：手机号 &gt; 性别（区分度低的不建）</span></span><br><span class="line"><span class="comment">-- 联合索引：最左前缀原则</span></span><br><span class="line"><span class="keyword">CREATE</span> INDEX idx_user_status_time <span class="keyword">ON</span> `<span class="keyword">user</span>` (`status`, `created_at`);</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 覆盖索引：查询列全部在索引内（避免回表）</span></span><br><span class="line"><span class="comment">-- SELECT id, status FROM user WHERE status=1  → idx_user_status_time 直接覆盖</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-索引失效与慢查询（高频排查）"><a href="#4-2-索引失效与慢查询（高频排查）" class="headerlink" title="4.2 索引失效与慢查询（高频排查）"></a>4.2 索引失效与慢查询（高频排查）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- ❌ 失效场景</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> username <span class="keyword">LIKE</span> <span class="string">&#x27;%abc&#x27;</span>;        <span class="comment">-- 前置通配符</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> <span class="type">DATE</span>(created_at) <span class="operator">=</span> <span class="string">&#x27;2026-09-14&#x27;</span>;  <span class="comment">-- 函数包裹列</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> status <span class="operator">!=</span> <span class="number">1</span>;                 <span class="comment">-- 否定条件（看优化器）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> username <span class="operator">=</span> <span class="string">&#x27;abc&#x27;</span> <span class="keyword">OR</span> id <span class="operator">=</span> <span class="number">5</span>;  <span class="comment">-- OR 未全走索引</span></span><br><span class="line"><span class="comment">-- ✅ 改写</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> created_at <span class="operator">&gt;=</span> <span class="string">&#x27;2026-09-14 00:00:00&#x27;</span></span><br><span class="line">                    <span class="keyword">AND</span> created_at <span class="operator">&lt;</span>  <span class="string">&#x27;2026-09-15 00:00:00&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-定位慢查询"><a href="#4-3-定位慢查询" class="headerlink" title="4.3 定位慢查询"></a>4.3 定位慢查询</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 1. 开启慢日志</span></span><br><span class="line"><span class="keyword">SET</span> <span class="keyword">GLOBAL</span> slow_query_log <span class="operator">=</span> <span class="keyword">ON</span>;</span><br><span class="line"><span class="keyword">SET</span> <span class="keyword">GLOBAL</span> long_query_time <span class="operator">=</span> <span class="number">2</span>;               <span class="comment">-- 超过 2 秒记录</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 2. 分析执行计划（核心技能）</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> order_item <span class="keyword">WHERE</span> order_id <span class="operator">=</span> <span class="number">10086</span>;</span><br><span class="line"><span class="comment">-- 看 key（用的索引）、rows（扫描行数）、type（ref/range 优，ALL 全表差）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="5-大表与分库分表"><a href="#5-大表与分库分表" class="headerlink" title="5. 大表与分库分表"></a>5. 大表与分库分表</h2><h3 id="5-1-优化顺序（先易后难）"><a href="#5-1-优化顺序（先易后难）" class="headerlink" title="5.1 优化顺序（先易后难）"></a>5.1 优化顺序（先易后难）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">1. 索引优化（先做）</span><br><span class="line">2. 冷热分离：历史数据归档表</span><br><span class="line">3. 读写分离：主写从读</span><br><span class="line">4. 缓存：热点数据进 Redis</span><br><span class="line">5. 分库分表（最后手段，复杂度最高）</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-分表策略"><a href="#5-2-分表策略" class="headerlink" title="5.2 分表策略"></a>5.2 分表策略</h3><table>
+<thead>
+<tr>
+<th>策略</th>
+<th>规则</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>水平分表</td>
+<td>按 id 取模&#x2F;范围拆多表</td>
+<td>单表数据量大</td>
+</tr>
+<tr>
+<td>垂直拆分</td>
+<td>按字段拆分到不同表</td>
+<td>大字段&#x2F;冷热字段</td>
+</tr>
+<tr>
+<td>水平分库</td>
+<td>按用户&#x2F;租户拆多库</td>
+<td>连接数&#x2F;并发瓶颈</td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 示例：订单按 user_id 分 16 表（取模）</span></span><br><span class="line"><span class="comment">-- order_0, order_1, ..., order_15</span></span><br><span class="line"><span class="comment">-- 查询必须带 user_id（否则全表扫）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> order_7 <span class="keyword">WHERE</span> user_id <span class="operator">=</span> <span class="number">1007</span> <span class="keyword">AND</span> status <span class="operator">=</span> <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>用 ShardingSphere 中间件实现透明分片</strong>（后续分布式篇详述）；分表后<strong>跨表查询、聚合、事务</strong>复杂度剧增——设计时就把”查询维度”与”分片键”统一。</p>
+<h2 id="6-迁移与版本管理（Flyway）"><a href="#6-迁移与版本管理（Flyway）" class="headerlink" title="6. 迁移与版本管理（Flyway）"></a>6. 迁移与版本管理（Flyway）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 依赖</span></span><br><span class="line"><span class="comment"># &lt;dependency&gt;&lt;groupId&gt;org.flywaydb&lt;/groupId&gt;&lt;artifactId&gt;flyway-core&lt;/artifactId&gt;</span></span><br><span class="line"><span class="comment"># &lt;dependency&gt;&lt;groupId&gt;org.flywaydb&lt;/groupId&gt;&lt;artifactId&gt;flyway-mysql&lt;/artifactId&gt;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 目录结构（约定）</span></span><br><span class="line">src/main/resources/db/migration/</span><br><span class="line">  V1__create_user.sql</span><br><span class="line">  V2__add_order_table.sql</span><br><span class="line">  V3__add_index_order_user.sql</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- V3__add_index_order_user.sql（示例）</span></span><br><span class="line"><span class="comment">-- 只允许追加，不允许修改已执行文件</span></span><br><span class="line"><span class="keyword">CREATE</span> INDEX idx_order_user <span class="keyword">ON</span> `<span class="keyword">order</span>` (`user_id`, `status`);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mvn spring-boot:run        <span class="comment"># 启动自动迁移；版本记录在 flyway_schema_history 表</span></span><br><span class="line">mvn flyway:info            <span class="comment"># 查看迁移状态</span></span><br><span class="line">mvn flyway:migrate         <span class="comment"># 手动执行</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-设计评审清单"><a href="#7-设计评审清单" class="headerlink" title="7. 设计评审清单"></a>7. 设计评审清单</h2><table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>主键</td>
+<td>BIGINT，禁止业务字段当主键</td>
+</tr>
+<tr>
+<td>金额</td>
+<td>DECIMAL，禁止浮点</td>
+</tr>
+<tr>
+<td>时间</td>
+<td>DATETIME，统一时区</td>
+</tr>
+<tr>
+<td>字符集</td>
+<td>utf8mb4（支持 emoji）</td>
+</tr>
+<tr>
+<td>软删除</td>
+<td>is_deleted TINYINT + 唯一索引带 deleted_at</td>
+</tr>
+<tr>
+<td>大字段</td>
+<td>TEXT&#x2F;BLOB 拆到附属表</td>
+</tr>
+<tr>
+<td>索引</td>
+<td>每表 ≤5 个联合索引，覆盖高频查询</td>
+</tr>
+<tr>
+<td>默认值</td>
+<td>NOT NULL + DEFAULT，避免 NULL 统计坑</td>
+</tr>
+<tr>
+<td>注释</td>
+<td>表&#x2F;字段全注释（COMMENT 必填）</td>
+</tr>
+<tr>
+<td>迁移</td>
+<td>所有 DDL 走 Flyway，禁止手改生产</td>
+</tr>
+</tbody></table>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN SELECT ...;                          <span class="comment"># 执行计划</span></span><br><span class="line">SHOW INDEX FROM user;                        <span class="comment"># 查看索引</span></span><br><span class="line">SHOW CREATE TABLE user\G                     <span class="comment"># 表结构</span></span><br><span class="line">SELECT * FROM information_schema.TABLES WHERE TABLE_SCHEMA=<span class="string">&#x27;db&#x27;</span> ORDER BY TABLE_ROWS DESC;  <span class="comment"># 大表排行</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/14/dal-transaction-guide/" rel="prev" title="事务与多数据源实战">
+                  <i class="fa fa-angle-left"></i> 事务与多数据源实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/09/14/ddd-practice-guide/" rel="next" title="DDD 落地实践：从事件风暴到代码">
+                  DDD 落地实践：从事件风暴到代码 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">miracle</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">591k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">32:48</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener external nofollow noreferrer" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener external nofollow noreferrer" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+<script>
+(function () {
+  function normalizeClipboard(s) {
+    return (s || '').replace(/\u00a0/g, ' ');
+  }
+
+  /** When innerText is empty, treat <br> as newlines (matches Hexo fenced + line_number HTML). */
+  function plainTextFromElement(el) {
+    if (!el) return '';
+    var t = el.innerText;
+    if (t != null && t !== '') return normalizeClipboard(t);
+    var clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(function (br) {
+      br.parentNode.replaceChild(document.createTextNode('\n'), br);
+    });
+    return normalizeClipboard(clone.textContent || '');
+  }
+
+  function extractFromFigure(fig) {
+    if (!fig) return '';
+    var cell = fig.querySelector('td.code') || fig.querySelector('.code');
+    if (cell) return plainTextFromElement(cell);
+    var pre = fig.querySelector('pre');
+    if (pre) return plainTextFromElement(pre);
+    var code = fig.querySelector('code');
+    return code ? plainTextFromElement(code) : '';
+  }
+
+  function extractForCopyBtn(btn) {
+    var fig = btn.closest('figure.highlight');
+    if (fig) return extractFromFigure(fig);
+    var wrap = btn.closest('.code-container');
+    if (wrap) {
+      var innerFig = wrap.querySelector('figure.highlight');
+      if (innerFig) return extractFromFigure(innerFig);
+      var preOnly = wrap.querySelector('pre');
+      if (preOnly) return plainTextFromElement(preOnly);
+    }
+    return '';
+  }
+
+  function setCopyIcon(btn, ok) {
+    var i = btn.querySelector('i');
+    if (i) i.className = ok ? 'fa fa-check-circle fa-fw' : 'fa fa-times-circle fa-fw';
+  }
+
+  function writeClipboard(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function () { setCopyIcon(btn, true); },
+        function () { fallbackCopy(text, btn); }
+      );
+    }
+    fallbackCopy(text, btn);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text, btn) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopyIcon(btn, ok);
+    } catch (e) {
+      setCopyIcon(btn, false);
+    }
+  }
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      var btn = e.target.closest && e.target.closest('.copy-btn');
+      if (!btn) return;
+      if (!btn.closest('figure.highlight') && !btn.closest('.code-container')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      var text = extractForCopyBtn(btn);
+      writeClipboard(text, btn);
+    },
+    true
+  );
+})();
+</script>
+
+</body>
+</html>
