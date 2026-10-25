@@ -20,15 +20,15 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
 
-    <meta name="description" content="JVM · 内存排查实战 入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析 · CPU 飙高排查 · GC 日志解读 · 线上问题排查工具箱。  技术栈速查   类别 选型 用途    JDK 21 LTS 运行环境   分析工具 MAT &#x2F; jvisualvm 堆转储分析   命令行 jcmd &#x2F; jmap &#x2F; jstat 运行时诊断   GC 分析 GCe">
+    <meta name="description" content="JVM · 内存排查实战 入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析（MAT）· 生产 JVM 参数模板 · 排查工具箱 · 完整案例（ThreadLocal 泄漏定位）。CPU 飙高与 GC 日志详见对应专题。  技术栈速查   类别 选型 用途    JDK 21 LTS 运行环境   分析工具 MAT &#x2F; jvisualvm 堆转储分析   命令行 jcmd &amp;#x2">
 <meta property="og:type" content="article">
 <meta property="og:title" content="JVM 内存问题排查实战">
 <meta property="og:url" content="https://my919.github.io/jvm/jvm-memory-analysis-guide/index.html">
 <meta property="og:site_name" content="my">
-<meta property="og:description" content="JVM · 内存排查实战 入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析 · CPU 飙高排查 · GC 日志解读 · 线上问题排查工具箱。  技术栈速查   类别 选型 用途    JDK 21 LTS 运行环境   分析工具 MAT &#x2F; jvisualvm 堆转储分析   命令行 jcmd &#x2F; jmap &#x2F; jstat 运行时诊断   GC 分析 GCe">
+<meta property="og:description" content="JVM · 内存排查实战 入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析（MAT）· 生产 JVM 参数模板 · 排查工具箱 · 完整案例（ThreadLocal 泄漏定位）。CPU 飙高与 GC 日志详见对应专题。  技术栈速查   类别 选型 用途    JDK 21 LTS 运行环境   分析工具 MAT &#x2F; jvisualvm 堆转储分析   命令行 jcmd &amp;#x2">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-09-14T10:45:00.000Z">
-<meta property="article:modified_time" content="2026-10-25T00:28:29.253Z">
+<meta property="article:modified_time" content="2026-10-25T16:24:32.303Z">
 <meta property="article:author" content="my">
 <meta name="twitter:card" content="summary">
 
@@ -187,7 +187,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#JVM-%C2%B7-%E5%86%85%E5%AD%98%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">JVM · 内存排查实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-OOM-%E5%88%86%E7%B1%BB"><span class="nav-number">1.3.</span> <span class="nav-text">2. OOM 分类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%A0%86%E8%BD%AC%E5%82%A8%E5%88%86%E6%9E%90%EF%BC%88%E5%AE%9A%E4%BD%8D%E6%B3%84%E6%BC%8F%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. 堆转储分析（定位泄漏）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E8%8E%B7%E5%8F%96%E5%A0%86%E8%BD%AC%E5%82%A8"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 获取堆转储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E7%94%A8-MAT-%E5%88%86%E6%9E%90%EF%BC%88Eclipse-Memory-Analyzer%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 用 MAT 分析（Eclipse Memory Analyzer）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-CPU-%E9%A3%99%E9%AB%98%E6%8E%92%E6%9F%A5%EF%BC%88%E7%BA%BF%E7%A8%8B%E6%A0%88%E5%88%86%E6%9E%90%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. CPU 飙高排查（线程栈分析）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-GC-%E6%97%A5%E5%BF%97%E8%A7%A3%E8%AF%BB"><span class="nav-number">1.6.</span> <span class="nav-text">5. GC 日志解读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E7%94%9F%E4%BA%A7-JVM-%E5%8F%82%E6%95%B0%E6%A8%A1%E6%9D%BF"><span class="nav-number">1.7.</span> <span class="nav-text">6. 生产 JVM 参数模板</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E6%8E%92%E6%9F%A5%E5%B7%A5%E5%85%B7%E7%AE%B1%E9%80%9F%E6%9F%A5"><span class="nav-number">1.8.</span> <span class="nav-text">7. 排查工具箱速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%AE%8C%E6%95%B4%E6%8E%92%E6%9F%A5%E6%A1%88%E4%BE%8B"><span class="nav-number">1.9.</span> <span class="nav-text">8. 完整排查案例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E5%85%B8%E5%9E%8B%E6%A1%88%E4%BE%8B%EF%BC%9A%E4%B8%80%E6%AC%A1-OOM-%E5%A0%86%E8%BD%AC%E5%82%A8%E5%88%86%E6%9E%90%EF%BC%88jmap-%E2%86%92-MAT-%E2%86%92-%E5%AE%9A%E4%BD%8D-ThreadLocal-%E6%B3%84%E6%BC%8F%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">9. 典型案例：一次 OOM 堆转储分析（jmap → MAT → 定位 ThreadLocal 泄漏）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-%E5%B8%B8%E8%A7%81%E8%AF%AF%E7%94%A8%E4%B8%8E%E9%99%B7%E9%98%B1"><span class="nav-number">1.11.</span> <span class="nav-text">10. 常见误用与陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-%E9%80%9F%E6%9F%A5%E5%8D%A1%E7%89%87"><span class="nav-number">1.12.</span> <span class="nav-text">11. 速查卡片</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.13.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#JVM-%C2%B7-%E5%86%85%E5%AD%98%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">JVM · 内存排查实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-OOM-%E5%88%86%E7%B1%BB"><span class="nav-number">1.3.</span> <span class="nav-text">2. OOM 分类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%A0%86%E8%BD%AC%E5%82%A8%E5%88%86%E6%9E%90%EF%BC%88%E5%AE%9A%E4%BD%8D%E6%B3%84%E6%BC%8F%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">3. 堆转储分析（定位泄漏）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E8%8E%B7%E5%8F%96%E5%A0%86%E8%BD%AC%E5%82%A8"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 获取堆转储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E7%94%A8-MAT-%E5%88%86%E6%9E%90%EF%BC%88Eclipse-Memory-Analyzer%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 用 MAT 分析（Eclipse Memory Analyzer）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-CPU-%E9%A3%99%E9%AB%98%E6%8E%92%E6%9F%A5%EF%BC%88%E4%B8%93%E9%A2%98%E7%B4%A2%E5%BC%95%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. CPU 飙高排查（专题索引）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-GC-%E6%97%A5%E5%BF%97%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%B8%93%E9%A2%98%E7%B4%A2%E5%BC%95%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">5. GC 日志解读（专题索引）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E7%94%9F%E4%BA%A7-JVM-%E5%8F%82%E6%95%B0%E6%A8%A1%E6%9D%BF"><span class="nav-number">1.7.</span> <span class="nav-text">6. 生产 JVM 参数模板</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E6%8E%92%E6%9F%A5%E5%B7%A5%E5%85%B7%E7%AE%B1%E9%80%9F%E6%9F%A5"><span class="nav-number">1.8.</span> <span class="nav-text">7. 排查工具箱速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%AE%8C%E6%95%B4%E6%8E%92%E6%9F%A5%E6%A1%88%E4%BE%8B"><span class="nav-number">1.9.</span> <span class="nav-text">8. 完整排查案例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E5%85%B8%E5%9E%8B%E6%A1%88%E4%BE%8B%EF%BC%9A%E4%B8%80%E6%AC%A1-OOM-%E5%A0%86%E8%BD%AC%E5%82%A8%E5%88%86%E6%9E%90%EF%BC%88jmap-%E2%86%92-MAT-%E2%86%92-%E5%AE%9A%E4%BD%8D-ThreadLocal-%E6%B3%84%E6%BC%8F%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">9. 典型案例：一次 OOM 堆转储分析（jmap → MAT → 定位 ThreadLocal 泄漏）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-%E5%B8%B8%E8%A7%81%E8%AF%AF%E7%94%A8%E4%B8%8E%E9%99%B7%E9%98%B1"><span class="nav-number">1.11.</span> <span class="nav-text">10. 常见误用与陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-%E9%80%9F%E6%9F%A5%E5%8D%A1%E7%89%87"><span class="nav-number">1.12.</span> <span class="nav-text">11. 速查卡片</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.13.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -200,7 +200,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-count">470</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -211,7 +211,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-count">405</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -285,7 +285,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-10-25 08:28:29" itemprop="dateModified" datetime="2026-10-25T08:28:29+08:00">2026-10-25</time>
+      <time title="修改时间：2026-10-26 00:24:32" itemprop="dateModified" datetime="2026-10-26T00:24:32+08:00">2026-10-26</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -304,7 +304,7 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>6k</span>
+      <span>5.2k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
@@ -322,7 +322,7 @@
     
     
     <div class="post-body" itemprop="articleBody"><h1 id="JVM-·-内存排查实战"><a href="#JVM-·-内存排查实战" class="headerlink" title="JVM · 内存排查实战"></a>JVM · 内存排查实战</h1><blockquote>
-<p>入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析 · CPU 飙高排查 · GC 日志解读 · 线上问题排查工具箱。</p>
+<p>入门篇之后的排障实战。OOM 分类与定位 · 堆转储分析（MAT）· 生产 JVM 参数模板 · 排查工具箱 · 完整案例（ThreadLocal 泄漏定位）。CPU 飙高与 GC 日志详见对应专题。</p>
 </blockquote>
 <h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
 <thead>
@@ -366,20 +366,29 @@
 <th>问题</th>
 <th>表现</th>
 <th>工具</th>
+<th>专题</th>
 </tr>
 </thead>
 <tbody><tr>
 <td>内存问题</td>
 <td>OOM、频繁 Full GC、内存缓慢增长</td>
 <td>jmap&#x2F;MAT、jstat</td>
+<td>本篇</td>
 </tr>
 <tr>
 <td>CPU 问题</td>
 <td>某进程 CPU 100%、响应变慢</td>
 <td>top、jstack、async-profiler</td>
+<td><a href="jvm-cpu-analysis-guide.md">JVM CPU 飙高排查</a></td>
+</tr>
+<tr>
+<td>GC 问题</td>
+<td>GC 频繁、停顿过长、Full GC 异常</td>
+<td>GC 日志、GCeasy</td>
+<td><a href="jvm-gc-log-guide.md">JVM GC 日志解读</a></td>
 </tr>
 </tbody></table>
-<p><strong>诊断前提</strong>：启动参数必须开对（见 §6），否则事后无法分析。</p>
+<p><strong>诊断前提</strong>：启动参数必须开对（见 §4），否则事后无法分析。</p>
 <h2 id="2-OOM-分类"><a href="#2-OOM-分类" class="headerlink" title="2. OOM 分类"></a>2. OOM 分类</h2><table>
 <thead>
 <tr>
@@ -414,7 +423,7 @@
 <td>检查 NIO 缓冲区</td>
 </tr>
 </tbody></table>
-<h2 id="3-堆转储分析（定位泄漏）"><a href="#3-堆转储分析（定位泄漏）" class="headerlink" title="3. 堆转储分析（定位泄漏）"></a>3. 堆转储分析（定位泄漏）</h2><h3 id="3-1-获取堆转储"><a href="#3-1-获取堆转储" class="headerlink" title="3.1 获取堆转储"></a>3.1 获取堆转储</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方式1：OOM 时自动 dump（生产必须配置！）</span></span><br><span class="line"><span class="comment"># 启动参数</span></span><br><span class="line">java -Xmx2g \</span><br><span class="line">  -XX:+HeapDumpOnOutOfMemoryError \</span><br><span class="line">  -XX:HeapDumpPath=/data/dumps \</span><br><span class="line">  -jar app.jar</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方式2：运行中手动 dump（保留现场）</span></span><br><span class="line">jcmd &lt;pid&gt; GC.heap_dump /data/dumps/manual.hprof</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方式3：容器内（先找到 pid）</span></span><br><span class="line">docker <span class="built_in">exec</span> &lt;container&gt; jcmd 1 GC.heap_dump /tmp/dump.hprof</span><br><span class="line">docker <span class="built_in">cp</span> &lt;container&gt;:/tmp/dump.hprof ./</span><br></pre></td></tr></table></figure>
+<h2 id="3-堆转储分析（定位泄漏）"><a href="#3-堆转储分析（定位泄漏）" class="headerlink" title="3. 堆转储分析（定位泄漏）"></a>3. 堆转储分析（定位泄漏）</h2><h3 id="3-1-获取堆转储"><a href="#3-1-获取堆转储" class="headerlink" title="3.1 获取堆转储"></a>3.1 获取堆转储</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方式1：OOM 时自动 dump（生产必须配置！）</span></span><br><span class="line">java -Xmx2g \</span><br><span class="line">  -XX:+HeapDumpOnOutOfMemoryError \</span><br><span class="line">  -XX:HeapDumpPath=/data/dumps \</span><br><span class="line">  -jar app.jar</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方式2：运行中手动 dump（保留现场）</span></span><br><span class="line">jcmd &lt;pid&gt; GC.heap_dump /data/dumps/manual.hprof</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方式3：容器内（先找到 pid）</span></span><br><span class="line">docker <span class="built_in">exec</span> &lt;container&gt; jcmd 1 GC.heap_dump /tmp/dump.hprof</span><br><span class="line">docker <span class="built_in">cp</span> &lt;container&gt;:/tmp/dump.hprof ./</span><br></pre></td></tr></table></figure>
 
 <h3 id="3-2-用-MAT-分析（Eclipse-Memory-Analyzer）"><a href="#3-2-用-MAT-分析（Eclipse-Memory-Analyzer）" class="headerlink" title="3.2 用 MAT 分析（Eclipse Memory Analyzer）"></a>3.2 用 MAT 分析（Eclipse Memory Analyzer）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载 MAT（eclipse.org/mat），打开 .hprof</span></span><br><span class="line"><span class="comment"># 关键视图：</span></span><br><span class="line"><span class="comment"># 1. Leak Suspects：自动报告嫌疑泄漏点</span></span><br><span class="line"><span class="comment"># 2. Dominator Tree：谁占的内存最多（Retained Heap 大 = 根）</span></span><br><span class="line"><span class="comment"># 3. Path to GC Roots：确认是否被意外持有</span></span><br></pre></td></tr></table></figure>
 
@@ -455,72 +464,16 @@
 </tbody></table>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 泄漏示例：静态缓存只加不减</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">CacheHolder</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Map</span>&lt;String, <span class="type">byte</span>[]&gt; <span class="variable">CACHE</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">put</span><span class="params">(String k, <span class="type">byte</span>[] v)</span> &#123; CACHE.put(k, v); &#125;   <span class="comment">// 永不清理</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 修复：Caffeine 带 TTL/容量上限</span></span><br></pre></td></tr></table></figure>
 
-<h2 id="4-CPU-飙高排查（线程栈分析）"><a href="#4-CPU-飙高排查（线程栈分析）" class="headerlink" title="4. CPU 飙高排查（线程栈分析）"></a>4. CPU 飙高排查（线程栈分析）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 找到 CPU 高的进程</span></span><br><span class="line">top -Hp &lt;pid&gt;        <span class="comment"># 或 top 后按 P；容器: docker stats</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 找到 CPU 高的线程号（十进制的 nid）</span></span><br><span class="line"><span class="comment"># top -H 里第一列是线程 PID</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 转十六进制</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;%x\n&#x27;</span> &lt;线程PID&gt;      <span class="comment"># 12345 → 3039</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 抓线程栈</span></span><br><span class="line">jstack &lt;pid&gt; &gt; /tmp/stack.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 在栈文件里搜线程 nid</span></span><br><span class="line">grep -A 20 <span class="string">&#x27;nid=0x3039&#x27;</span> /tmp/stack.txt</span><br><span class="line"><span class="comment"># 输出会显示该线程当前代码位置——死循环/热点方法一眼可见</span></span><br></pre></td></tr></table></figure>
+<h2 id="4-CPU-飙高排查（专题索引）"><a href="#4-CPU-飙高排查（专题索引）" class="headerlink" title="4. CPU 飙高排查（专题索引）"></a>4. CPU 飙高排查（专题索引）</h2><p>CPU 100%、死循环、正则回溯、锁竞争自旋等问题的完整排查步骤（top → jstack → 火焰图 async-profiler → 七类根因判定），详见：</p>
+<p>📖 <a href="jvm-cpu-analysis-guide.md">JVM 实战：CPU 飙高排查完整步骤</a></p>
+<p>速查：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">top -Hp &lt;pid&gt;                          <span class="comment"># 找热点线程</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;%x\n&#x27;</span> &lt;线程PID&gt;                 <span class="comment"># 转十六进制 nid</span></span><br><span class="line">jstack &lt;pid&gt; | grep -A20 <span class="string">&#x27;nid=0x3039&#x27;</span>   <span class="comment"># 定位代码行</span></span><br><span class="line">./profiler.sh -d 30 -o flamegraph &lt;pid&gt; <span class="comment"># 火焰图（精准）</span></span><br></pre></td></tr></table></figure>
 
-<p><strong>定位要点</strong>：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 多抓几次（间隔 3-5s），确认线程一直在同一位置（死循环）还是频繁切换</span></span><br><span class="line">jstack &lt;pid&gt; &gt; /tmp/s1.txt; <span class="built_in">sleep</span> 3; jstack &lt;pid&gt; &gt; /tmp/s2.txt</span><br><span class="line">diff /tmp/s1.txt /tmp/s2.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 火焰图（async-profiler，精准定位热方法）</span></span><br><span class="line">./profiler.sh -d 30 -o flamegraph &lt;pid&gt; &gt; /tmp/flame.svg</span><br><span class="line"><span class="comment"># 浏览器打开 flame.svg，宽条 = 热点</span></span><br></pre></td></tr></table></figure>
+<h2 id="5-GC-日志解读（专题索引）"><a href="#5-GC-日志解读（专题索引）" class="headerlink" title="5. GC 日志解读（专题索引）"></a>5. GC 日志解读（专题索引）</h2><p>G1 日志逐字段解读、停顿分析、GCeasy 工具、常见模式与调参，详见：</p>
+<p>📖 <a href="jvm-gc-log-guide.md">JVM GC 日志深度解读</a></p>
+<p>速查：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 开启 GC 日志（JDK 17+）</span></span><br><span class="line">java -Xlog:gc*:file=/data/logs/gc.log:<span class="keyword">time</span>,<span class="built_in">uptime</span>,level,tags:filecount=5,filesize=20m -jar app.jar</span><br><span class="line"><span class="comment"># 实时监控</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000   <span class="comment"># 关注 FGC（次数）、FGCT（耗时）、O（老年代使用率）</span></span><br></pre></td></tr></table></figure>
 
-<p><strong>常见 CPU 高根因</strong>：死循环（while 条件永不满足）、正则回溯、大对象序列化、GC 频繁（假 CPU 高）、锁竞争自旋。</p>
-<h2 id="5-GC-日志解读"><a href="#5-GC-日志解读" class="headerlink" title="5. GC 日志解读"></a>5. GC 日志解读</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动参数（JDK 17+ 推荐）</span></span><br><span class="line">java -Xlog:gc*:file=/data/logs/gc.log:<span class="keyword">time</span>,<span class="built_in">uptime</span>,level,tags:filecount=5,filesize=20m \</span><br><span class="line">  -jar app.jar</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看当前堆与 GC 情况</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000     <span class="comment"># 每秒刷一次</span></span><br><span class="line"><span class="comment"># 关注: FGC（Full GC 次数）、FGCT（耗时）、O（老年代使用率）</span></span><br></pre></td></tr></table></figure>
-
-<p><strong>GC 日志关键行</strong>：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[GC (Allocation Failure) [PSYoungGen: 51200K-&gt;5120K(59392K)] 204800K-&gt;169856K(198656K), 0.008s]</span><br><span class="line"># 年轻代 51200K → 5120K，总堆 204800K → 169856K，耗时 0.008s</span><br><span class="line"></span><br><span class="line">[Full GC (Metadata GC Threshold) ... 0.5s]</span><br><span class="line"># Full GC 频繁出现 = 大问题</span><br></pre></td></tr></table></figure>
-
-<p><strong>健康指标</strong>：</p>
-<table>
-<thead>
-<tr>
-<th>指标</th>
-<th>健康值</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>Full GC 频率</td>
-<td>生产 &lt; 1 次&#x2F;小时</td>
-</tr>
-<tr>
-<td>Full GC 单次耗时</td>
-<td>&lt; 500ms</td>
-</tr>
-<tr>
-<td>GC 总暂停占比</td>
-<td>&lt; 5%</td>
-</tr>
-<tr>
-<td>老年代使用率</td>
-<td>稳定在 60-70% 以下</td>
-</tr>
-</tbody></table>
-<p><strong>常见异常模式</strong>：</p>
-<table>
-<thead>
-<tr>
-<th>现象</th>
-<th>含义</th>
-<th>对策</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>连续 Full GC 且老年代涨</td>
-<td>内存泄漏</td>
-<td>堆转储分析</td>
-</tr>
-<tr>
-<td>老年代持续 90%+ 但平稳</td>
-<td>堆给小了</td>
-<td>加 Xmx（配合容量规划）</td>
-</tr>
-<tr>
-<td>GC 频繁但堆不高</td>
-<td>对象分配过快</td>
-<td>检查大对象&#x2F;短生命周期对象</td>
-</tr>
-<tr>
-<td>Metaspace Full GC</td>
-<td>类加载器泄漏</td>
-<td>检查动态代理&#x2F;热部署</td>
-</tr>
-</tbody></table>
 <h2 id="6-生产-JVM-参数模板"><a href="#6-生产-JVM-参数模板" class="headerlink" title="6. 生产 JVM 参数模板"></a>6. 生产 JVM 参数模板</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生产推荐（JDK 21，G1 默认）</span></span><br><span class="line">JAVA_OPTS=<span class="string">&quot;-Xms2g -Xmx2g \</span></span><br><span class="line"><span class="string">  -XX:MaxMetaspaceSize=512m \</span></span><br><span class="line"><span class="string">  -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/dumps \</span></span><br><span class="line"><span class="string">  -Xlog:gc*:file=/data/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20m \</span></span><br><span class="line"><span class="string">  -Duser.timezone=Asia/Shanghai&quot;</span></span><br></pre></td></tr></table></figure>
 
 <p><strong>要点</strong>：<code>-Xms = -Xmx</code>（避免启动期扩容抖动）；容器环境用 <code>-XX:MaxRAMPercentage=75</code> 让 JVM 感知容器内存限制。</p>
@@ -541,7 +494,7 @@
 <tbody><tr>
 <td>①</td>
 <td>确认 OOM 类型与 dump 文件（日志 + &#x2F;data&#x2F;dumps）</td>
-<td>heap space OOM，dump 已生成，无需重启抓现场</td>
+<td>heap space OOM，dump 已生成</td>
 </tr>
 <tr>
 <td>②</td>
@@ -568,7 +521,7 @@
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 泄漏代码：只 set 不 remove，线程池线程永不销毁 → 条目只增不减</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ContextInterceptor</span> <span class="keyword">implements</span> <span class="title class_">HandlerInterceptor</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">preHandle</span><span class="params">(HttpServletRequest req, ...)</span> &#123;</span><br><span class="line">        ThreadLocalContext.set(loadSnapshot(req));   <span class="comment">// 8MB 上下文对象</span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// afterCompletion 缺失 ← 泄漏根源</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 修复：请求结束必须清理；afterCompletion 无论成败都会回调</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">void</span> <span class="title function_">afterCompletion</span><span class="params">(HttpServletRequest req, ..., Exception ex)</span> &#123;</span><br><span class="line">    ThreadLocalContext.clear();   <span class="comment">// 内部就是 ThreadLocal.remove()</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p><strong>关键命令</strong>：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ① 先看 OOM 日志确认类型与 dump 路径（有 HeapDumpOnOutOfMemoryError 才有现场）</span></span><br><span class="line">grep -E <span class="string">&quot;OutOfMemoryError|Heap dump file created&quot;</span> /data/logs/app.log</span><br><span class="line"><span class="comment"># Heap dump file created [2147483648 bytes in 12.345 secs] → dump 成功</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ② MAT 命令行先出报告（图形界面打开 2GB hprof 较慢）</span></span><br><span class="line">./ParseHeapDump.sh /data/dumps/heap.hprof org.eclipse.mat.api:suspects</span><br><span class="line"><span class="comment"># 生成 Leak Suspects HTML 报告，浏览器直接看</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ③ 修复上线后回归验证：观察老年代是否回落（jstat 每秒）</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000</span><br><span class="line"><span class="comment"># O 列（老年代）从修复前 92% 单调涨 → 修复后稳定在 55%-65% 波动</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ① 先看 OOM 日志确认类型与 dump 路径</span></span><br><span class="line">grep -E <span class="string">&quot;OutOfMemoryError|Heap dump file created&quot;</span> /data/logs/app.log</span><br><span class="line"></span><br><span class="line"><span class="comment"># ② MAT 命令行先出报告</span></span><br><span class="line">./ParseHeapDump.sh /data/dumps/heap.hprof org.eclipse.mat.api:suspects</span><br><span class="line"></span><br><span class="line"><span class="comment"># ③ 修复上线后回归验证：观察老年代是否回落</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000</span><br><span class="line"><span class="comment"># O 列（老年代）从修复前 92% 单调涨 → 修复后稳定在 55%-65% 波动</span></span><br></pre></td></tr></table></figure>
 
 <p><strong>踩坑点</strong>：① 最初怀疑是”流量突增堆不够”，差点直接把 -Xmx 从 2g 调到 4g——若是泄漏，扩堆只是延迟 OOM；<strong>必须先看 dump 再动参数</strong>。② MAT 的 Leak Suspects 有时会指向软引用（软引用会被 GC 回收，不算泄漏），要看 Path to GC Roots 时勾选”exclude weak&#x2F;soft references”。</p>
 <h2 id="10-常见误用与陷阱"><a href="#10-常见误用与陷阱" class="headerlink" title="10. 常见误用与陷阱"></a>10. 常见误用与陷阱</h2><table>
@@ -615,9 +568,9 @@
 <td><code>HeapDumpPath=/data/dumps</code> + 该目录磁盘告警</td>
 </tr>
 </tbody></table>
-<h2 id="11-速查卡片"><a href="#11-速查卡片" class="headerlink" title="11. 速查卡片"></a>11. 速查卡片</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">OOM 三板斧：留 dump（HeapDumpOnOutOfMemoryError）→ MAT Leak Suspects → Path to GC Roots</span><br><span class="line">手动 dump： jcmd &lt;pid&gt; GC.heap_dump /data/dumps/heap.hprof（别用 jmap -F）</span><br><span class="line">生产参数：  -Xms=-Xmx、MaxMetaspaceSize 封顶、GC 日志必开</span><br><span class="line">容器内存：  MaxRAMPercentage=75，给堆外留余量</span><br><span class="line">泄漏特征：  老年代单调上涨，Full GC 后回落很少</span><br><span class="line">验证修复：  jstat -gcutil 看 O 列是否回归平稳</span><br></pre></td></tr></table></figure>
+<h2 id="11-速查卡片"><a href="#11-速查卡片" class="headerlink" title="11. 速查卡片"></a>11. 速查卡片</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">OOM 三板斧：留 dump（HeapDumpOnOutOfMemoryError）→ MAT Leak Suspects → Path to GC Roots</span><br><span class="line">手动 dump： jcmd &lt;pid&gt; GC.heap_dump /data/dumps/heap.hprof（别用 jmap -F）</span><br><span class="line">生产参数：  -Xms=-Xmx、MaxMetaspaceSize 封顶、GC 日志必开</span><br><span class="line">容器内存：  MaxRAMPercentage=75，给堆外留余量</span><br><span class="line">泄漏特征：  老年代单调上涨，Full GC 后回落很少</span><br><span class="line">验证修复：  jstat -gcutil 看 O 列是否回归平稳</span><br><span class="line">CPU 排查：  见 jvm-cpu-analysis-guide（top → jstack → 火焰图）</span><br><span class="line">GC 日志：   见 jvm-gc-log-guide（G1 字段解读 + GCeasy）</span><br></pre></td></tr></table></figure>
 
-<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">top -Hp &lt;pid&gt;                    <span class="comment"># 找热点线程</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;%x\n&#x27;</span> &lt;pid&gt;              <span class="comment"># 转十六进制</span></span><br><span class="line">jstack &lt;pid&gt; | grep -A20 <span class="string">&#x27;nid=0x3039&#x27;</span></span><br><span class="line">jmap -dump:format=b,file=dump.hprof &lt;pid&gt;    <span class="comment"># 手动 dump</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000         <span class="comment"># GC 监控</span></span><br></pre></td></tr></table></figure>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">jcmd &lt;pid&gt; GC.heap_dump /data/dumps/heap.hprof   <span class="comment"># 手动 dump</span></span><br><span class="line">jmap -heap &lt;pid&gt;                                  <span class="comment"># 堆概览</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000                          <span class="comment"># GC 监控</span></span><br></pre></td></tr></table></figure>
 
     </div>
 
@@ -669,13 +622,13 @@
     <span class="post-meta-item-icon">
       <i class="fa fa-chart-line"></i>
     </span>
-    <span title="站点总字数">4.1m</span>
+    <span title="站点总字数">4m</span>
   </span>
   <span class="post-meta-item">
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
-    <span title="站点阅读时长">61:24</span>
+    <span title="站点阅读时长">60:57</span>
   </span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
