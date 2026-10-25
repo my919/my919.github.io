@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第13章 最优化深度指南 对应 Bronstein《数学手册》第 18 章主线：优化问题分类 → 无约束最优性条件（∇f&#x3D;0 与 Hessian）→ 迭代下降算法族（梯度&#x2F;动量&#x2F;Newton&#x2F;BFGS）→ 线性规划（单纯形与顶点原理）→ 对偶理论（弱&#x2F;强对偶、互补松弛）→ 凸优化与 KKT → 整数规划与动态规划。工程师视角：一切机器学习训练都是带">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第13章 最优化深度指南：凸优化 · 线性规划 · 对偶 · 迭代算法">
+<meta property="og:url" content="https://my919.github.io/advanced-math/optimization-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第13章 最优化深度指南 对应 Bronstein《数学手册》第 18 章主线：优化问题分类 → 无约束最优性条件（∇f&#x3D;0 与 Hessian）→ 迭代下降算法族（梯度&#x2F;动量&#x2F;Newton&#x2F;BFGS）→ 线性规划（单纯形与顶点原理）→ 对偶理论（弱&#x2F;强对偶、互补松弛）→ 凸优化与 KKT → 整数规划与动态规划。工程师视角：一切机器学习训练都是带">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch13-3.png">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch13-2.png">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch13-1.png">
+<meta property="article:published_time" content="2026-10-10T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-10T16:39:05.349Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="KKT条件">
+<meta property="article:tag" content="凸优化">
+<meta property="article:tag" content="对偶理论">
+<meta property="article:tag" content="数学基础">
+<meta property="article:tag" content="最优化">
+<meta property="article:tag" content="线性规划">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://my919.github.io/images/advanced-math/ch13-3.png">
+
+
+<link rel="canonical" href="https://my919.github.io/advanced-math/optimization-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/advanced-math/optimization-guide/","path":"advanced-math/optimization-guide/","title":"第13章 最优化深度指南：凸优化 · 线性规划 · 对偶 · 迭代算法"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第13章 最优化深度指南：凸优化 · 线性规划 · 对偶 · 迭代算法 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC13%E7%AB%A0-%E6%9C%80%E4%BC%98%E5%8C%96%E6%B7%B1%E5%BA%A6%E6%8C%87%E5%8D%97"><span class="nav-number">1.</span> <span class="nav-text">第13章 最优化深度指南</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#0-%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE"><span class="nav-number">1.1.</span> <span class="nav-text">0. 知识地图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E4%BC%98%E5%8C%96%E9%97%AE%E9%A2%98%E5%88%86%E7%B1%BB%E5%85%A8%E6%99%AF"><span class="nav-number">1.2.</span> <span class="nav-text">1. 优化问题分类全景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E6%97%A0%E7%BA%A6%E6%9D%9F%E4%BC%98%E5%8C%96%E7%90%86%E8%AE%BA"><span class="nav-number">1.3.</span> <span class="nav-text">2. 无约束优化理论</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E6%9C%80%E4%BC%98%E6%80%A7%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 最优性条件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E5%87%B8%E5%87%BD%E6%95%B0%E5%88%A4%E5%AE%9A"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 凸函数判定</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E4%B8%8B%E9%99%8D%E6%96%B9%E5%90%91%E4%B8%8E%E7%BA%BF%E6%90%9C%E7%B4%A2"><span class="nav-number">1.3.3.</span> <span class="nav-text">2.3 下降方向与线搜索</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E6%97%A0%E7%BA%A6%E6%9D%9F%E7%AE%97%E6%B3%95%E6%97%8F"><span class="nav-number">1.4.</span> <span class="nav-text">3. 无约束算法族</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D-GD"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 梯度下降 GD</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E5%8A%A8%E9%87%8F%E4%B8%8E-Nesterov"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 动量与 Nesterov</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-Newton-%E6%B3%95%E4%B8%8E%E6%8B%9F%E7%89%9B%E9%A1%BF"><span class="nav-number">1.4.3.</span> <span class="nav-text">3.3 Newton 法与拟牛顿</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-%E5%85%B1%E8%BD%AD%E6%A2%AF%E5%BA%A6-CG"><span class="nav-number">1.4.4.</span> <span class="nav-text">3.4 共轭梯度 CG</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E4%BC%98%E5%8C%96%E5%99%A8%E8%B0%B1%E7%B3%BB"><span class="nav-number">1.4.5.</span> <span class="nav-text">3.5 深度学习优化器谱系</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E7%BA%BF%E6%80%A7%E8%A7%84%E5%88%92-LP"><span class="nav-number">1.5.</span> <span class="nav-text">4. 线性规划 LP</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E6%A0%87%E5%87%86%E5%BD%A2%E4%B8%8E%E5%87%A0%E4%BD%95"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 标准形与几何</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E5%8D%95%E7%BA%AF%E5%BD%A2%E6%B3%95%E4%B8%8E%E5%86%85%E7%82%B9%E6%B3%95"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 单纯形法与内点法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E5%AF%B9%E5%81%B6%E7%90%86%E8%AE%BA"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 对偶理论</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%87%B8%E4%BC%98%E5%8C%96%E4%B8%8E-KKT"><span class="nav-number">1.6.</span> <span class="nav-text">5. 凸优化与 KKT</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%87%B8%E9%97%AE%E9%A2%98"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 凸问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-KKT-%E6%9D%A1%E4%BB%B6%EF%BC%88%E4%B8%8D%E7%AD%89%E5%BC%8F%E7%BA%A6%E6%9D%9F%E6%9C%80%E4%BC%98%E6%80%A7%E7%9A%84%E5%AE%8C%E6%95%B4%E5%88%BB%E7%94%BB%EF%BC%89"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 KKT 条件（不等式约束最优性的完整刻画）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E7%BD%9A%E5%87%BD%E6%95%B0%E4%B8%8E%E5%A2%9E%E5%B9%BF-Lagrangian%EF%BC%88%E5%B7%A5%E7%A8%8B%E5%A4%84%E7%90%86%E7%BA%A6%E6%9D%9F%E7%9A%84%E4%B8%A4%E6%9D%A1%E8%B7%AF%EF%BC%89"><span class="nav-number">1.6.3.</span> <span class="nav-text">5.3 罚函数与增广 Lagrangian（工程处理约束的两条路）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-SVM-%E6%8E%A8%E5%AF%BC%E9%AA%A8%E6%9E%B6"><span class="nav-number">1.6.4.</span> <span class="nav-text">5.4 SVM 推导骨架</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E6%95%B4%E6%95%B0%E8%A7%84%E5%88%92%E4%B8%8E%E7%BB%84%E5%90%88%E4%BC%98%E5%8C%96"><span class="nav-number">1.7.</span> <span class="nav-text">6. 整数规划与组合优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92-DP"><span class="nav-number">1.8.</span> <span class="nav-text">7. 动态规划 DP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E6%9C%80%E4%BC%98%E5%8C%96-%E2%86%92-ML-%E5%B7%A5%E7%A8%8B%E5%AF%B9%E7%85%A7%E8%A1%A8"><span class="nav-number">1.9.</span> <span class="nav-text">8. 最优化 → ML&#x2F;工程对照表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-Python-%E5%AE%9E%E6%88%98"><span class="nav-number">1.10.</span> <span class="nav-text">9. Python 实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-scipy-optimize%EF%BC%9A%E4%B8%8D%E5%90%8C-method-%E5%AF%B9%E6%AF%94"><span class="nav-number">1.10.1.</span> <span class="nav-text">9.1 scipy.optimize：不同 method 对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-linprog-%E8%A7%A3%E7%94%9F%E4%BA%A7%E8%AE%A1%E5%88%92-LP%EF%BC%88%E5%AE%8C%E6%95%B4%E4%BE%8B%E9%A2%98%EF%BC%89"><span class="nav-number">1.10.2.</span> <span class="nav-text">9.2 linprog 解生产计划 LP（完整例题）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-cvxpy-%E5%87%B8%E4%BA%8C%E6%AC%A1%E8%A7%84%E5%88%92"><span class="nav-number">1.10.3.</span> <span class="nav-text">9.3 cvxpy 凸二次规划</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-%E9%AA%8C%E6%94%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.11.</span> <span class="nav-text">10. 验收清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-%E7%9B%B8%E5%85%B3%E6%96%87%E7%AB%A0"><span class="nav-number">1.12.</span> <span class="nav-text">11. 相关文章</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">267</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">85</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">264</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/advanced-math/optimization-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第13章 最优化深度指南：凸优化 · 线性规划 · 对偶 · 迭代算法 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第13章 最优化深度指南：凸优化 · 线性规划 · 对偶 · 迭代算法
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-10-10 10:00:00" itemprop="dateCreated datePublished" datetime="2026-10-10T10:00:00+08:00">2026-10-10</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-11 00:39:05" itemprop="dateModified" datetime="2026-10-11T00:39:05+08:00">2026-10-11</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Advanced-Math/" itemprop="url" rel="index"><span itemprop="name">Advanced Math</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>8.7k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>8 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第13章-最优化深度指南"><a href="#第13章-最优化深度指南" class="headerlink" title="第13章 最优化深度指南"></a>第13章 最优化深度指南</h1><blockquote>
+<p>对应 Bronstein《数学手册》第 18 章主线：优化问题分类 → 无约束最优性条件（∇f&#x3D;0 与 Hessian）→ 迭代下降算法族（梯度&#x2F;动量&#x2F;Newton&#x2F;BFGS）→ 线性规划（单纯形与顶点原理）→ 对偶理论（弱&#x2F;强对偶、互补松弛）→ 凸优化与 KKT → 整数规划与动态规划。工程师视角：<strong>一切机器学习训练都是带约束（或隐式正则）的最优化</strong>，看懂 KKT 与对偶，就看懂了 SVM 与正则化的半部真经。</p>
+</blockquote>
+<h2 id="0-知识地图"><a href="#0-知识地图" class="headerlink" title="0. 知识地图"></a>0. 知识地图</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">最优化 Optimization</span><br><span class="line">问题分类：线性/非线性 · 凸/非凸 · 连续/离散 · 无约束/约束</span><br><span class="line">  └─► 标准形 min f(x) s.t. gᵢ(x)≤0, hⱼ(x)=0</span><br><span class="line">无约束理论：∇f=0（一阶必要）→ Hessian 正定判定（二阶）</span><br><span class="line">  └─► 凸函数：弦在曲线上方 ⟺ H 半正定 → 局部=全局</span><br><span class="line">算法族：梯度下降 → 动量/Nesterov → Newton → BFGS/L-BFGS → 共轭梯度</span><br><span class="line">  └─► 深度学习谱系：SGD → Momentum → Adam</span><br><span class="line">线性规划 LP：可行域=多面体，最优在顶点</span><br><span class="line">  └─► 单纯形法（沿棱走）/ 内点法（穿内部）</span><br><span class="line">对偶：原问题 ⟷ 对偶问题，弱对偶 ≤ 强对偶，互补松弛</span><br><span class="line">凸优化：凸集+凸目标+凸约束 → KKT 充分必要（Slater 下）</span><br><span class="line">  └─► SVM：间隔最大化 → QP → 对偶 → 支持向量</span><br><span class="line">离散：整数规划（分支定界/松弛）· 动态规划（Bellman 方程）</span><br></pre></td></tr></table></figure>
+
+<h2 id="1-优化问题分类全景"><a href="#1-优化问题分类全景" class="headerlink" title="1. 优化问题分类全景"></a>1. 优化问题分类全景</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">标准形（约定：一律写成最小化）：</span><br><span class="line">  min  f(x)              目标函数，x ∈ Rⁿ 为决策变量</span><br><span class="line">  s.t. gᵢ(x) ≤ 0,  i=1..m   不等式约束</span><br><span class="line">       hⱼ(x) = 0,  j=1..p   等式约束</span><br><span class="line">可行域：Ω = &#123; x | gᵢ(x)≤0, hⱼ(x)=0 &#125;；x* 为最优解，f* 为最优值</span><br></pre></td></tr></table></figure>
+
+<p>分类坐标轴（任意组合）：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>两端</th>
+<th>典型方法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>目标&#x2F;约束形状</td>
+<td>线性 ⟷ 非线性</td>
+<td>LP：单纯形&#x2F;内点；NLP：梯度&#x2F;Newton&#x2F;KKT</td>
+</tr>
+<tr>
+<td>几何性质</td>
+<td>凸 ⟷ 非凸</td>
+<td>凸：全局可解；非凸：局部解+多启动&#x2F;启发式</td>
+</tr>
+<tr>
+<td>变量类型</td>
+<td>连续 ⟷ 离散（整数&#x2F;0-1）</td>
+<td>连续：微积分；离散：分支定界&#x2F;DP</td>
+</tr>
+<tr>
+<td>约束</td>
+<td>无约束 ⟷ 有约束</td>
+<td>无约束：∇f&#x3D;0；有约束：KKT&#x2F;罚函数</td>
+</tr>
+<tr>
+<td>光滑性</td>
+<td>光滑 ⟷ 非光滑</td>
+<td>光滑：梯度；非光滑：次梯度&#x2F;近端</td>
+</tr>
+</tbody></table>
+<p>局部最优 vs 全局最优：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">局部最优：存在邻域 N(x*,ε)，使 ∀x∈N∩Ω 有 f(x) ≥ f(x*)</span><br><span class="line">全局最优：∀x∈Ω 有 f(x) ≥ f(x*)</span><br><span class="line">关键事实：非凸问题数值算法一般只能保证局部最优；</span><br><span class="line">          凸问题中 局部最优 = 全局最优（见第 5 节）</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-无约束优化理论"><a href="#2-无约束优化理论" class="headerlink" title="2. 无约束优化理论"></a>2. 无约束优化理论</h2><h3 id="2-1-最优性条件"><a href="#2-1-最优性条件" class="headerlink" title="2.1 最优性条件"></a>2.1 最优性条件</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">一阶必要条件：x* 为局部极小 且 f 可微  ⟹  ∇f(x*) = 0（驻点）</span><br><span class="line">  注意：∇f=0 只是&quot;候选&quot;，还可能是极大点或鞍点</span><br><span class="line"></span><br><span class="line">二阶条件（Taylor 展开到二阶）：</span><br><span class="line">  f(x*+d) ≈ f(x*) + ∇f(x*)ᵀd + ½ dᵀH d，H = ∇²f(x*)</span><br><span class="line">  ∇f(x*)=0 且 H 正定  ⟹  严格局部极小（充分）</span><br><span class="line">  ∇f(x*)=0 且 H 负定  ⟹  严格局部极大（充分）</span><br><span class="line">  ∇f(x*)=0 且 H 不定（有正有负特征值）  ⟹  鞍点（如 f=xy 在原点）</span><br><span class="line">  H 半正定  ⟹  无法判定，需看更高阶项（如 f=x⁴ 在原点）</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-凸函数判定"><a href="#2-2-凸函数判定" class="headerlink" title="2.2 凸函数判定"></a>2.2 凸函数判定</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">凸集：Ω 中任意两点连线仍在 Ω 内：θx+(1-θ)y ∈ Ω, θ∈[0,1]</span><br><span class="line">凸函数三种等价刻画（f 定义在凸集上）：</span><br><span class="line">  ① 定义（弦在曲线上方）：</span><br><span class="line">     f(θx+(1-θ)y) ≤ θf(x)+(1-θ)f(y)</span><br><span class="line">  ② 一阶（切线在函数下方，f 可微时）：</span><br><span class="line">     f(y) ≥ f(x) + ∇f(x)ᵀ(y-x)</span><br><span class="line">  ③ 二阶（f 二阶可微时）：</span><br><span class="line">     ∇²f(x) ⪰ 0（Hessian 处处半正定）</span><br><span class="line">  严格凸：上述不等式取严格号（H ≻ 0 是充分非必要）</span><br><span class="line">常见凸函数：x²、|x|、eˣ、-ln x（x&gt;0）、范数、max 逐点、二次型 xᵀAx（A⪰0）</span><br><span class="line">保凸运算：非负加权和、max 逐点、与仿射复合 f(Ax+b)</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/advanced-math/ch13-3.png" alt="凸集"></p>
+<p><em>图 13-3　凸集内两点连线仍在集合中，非凸集连线会穿出边界</em></p>
+<p><img src="/images/advanced-math/ch13-2.png" alt="凸与非凸"></p>
+<p><em>图 13-2　凸函数切线全在下方且只有一个最小，非凸函数的多个局部最小困住优化器</em></p>
+<h3 id="2-3-下降方向与线搜索"><a href="#2-3-下降方向与线搜索" class="headerlink" title="2.3 下降方向与线搜索"></a>2.3 下降方向与线搜索</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">下降方向 d：∇f(x)ᵀ d &lt; 0（沿 d 走一小步函数必降）</span><br><span class="line">  最速下降方向：d = -∇f(x)</span><br><span class="line">迭代框架：x ← x + α·d</span><br><span class="line">  α 的选法：</span><br><span class="line">    精确线搜索：min_&#123;α≥0&#125; f(x+αd)（理论好，实践贵）</span><br><span class="line">    Armijo 回溯：找 α 使 f(x+αd) ≤ f(x) + c₁α∇fᵀd，c₁≈1e-4</span><br><span class="line">    Wolfe 条件：Armijo + 曲率条件 |∇f(x+αd)ᵀd| ≤ c₂|∇fᵀd|</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-无约束算法族"><a href="#3-无约束算法族" class="headerlink" title="3. 无约束算法族"></a>3. 无约束算法族</h2><h3 id="3-1-梯度下降-GD"><a href="#3-1-梯度下降-GD" class="headerlink" title="3.1 梯度下降 GD"></a>3.1 梯度下降 GD</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">x ← x - α∇f(x)</span><br><span class="line">步长：太大震荡发散，太小缓慢；常取 α 与 L（梯度 Lipschitz 常数）相关，α ≤ 1/L 保收敛</span><br><span class="line">收敛率（强凸 + L-光滑，条件数 κ = L/μ）：</span><br><span class="line">  f(xₖ) - f* ≤ (1 - 1/κ)ᵏ · (f(x₀) - f*)     线性收敛</span><br><span class="line">  每层迭代代价 O(n)，总代价随 κ 恶化 → 病态问题要预处理/预条件</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-动量与-Nesterov"><a href="#3-2-动量与-Nesterov" class="headerlink" title="3.2 动量与 Nesterov"></a>3.2 动量与 Nesterov</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Heavy Ball（Polyak 动量）：</span><br><span class="line">  v ← βv - α∇f(x)；  x ← x + v</span><br><span class="line">  物理直觉：小球下坡积累速度，抑制震荡方向、加速一致方向</span><br><span class="line">Nesterov 加速梯度（NAG）：先&quot;预支&quot;一步再算梯度</span><br><span class="line">  v ← βv - α∇f(x + βv)；  x ← x + v</span><br><span class="line">  强凸下收敛率 (1-1/√κ)ᵏ —— 对一阶法已是最优速率</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-Newton-法与拟牛顿"><a href="#3-3-Newton-法与拟牛顿" class="headerlink" title="3.3 Newton 法与拟牛顿"></a>3.3 Newton 法与拟牛顿</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Newton：x ← x - H⁻¹∇f(x)</span><br><span class="line">  用二阶 Taylor 模型直接跳极小点；极小点附近二次收敛</span><br><span class="line">  代价：H 求逆 O(n³)；H 不定时可能奔向鞍点 → 需修正（加阻尼/Levenberg-Marquardt）</span><br><span class="line"></span><br><span class="line">拟牛顿：不显式算 H，用梯度差逐步逼近其逆</span><br><span class="line">  BFGS 更新（Hₖ 为逆 Hessian 近似）：</span><br><span class="line">    s = xₖ₊₁ - xₖ,  y = ∇fₖ₊₁ - ∇fₖ,  ρ = 1/(yᵀs)</span><br><span class="line">    H ← (I-ρsyᵀ)H(I-ρysᵀ) + ρssᵀ</span><br><span class="line">  超线性收敛；存储 O(n²)</span><br><span class="line">  L-BFGS：只存最近 m 对 (s,y)，内存 O(mn) —— 大规模优化标配</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/advanced-math/ch13-1.png" alt="GD 对比 Newton"></p>
+<p><em>图 13-1　梯度下降在狭长谷地锯齿缓行，Newton 法借曲率信息一步直达</em></p>
+<h3 id="3-4-共轭梯度-CG"><a href="#3-4-共轭梯度-CG" class="headerlink" title="3.4 共轭梯度 CG"></a>3.4 共轭梯度 CG</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">适用：大规模二次型 min ½xᵀAx - bᵀx（等价于解 Ax=b，A≻0）</span><br><span class="line">思想：搜索方向取 A-共轭（dᵢᵀAdⱼ=0），n 步内精确收敛</span><br><span class="line">非线性推广：Fletcher-Reeves / Polak-Ribière 用 β 更新方向</span><br><span class="line">优势：只存向量不存矩阵，适合 PDE 离散后的超大系统</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-深度学习优化器谱系"><a href="#3-5-深度学习优化器谱系" class="headerlink" title="3.5 深度学习优化器谱系"></a>3.5 深度学习优化器谱系</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">SGD：       θ ← θ - α·g（g 为小批量梯度，噪声即正则）</span><br><span class="line">Momentum：  v ← βv + g；θ ← θ - α·v（惯性）</span><br><span class="line">AdaGrad：   逐坐标累计平方梯度缩放步长（稀疏特征友好，步长单调衰减）</span><br><span class="line">RMSProp：   对平方梯度做指数滑动平均（修 AdaGrad 步长塌缩）</span><br><span class="line">Adam：      一阶矩（动量）+ 二阶矩（RMSProp）+ 偏差校正</span><br><span class="line">  m ← β₁m + (1-β₁)g；  v ← β₂v + (1-β₂)g²</span><br><span class="line">  m̂ = m/(1-β₁ᵗ)；v̂ = v/(1-β₂ᵗ)</span><br><span class="line">  θ ← θ - α·m̂/(√v̂ + ε)，默认 β₁=0.9, β₂=0.999</span><br><span class="line">AdamW：     把权重衰减从梯度中解耦 —— 当前 LLM 训练默认选项</span><br><span class="line">一句话谱系：SGD → +动量 → +自适应逐坐标步长 → Adam → 解耦衰减 AdamW</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-线性规划-LP"><a href="#4-线性规划-LP" class="headerlink" title="4. 线性规划 LP"></a>4. 线性规划 LP</h2><h3 id="4-1-标准形与几何"><a href="#4-1-标准形与几何" class="headerlink" title="4.1 标准形与几何"></a>4.1 标准形与几何</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">标准形：min cᵀx  s.t. Ax = b, x ≥ 0</span><br><span class="line">  （不等式加松弛变量可化等式；自由变量拆两非负变量之差）</span><br><span class="line">几何事实：</span><br><span class="line">  可行域 &#123;Ax=b, x≥0&#125; 是（闭）凸多面体</span><br><span class="line">  若 LP 有有限最优解 ⟹ 至少一个顶点达到最优</span><br><span class="line">  顶点 ⟺ 基本可行解（n 个约束取等且列线性无关）</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-单纯形法与内点法"><a href="#4-2-单纯形法与内点法" class="headerlink" title="4.2 单纯形法与内点法"></a>4.2 单纯形法与内点法</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">单纯形法（Dantzig, 1947）几何直觉：</span><br><span class="line">  从一个顶点出发，沿使目标下降最快的棱走到相邻顶点，</span><br><span class="line">  重复直到无下降棱 → 当前顶点即全局最优</span><br><span class="line">  代数实现：换基（进基变量/出基变量），检验数全 ≥0 停止</span><br><span class="line">  平均非常快；最坏指数（Klee-Minty 构造），实际几乎不触发</span><br><span class="line">内点法（Karmarkar 1984 / 原始-对偶内点）一句话：</span><br><span class="line">  沿多面体&quot;内部&quot;的中心路径逼近最优点，多项式时间保证，</span><br><span class="line">  大规模稀疏 LP 上常优于单纯形法</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-对偶理论"><a href="#4-3-对偶理论" class="headerlink" title="4.3 对偶理论"></a>4.3 对偶理论</h3><p>原问题 ⟷ 对偶问题对应规则（以不等式形为例）：</p>
+<table>
+<thead>
+<tr>
+<th>原问题 (min)</th>
+<th>对偶问题 (max)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>min cᵀx</td>
+<td>max bᵀy</td>
+</tr>
+<tr>
+<td>第 i 个约束 aᵢᵀx ≥ bᵢ</td>
+<td>对偶变量 yᵢ ≥ 0</td>
+</tr>
+<tr>
+<td>第 j 个约束 aⱼᵀx &#x3D; bⱼ</td>
+<td>对偶变量 yⱼ 自由</td>
+</tr>
+<tr>
+<td>变量 xⱼ ≥ 0</td>
+<td>第 j 个对偶约束 Aᵀy 的第 j 行 ≤ cⱼ</td>
+</tr>
+<tr>
+<td>变量 xⱼ 自由</td>
+<td>第 j 个对偶约束取等号</td>
+</tr>
+</tbody></table>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">弱对偶：任意原始可行 x 与对偶可行 y 满足  cᵀx ≥ bᵀy</span><br><span class="line">  （对偶目标永远是最优值的下界/上界）</span><br><span class="line">强对偶：LP 若原始有有限最优，则对偶也有，且 cᵀx* = bᵀy*</span><br><span class="line">互补松弛（最优性刻画）：</span><br><span class="line">  yᵢ·(aᵢᵀx - bᵢ) = 0  —— 约束不紧 ⟹ 对偶变量为零；影子价格非零 ⟹ 约束顶死</span><br><span class="line">  xⱼ·(cⱼ - Aⱼᵀy) = 0</span><br><span class="line">经济学解释：yᵢ = 资源 i 的影子价格 = 放松 bᵢ 一单位时最优值的边际改善</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-凸优化与-KKT"><a href="#5-凸优化与-KKT" class="headerlink" title="5. 凸优化与 KKT"></a>5. 凸优化与 KKT</h2><h3 id="5-1-凸问题"><a href="#5-1-凸问题" class="headerlink" title="5.1 凸问题"></a>5.1 凸问题</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">凸优化问题：min f(x) s.t. gᵢ(x)≤0, hⱼ(x)=0</span><br><span class="line">  其中 f、gᵢ 均为凸函数，hⱼ 为仿射（Ax=b 形式）</span><br><span class="line">  ⟹ 可行域是凸集，目标在凸集上凸</span><br><span class="line">核心定理：凸问题的任何局部最优解都是全局最优解</span><br><span class="line">  且最优解集是凸集；严格凸目标 ⟹ 解唯一</span><br><span class="line">常见凸问题家族：LP ⊂ QP（凸二次）⊂ SOCP ⊂ SDP ⊂ 一般凸规划</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-KKT-条件（不等式约束最优性的完整刻画）"><a href="#5-2-KKT-条件（不等式约束最优性的完整刻画）" class="headerlink" title="5.2 KKT 条件（不等式约束最优性的完整刻画）"></a>5.2 KKT 条件（不等式约束最优性的完整刻画）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Lagrangian：L(x, λ, μ) = f(x) + Σᵢ λᵢgᵢ(x) + Σⱼ μⱼhⱼ(x)</span><br><span class="line">x* 为最优且满足约束规范时，存在 λ*, μ* 使：</span><br><span class="line">  ① 平稳性：  ∇f(x*) + Σᵢ λᵢ*∇gᵢ(x*) + Σⱼ μⱼ*∇hⱼ(x*) = 0</span><br><span class="line">  ② 原始可行：gᵢ(x*) ≤ 0,  hⱼ(x*) = 0</span><br><span class="line">  ③ 对偶可行：λᵢ* ≥ 0</span><br><span class="line">  ④ 互补松弛：λᵢ*·gᵢ(x*) = 0</span><br><span class="line">Slater 条件一句话：存在严格可行点（gᵢ(x)&lt;0 全成立）⟹ 强对偶成立、</span><br><span class="line">  且对凸问题 KKT 从&quot;必要&quot;升级为&quot;充分必要&quot;</span><br><span class="line">直觉：最优点处 -∇f 落在有效约束梯度的非负锥内（&quot;被约束顶住&quot;）</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-罚函数与增广-Lagrangian（工程处理约束的两条路）"><a href="#5-3-罚函数与增广-Lagrangian（工程处理约束的两条路）" class="headerlink" title="5.3 罚函数与增广 Lagrangian（工程处理约束的两条路）"></a>5.3 罚函数与增广 Lagrangian（工程处理约束的两条路）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">外罚函数：min f(x) + ρ·Σᵢ max(0, gᵢ(x))²</span><br><span class="line">  把约束违反对折进目标，ρ→∞ 逼近原问题；简单但 ρ 大时病态</span><br><span class="line">增广 Lagrangian / ADMM 思想：罚项 + 对偶变量一起更新</span><br><span class="line">  min f(x) + λᵀg(x) + (ρ/2)‖g(x)‖²，交替更新 x 与 λ</span><br><span class="line">  不必让 ρ→∞ 也能精确满足约束，分布式大规模优化标配</span><br><span class="line">内点法/障碍法：min f(x) - μ·Σᵢ ln(-gᵢ(x))，μ→0 沿中心路径逼近</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-SVM-推导骨架"><a href="#5-4-SVM-推导骨架" class="headerlink" title="5.4 SVM 推导骨架"></a>5.4 SVM 推导骨架</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">① 间隔最大化：硬间隔 SVM 求 max 2/‖w‖  s.t. yᵢ(wᵀxᵢ+b) ≥ 1</span><br><span class="line">② 化为凸 QP：  min ½‖w‖²  s.t. 1 - yᵢ(wᵀxᵢ+b) ≤ 0</span><br><span class="line">③ 写 Lagrangian 并对 w,b 求极小（代入 KKT 平稳性）：</span><br><span class="line">   w = Σᵢ λᵢyᵢxᵢ,  Σᵢ λᵢyᵢ = 0</span><br><span class="line">④ 得对偶问题：max Σᵢλᵢ - ½ΣᵢΣⱼ λᵢλⱼyᵢyⱼ(xᵢᵀxⱼ)</span><br><span class="line">   s.t. λᵢ ≥ 0, Σᵢλᵢyᵢ = 0   —— 只依赖内积 xᵢᵀxⱼ → 核技巧入口</span><br><span class="line">⑤ 互补松弛 λᵢ·(yᵢ(wᵀxᵢ+b)-1) = 0：</span><br><span class="line">   λᵢ &gt; 0 的点恰好落在间隔边界上 —— 这些点就是支持向量，</span><br><span class="line">   分类只由它们决定（稀疏性来源）</span><br></pre></td></tr></table></figure>
+
+<h2 id="6-整数规划与组合优化"><a href="#6-整数规划与组合优化" class="headerlink" title="6. 整数规划与组合优化"></a>6. 整数规划与组合优化</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">整数规划 IP：变量取整数值（0-1 变量最常见）</span><br><span class="line">与 LP 的本质区别：可行域非凸（离散点集），KKT 全部失效</span><br><span class="line"></span><br><span class="line">松弛（Relaxation）：丢掉整数约束先解 LP</span><br><span class="line">  给出界：min 问题的 LP 松弛值 ≤ IP 最优值</span><br><span class="line">  若松弛解恰为整数 → 运气爆棚，直接是最优</span><br><span class="line"></span><br><span class="line">分支定界（Branch &amp; Bound）：</span><br><span class="line">  ① 解 LP 松弛得下界，若解全整数则完成</span><br><span class="line">  ② 否则挑某个分数变量 xⱼ=v，分支：xⱼ ≤ ⌊v⌋ 与 xⱼ ≥ ⌈v⌉ 两棵子树</span><br><span class="line">  ③ 递归求解，子问题下界 ≥ 当前最优整数解则剪枝</span><br><span class="line">  最坏指数，但配上界剪枝后实际可解中等规模</span><br><span class="line"></span><br><span class="line">常见模型一句话：</span><br><span class="line">  背包：选物品 max Σvᵢxᵢ s.t. Σwᵢxᵢ ≤ W, xᵢ∈&#123;0,1&#125;</span><br><span class="line">  指派：n 人 n 任务一对一 min ΣΣcᵢⱼxᵢⱼ，行列各和为 1（LP 松弛自动整数！）</span><br><span class="line">  TSP：过所有城市恰好一次的最短回路（子回路消除约束，NP-hard 招牌）</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-动态规划-DP"><a href="#7-动态规划-DP" class="headerlink" title="7. 动态规划 DP"></a>7. 动态规划 DP</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">最优子结构：全局最优解包含子问题的最优解</span><br><span class="line">  ⟹ 可以&quot;自底向上&quot;或&quot;带记忆递归&quot;复用子问题答案</span><br><span class="line">重叠子问题：朴素递归会重复计算 —— 用表存起来（记忆化/递推）</span><br><span class="line"></span><br><span class="line">Bellman 方程（值函数形式）：</span><br><span class="line">  V(s) = minₐ &#123; cost(s,a) + V(next(s,a)) &#125;</span><br><span class="line">  最优策略 = 在每步取使右端最小的动作</span><br><span class="line"></span><br><span class="line">最短路例子（DAG 上）：</span><br><span class="line">  dist(v) = min over 入边 (u,v): dist(u) + w(u,v)</span><br><span class="line">  按拓扑序递推一遍即得 —— Bellman-Ford 则是带负权边的一般化</span><br><span class="line">DP vs 分治：分治的子问题不重叠（如归并排序）；</span><br><span class="line">            DP 的子问题大量重叠，核心是状态定义与转移</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-最优化-→-ML-工程对照表"><a href="#8-最优化-→-ML-工程对照表" class="headerlink" title="8. 最优化 → ML&#x2F;工程对照表"></a>8. 最优化 → ML&#x2F;工程对照表</h2><table>
+<thead>
+<tr>
+<th>最优化概念</th>
+<th>ML&#x2F;工程对应</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>min f(x) 目标函数</td>
+<td>损失函数最小化（训练即优化）</td>
+</tr>
+<tr>
+<td>无约束 ∇f&#x3D;0</td>
+<td>经验风险极小点；深度学习里多为鞍点而非坏局部极小</td>
+</tr>
+<tr>
+<td>Hessian &#x2F; 条件数 κ</td>
+<td>损失面曲率、病态峡谷、预条件器设计</td>
+</tr>
+<tr>
+<td>梯度下降 + 线搜索</td>
+<td>SGD + 学习率调度</td>
+</tr>
+<tr>
+<td>Nesterov &#x2F; 动量</td>
+<td>Momentum &#x2F; NAG 优化器</td>
+</tr>
+<tr>
+<td>Newton &#x2F; BFGS</td>
+<td>二阶法、K-FAC、L-BFGS 全批量精调</td>
+</tr>
+<tr>
+<td>约束 ⟷ 罚&#x2F;对偶</td>
+<td>正则化：约束 ‖w‖≤t ⟺ 损失 + λ‖w‖（Lagrange 对偶视角）</td>
+</tr>
+<tr>
+<td>L1 范数</td>
+<td>稀疏化（LASSO）：不可微点在原点，解被”推”到坐标轴上</td>
+</tr>
+<tr>
+<td>KKT 条件</td>
+<td>SVM 最优性、支持向量稀疏性来源</td>
+</tr>
+<tr>
+<td>LP 对偶 &#x2F; 影子价格</td>
+<td>资源定价、敏感性分析、影子成本</td>
+</tr>
+<tr>
+<td>强对偶 + 内积形式</td>
+<td>核技巧：对偶只含 xᵢᵀxⱼ → 换成 K(xᵢ,xⱼ)</td>
+</tr>
+<tr>
+<td>分支定界 &#x2F; 松弛</td>
+<td>组合优化求解器（Gurobi&#x2F;SCIP）、特征选择的穷搜替代</td>
+</tr>
+<tr>
+<td>Bellman 方程</td>
+<td>强化学习值迭代&#x2F;策略迭代、Q-learning</td>
+</tr>
+<tr>
+<td>凸 ⟹ 局部&#x3D;全局</td>
+<td>凸损失（logistic&#x2F;线性回归）无局部极小困扰；深度网络靠过参数化”近似”此性质</td>
+</tr>
+</tbody></table>
+<h2 id="9-Python-实战"><a href="#9-Python-实战" class="headerlink" title="9. Python 实战"></a>9. Python 实战</h2><h3 id="9-1-scipy-optimize：不同-method-对比"><a href="#9-1-scipy-optimize：不同-method-对比" class="headerlink" title="9.1 scipy.optimize：不同 method 对比"></a>9.1 scipy.optimize：不同 method 对比</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"><span class="keyword">from</span> scipy.optimize <span class="keyword">import</span> minimize</span><br><span class="line"></span><br><span class="line"><span class="comment"># Rosenbrock 函数：经典病态测试函数（狭长弯曲谷底）</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">rosen</span>(<span class="params">x</span>):</span><br><span class="line">    <span class="keyword">return</span> <span class="number">100.0</span>*(x[<span class="number">1</span>]-x[<span class="number">0</span>]**<span class="number">2</span>)**<span class="number">2</span> + (<span class="number">1</span>-x[<span class="number">0</span>])**<span class="number">2</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">rosen_grad</span>(<span class="params">x</span>):  <span class="comment"># 解析梯度</span></span><br><span class="line">    dx0 = -<span class="number">400</span>*x[<span class="number">0</span>]*(x[<span class="number">1</span>]-x[<span class="number">0</span>]**<span class="number">2</span>) - <span class="number">2</span>*(<span class="number">1</span>-x[<span class="number">0</span>])</span><br><span class="line">    dx1 = <span class="number">200</span>*(x[<span class="number">1</span>]-x[<span class="number">0</span>]**<span class="number">2</span>)</span><br><span class="line">    <span class="keyword">return</span> np.array([dx0, dx1])</span><br><span class="line"></span><br><span class="line">x0 = np.array([-<span class="number">1.2</span>, <span class="number">1.0</span>])  <span class="comment"># 标准起点</span></span><br><span class="line"><span class="comment"># 对比：一阶法 BFGS / 用梯度的 Newton-CG / 无导数的 Nelder-Mead</span></span><br><span class="line"><span class="keyword">for</span> method, jac <span class="keyword">in</span> [(<span class="string">&quot;BFGS&quot;</span>, rosen_grad),</span><br><span class="line">                    (<span class="string">&quot;Newton-CG&quot;</span>, rosen_grad),</span><br><span class="line">                    (<span class="string">&quot;Nelder-Mead&quot;</span>, <span class="literal">None</span>)]:</span><br><span class="line">    res = minimize(rosen, x0, method=method, jac=jac,</span><br><span class="line">                   options=&#123;<span class="string">&quot;maxiter&quot;</span>: <span class="number">10000</span>&#125;)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;<span class="subst">&#123;method:12s&#125;</span> 迭代 <span class="subst">&#123;res.nit:4d&#125;</span> 次  &quot;</span></span><br><span class="line">          <span class="string">f&quot;f* = <span class="subst">&#123;res.fun:<span class="number">.2</span>e&#125;</span>  x* = <span class="subst">&#123;res.x.<span class="built_in">round</span>(<span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># 三者都应收敛到 x* = (1,1)，f* = 0，但迭代次数差异明显</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="9-2-linprog-解生产计划-LP（完整例题）"><a href="#9-2-linprog-解生产计划-LP（完整例题）" class="headerlink" title="9.2 linprog 解生产计划 LP（完整例题）"></a>9.2 linprog 解生产计划 LP（完整例题）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> scipy.optimize <span class="keyword">import</span> linprog</span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line"><span class="comment"># 某厂生产甲、乙两种产品：</span></span><br><span class="line"><span class="comment">#   利润：甲 3 千元/件，乙 5 千元/件</span></span><br><span class="line"><span class="comment">#   机时：甲 2h/件，乙 3h/件，总机时 ≤ 12</span></span><br><span class="line"><span class="comment">#   原料：甲 1kg/件，乙 2kg/件，总原料 ≤ 8</span></span><br><span class="line"><span class="comment">#   求 max 3x₁ + 5x₂</span></span><br><span class="line">c = [-<span class="number">3</span>, -<span class="number">5</span>]                      <span class="comment"># linprog 只做 min，取负化最大化</span></span><br><span class="line">A_ub = [[<span class="number">2</span>, <span class="number">3</span>],                   <span class="comment"># 机时约束</span></span><br><span class="line">        [<span class="number">1</span>, <span class="number">2</span>]]                   <span class="comment"># 原料约束</span></span><br><span class="line">b_ub = [<span class="number">12</span>, <span class="number">8</span>]</span><br><span class="line">bounds = [(<span class="number">0</span>, <span class="literal">None</span>), (<span class="number">0</span>, <span class="literal">None</span>)]   <span class="comment"># 产量非负</span></span><br><span class="line"></span><br><span class="line">res = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds,</span><br><span class="line">              method=<span class="string">&quot;highs&quot;</span>)     <span class="comment"># HiGHS：单纯形+内点一体</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;最优产量 甲/乙:&quot;</span>, res.x)          <span class="comment"># 顶点解</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;最大利润(千元):&quot;</span>, -res.fun)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;机时/原料用量:&quot;</span>, A_ub @ res.x)     <span class="comment"># 检查哪条约束顶死</span></span><br><span class="line"><span class="comment"># 顶死的约束对应影子价格非零（对偶变量）：</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;影子价格:&quot;</span>, -res.ineqlin.marginals)</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-3-cvxpy-凸二次规划"><a href="#9-3-cvxpy-凸二次规划" class="headerlink" title="9.3 cvxpy 凸二次规划"></a>9.3 cvxpy 凸二次规划</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> cvxpy <span class="keyword">as</span> cp</span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line"><span class="comment"># 投资组合：min ½xᵀΣx（风险） s.t. μᵀx ≥ r_min, Σxᵢ=1, x ≥ 0</span></span><br><span class="line">np.random.seed(<span class="number">0</span>)</span><br><span class="line">n = <span class="number">5</span>                              <span class="comment"># 资产数</span></span><br><span class="line">Sigma = np.random.randn(n, n)</span><br><span class="line">Sigma = Sigma.T @ Sigma / n + <span class="number">0.1</span>*np.eye(n)   <span class="comment"># 构造正定协方差</span></span><br><span class="line">mu = np.array([<span class="number">0.10</span>, <span class="number">0.12</span>, <span class="number">0.08</span>, <span class="number">0.15</span>, <span class="number">0.06</span>]) <span class="comment"># 期望收益</span></span><br><span class="line">r_min = <span class="number">0.09</span></span><br><span class="line"></span><br><span class="line">x = cp.Variable(n)</span><br><span class="line">objective = cp.Minimize(<span class="number">0.5</span> * cp.quad_form(x, Sigma))</span><br><span class="line">constraints = [mu @ x &gt;= r_min,    <span class="comment"># 收益下限</span></span><br><span class="line">               cp.<span class="built_in">sum</span>(x) == <span class="number">1</span>,     <span class="comment"># 全额投资</span></span><br><span class="line">               x &gt;= <span class="number">0</span>]             <span class="comment"># 禁止卖空</span></span><br><span class="line">prob = cp.Problem(objective, constraints)</span><br><span class="line">prob.solve()</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;状态:&quot;</span>, prob.status)         <span class="comment"># optimal</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;最优权重:&quot;</span>, np.<span class="built_in">round</span>(x.value, <span class="number">4</span>))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;最小方差:&quot;</span>, prob.value)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;实际收益:&quot;</span>, mu @ x.value)</span><br><span class="line"><span class="comment"># QP 是凸问题 ⟹ 求得的局部解就是全局解</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="10-验收清单"><a href="#10-验收清单" class="headerlink" title="10. 验收清单"></a>10. 验收清单</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">□ 能把任意优化问题改写成 min f(x) s.t. g(x)≤0, h(x)=0 标准形</span><br><span class="line">□ 能区分局部/全局最优，并说明凸问题为何二者等价</span><br><span class="line">□ 能陈述一阶必要条件 ∇f=0 与二阶 Hessian 判定（正定/负定/不定）</span><br><span class="line">□ 会用&quot;弦在曲线上方&quot;、一阶切线、H⪰0 三种方式判定凸函数</span><br><span class="line">□ 能写出梯度下降更新式并说清步长与条件数 κ 对收敛的影响</span><br><span class="line">□ 能写出动量与 Nesterov 的更新式并解释惯性直觉</span><br><span class="line">□ 能写 Newton 迭代式，说出二次收敛与 O(n³) 代价的权衡</span><br><span class="line">□ 能描述 BFGS/L-BFGS 的思想（梯度差逼近逆 Hessian）</span><br><span class="line">□ 能画出 LP 可行域多面体并解释&quot;最优在顶点&quot;</span><br><span class="line">□ 能写出 LP 对偶问题并陈述弱/强对偶与互补松弛</span><br><span class="line">□ 能完整写出 KKT 四个条件并解释几何直觉</span><br><span class="line">□ 能复述 SVM 从间隔最大化到对偶再到支持向量的推导骨架</span><br><span class="line">□ 能解释分支定界的&quot;松弛给界 + 分数变量分支 + 剪枝&quot;三步</span><br><span class="line">□ 能写 Bellman 方程并用于最短路递推</span><br><span class="line">□ 能用 scipy.optimize.minimize / linprog / cvxpy 各解一道题</span><br><span class="line">□ 能把 L1 正则、核技巧、Adam 各自对回最优化概念</span><br></pre></td></tr></table></figure>
+
+<h2 id="11-相关文章"><a href="#11-相关文章" class="headerlink" title="11. 相关文章"></a>11. 相关文章</h2><ul>
+<li>姊妹篇：<a href="/advanced-math/mit-advanced-math-guide/">高等数学总览</a> · <a href="/advanced-math/calculus-multivariable-guide/">多变量微积分</a> · <a href="/advanced-math/calculus-of-variations-guide/">变分法</a> · <a href="/advanced-math/numerical-analysis-guide/">数值分析</a></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>工具&#x2F;API</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>通用无约束优化</td>
+<td><code>scipy.optimize.minimize</code>（BFGS&#x2F;Newton-CG&#x2F;L-BFGS-B）</td>
+</tr>
+<tr>
+<td>线性规划</td>
+<td><code>scipy.optimize.linprog(method=&quot;highs&quot;)</code></td>
+</tr>
+<tr>
+<td>凸优化建模</td>
+<td><code>cvxpy.Problem</code> + <code>cp.Minimize</code></td>
+</tr>
+<tr>
+<td>线搜索</td>
+<td><code>scipy.optimize.line_search</code></td>
+</tr>
+<tr>
+<td>根&#x2F;驻点求解</td>
+<td><code>scipy.optimize.root</code></td>
+</tr>
+<tr>
+<td>深度学习优化器</td>
+<td><code>torch.optim.SGD / Adam / AdamW</code></td>
+</tr>
+<tr>
+<td>整数规划</td>
+<td><code>PuLP</code> &#x2F; <code>OR-Tools</code> &#x2F; Gurobi</td>
+</tr>
+<tr>
+<td>动态规划</td>
+<td>手写递推 + <code>functools.lru_cache</code> 记忆化</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E5%AD%A6%E5%9F%BA%E7%A1%80/" rel="tag"># 数学基础</a>
+              <a href="/tags/%E6%9C%80%E4%BC%98%E5%8C%96/" rel="tag"># 最优化</a>
+              <a href="/tags/%E5%87%B8%E4%BC%98%E5%8C%96/" rel="tag"># 凸优化</a>
+              <a href="/tags/%E7%BA%BF%E6%80%A7%E8%A7%84%E5%88%92/" rel="tag"># 线性规划</a>
+              <a href="/tags/%E5%AF%B9%E5%81%B6%E7%90%86%E8%AE%BA/" rel="tag"># 对偶理论</a>
+              <a href="/tags/KKT%E6%9D%A1%E4%BB%B6/" rel="tag"># KKT条件</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/advanced-math/partial-differential-equations-guide/" rel="prev" title="第9章 偏微分方程深度指南：椭圆 · 抛物 · 双曲 · 分离变量与数值方法">
+                  <i class="fa fa-angle-left"></i> 第9章 偏微分方程深度指南：椭圆 · 抛物 · 双曲 · 分离变量与数值方法
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/advanced-math/numerical-analysis-guide/" rel="next" title="第14章 数值分析深度指南：误差 · 求根 · 插值 · 数值积分 · 迭代法">
+                  第14章 数值分析深度指南：误差 · 求根 · 插值 · 数值积分 · 迭代法 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">2.5m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">37:15</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

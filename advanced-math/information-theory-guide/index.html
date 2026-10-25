@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第17章 信息论深度指南 1948 年，Shannon 在《A Mathematical Theory of Communication》中用两个定理回答了三个根本问题：信息怎么度量（熵）、消息能压到多小（信源编码定理：平均码长下界 &#x3D; 熵）、噪声信道能传多快（信道编码定理：速率低于容量 C 就能任意可靠）。今天机器学习的损失函数一半是信息论：交叉熵损失、KL 正则、VAE 的 ELBO">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第17章 信息论深度指南：熵 · 互信息 · KL散度 · 信道容量">
+<meta property="og:url" content="https://my919.github.io/advanced-math/information-theory-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第17章 信息论深度指南 1948 年，Shannon 在《A Mathematical Theory of Communication》中用两个定理回答了三个根本问题：信息怎么度量（熵）、消息能压到多小（信源编码定理：平均码长下界 &#x3D; 熵）、噪声信道能传多快（信道编码定理：速率低于容量 C 就能任意可靠）。今天机器学习的损失函数一半是信息论：交叉熵损失、KL 正则、VAE 的 ELBO">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch17-1.png">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch17-2.png">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch17-3.png">
+<meta property="article:published_time" content="2026-10-10T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-10T16:39:05.348Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="KL散度">
+<meta property="article:tag" content="交叉熵">
+<meta property="article:tag" content="信息熵">
+<meta property="article:tag" content="信息论">
+<meta property="article:tag" content="信道容量">
+<meta property="article:tag" content="数学基础">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://my919.github.io/images/advanced-math/ch17-1.png">
+
+
+<link rel="canonical" href="https://my919.github.io/advanced-math/information-theory-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/advanced-math/information-theory-guide/","path":"advanced-math/information-theory-guide/","title":"第17章 信息论深度指南：熵 · 互信息 · KL散度 · 信道容量"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第17章 信息论深度指南：熵 · 互信息 · KL散度 · 信道容量 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC17%E7%AB%A0-%E4%BF%A1%E6%81%AF%E8%AE%BA%E6%B7%B1%E5%BA%A6%E6%8C%87%E5%8D%97"><span class="nav-number">1.</span> <span class="nav-text">第17章 信息论深度指南</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#0-%E5%85%A8%E6%99%AF%E5%9C%B0%E5%9B%BE"><span class="nav-number">1.1.</span> <span class="nav-text">0. 全景地图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E4%BF%A1%E6%81%AF%E9%87%8F%E4%B8%8E%E7%86%B5"><span class="nav-number">1.2.</span> <span class="nav-text">1. 信息量与熵</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E8%87%AA%E4%BF%A1%E6%81%AF%EF%BC%9A%E8%B6%8A%E6%84%8F%E5%A4%96%EF%BC%8C%E4%BF%A1%E6%81%AF%E9%87%8F%E8%B6%8A%E5%A4%A7"><span class="nav-number">1.2.1.</span> <span class="nav-text">1.1 自信息：越意外，信息量越大</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E7%86%B5%EF%BC%9A%E5%B9%B3%E5%9D%87%E4%BF%A1%E6%81%AF%E9%87%8F-%E4%B8%8D%E7%A1%AE%E5%AE%9A%E5%BA%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">1.2 熵：平均信息量 &#x3D; 不确定度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E4%BE%8B%E9%A2%98%EF%BC%9A%E7%A1%AC%E5%B8%81%E3%80%81%E9%AA%B0%E5%AD%90%E4%B8%8E%E8%8B%B1%E6%96%87%E6%96%87%E6%9C%AC"><span class="nav-number">1.2.3.</span> <span class="nav-text">1.3 例题：硬币、骰子与英文文本</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E8%81%94%E5%90%88%E7%86%B5%E4%B8%8E%E6%9D%A1%E4%BB%B6%E7%86%B5"><span class="nav-number">1.3.</span> <span class="nav-text">2. 联合熵与条件熵</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E4%B8%89%E4%B8%AA%E6%A0%B8%E5%BF%83%E9%87%8F"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 三个核心量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%9D%A1%E4%BB%B6%E4%BD%BF%E7%86%B5%E5%87%8F%E5%B0%91"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 条件使熵减少</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E4%BA%92%E4%BF%A1%E6%81%AF"><span class="nav-number">1.4.</span> <span class="nav-text">3. 互信息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%AE%9A%E4%B9%89%E4%B8%8E%E4%B8%89%E7%A7%8D%E7%AD%89%E4%BB%B7%E5%86%99%E6%B3%95"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 定义与三种等价写法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E6%80%A7%E8%B4%A8%E4%B8%8E%E6%96%87%E6%B0%8F%E5%9B%BE%E5%BC%8F%E7%9B%B4%E8%A7%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 性质与文氏图式直觉</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-KL-%E6%95%A3%E5%BA%A6%E4%B8%8E%E4%BA%A4%E5%8F%89%E7%86%B5"><span class="nav-number">1.5.</span> <span class="nav-text">4. KL 散度与交叉熵</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-KL-%E6%95%A3%E5%BA%A6%EF%BC%9A%E5%88%86%E5%B8%83%E9%97%B4%E7%9A%84%E3%80%8C%E6%9C%89%E5%90%91%E8%B7%9D%E7%A6%BB%E3%80%8D"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 KL 散度：分布间的「有向距离」</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E4%B8%8D%E5%AF%B9%E7%A7%B0%E6%80%A7%E7%9A%84%E8%A1%8C%E4%B8%BA%E5%B7%AE%E5%BC%82%EF%BC%9Azero-forcing-vs-zero-avoiding"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 不对称性的行为差异：zero-forcing vs zero-avoiding</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E4%BA%A4%E5%8F%89%E7%86%B5%EF%BC%9A%E7%94%A8-q-%E7%BC%96%E7%A0%81-p-%E7%9A%84%E5%B9%B3%E5%9D%87%E7%A0%81%E9%95%BF"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 交叉熵：用 q 编码 p 的平均码长</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E4%BF%A1%E6%BA%90%E7%BC%96%E7%A0%81%EF%BC%9AShannon-%E7%AC%AC%E4%B8%80%E5%AE%9A%E7%90%86"><span class="nav-number">1.6.</span> <span class="nav-text">5. 信源编码：Shannon 第一定理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%89%8D%E7%BC%80%E7%A0%81%E4%B8%8E-Kraft-%E4%B8%8D%E7%AD%89%E5%BC%8F"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 前缀码与 Kraft 不等式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E9%A6%99%E5%86%9C%E7%AC%AC%E4%B8%80%E5%AE%9A%E7%90%86%EF%BC%88%E6%97%A0%E5%A4%B1%E7%9C%9F%E4%BF%A1%E6%BA%90%E7%BC%96%E7%A0%81%E5%AE%9A%E7%90%86%EF%BC%89"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 香农第一定理（无失真信源编码定理）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-Huffman-%E7%BC%96%E7%A0%81%EF%BC%88%E5%AE%8C%E6%95%B4%E6%9E%84%E9%80%A0%E4%BE%8B%E9%A2%98%EF%BC%89"><span class="nav-number">1.6.3.</span> <span class="nav-text">5.3 Huffman 编码（完整构造例题）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-%E7%AE%97%E6%9C%AF%E7%BC%96%E7%A0%81%EF%BC%88%E4%B8%80%E5%8F%A5%E8%AF%9D%EF%BC%89"><span class="nav-number">1.6.4.</span> <span class="nav-text">5.4 算术编码（一句话）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E4%BF%A1%E9%81%93%E5%AE%B9%E9%87%8F%EF%BC%9AShannon-%E7%AC%AC%E4%BA%8C%E5%AE%9A%E7%90%86"><span class="nav-number">1.7.</span> <span class="nav-text">6. 信道容量：Shannon 第二定理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E4%BF%A1%E9%81%93%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%B9%E9%87%8F%E5%AE%9A%E4%B9%89"><span class="nav-number">1.7.1.</span> <span class="nav-text">6.1 信道模型与容量定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-%E9%A6%99%E5%86%9C%E7%AC%AC%E4%BA%8C%E5%AE%9A%E7%90%86%EF%BC%88%E6%9C%89%E5%99%AA%E4%BF%A1%E9%81%93%E7%BC%96%E7%A0%81%E5%AE%9A%E7%90%86%EF%BC%89"><span class="nav-number">1.7.2.</span> <span class="nav-text">6.2 香农第二定理（有噪信道编码定理）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E4%BA%8C%E5%85%83%E5%AF%B9%E7%A7%B0%E4%BF%A1%E9%81%93%EF%BC%88BSC%EF%BC%89%E4%B8%8E%E4%BA%8C%E5%85%83%E7%86%B5"><span class="nav-number">1.7.3.</span> <span class="nav-text">6.3 二元对称信道（BSC）与二元熵</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-AWGN-%E4%BF%A1%E9%81%93%EF%BC%9A%E9%A6%99%E5%86%9C-%E5%93%88%E7%89%B9%E5%88%A9%E5%AE%9A%E7%90%86"><span class="nav-number">1.7.4.</span> <span class="nav-text">6.4 AWGN 信道：香农-哈特利定理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E8%BF%9E%E7%BB%AD%E6%83%85%E5%BD%A2%EF%BC%9A%E5%BE%AE%E5%88%86%E7%86%B5"><span class="nav-number">1.8.</span> <span class="nav-text">7. 连续情形：微分熵</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E4%BF%A1%E6%81%AF%E8%AE%BA-%E2%86%92-ML-%E5%AF%B9%E7%85%A7%E8%A1%A8"><span class="nav-number">1.9.</span> <span class="nav-text">8. 信息论 → ML 对照表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-Python-%E5%AE%9E%E6%88%98"><span class="nav-number">1.10.</span> <span class="nav-text">9. Python 实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-%E6%89%8B%E5%86%99-entropy-MI-KL-%E5%B9%B6%E4%B8%8E-scipy-%E9%AA%8C%E8%AF%81"><span class="nav-number">1.10.1.</span> <span class="nav-text">9.1 手写 entropy &#x2F; MI &#x2F; KL 并与 scipy 验证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-Huffman-%E7%BC%96%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.10.2.</span> <span class="nav-text">9.2 Huffman 编码实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-%E6%A8%A1%E6%8B%9F%E4%BA%8C%E5%85%83%E5%AF%B9%E7%A7%B0%E4%BF%A1%E9%81%93%E5%AE%B9%E9%87%8F%E6%9B%B2%E7%BA%BF"><span class="nav-number">1.10.3.</span> <span class="nav-text">9.3 模拟二元对称信道容量曲线</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-%E9%AA%8C%E6%94%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.11.</span> <span class="nav-text">10. 验收清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-%E7%9B%B8%E5%85%B3%E6%96%87%E7%AB%A0"><span class="nav-number">1.12.</span> <span class="nav-text">11. 相关文章</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">267</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">85</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">264</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/advanced-math/information-theory-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第17章 信息论深度指南：熵 · 互信息 · KL散度 · 信道容量 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第17章 信息论深度指南：熵 · 互信息 · KL散度 · 信道容量
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-10-10 10:00:00" itemprop="dateCreated datePublished" datetime="2026-10-10T10:00:00+08:00">2026-10-10</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-11 00:39:05" itemprop="dateModified" datetime="2026-10-11T00:39:05+08:00">2026-10-11</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Advanced-Math/" itemprop="url" rel="index"><span itemprop="name">Advanced Math</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>13k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>11 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第17章-信息论深度指南"><a href="#第17章-信息论深度指南" class="headerlink" title="第17章 信息论深度指南"></a>第17章 信息论深度指南</h1><blockquote>
+<p>1948 年，Shannon 在《A Mathematical Theory of Communication》中用两个定理回答了三个根本问题：<strong>信息怎么度量</strong>（熵）、<strong>消息能压到多小</strong>（信源编码定理：平均码长下界 &#x3D; 熵）、<strong>噪声信道能传多快</strong>（信道编码定理：速率低于容量 C 就能任意可靠）。今天机器学习的损失函数一半是信息论：交叉熵损失、KL 正则、VAE 的 ELBO、语言模型的困惑度，本质都是熵与 KL 散度的换皮。工程师视角：每个概念都落到 numpy &#x2F; scipy 可运行代码，并给出 ML &#x2F; 工程对照。</p>
+</blockquote>
+<h2 id="0-全景地图"><a href="#0-全景地图" class="headerlink" title="0. 全景地图"></a>0. 全景地图</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">信息度量</span><br><span class="line">  自信息 I(x) = -log₂ p(x)（越意外信息量越大）</span><br><span class="line">    └─► 熵 H(X) = -Σ p log p（平均信息量 / 不确定度）</span><br><span class="line">  联合熵 H(X,Y) → 条件熵 H(X|Y) → 链式法则</span><br><span class="line">    └─► 互信息 I(X;Y) = H(X) - H(X|Y)（两个变量共享的信息）</span><br><span class="line">分布之间的距离（伪距离）</span><br><span class="line">  KL 散度 D_KL(p‖q) = Σ p log(p/q)（非负、不对称）</span><br><span class="line">    └─► 交叉熵 H(p,q) = H(p) + D_KL(p‖q)（用 q 编码 p 的代价）</span><br><span class="line">    └─► JS 散度（对称化的 KL）</span><br><span class="line">压缩（Shannon 第一定理）</span><br><span class="line">  前缀码 / Kraft 不等式 → 平均码长 ≥ H → Huffman 编码 → 算术编码</span><br><span class="line">传输（Shannon 第二定理）</span><br><span class="line">  信道模型 → 信道容量 C = max I(X;Y)</span><br><span class="line">    └─► 二元对称信道 BSC：C = 1 - H₂(p)</span><br><span class="line">    └─► AWGN 信道（香农-哈特利）：C = W log₂(1 + SNR)</span><br><span class="line">连续情形</span><br><span class="line">  微分熵 h(X) → 高斯分布在给定方差下微分熵最大</span><br></pre></td></tr></table></figure>
+
+<h2 id="1-信息量与熵"><a href="#1-信息量与熵" class="headerlink" title="1. 信息量与熵"></a>1. 信息量与熵</h2><h3 id="1-1-自信息：越意外，信息量越大"><a href="#1-1-自信息：越意外，信息量越大" class="headerlink" title="1.1 自信息：越意外，信息量越大"></a>1.1 自信息：越意外，信息量越大</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">定义：事件 x 发生的自信息  I(x) = -log₂ p(x)</span><br><span class="line">单位：bit（以 2 为底）；用自然对数则单位为 nat，1 nat ≈ 1.4427 bit</span><br><span class="line"></span><br><span class="line">直觉三条：</span><br><span class="line">  ① 必然事件（p=1）信息量 I = 0 ——「太阳从东边升起」没有信息量</span><br><span class="line">  ② 越罕见的事件信息量越大：p = 1/1024 → I = 10 bit</span><br><span class="line">  ③ 独立事件的信息量可加：</span><br><span class="line">     I(x,y) = -log p(x)p(y) = I(x) + I(y)</span><br><span class="line"></span><br><span class="line">例子：</span><br><span class="line">  「明天下雨」（p=1/2）  → 1 bit</span><br><span class="line">  「抛硬币出正面」（p=1/2） → 1 bit</span><br><span class="line">  「买彩票中头奖」（p=10⁻⁸） → -log₂(10⁻⁸) ≈ 26.6 bit</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-熵：平均信息量-不确定度"><a href="#1-2-熵：平均信息量-不确定度" class="headerlink" title="1.2 熵：平均信息量 &#x3D; 不确定度"></a>1.2 熵：平均信息量 &#x3D; 不确定度</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">定义：离散随机变量 X 的熵</span><br><span class="line">  H(X) = E[I(x)] = -Σ p(x) log₂ p(x)</span><br><span class="line">约定 0 · log 0 = 0（因为 p→0 时 p log p → 0）</span><br><span class="line"></span><br><span class="line">双重解读：</span><br><span class="line">  · 不确定度：观察 X 之前你有多「拿不准」</span><br><span class="line">  · 平均信息量：观察 X 之后你平均「收获多少 bit」</span><br><span class="line"></span><br><span class="line">基本性质：</span><br><span class="line">  ① 非负性：H(X) ≥ 0，等号 ⟺ X 是常数（无不确定性）</span><br><span class="line">  ② 均匀分布使熵最大：H(X) ≤ log₂ n（n 为取值个数），</span><br><span class="line">     等号 ⟺ p(x) = 1/n 均匀分布（最大不确定）</span><br><span class="line">  ③ 分布越集中熵越小，越平坦熵越大</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-例题：硬币、骰子与英文文本"><a href="#1-3-例题：硬币、骰子与英文文本" class="headerlink" title="1.3 例题：硬币、骰子与英文文本"></a>1.3 例题：硬币、骰子与英文文本</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">例1 均匀硬币：p = (1/2, 1/2)</span><br><span class="line">  H = -2 × (1/2) log₂(1/2) = 1 bit</span><br><span class="line">  → 一枚均匀硬币的结果恰好用 1 bit 编码</span><br><span class="line"></span><br><span class="line">例2 均匀骰子：p = (1/6,...,1/6)</span><br><span class="line">  H = log₂ 6 ≈ 2.585 bit</span><br><span class="line">  → 少于 3 bit 无法无损表示一次投掷结果</span><br><span class="line"></span><br><span class="line">例3 不均匀硬币：p = (0.9, 0.1)</span><br><span class="line">  H = -0.9 log₂ 0.9 - 0.1 log₂ 0.1 ≈ 0.469 bit</span><br><span class="line">  → 分布越偏，熵越小，越好预测，也越好压缩</span><br><span class="line"></span><br><span class="line">例4 英文字母（按真实字母频率，如 e≈12.7%, t≈9.1%）</span><br><span class="line">  H ≈ 4.18 bit/字母（均匀 26 字母则为 log₂26 ≈ 4.70 bit）</span><br><span class="line">  若进一步利用字母间相关性（N-gram），英文的实际熵</span><br><span class="line">  估计仅约 1.0~1.5 bit/字母 —— 这就是压缩软件的空间所在</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/advanced-math/ch17-1.png" alt="二元熵"></p>
+<p><em>图 17-1　二元熵在 p&#x3D;0.5 取最大值 1 bit，结局越接近注定熵越接近 0</em></p>
+<h2 id="2-联合熵与条件熵"><a href="#2-联合熵与条件熵" class="headerlink" title="2. 联合熵与条件熵"></a>2. 联合熵与条件熵</h2><h3 id="2-1-三个核心量"><a href="#2-1-三个核心量" class="headerlink" title="2.1 三个核心量"></a>2.1 三个核心量</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">联合熵：把 (X,Y) 看成一个复合随机变量</span><br><span class="line">  H(X,Y) = -ΣΣ p(x,y) log₂ p(x,y)</span><br><span class="line">  含义：同时观察两个变量的总不确定度</span><br><span class="line"></span><br><span class="line">条件熵：已知 Y=y 后 X 仍残留的熵，再对 y 取平均</span><br><span class="line">  H(X|Y) = Σ_y p(y) · H(X|Y=y)</span><br><span class="line">         = -ΣΣ p(x,y) log₂ p(x|y)</span><br><span class="line">  含义：别人告诉你 Y 后，你还剩多少不确定度</span><br><span class="line"></span><br><span class="line">链式法则（熵的加法）：</span><br><span class="line">  H(X,Y) = H(X) + H(Y|X) = H(Y) + H(X|Y)</span><br><span class="line">  推广：H(X₁,...,Xₙ) = Σ H(Xᵢ | X₁,...,Xᵢ₋₁)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-条件使熵减少"><a href="#2-2-条件使熵减少" class="headerlink" title="2.2 条件使熵减少"></a>2.2 条件使熵减少</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">定理：H(X|Y) ≤ H(X)，等号 ⟺ X 与 Y 独立</span><br><span class="line">含义：知道另一个变量的信息，绝不会让不确定度增加</span><br><span class="line">注意陷阱：对某个特定的 y，可能有 H(X|Y=y) &gt; H(X)；</span><br><span class="line">  不等式只在「对 y 取平均之后」成立，平均意义下信息总是有帮助的</span><br><span class="line"></span><br><span class="line">例（天气与湿度）：</span><br><span class="line">  X = 明天是否下雨，H(X) = 1 bit（五五开）</span><br><span class="line">  Y = 今天湿度。已知湿度后平均不确定度降为 H(X|Y) = 0.6 bit</span><br><span class="line">  则湿度带来了 0.4 bit 的信息 —— 这就是互信息</span><br></pre></td></tr></table></figure>
+
+<h2 id="3-互信息"><a href="#3-互信息" class="headerlink" title="3. 互信息"></a>3. 互信息</h2><h3 id="3-1-定义与三种等价写法"><a href="#3-1-定义与三种等价写法" class="headerlink" title="3.1 定义与三种等价写法"></a>3.1 定义与三种等价写法</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">I(X;Y) = H(X) - H(X|Y)           （知道 Y 后 X 减少的不确定度）</span><br><span class="line">       = H(Y) - H(Y|X)           （对称：知道 X 后 Y 减少的不确定度）</span><br><span class="line">       = ΣΣ p(x,y) log₂ [ p(x,y) / (p(x)p(y)) ]</span><br><span class="line"></span><br><span class="line">第三种写法直接度量「联合分布 p(x,y) 与独立假设 p(x)p(y) 的偏离程度」</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-性质与文氏图式直觉"><a href="#3-2-性质与文氏图式直觉" class="headerlink" title="3.2 性质与文氏图式直觉"></a>3.2 性质与文氏图式直觉</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">性质：</span><br><span class="line">  ① 对称性：I(X;Y) = I(Y;X)</span><br><span class="line">  ② 非负性：I(X;Y) ≥ 0</span><br><span class="line">  ③ I(X;Y) = 0  ⟺  X ⊥ Y（相互独立）</span><br><span class="line">  ④ I(X;X) = H(X)（自己与自己的互信息就是熵）</span><br><span class="line"></span><br><span class="line">文氏图式直觉（各量之间的关系）：</span><br><span class="line">  ┌─────────┐   ┌─────────┐</span><br><span class="line">  │  H(X)    │   │  H(Y)    │</span><br><span class="line">  │ ┌───────┼───┼───────┐ │</span><br><span class="line">  │ │H(X|Y) │I(X;Y)│H(Y|X)│ │</span><br><span class="line">  │ └───────┼───┼───────┘ │</span><br><span class="line">  └─────────┘   └─────────┘</span><br><span class="line">  H(X,Y) = H(X|Y) + I(X;Y) + H(Y|X)  （整体 = 三块之和）</span><br><span class="line">  I(X;Y) = H(X) + H(Y) - H(X,Y)      （容斥形式）</span><br><span class="line"></span><br><span class="line">工程用途：</span><br><span class="line">  · 特征选择：I(特征; 标签) 越大，特征越有信息量</span><br><span class="line">  · 聚类评估：标准化互信息 NMI</span><br><span class="line">  · 信息瓶颈：让表征 Z 最大化 I(Z;Y) 同时最小化 I(Z;X)</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-KL-散度与交叉熵"><a href="#4-KL-散度与交叉熵" class="headerlink" title="4. KL 散度与交叉熵"></a>4. KL 散度与交叉熵</h2><h3 id="4-1-KL-散度：分布间的「有向距离」"><a href="#4-1-KL-散度：分布间的「有向距离」" class="headerlink" title="4.1 KL 散度：分布间的「有向距离」"></a>4.1 KL 散度：分布间的「有向距离」</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">定义（离散）：</span><br><span class="line">  D_KL(p‖q) = Σ_x p(x) log₂ [ p(x) / q(x) ]</span><br><span class="line">约定 0·log(0/q) = 0；若 ∃x 使 p(x)&gt;0 且 q(x)=0，则 D_KL = +∞</span><br><span class="line"></span><br><span class="line">含义：真实分布是 p，你却用 q 去编码 / 建模，平均每个样本</span><br><span class="line">      多浪费的 bit 数（相对最优编码而言）</span><br><span class="line"></span><br><span class="line">性质：</span><br><span class="line">  ① 非负性（Gibbs 不等式）：D_KL(p‖q) ≥ 0，等号 ⟺ p = q</span><br><span class="line">     证明骨架：-log₂(q/p) ≥ 1 - q/p（ln 不等式），</span><br><span class="line">     对 p 加权求和即得 Σ p log(p/q) ≥ 0</span><br><span class="line">  ② 不对称：D_KL(p‖q) ≠ D_KL(q‖p)  —— 不是真正的距离</span><br><span class="line">  ③ 不满足三角不等式</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/advanced-math/ch17-2.png" alt="KL 散度"></p>
+<p><em>图 17-2　KL 衡量两分布差异但不对称，KL(p‖q) 与 KL(q‖p) 数值不同</em></p>
+<h3 id="4-2-不对称性的行为差异：zero-forcing-vs-zero-avoiding"><a href="#4-2-不对称性的行为差异：zero-forcing-vs-zero-avoiding" class="headerlink" title="4.2 不对称性的行为差异：zero-forcing vs zero-avoiding"></a>4.2 不对称性的行为差异：zero-forcing vs zero-avoiding</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">设真实 p 是双峰分布，拟合 q 是单峰高斯：</span><br><span class="line"></span><br><span class="line">正向 KL：D_KL(p‖q)，p 加权</span><br><span class="line">  q 必须在 p&gt;0 的地方都 &gt; 0（否则出现 p log(p/0)=∞）</span><br><span class="line">  → q 变「胖」去盖住 p 的所有支撑集</span><br><span class="line">  → zero-avoiding / mean-seeking / 覆盖模式</span><br><span class="line">  应用：变分推断中常用的反向 KL 之外，期望传播等用正向</span><br><span class="line"></span><br><span class="line">反向 KL：D_KL(q‖p)，q 加权</span><br><span class="line">  q 会避开 p≈0 的区域，宁可丢掉 p 的某个峰</span><br><span class="line">  → q 变「瘦」，锁死在 p 的一个峰上</span><br><span class="line">  → zero-forcing / mode-seeking</span><br><span class="line">  应用：标准 VAE 用的就是 D_KL(q_φ(z|x) ‖ p(z)) 形式，</span><br><span class="line">        这也是 VAE 生成偏模糊（覆盖不足）的一个解释</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-交叉熵：用-q-编码-p-的平均码长"><a href="#4-3-交叉熵：用-q-编码-p-的平均码长" class="headerlink" title="4.3 交叉熵：用 q 编码 p 的平均码长"></a>4.3 交叉熵：用 q 编码 p 的平均码长</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">定义：</span><br><span class="line">  H(p,q) = -Σ_x p(x) log₂ q(x)</span><br><span class="line">分解（关键恒等式）：</span><br><span class="line">  H(p,q) = H(p) + D_KL(p‖q)</span><br><span class="line">  （用 q 的码长） = （p 自己的最优码长） + （分布不匹配浪费）</span><br><span class="line"></span><br><span class="line">ML 推论（为什么交叉熵损失等价于最大似然）：</span><br><span class="line">  训练数据分布 p 固定 ⟹ H(p) 是常数</span><br><span class="line">  ⟹ 最小化 H(p, q_θ)  ⟺  最小化 D_KL(p‖q_θ)  ⟺  最大化对数似然</span><br><span class="line">  分类任务中 p 是 one-hot，交叉熵退化为 -log q_θ(正确类别)</span><br><span class="line"></span><br><span class="line">JS 散度（一句话）：JSD(p,q) = ½D_KL(p‖m) + ½D_KL(q‖m)，</span><br><span class="line">  其中 m=(p+q)/2；它对称、有界（≤ log 2），</span><br><span class="line">  是 GAN 原始目标在最优判别器下的等价形式。</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/advanced-math/ch17-3.png" alt="交叉熵损失"></p>
+<p><em>图 17-3　模型对真实类别越自信且正确损失越低，错而自信则受到重罚</em></p>
+<h2 id="5-信源编码：Shannon-第一定理"><a href="#5-信源编码：Shannon-第一定理" class="headerlink" title="5. 信源编码：Shannon 第一定理"></a>5. 信源编码：Shannon 第一定理</h2><h3 id="5-1-前缀码与-Kraft-不等式"><a href="#5-1-前缀码与-Kraft-不等式" class="headerlink" title="5.1 前缀码与 Kraft 不等式"></a>5.1 前缀码与 Kraft 不等式</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">前缀码（即时码）：任何码字都不是另一个码字的前缀</span><br><span class="line">  → 解码无需分隔符，从左到右读到即解</span><br><span class="line">  例：&#123;a→0, b→10, c→110, d→111&#125; 是前缀码；&#123;a→0, b→01&#125; 不是</span><br><span class="line"></span><br><span class="line">Kraft 不等式（一句话）：码长 ℓ₁,...,ℓₙ 能构成二元前缀码</span><br><span class="line">  ⟺ Σ 2^(-ℓᵢ) ≤ 1</span><br><span class="line">  → 它把「码长分配」变成一个纯代数可行性条件</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-香农第一定理（无失真信源编码定理）"><a href="#5-2-香农第一定理（无失真信源编码定理）" class="headerlink" title="5.2 香农第一定理（无失真信源编码定理）"></a>5.2 香农第一定理（无失真信源编码定理）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">定理：任何无前缀码的平均码长 L̄ 满足</span><br><span class="line">  L̄ = Σ pᵢ ℓᵢ ≥ H(X)</span><br><span class="line">且存在码使 L̄ &lt; H(X) + 1（香农码：ℓᵢ = ⌈log₂(1/pᵢ)⌉）</span><br><span class="line"></span><br><span class="line">对分组长编码：把 n 个符号打包一起编码，</span><br><span class="line">  每符号平均码长 → H(X)（n→∞ 时任意逼近下界）</span><br><span class="line"></span><br><span class="line">一句话：熵就是无损压缩的物理极限</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-Huffman-编码（完整构造例题）"><a href="#5-3-Huffman-编码（完整构造例题）" class="headerlink" title="5.3 Huffman 编码（完整构造例题）"></a>5.3 Huffman 编码（完整构造例题）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">信源：符号   a    b    c    d    e</span><br><span class="line">     概率  0.40 0.20 0.15 0.15 0.10</span><br><span class="line"></span><br><span class="line">构造（每次合并概率最小的两个节点）：</span><br><span class="line">  ① 合并 d(0.15) 与 e(0.10) → 节点 de(0.25)</span><br><span class="line">  ② 合并 c(0.15) 与 b(0.20)？—— 注意按最小两个：</span><br><span class="line">     当前堆：a 0.40, b 0.20, c 0.15, de 0.25</span><br><span class="line">     最小两个是 c(0.15) 与 b(0.20) → 节点 bc(0.35)</span><br><span class="line">  ③ 当前堆：a 0.40, bc 0.35, de 0.25</span><br><span class="line">     合并 de(0.25) 与 bc(0.35) → 节点 bcde(0.60)</span><br><span class="line">  ④ 合并 a(0.40) 与 bcde(0.60) → 根(1.00)</span><br><span class="line"></span><br><span class="line">赋码（左 0 右 1）：</span><br><span class="line">  a → 0            （1 bit）</span><br><span class="line">  b → 100          （3 bit）  c → 101（3 bit）</span><br><span class="line">  d → 110          （3 bit）  e → 111（3 bit）</span><br><span class="line"></span><br><span class="line">平均码长：</span><br><span class="line">  L̄ = 0.40×1 + 0.20×3 + 0.15×3 + 0.15×3 + 0.10×3 = 2.20 bit</span><br><span class="line">信源熵：</span><br><span class="line">  H = -(0.4 log₂0.4 + 0.2 log₂0.2 + 2×0.15 log₂0.15 + 0.1 log₂0.1)</span><br><span class="line">    ≈ 2.122 bit</span><br><span class="line">效率 η = H / L̄ ≈ 96.4%  —— Huffman 是最优前缀码</span><br><span class="line"></span><br><span class="line">注：Huffman 编码定理：在所有单符号前缀码中 Huffman 平均码长最小。</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-算术编码（一句话）"><a href="#5-4-算术编码（一句话）" class="headerlink" title="5.4 算术编码（一句话）"></a>5.4 算术编码（一句话）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">算术编码：把整个消息映射到 [0,1) 区间内的一个子区间，</span><br><span class="line">按累积概率不断细分，最终输出区间内任一点的小数展开；</span><br><span class="line">能逼近分数比特，绕开 Huffman「每符号至少 1 bit」的限制，</span><br><span class="line">是 JPEG2000、H.264/H.265（CABAC）等标准的核心。</span><br></pre></td></tr></table></figure>
+
+<h2 id="6-信道容量：Shannon-第二定理"><a href="#6-信道容量：Shannon-第二定理" class="headerlink" title="6. 信道容量：Shannon 第二定理"></a>6. 信道容量：Shannon 第二定理</h2><h3 id="6-1-信道模型与容量定义"><a href="#6-1-信道模型与容量定义" class="headerlink" title="6.1 信道模型与容量定义"></a>6.1 信道模型与容量定义</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">离散无记忆信道：输入 X ∈ X，输出 Y ∈ Y，</span><br><span class="line">  转移概率 p(y|x) 完全刻画信道</span><br><span class="line">信道容量：</span><br><span class="line">  C = max_&#123;p(x)&#125; I(X;Y)     （对输入分布取最大）</span><br><span class="line">含义：在所有可能的编码方式下，这个信道最多能可靠地</span><br><span class="line">      每符号传输 C bit</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-香农第二定理（有噪信道编码定理）"><a href="#6-2-香农第二定理（有噪信道编码定理）" class="headerlink" title="6.2 香农第二定理（有噪信道编码定理）"></a>6.2 香农第二定理（有噪信道编码定理）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">定理：对任意速率 R &lt; C，存在编码方案使误码率 → 0（码长 → ∞）；</span><br><span class="line">      反之 R &gt; C 时误码率有正下界，无法任意可靠。</span><br><span class="line"></span><br><span class="line">工程含义（反直觉的地方）：</span><br><span class="line">  · 噪声信道不等于「不可靠信道」——只要 R &lt; C，</span><br><span class="line">    靠足够长的纠错码就能把错误压到任意小</span><br><span class="line">  · 代价是时延与复杂度：码长越长越逼近容量，译码越复杂</span><br><span class="line">  · 从汉明码 → Turbo 码（1993）→ LDPC / Polar 码，</span><br><span class="line">    现代编码已把实际系统推到距香农限 0.1 dB 以内</span><br><span class="line">    （Polar 码是 5G 控制信道标准）</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-二元对称信道（BSC）与二元熵"><a href="#6-3-二元对称信道（BSC）与二元熵" class="headerlink" title="6.3 二元对称信道（BSC）与二元熵"></a>6.3 二元对称信道（BSC）与二元熵</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">BSC(p)：输入 &#123;0,1&#125;，以概率 p 翻转，1-p 正确</span><br><span class="line"></span><br><span class="line">容量推导：</span><br><span class="line">  I(X;Y) = H(Y) - H(Y|X) = H(Y) - H₂(p)</span><br><span class="line">  H₂(p) = -p log₂ p - (1-p) log₂(1-p)   （二元熵函数）</span><br><span class="line">  取均匀输入 p(x)=1/2 使 H(Y)=1 最大，得</span><br><span class="line">  C = 1 - H₂(p)</span><br><span class="line"></span><br><span class="line">数值感受：</span><br><span class="line">  p = 0     → C = 1 bit    （无损信道）</span><br><span class="line">  p = 0.11  → C ≈ 0.5 bit  （每符号只能可靠传半 bit）</span><br><span class="line">  p = 0.5   → C = 0        （输出与输入独立，信道报废）</span><br><span class="line">  p = 1     → C = 1 bit    （全翻转 = 完全确定，同样无损！）</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-4-AWGN-信道：香农-哈特利定理"><a href="#6-4-AWGN-信道：香农-哈特利定理" class="headerlink" title="6.4 AWGN 信道：香农-哈特利定理"></a>6.4 AWGN 信道：香农-哈特利定理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">加性高斯白噪声信道：Y = X + N，N ~ N(0, σ²)，平均功率约束 E[X²] ≤ P</span><br><span class="line">信噪比 SNR = P / σ²</span><br><span class="line"></span><br><span class="line">香农-哈特利容量公式（连续信道，带宽 W Hz）：</span><br><span class="line">  C = W · log₂(1 + SNR)     单位 bit/s</span><br><span class="line"></span><br><span class="line">推导骨架：给定功率约束下高斯输入使互信息最大，</span><br><span class="line">  I(X;Y) = h(Y) - h(N) ≤ ½ log₂(1 + SNR)（每维）</span><br><span class="line"></span><br><span class="line">工程含义——带宽与信噪比的权衡：</span><br><span class="line">  · SNR → ∞ 时 C 随 log SNR 线性增长：SNR 翻倍约多 W bit/s</span><br><span class="line">  · SNR 固定时 C 随 W 线性增长（宽带红利）</span><br><span class="line">  · 但 W → ∞ 时 C → 1.4427 × P/N₀（有限！噪声功率 N₀W 也涨）</span><br><span class="line">  · 极限 Eb/N₀ = ln 2 ≈ -1.59 dB（香农限）：</span><br><span class="line">    每传 1 bit 所需最小能量信噪比，任何系统都无法突破</span><br><span class="line">  · 例：W = 20 MHz、SNR = 30 dB（=1000 倍）</span><br><span class="line">    → C ≈ 2×10⁷ × log₂(1001) ≈ 2×10⁷ × 9.97 ≈ 199 Mbit/s</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-连续情形：微分熵"><a href="#7-连续情形：微分熵" class="headerlink" title="7. 连续情形：微分熵"></a>7. 连续情形：微分熵</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">定义：连续随机变量密度 f(x) 的微分熵</span><br><span class="line">  h(X) = -∫ f(x) log₂ f(x) dx</span><br><span class="line"></span><br><span class="line">与离散熵的关键差异（注意！）：</span><br><span class="line">  ① 可以为负：均匀分布 U(0, ½) 的 h = log₂(½) = -1 bit</span><br><span class="line">  ② 不是离散熵的极限——离散化间隔 Δ 时熵 ≈ h(X) + log₂(1/Δ)</span><br><span class="line">  ③ 但互信息与 KL 散度在连续情形依然非负、性质不变</span><br><span class="line">  （它们是取极限时保留下来的「好」量）</span><br><span class="line"></span><br><span class="line">常用微分熵：</span><br><span class="line">  均匀 U(a,b)：     h = log₂(b-a)</span><br><span class="line">  高斯 N(μ,σ²)：    h = ½ log₂(2πe σ²)  ≈ 1.419 + log₂ σ</span><br><span class="line">  指数 Exp(λ)：     h = log₂(e/λ)</span><br><span class="line"></span><br><span class="line">最大熵原理（一句话）：给定均值与方差约束下，</span><br><span class="line">  微分熵最大的分布是高斯分布</span><br><span class="line">  → 对未知分布只给前两阶矩时，高斯是「最少假设」的选择</span><br><span class="line">  → 也解释了 6.4 中为什么高斯噪声最坏、高斯输入最优</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-信息论-→-ML-对照表"><a href="#8-信息论-→-ML-对照表" class="headerlink" title="8. 信息论 → ML 对照表"></a>8. 信息论 → ML 对照表</h2><table>
+<thead>
+<tr>
+<th>信息论概念</th>
+<th>对应 ML 概念</th>
+<th>关键关系</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>交叉熵 H(p,q)</td>
+<td>分类任务的交叉熵损失</td>
+<td>最小化 H(p,q) ⟺ 最大似然 ⟺ 最小化 D_KL(数据分布‖模型分布)</td>
+</tr>
+<tr>
+<td>KL 散度</td>
+<td>正则项 &#x2F; 早停的隐式正则</td>
+<td>损失中含 D_KL(后验‖先验)，约束模型不偏离先验太远</td>
+</tr>
+<tr>
+<td>条件熵 &#x2F; 联合熵分解</td>
+<td>VAE 的 ELBO</td>
+<td>ELBO &#x3D; E[log p(x|z)] - D_KL(q(z|x)‖p(z))，重构项 + KL 项</td>
+</tr>
+<tr>
+<td>互信息 I(X;Y)</td>
+<td>信息瓶颈理论</td>
+<td>学表征 Z：最大化 I(Z;Y) 且最小化 I(Z;X)，压缩掉无关信息</td>
+</tr>
+<tr>
+<td>条件熵减少量</td>
+<td>决策树的信息增益</td>
+<td>Gain &#x3D; H(Y) - H(Y|特征) &#x3D; I(特征;Y)，ID3&#x2F;C4.5 的分裂准则</td>
+</tr>
+<tr>
+<td>互信息</td>
+<td>特征选择</td>
+<td>按 I(特征ᵢ; 标签) 排序选 top-k，sklearn 的 mutual_info_classif</td>
+</tr>
+<tr>
+<td>熵 H(p)</td>
+<td>模型蒸馏的温度</td>
+<td>温度 τ  soften 输出分布提高其熵，暗知识藏在软标签的相对概率里</td>
+</tr>
+<tr>
+<td>熵</td>
+<td>语言模型困惑度</td>
+<td>PPL &#x3D; 2^H(p, q_θ)，交叉熵损失的指数化；PPL 越低模型越好</td>
+</tr>
+<tr>
+<td>互信息</td>
+<td>对比学习</td>
+<td>InfoNCE 损失是 I(正样本对) 的下界估计，最大化表示间互信息</td>
+</tr>
+<tr>
+<td>KL 散度不对称性</td>
+<td>RLHF &#x2F; 策略优化</td>
+<td>PPO&#x2F;DPO 用 D_KL(新策略‖旧策略) 限制更新幅度，防止策略崩坏</td>
+</tr>
+<tr>
+<td>信道容量</td>
+<td>生成模型上限</td>
+<td>数据熵是给定算力下模型困惑度的理论下界，类似「信道极限」</td>
+</tr>
+<tr>
+<td>微分熵 &#x2F; 最大熵</td>
+<td>最大熵强化学习</td>
+<td>目标 &#x3D; 回报 + τ·H(策略)，SAC 鼓励探索防止策略过早塌缩</td>
+</tr>
+</tbody></table>
+<h2 id="9-Python-实战"><a href="#9-Python-实战" class="headerlink" title="9. Python 实战"></a>9. Python 实战</h2><h3 id="9-1-手写-entropy-MI-KL-并与-scipy-验证"><a href="#9-1-手写-entropy-MI-KL-并与-scipy-验证" class="headerlink" title="9.1 手写 entropy &#x2F; MI &#x2F; KL 并与 scipy 验证"></a>9.1 手写 entropy &#x2F; MI &#x2F; KL 并与 scipy 验证</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"><span class="keyword">from</span> scipy <span class="keyword">import</span> stats</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 基础函数（以 2 为底，单位 bit） ----------</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">entropy</span>(<span class="params">p</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;离散分布的熵 H(X) = -Σ p log₂ p，自动忽略 p=0 项&quot;&quot;&quot;</span></span><br><span class="line">    p = np.asarray(p, dtype=<span class="built_in">float</span>)</span><br><span class="line">    p = p[p &gt; <span class="number">0</span>]                        <span class="comment"># 约定 0·log 0 = 0</span></span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">float</span>(-np.<span class="built_in">sum</span>(p * np.log2(p)))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">joint_entropy</span>(<span class="params">P</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;联合分布矩阵 P[i,j]=p(x_i,y_j) 的联合熵&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> entropy(P.ravel())</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">conditional_entropy</span>(<span class="params">P</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;由联合分布计算 H(X|Y)：H(X|Y) = H(X,Y) - H(Y)&quot;&quot;&quot;</span></span><br><span class="line">    py = P.<span class="built_in">sum</span>(axis=<span class="number">0</span>)                  <span class="comment"># 边际分布 p(y)</span></span><br><span class="line">    <span class="keyword">return</span> joint_entropy(P) - entropy(py)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">mutual_information</span>(<span class="params">P</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;互信息 I(X;Y) = H(X) - H(X|Y)，用链式法则计算&quot;&quot;&quot;</span></span><br><span class="line">    px = P.<span class="built_in">sum</span>(axis=<span class="number">1</span>)                  <span class="comment"># 边际分布 p(x)</span></span><br><span class="line">    <span class="keyword">return</span> entropy(px) - conditional_entropy(P)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">kl_divergence</span>(<span class="params">p, q</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;KL 散度 D_KL(p‖q) = Σ p log₂(p/q)&quot;&quot;&quot;</span></span><br><span class="line">    p, q = np.asarray(p, <span class="built_in">float</span>), np.asarray(q, <span class="built_in">float</span>)</span><br><span class="line">    mask = p &gt; <span class="number">0</span>                        <span class="comment"># 只对 p&gt;0 的位置求和</span></span><br><span class="line">    <span class="keyword">if</span> np.<span class="built_in">any</span>(q[mask] == <span class="number">0</span>):</span><br><span class="line">        <span class="keyword">return</span> np.inf                   <span class="comment"># q=0 而 p&gt;0 → 散度为无穷</span></span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">float</span>(np.<span class="built_in">sum</span>(p[mask] * np.log2(p[mask] / q[mask])))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">cross_entropy</span>(<span class="params">p, q</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;交叉熵 H(p,q) = H(p) + D_KL(p‖q)&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> entropy(p) + kl_divergence(p, q)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 验证：与 scipy.stats.entropy 对比 ----------</span></span><br><span class="line">rng = np.random.default_rng(<span class="number">42</span>)</span><br><span class="line">p = rng.random(<span class="number">10</span>); p /= p.<span class="built_in">sum</span>()        <span class="comment"># 随机归一化分布</span></span><br><span class="line">q = rng.random(<span class="number">10</span>); q /= q.<span class="built_in">sum</span>()</span><br><span class="line"></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;H(p) 手写 =&quot;</span>, entropy(p),</span><br><span class="line">      <span class="string">&quot; scipy =&quot;</span>, stats.entropy(p, base=<span class="number">2</span>))          <span class="comment"># 应相等</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;D_KL(p‖q) 手写 =&quot;</span>, kl_divergence(p, q),</span><br><span class="line">      <span class="string">&quot; scipy =&quot;</span>, stats.entropy(p, q, base=<span class="number">2</span>))       <span class="comment"># 应相等</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 验证互信息的非负性与独立性 ----------</span></span><br><span class="line">P_dep = np.array([[<span class="number">0.4</span>, <span class="number">0.1</span>],</span><br><span class="line">                  [<span class="number">0.1</span>, <span class="number">0.4</span>]])          <span class="comment"># X,Y 强相关</span></span><br><span class="line">P_ind = np.outer([<span class="number">0.5</span>, <span class="number">0.5</span>], [<span class="number">0.6</span>, <span class="number">0.4</span>])  <span class="comment"># 独立：p(x,y)=p(x)p(y)</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;I(X;Y) 相关情形 =&quot;</span>, mutual_information(P_dep), <span class="string">&quot;bit&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;I(X;Y) 独立情形 =&quot;</span>, mutual_information(P_ind), <span class="string">&quot;bit&quot;</span>)  <span class="comment"># ≈ 0</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 验证链式法则 H(X,Y) = H(X) + H(Y|X) ----------</span></span><br><span class="line">px = P_dep.<span class="built_in">sum</span>(axis=<span class="number">1</span>)</span><br><span class="line">H_Y_given_X = joint_entropy(P_dep) - entropy(px)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;链式法则误差 =&quot;</span>, <span class="built_in">abs</span>(joint_entropy(P_dep)</span><br><span class="line">                          - (entropy(px) + H_Y_given_X)))  <span class="comment"># ≈ 0</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="9-2-Huffman-编码实现"><a href="#9-2-Huffman-编码实现" class="headerlink" title="9.2 Huffman 编码实现"></a>9.2 Huffman 编码实现</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> heapq</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">huffman_code</span>(<span class="params">probs</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;</span></span><br><span class="line"><span class="string">    输入符号概率字典 &#123;&#x27;a&#x27;:0.4,...&#125;，返回 Huffman 码字典</span></span><br><span class="line"><span class="string">    用最小堆每次取出概率最小的两个节点合并</span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line">    heap = [(p, i, [sym]) <span class="keyword">for</span> i, (sym, p) <span class="keyword">in</span> <span class="built_in">enumerate</span>(probs.items())]</span><br><span class="line">    heapq.heapify(heap)</span><br><span class="line">    counter = <span class="built_in">len</span>(heap)                 <span class="comment"># 序号用于打破概率相同导致的比较</span></span><br><span class="line">    codes = &#123;sym: <span class="string">&quot;&quot;</span> <span class="keyword">for</span> sym <span class="keyword">in</span> probs&#125;</span><br><span class="line">    <span class="keyword">while</span> <span class="built_in">len</span>(heap) &gt; <span class="number">1</span>:</span><br><span class="line">        p1, _, syms1 = heapq.heappop(heap)   <span class="comment"># 最小节点：码前缀加 0</span></span><br><span class="line">        p2, _, syms2 = heapq.heappop(heap)   <span class="comment"># 次小节点：码前缀加 1</span></span><br><span class="line">        <span class="keyword">for</span> s <span class="keyword">in</span> syms1:</span><br><span class="line">            codes[s] = <span class="string">&quot;0&quot;</span> + codes[s]</span><br><span class="line">        <span class="keyword">for</span> s <span class="keyword">in</span> syms2:</span><br><span class="line">            codes[s] = <span class="string">&quot;1&quot;</span> + codes[s]</span><br><span class="line">        counter += <span class="number">1</span></span><br><span class="line">        heapq.heappush(heap, (p1 + p2, counter, syms1 + syms2))</span><br><span class="line">    <span class="keyword">return</span> codes</span><br><span class="line"></span><br><span class="line">probs = &#123;<span class="string">&#x27;a&#x27;</span>: <span class="number">0.40</span>, <span class="string">&#x27;b&#x27;</span>: <span class="number">0.20</span>, <span class="string">&#x27;c&#x27;</span>: <span class="number">0.15</span>, <span class="string">&#x27;d&#x27;</span>: <span class="number">0.15</span>, <span class="string">&#x27;e&#x27;</span>: <span class="number">0.10</span>&#125;</span><br><span class="line">codes = huffman_code(probs)</span><br><span class="line">L = <span class="built_in">sum</span>(probs[s] * <span class="built_in">len</span>(codes[s]) <span class="keyword">for</span> s <span class="keyword">in</span> probs)     <span class="comment"># 平均码长</span></span><br><span class="line">H = entropy(<span class="built_in">list</span>(probs.values()))                    <span class="comment"># 信源熵</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;码字:&quot;</span>, codes)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;平均码长 L̄ = <span class="subst">&#123;L:<span class="number">.3</span>f&#125;</span> bit, 熵 H = <span class="subst">&#123;H:<span class="number">.3</span>f&#125;</span> bit, 效率 = <span class="subst">&#123;H/L:<span class="number">.2</span>%&#125;</span>&quot;</span>)</span><br><span class="line"><span class="comment"># 预期：L̄ ≈ 2.2 bit，H ≈ 2.122 bit，效率 ≈ 96%</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">encode</span>(<span class="params">msg, codes</span>):</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;&quot;</span>.join(codes[c] <span class="keyword">for</span> c <span class="keyword">in</span> msg)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">decode</span>(<span class="params">bits, codes</span>):</span><br><span class="line">    inv = &#123;v: k <span class="keyword">for</span> k, v <span class="keyword">in</span> codes.items()&#125;  <span class="comment"># 前缀码可即时解码</span></span><br><span class="line">    out, buf = [], <span class="string">&quot;&quot;</span></span><br><span class="line">    <span class="keyword">for</span> b <span class="keyword">in</span> bits:</span><br><span class="line">        buf += b</span><br><span class="line">        <span class="keyword">if</span> buf <span class="keyword">in</span> inv:</span><br><span class="line">            out.append(inv[buf]); buf = <span class="string">&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;&quot;</span>.join(out)</span><br><span class="line"></span><br><span class="line">msg = <span class="string">&quot;abacabad&quot;</span></span><br><span class="line"><span class="keyword">assert</span> decode(encode(msg, codes), codes) == msg</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;编解码往返一致:&quot;</span>, msg, <span class="string">&quot;-&gt;&quot;</span>, encode(msg, codes))</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-3-模拟二元对称信道容量曲线"><a href="#9-3-模拟二元对称信道容量曲线" class="headerlink" title="9.3 模拟二元对称信道容量曲线"></a>9.3 模拟二元对称信道容量曲线</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"><span class="keyword">import</span> matplotlib.pyplot <span class="keyword">as</span> plt</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">binary_entropy</span>(<span class="params">p</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;二元熵函数 H₂(p)，对 p=0/1 的端点做截断保护&quot;&quot;&quot;</span></span><br><span class="line">    p = np.clip(p, <span class="number">1e-12</span>, <span class="number">1</span> - <span class="number">1e-12</span>)</span><br><span class="line">    <span class="keyword">return</span> -p * np.log2(p) - (<span class="number">1</span> - p) * np.log2(<span class="number">1</span> - p)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 理论容量曲线 C = 1 - H₂(p) ----------</span></span><br><span class="line">p = np.linspace(<span class="number">0</span>, <span class="number">1</span>, <span class="number">400</span>)</span><br><span class="line">C_bsc = <span class="number">1</span> - binary_entropy(p)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- 蒙特卡洛验证：均匀输入下的互信息 ----------</span></span><br><span class="line">rng = np.random.default_rng(<span class="number">0</span>)</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">mi_monte_carlo</span>(<span class="params">p_flip, n=<span class="number">200_000</span></span>):</span><br><span class="line">    x = rng.integers(<span class="number">0</span>, <span class="number">2</span>, n)                    <span class="comment"># 均匀输入</span></span><br><span class="line">    y = x ^ (rng.random(n) &lt; p_flip)             <span class="comment"># BSC 翻转</span></span><br><span class="line">    P = np.zeros((<span class="number">2</span>, <span class="number">2</span>))</span><br><span class="line">    np.add.at(P, (x, y), <span class="number">1.0</span> / n)                <span class="comment"># 统计联合频率</span></span><br><span class="line">    <span class="keyword">return</span> mutual_information(P)                 <span class="comment"># 复用 9.1 的函数</span></span><br><span class="line"></span><br><span class="line">p_test = np.linspace(<span class="number">0</span>, <span class="number">0.5</span>, <span class="number">6</span>)</span><br><span class="line">mi_mc = [mi_monte_carlo(pp) <span class="keyword">for</span> pp <span class="keyword">in</span> p_test]</span><br><span class="line"></span><br><span class="line">plt.figure(figsize=(<span class="number">7</span>, <span class="number">4.5</span>))</span><br><span class="line">plt.plot(p, C_bsc, lw=<span class="number">2</span>, label=<span class="string">&quot;理论  C = 1 − H₂(p)&quot;</span>)</span><br><span class="line">plt.scatter(p_test, mi_mc, color=<span class="string">&quot;red&quot;</span>, zorder=<span class="number">3</span>,</span><br><span class="line">            label=<span class="string">&quot;蒙特卡洛 I(X;Y)，均匀输入&quot;</span>)</span><br><span class="line">plt.xlabel(<span class="string">&quot;翻转概率 p&quot;</span>); plt.ylabel(<span class="string">&quot;容量 (bit)&quot;</span>)</span><br><span class="line">plt.title(<span class="string">&quot;二元对称信道容量曲线&quot;</span>)</span><br><span class="line">plt.grid(alpha=<span class="number">0.3</span>); plt.legend(); plt.tight_layout()</span><br><span class="line">plt.savefig(<span class="string">&quot;bsc_capacity.png&quot;</span>, dpi=<span class="number">120</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;理论 C(p=0.11) =&quot;</span>, <span class="number">1</span> - binary_entropy(<span class="number">0.11</span>),</span><br><span class="line">      <span class="string">&quot; 蒙特卡洛 =&quot;</span>, mi_monte_carlo(<span class="number">0.11</span>))</span><br><span class="line"></span><br><span class="line"><span class="comment"># ---------- AWGN 香农-哈特利容量随 SNR 的变化 ----------</span></span><br><span class="line">snr_db = np.linspace(-<span class="number">10</span>, <span class="number">40</span>, <span class="number">200</span>)</span><br><span class="line">snr = <span class="number">10</span> ** (snr_db / <span class="number">10</span>)</span><br><span class="line">W = <span class="number">20e6</span>                                          <span class="comment"># 带宽 20 MHz</span></span><br><span class="line">C_awgn = W * np.log2(<span class="number">1</span> + snr) / <span class="number">1e6</span>               <span class="comment"># Mbit/s</span></span><br><span class="line">plt.figure(figsize=(<span class="number">7</span>, <span class="number">4.5</span>))</span><br><span class="line">plt.plot(snr_db, C_awgn, lw=<span class="number">2</span>)</span><br><span class="line">plt.xlabel(<span class="string">&quot;SNR (dB)&quot;</span>); plt.ylabel(<span class="string">&quot;容量 (Mbit/s)&quot;</span>)</span><br><span class="line">plt.title(<span class="string">&quot;AWGN 信道容量：C = W log₂(1 + SNR)，W = 20 MHz&quot;</span>)</span><br><span class="line">plt.grid(alpha=<span class="number">0.3</span>); plt.tight_layout()</span><br><span class="line">plt.savefig(<span class="string">&quot;awgn_capacity.png&quot;</span>, dpi=<span class="number">120</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;SNR=30dB 时 C ≈ <span class="subst">&#123;<span class="number">20</span>*np.log2(<span class="number">1</span>+<span class="number">1000</span>):<span class="number">.1</span>f&#125;</span> Mbit/s&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>运行要点：9.1 的所有手写函数都以 2 为底返回 bit，与<br><code>scipy.stats.entropy(..., base=2)</code> 逐一对拍；Huffman 部分<br>用堆实现 O(n log n)，断言保证编码可逆；信道部分的理论曲线<br>与蒙特卡洛点应重合，验证「容量 &#x3D; 均匀输入下的互信息」。</p>
+<h2 id="10-验收清单"><a href="#10-验收清单" class="headerlink" title="10. 验收清单"></a>10. 验收清单</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">□ 能解释自信息 I(x) = -log₂ p(x) 为什么满足可加性与单调性</span><br><span class="line">□ 会手算任意离散分布的熵，说出熵的三条基本性质</span><br><span class="line">□ 能证明 H(X) ≤ log₂ n 并指出等号成立的均匀分布条件</span><br><span class="line">□ 会写联合熵、条件熵定义并默写链式法则 H(X,Y)=H(X)+H(Y|X)</span><br><span class="line">□ 能解释「条件使熵减少」及「特定 y 可能反而增熵」的陷阱</span><br><span class="line">□ 写出互信息的三种等价形式并说清对称性与独立性的关系</span><br><span class="line">□ 能用文氏图方式说明 H(X|Y)、I(X;Y)、H(Y|X)、H(X,Y) 的关系</span><br><span class="line">□ 默写 D_KL(p‖q) 定义、Gibbs 非负性，并说明为何不是距离</span><br><span class="line">□ 说清正向 KL 的 zero-avoiding 与反向 KL 的 zero-forcing 差异</span><br><span class="line">□ 能推出 H(p,q) = H(p) + D_KL(p‖q) 并解释交叉熵损失的由来</span><br><span class="line">□ 会用一句话陈述 JS 散度及其相对 KL 的两个改进</span><br><span class="line">□ 陈述 Kraft 不等式并判断给定码长能否构成前缀码</span><br><span class="line">□ 陈述香农第一定理（平均码长下界=熵）并给出香农码构造</span><br><span class="line">□ 独立对任意 5 符号信源完成 Huffman 构造并算平均码长与效率</span><br><span class="line">□ 陈述香农第二定理，解释「R&lt;C 可任意可靠」的工程代价</span><br><span class="line">□ 推导 BSC 容量 C = 1 - H₂(p)，指出 p=1 时容量仍为 1 的原因</span><br><span class="line">□ 默写香农-哈特利公式并解释带宽与 SNR 的权衡、-1.59 dB 香农限</span><br><span class="line">□ 说清微分熵可为负、与离散熵的差异及高斯最大微分熵性</span><br><span class="line">□ 能对照 ML 场景逐一说明交叉熵、KL 正则、ELBO、PPL 的信息论本质</span><br><span class="line">□ 以上全部函数、Huffman 编码与容量曲线均能用 numpy/scipy 动手复现</span><br></pre></td></tr></table></figure>
+
+<h2 id="11-相关文章"><a href="#11-相关文章" class="headerlink" title="11. 相关文章"></a>11. 相关文章</h2><ul>
+<li>系列总览：<a href="/advanced-math/mit-advanced-math-guide/">高等数学总览</a></li>
+<li>前置基础：<a href="/advanced-math/probability-statistics-guide/">概率论与数理统计</a></li>
+<li>后续阅读：<a href="/advanced-math/optimization-guide/">最优化</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E5%AD%A6%E5%9F%BA%E7%A1%80/" rel="tag"># 数学基础</a>
+              <a href="/tags/%E4%BF%A1%E6%81%AF%E8%AE%BA/" rel="tag"># 信息论</a>
+              <a href="/tags/%E4%BF%A1%E6%81%AF%E7%86%B5/" rel="tag"># 信息熵</a>
+              <a href="/tags/KL%E6%95%A3%E5%BA%A6/" rel="tag"># KL散度</a>
+              <a href="/tags/%E4%BA%A4%E5%8F%89%E7%86%B5/" rel="tag"># 交叉熵</a>
+              <a href="/tags/%E4%BF%A1%E9%81%93%E5%AE%B9%E9%87%8F/" rel="tag"># 信道容量</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/advanced-math/integral-transforms-guide/" rel="prev" title="第4章 积分变换深度指南：Laplace · Fourier · FFT · z变换">
+                  <i class="fa fa-angle-left"></i> 第4章 积分变换深度指南：Laplace · Fourier · FFT · z变换
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/advanced-math/functional-analysis-guide/" rel="next" title="第10章 泛函分析深度指南：Banach空间 · Hilbert空间 · 算子与谱">
+                  第10章 泛函分析深度指南：Banach空间 · Hilbert空间 · 算子与谱 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">2.5m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">37:15</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

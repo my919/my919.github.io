@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第18章 随机过程深度指南 承接《概率论与数理统计深度指南》第 7 节「随机过程入门」，本篇把它展开成完整专题。核心点题一句话：**随机变量描述「一次抽样的不确定」，随机过程描述「随时间演化的不确定」——概率论加上时间轴，就是随机过程。**主线：基本概念 → 离散时间马尔可夫链（核心）→ 吸收链 → 连续时间马尔可夫链 → 泊松过程 → 布朗运动 → MCMC（工程重头戏）→ 鞅与停时。工程师视角">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第18章 随机过程深度指南：马尔可夫链 · 泊松过程 · 布朗运动 · MCMC">
+<meta property="og:url" content="https://my919.github.io/advanced-math/stochastic-processes-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第18章 随机过程深度指南 承接《概率论与数理统计深度指南》第 7 节「随机过程入门」，本篇把它展开成完整专题。核心点题一句话：**随机变量描述「一次抽样的不确定」，随机过程描述「随时间演化的不确定」——概率论加上时间轴，就是随机过程。**主线：基本概念 → 离散时间马尔可夫链（核心）→ 吸收链 → 连续时间马尔可夫链 → 泊松过程 → 布朗运动 → MCMC（工程重头戏）→ 鞅与停时。工程师视角">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch18-1.png">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch18-3.png">
+<meta property="og:image" content="https://my919.github.io/images/advanced-math/ch18-2.png">
+<meta property="article:published_time" content="2026-10-10T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-10T16:39:05.351Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="MCMC">
+<meta property="article:tag" content="布朗运动">
+<meta property="article:tag" content="数学基础">
+<meta property="article:tag" content="泊松过程">
+<meta property="article:tag" content="随机过程">
+<meta property="article:tag" content="马尔可夫链">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://my919.github.io/images/advanced-math/ch18-1.png">
+
+
+<link rel="canonical" href="https://my919.github.io/advanced-math/stochastic-processes-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/advanced-math/stochastic-processes-guide/","path":"advanced-math/stochastic-processes-guide/","title":"第18章 随机过程深度指南：马尔可夫链 · 泊松过程 · 布朗运动 · MCMC"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第18章 随机过程深度指南：马尔可夫链 · 泊松过程 · 布朗运动 · MCMC | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC18%E7%AB%A0-%E9%9A%8F%E6%9C%BA%E8%BF%87%E7%A8%8B%E6%B7%B1%E5%BA%A6%E6%8C%87%E5%8D%97"><span class="nav-number">1.</span> <span class="nav-text">第18章 随机过程深度指南</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#0-%E5%85%A8%E6%99%AF%E5%9C%B0%E5%9B%BE"><span class="nav-number">1.1.</span> <span class="nav-text">0. 全景地图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E9%9A%8F%E6%9C%BA%E8%BF%87%E7%A8%8B%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">1.2.</span> <span class="nav-text">1. 随机过程基本概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E5%AE%9A%E4%B9%89%EF%BC%9A%E6%A6%82%E7%8E%87%E8%AE%BA%E5%8A%A0%E4%B8%8A%E6%97%B6%E9%97%B4%E8%BD%B4"><span class="nav-number">1.2.1.</span> <span class="nav-text">1.1 定义：概率论加上时间轴</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E7%8A%B6%E6%80%81%E7%A9%BA%E9%97%B4%E4%B8%8E%E6%8C%87%E6%A0%87%E9%9B%86%EF%BC%9A%E5%9B%9B%E7%A7%8D%E7%BB%84%E5%90%88"><span class="nav-number">1.2.2.</span> <span class="nav-text">1.2 状态空间与指标集：四种组合</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E6%9C%89%E9%99%90%E7%BB%B4%E5%88%86%E5%B8%83%EF%BC%9A%E9%9A%8F%E6%9C%BA%E8%BF%87%E7%A8%8B%E7%9A%84%E3%80%8C%E5%AE%8C%E6%95%B4%E8%BA%AB%E4%BB%BD%E8%AF%81%E3%80%8D"><span class="nav-number">1.2.3.</span> <span class="nav-text">1.3 有限维分布：随机过程的「完整身份证」</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-%E7%8B%AC%E7%AB%8B%E5%A2%9E%E9%87%8F%E4%B8%8E%E5%B9%B3%E7%A8%B3%E5%A2%9E%E9%87%8F"><span class="nav-number">1.2.4.</span> <span class="nav-text">1.4 独立增量与平稳增量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-%E5%B9%B3%E7%A8%B3%E6%80%A7%E7%9A%84%E4%B8%A4%E4%B8%AA%E7%89%88%E6%9C%AC"><span class="nav-number">1.2.5.</span> <span class="nav-text">1.5 平稳性的两个版本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-6-%E5%B8%B8%E8%A7%81%E5%88%86%E7%B1%BB%E4%B8%80%E8%A7%88"><span class="nav-number">1.2.6.</span> <span class="nav-text">1.6 常见分类一览</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E7%A6%BB%E6%95%A3%E6%97%B6%E9%97%B4%E9%A9%AC%E5%B0%94%E5%8F%AF%E5%A4%AB%E9%93%BE%EF%BC%88%E6%A0%B8%E5%BF%83%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">2. 离散时间马尔可夫链（核心）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E9%A9%AC%E5%B0%94%E5%8F%AF%E5%A4%AB%E6%80%A7%EF%BC%9A%E6%97%A0%E8%AE%B0%E5%BF%86"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 马尔可夫性：无记忆</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E8%BD%AC%E7%A7%BB%E7%9F%A9%E9%98%B5-P"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 转移矩阵 P</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-n-%E6%AD%A5%E8%BD%AC%E7%A7%BB%E4%B8%8E-Chapman-Kolmogorov-%E6%96%B9%E7%A8%8B"><span class="nav-number">1.3.3.</span> <span class="nav-text">2.3 n 步转移与 Chapman-Kolmogorov 方程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-%E7%8A%B6%E6%80%81%E5%88%86%E7%B1%BB"><span class="nav-number">1.3.4.</span> <span class="nav-text">2.4 状态分类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-%E5%B9%B3%E7%A8%B3%E5%88%86%E5%B8%83%EF%BC%9A%CF%80P-%CF%80"><span class="nav-number">1.3.5.</span> <span class="nav-text">2.5 平稳分布：πP &#x3D; π</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-6-%E6%9E%81%E9%99%90%E5%AE%9A%E7%90%86%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E9%93%BE%E4%BC%9A%E3%80%8C%E5%BF%98%E8%AE%B0%E5%87%BA%E8%BA%AB%E3%80%8D"><span class="nav-number">1.3.6.</span> <span class="nav-text">2.6 极限定理：为什么链会「忘记出身」</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-7-%E5%AE%8C%E6%95%B4%E4%BE%8B%E9%A2%98%EF%BC%9A%E5%A4%A9%E6%B0%94%E6%A8%A1%E5%9E%8B%E7%AE%97%E5%B9%B3%E7%A8%B3%E5%88%86%E5%B8%83"><span class="nav-number">1.3.7.</span> <span class="nav-text">2.7 完整例题：天气模型算平稳分布</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-8-PageRank-%E5%B0%B1%E6%98%AF%E4%B8%80%E4%B8%AA%E9%A9%AC%E5%B0%94%E5%8F%AF%E5%A4%AB%E9%93%BE%E7%9A%84%E5%B9%B3%E7%A8%B3%E5%88%86%E5%B8%83"><span class="nav-number">1.3.8.</span> <span class="nav-text">2.8 PageRank 就是一个马尔可夫链的平稳分布</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%90%B8%E6%94%B6%E9%A9%AC%E5%B0%94%E5%8F%AF%E5%A4%AB%E9%93%BE"><span class="nav-number">1.4.</span> <span class="nav-text">3. 吸收马尔可夫链</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%90%B8%E6%94%B6%E6%80%81%E4%B8%8E%E6%A0%87%E5%87%86%E5%BD%A2"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 吸收态与标准形</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E5%9F%BA%E6%9C%AC%E7%9F%A9%E9%98%B5-N-I-%E2%88%92-Q-%E2%81%BB%C2%B9"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 基本矩阵 N &#x3D; (I − Q)⁻¹</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E4%BE%8B%E9%A2%98%EF%BC%9A%E9%9A%8F%E6%9C%BA%E6%B8%B8%E8%B5%B0%E7%9A%84%E5%90%B8%E6%94%B6%E5%88%86%E6%9E%90"><span class="nav-number">1.4.3.</span> <span class="nav-text">3.3 例题：随机游走的吸收分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E8%BF%9E%E7%BB%AD%E6%97%B6%E9%97%B4%E9%A9%AC%E5%B0%94%E5%8F%AF%E5%A4%AB%E9%93%BE%EF%BC%88%E7%AE%80%E8%BF%B0%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">4. 连续时间马尔可夫链（简述）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E6%B3%8A%E6%9D%BE%E8%BF%87%E7%A8%8B"><span class="nav-number">1.6.</span> <span class="nav-text">5. 泊松过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%AE%9A%E4%B9%89%E4%B8%89%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 定义三条件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E6%A0%B8%E5%BF%83%E7%BB%93%E8%AE%BA%EF%BC%9A%E8%AE%A1%E6%95%B0%E4%B8%8E%E9%97%B4%E9%9A%94%E4%BA%92%E4%B8%BA%E8%A1%A8%E9%87%8C"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 核心结论：计数与间隔互为表里</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E5%90%88%E5%B9%B6%E4%B8%8E%E7%BB%86%E5%88%86%E5%AE%9A%E7%90%86"><span class="nav-number">1.6.3.</span> <span class="nav-text">5.3 合并与细分定理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-%E4%BE%8B%E9%A2%98%EF%BC%9A%E5%91%BC%E5%8F%AB%E4%B8%AD%E5%BF%83-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AF%B7%E6%B1%82"><span class="nav-number">1.6.4.</span> <span class="nav-text">5.4 例题：呼叫中心 &#x2F; 服务器请求</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E5%B8%83%E6%9C%97%E8%BF%90%E5%8A%A8%E4%B8%8E-Wiener-%E8%BF%87%E7%A8%8B"><span class="nav-number">1.7.</span> <span class="nav-text">6. 布朗运动与 Wiener 过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E5%AE%9A%E4%B9%89"><span class="nav-number">1.7.1.</span> <span class="nav-text">6.1 定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-%E8%BD%A8%E9%81%93%E7%9A%84%E5%A5%87%E5%BC%82%E6%80%A7%E8%B4%A8%EF%BC%88%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%89%88%E6%9C%AC%EF%BC%89"><span class="nav-number">1.7.2.</span> <span class="nav-text">6.2 轨道的奇异性质（一句话版本）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E4%B8%8E%E6%89%A9%E6%95%A3%E6%96%B9%E7%A8%8B%E7%9A%84%E8%81%94%E7%B3%BB%EF%BC%9A%E7%83%AD%E6%A0%B8"><span class="nav-number">1.7.3.</span> <span class="nav-text">6.3 与扩散方程的联系：热核</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-%E5%87%A0%E4%BD%95%E5%B8%83%E6%9C%97%E8%BF%90%E5%8A%A8%E4%B8%8E%E9%87%91%E8%9E%8D%E5%BB%BA%E6%A8%A1%EF%BC%88%E4%B8%80%E5%8F%A5%E8%AF%9D%EF%BC%89"><span class="nav-number">1.7.4.</span> <span class="nav-text">6.4 几何布朗运动与金融建模（一句话）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-5-%E9%9A%8F%E6%9C%BA%E5%BE%AE%E7%A7%AF%E5%88%86%E5%85%A5%E5%8F%A3%EF%BC%9AIto-%E5%85%AC%E5%BC%8F%EF%BC%88%E7%82%B9%E5%88%B0%E4%B8%BA%E6%AD%A2%EF%BC%89"><span class="nav-number">1.7.5.</span> <span class="nav-text">6.5 随机微积分入口：Itô 公式（点到为止）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-MCMC-%E9%87%87%E6%A0%B7%EF%BC%88%E5%B7%A5%E7%A8%8B%E9%87%8D%E5%A4%B4%E6%88%8F%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">7. MCMC 采样（工程重头戏）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81-MCMC"><span class="nav-number">1.8.1.</span> <span class="nav-text">7.1 为什么需要 MCMC</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-Metropolis-Hastings-%E7%AE%97%E6%B3%95"><span class="nav-number">1.8.2.</span> <span class="nav-text">7.2 Metropolis-Hastings 算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-Gibbs-%E9%87%87%E6%A0%B7"><span class="nav-number">1.8.3.</span> <span class="nav-text">7.3 Gibbs 采样</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-%E6%94%B6%E6%95%9B%E8%AF%8A%E6%96%AD%E4%B8%8E-burn-in%EF%BC%88%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%89%88%EF%BC%89"><span class="nav-number">1.8.4.</span> <span class="nav-text">7.4 收敛诊断与 burn-in（一句话版）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E9%9E%85%E4%B8%8E%E5%81%9C%E6%97%B6%EF%BC%88%E7%AE%80%E8%BF%B0%EF%BC%89"><span class="nav-number">1.9.</span> <span class="nav-text">8. 鞅与停时（简述）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E9%9A%8F%E6%9C%BA%E8%BF%87%E7%A8%8B-%E2%86%92-ML-%E5%B7%A5%E7%A8%8B%E5%AF%B9%E7%85%A7%E8%A1%A8"><span class="nav-number">1.10.</span> <span class="nav-text">9. 随机过程 → ML &#x2F; 工程对照表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-Python-%E5%AE%9E%E6%88%98"><span class="nav-number">1.11.</span> <span class="nav-text">10. Python 实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-1-%E6%A8%A1%E6%8B%9F%E9%A9%AC%E5%B0%94%E5%8F%AF%E5%A4%AB%E9%93%BE%E5%B9%B6%E9%AA%8C%E8%AF%81-%CF%80P-%CF%80"><span class="nav-number">1.11.1.</span> <span class="nav-text">10.1 模拟马尔可夫链并验证 πP &#x3D; π</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-2-%E6%A8%A1%E6%8B%9F%E6%B3%8A%E6%9D%BE%E8%BF%87%E7%A8%8B%EF%BC%9A%E8%AE%A1%E6%95%B0-Poisson-%CE%BBt-%EF%BC%8C%E9%97%B4%E9%9A%94-Exp-%CE%BB"><span class="nav-number">1.11.2.</span> <span class="nav-text">10.2 模拟泊松过程：计数 ~ Poisson(λt)，间隔 ~ Exp(λ)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-3-%E6%A8%A1%E6%8B%9F%E5%B8%83%E6%9C%97%E8%BF%90%E5%8A%A8%E8%BD%A8%E9%81%93%E4%B8%8E%E4%BA%8C%E6%AC%A1%E5%8F%98%E5%B7%AE"><span class="nav-number">1.11.3.</span> <span class="nav-text">10.3 模拟布朗运动轨道与二次变差</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-4-%E6%89%8B%E5%86%99-Metropolis-Hastings%EF%BC%9A%E9%87%87%E4%B8%80%E4%B8%AA%E5%8F%8C%E5%B3%B0%E5%88%86%E5%B8%83"><span class="nav-number">1.11.4.</span> <span class="nav-text">10.4 手写 Metropolis-Hastings：采一个双峰分布</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-%E9%AA%8C%E6%94%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.12.</span> <span class="nav-text">11. 验收清单</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">267</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">85</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">264</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/advanced-math/stochastic-processes-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第18章 随机过程深度指南：马尔可夫链 · 泊松过程 · 布朗运动 · MCMC | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第18章 随机过程深度指南：马尔可夫链 · 泊松过程 · 布朗运动 · MCMC
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-10-10 10:00:00" itemprop="dateCreated datePublished" datetime="2026-10-10T10:00:00+08:00">2026-10-10</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-11 00:39:05" itemprop="dateModified" datetime="2026-10-11T00:39:05+08:00">2026-10-11</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Advanced-Math/" itemprop="url" rel="index"><span itemprop="name">Advanced Math</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>15k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>14 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第18章-随机过程深度指南"><a href="#第18章-随机过程深度指南" class="headerlink" title="第18章 随机过程深度指南"></a>第18章 随机过程深度指南</h1><blockquote>
+<p>承接《概率论与数理统计深度指南》第 7 节「随机过程入门」，本篇把它展开成完整专题。核心点题一句话：**随机变量描述「一次抽样的不确定」，随机过程描述「随时间演化的不确定」——概率论加上时间轴，就是随机过程。**主线：基本概念 → 离散时间马尔可夫链（核心）→ 吸收链 → 连续时间马尔可夫链 → 泊松过程 → 布朗运动 → MCMC（工程重头戏）→ 鞅与停时。工程师视角：每个概念都落到 numpy 可运行代码，并给出 ML &#x2F; 工程对照（PageRank、扩散模型、强化学习、排队容量规划）。</p>
+</blockquote>
+<h2 id="0-全景地图"><a href="#0-全景地图" class="headerlink" title="0. 全景地图"></a>0. 全景地图</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">随机过程 = 一族按时间索引的随机变量 &#123;X(t), t ∈ T&#125;</span><br><span class="line">  基本概念</span><br><span class="line">    └─► 状态空间 × 指标集（离散/连续四种组合）</span><br><span class="line">    └─► 有限维分布 / 独立增量 / 平稳增量 / 严平稳与宽平稳</span><br><span class="line">  按结构分类</span><br><span class="line">    ├─► 马尔可夫过程（无记忆性）</span><br><span class="line">    │     ├─► 离散时间马尔可夫链 DTMC：转移矩阵 P、πP = π、极限定理</span><br><span class="line">    │     │     └─► 吸收链：N = (I−Q)⁻¹、平均吸收时间、吸收概率</span><br><span class="line">    │     └─► 连续时间马尔可夫链 CTMC：速率矩阵 Q、生灭过程</span><br><span class="line">    ├─► 泊松过程（计数 + 独立平稳增量）：N(t) ~ Poisson(λt)、间隔 ~ Exp(λ)</span><br><span class="line">    ├─► 高斯过程 / 布朗运动：B(t) ~ N(0, t)、(dB)² = dt、热核、SDE 入口</span><br><span class="line">    └─► 鞅：E[Xₙ₊₁|历史] = Xₙ、公平博弈、可选停时</span><br><span class="line">  工程重头戏</span><br><span class="line">    └─► MCMC：构造以目标分布为平稳分布的链</span><br><span class="line">          ├─► Metropolis-Hastings：α = min(1, π(y)q(x|y) / (π(x)q(y|x)))</span><br><span class="line">          └─► Gibbs：逐坐标采全条件分布</span><br></pre></td></tr></table></figure>
+
+<h2 id="1-随机过程基本概念"><a href="#1-随机过程基本概念" class="headerlink" title="1. 随机过程基本概念"></a>1. 随机过程基本概念</h2><h3 id="1-1-定义：概率论加上时间轴"><a href="#1-1-定义：概率论加上时间轴" class="headerlink" title="1.1 定义：概率论加上时间轴"></a>1.1 定义：概率论加上时间轴</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">随机变量 X：一次抽样，一个数（或向量），分布是静态的</span><br><span class="line">随机过程 &#123;X(t), t ∈ T&#125;：</span><br><span class="line">  定义在同一概率空间上、按指标 t 索引的一族随机变量</span><br><span class="line">  两种看法互为表里：</span><br><span class="line">    ① 固定 t：X(t) 是一个普通随机变量（截面）</span><br><span class="line">    ② 固定 ω（一次试验结果）：t ↦ X(t, ω) 是一条普通函数（样本轨道 / 实现）</span><br><span class="line">术语：</span><br><span class="line">  指标集 T：通常是时间（离散 ℕ 或连续 [0, ∞)）</span><br><span class="line">  状态空间 S：X(t) 取值的集合（离散如 &#123;晴,雨&#125;，连续如 ℝ）</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-状态空间与指标集：四种组合"><a href="#1-2-状态空间与指标集：四种组合" class="headerlink" title="1.2 状态空间与指标集：四种组合"></a>1.2 状态空间与指标集：四种组合</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">                 离散状态空间 S            连续状态空间 S</span><br><span class="line">离散时间 T=ℕ     马尔可夫链、随机游走       自回归 AR、状态空间模型、卡尔曼滤波</span><br><span class="line">连续时间 T=[0,∞) 泊松过程、CTMC、排队系统   布朗运动、扩散过程、SDE</span><br><span class="line"></span><br><span class="line">工程对号：</span><br><span class="line">  左上是 PageRank / 强化学习 MDP 的家</span><br><span class="line">  右上是时间序列与信号处理的家</span><br><span class="line">  左下是排队论 / 可靠性 / 计数事件的家</span><br><span class="line">  右下是量化金融与扩散模型的家</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-3-有限维分布：随机过程的「完整身份证」"><a href="#1-3-有限维分布：随机过程的「完整身份证」" class="headerlink" title="1.3 有限维分布：随机过程的「完整身份证」"></a>1.3 有限维分布：随机过程的「完整身份证」</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">有限维分布族：对任意 n 与任意时刻 t₁ &lt; t₂ &lt; ... &lt; tₙ，</span><br><span class="line">  给出 (X(t₁), ..., X(tₙ)) 的联合分布</span><br><span class="line">Kolmogorov 存在性定理（一句话）：</span><br><span class="line">  只要这族联合分布满足相容性（边缘化一致），就存在对应的随机过程</span><br><span class="line">意义：研究随机过程 = 研究一族相容的联合分布</span><br><span class="line">  —— 正如研究随机变量 = 研究一个分布函数</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-4-独立增量与平稳增量"><a href="#1-4-独立增量与平稳增量" class="headerlink" title="1.4 独立增量与平稳增量"></a>1.4 独立增量与平稳增量</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">独立增量：对任意 t₀ &lt; t₁ &lt; ... &lt; tₙ，</span><br><span class="line">  增量 X(t₁)−X(t₀), X(t₂)−X(t₁), ..., X(tₙ)−X(tₙ₋₁) 相互独立</span><br><span class="line">平稳增量：X(t+h)−X(t) 的分布只依赖区间长度 h，与起点 t 无关</span><br><span class="line">直觉：过程的「新增不确定性」既不互相勾结（独立），也不随日历漂移（平稳）</span><br><span class="line">  —— 泊松过程与布朗运动都同时满足这两条，这是它们可解析的根本原因</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-5-平稳性的两个版本"><a href="#1-5-平稳性的两个版本" class="headerlink" title="1.5 平稳性的两个版本"></a>1.5 平稳性的两个版本</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">严平稳：任意有限维分布对时间平移不变</span><br><span class="line">  (X(t₁),...,X(tₙ)) 与 (X(t₁+h),...,X(tₙ+h)) 同分布，对任意 h 成立</span><br><span class="line">宽平稳（二阶平稳，工程常用）：</span><br><span class="line">  均值常数 E[X(t)] = μ</span><br><span class="line">  协方差只依赖时差 Cov(X(t), X(t+h)) = R(h)</span><br><span class="line">严平稳 + 二阶矩存在 ⟹ 宽平稳；高斯过程下二者等价</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-6-常见分类一览"><a href="#1-6-常见分类一览" class="headerlink" title="1.6 常见分类一览"></a>1.6 常见分类一览</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">马尔可夫过程：给定现在，未来与过去无关（无记忆性）</span><br><span class="line">泊松过程：独立平稳增量的计数过程，稀有事件的极限</span><br><span class="line">高斯过程：任意有限维分布都是多元正态（贝叶斯优化的代理模型）</span><br><span class="line">鞅：条件期望恒等于当前值（公平博弈、交易策略分析）</span><br><span class="line">独立增量过程：泊松过程与布朗运动是仅有的两个「均质 + 连续修正」特例</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-离散时间马尔可夫链（核心）"><a href="#2-离散时间马尔可夫链（核心）" class="headerlink" title="2. 离散时间马尔可夫链（核心）"></a>2. 离散时间马尔可夫链（核心）</h2><h3 id="2-1-马尔可夫性：无记忆"><a href="#2-1-马尔可夫性：无记忆" class="headerlink" title="2.1 马尔可夫性：无记忆"></a>2.1 马尔可夫性：无记忆</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">定义：P(Xₙ₊₁ = j | Xₙ = i, Xₙ₋₁ = iₙ₋₁, ..., X₀ = i₀)</span><br><span class="line">        = P(Xₙ₊₁ = j | Xₙ = i) = pᵢⱼ</span><br><span class="line">直觉：「现在」包含了预测「未来」所需的一切，「过去」是冗余信息</span><br><span class="line">工程类比：</span><br><span class="line">  HTTP 无状态协议：每次请求只带当前 token</span><br><span class="line">  游戏存档：读档后历史操作不再影响后续</span><br><span class="line">  强化学习：状态 s 的设计原则就是让马尔可夫性成立</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-转移矩阵-P"><a href="#2-2-转移矩阵-P" class="headerlink" title="2.2 转移矩阵 P"></a>2.2 转移矩阵 P</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">P = (pᵢⱼ)，pᵢⱼ = P(Xₙ₊₁ = j | Xₙ = i)</span><br><span class="line">性质：</span><br><span class="line">  非负：pᵢⱼ ≥ 0</span><br><span class="line">  行和为 1：Σⱼ pᵢⱼ = 1（从 i 出发总得去某个地方）—— 随机矩阵</span><br><span class="line">  行 i = 「在状态 i 时，下一步去哪」的完整条件分布</span><br><span class="line">时齐性假设：pᵢⱼ 不随 n 变化（本篇默认时齐）</span><br><span class="line">初始分布 μ₀ 为行向量，则 n 步后的边际分布：μₙ = μ₀ Pⁿ</span><br><span class="line">  —— 演化 = 不断左乘转移矩阵，线性代数接管一切</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-n-步转移与-Chapman-Kolmogorov-方程"><a href="#2-3-n-步转移与-Chapman-Kolmogorov-方程" class="headerlink" title="2.3 n 步转移与 Chapman-Kolmogorov 方程"></a>2.3 n 步转移与 Chapman-Kolmogorov 方程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">n 步转移概率：pᵢⱼ⁽ⁿ⁾ = P(Xₙ = j | X₀ = i) = (Pⁿ)ᵢⱼ</span><br><span class="line">Chapman-Kolmogorov 方程：</span><br><span class="line">  P^(m+n) = P^m · P^n</span><br><span class="line">  分量形式：pᵢⱼ⁽ᵐ⁺ⁿ⁾ = Σₖ pᵢₖ⁽ᵐ⁾ · pₖⱼ⁽ⁿ⁾</span><br><span class="line">直觉：从 i 走 m+n 步到 j = 枚举中转站 k，先走 m 步到 k 再走 n 步到 j</span><br><span class="line">  —— 全概率公式在时间轴上的展开；矩阵乘法就是「枚举中转」</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-状态分类"><a href="#2-4-状态分类" class="headerlink" title="2.4 状态分类"></a>2.4 状态分类</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">可达：存在 n ≥ 0 使 pᵢⱼ⁽ⁿ⁾ &gt; 0，记 i → j</span><br><span class="line">互通：i → j 且 j → i，记 i ↔ j；互通是等价关系，把状态空间划分成互通类</span><br><span class="line">不可约：整个链只有一个互通类（任意状态可到达任意状态）</span><br><span class="line"></span><br><span class="line">常返（recurrent）：fᵢᵢ = P(迟早回到 i | 从 i 出发) = 1</span><br><span class="line">瞬返 / 暂留（transient）：fᵢᵢ &lt; 1（有一定概率一去不返）</span><br><span class="line">判据：常返 ⟺ Σₙ pᵢᵢ⁽ⁿ⁾ = ∞（期望回访次数发散）</span><br><span class="line">正常返：平均返回时间 mᵢ = E[返回 i 所需步数] &lt; ∞</span><br><span class="line">零常返：必回但平均要等无穷久（如一维对称随机游走）</span><br><span class="line">有限状态空间：不可约 ⟹ 所有状态正常返（没有零常返的麻烦）</span><br><span class="line"></span><br><span class="line">周期：d(i) = gcd&#123; n ≥ 1 : pᵢᵢ⁽ⁿ⁾ &gt; 0 &#125;</span><br><span class="line">非周期：d(i) = 1</span><br><span class="line">遍历态：正常返 + 非周期</span><br><span class="line">互通类内所有状态共享：常返性、周期性（分类是「类性质」）</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-5-平稳分布：πP-π"><a href="#2-5-平稳分布：πP-π" class="headerlink" title="2.5 平稳分布：πP &#x3D; π"></a>2.5 平稳分布：πP &#x3D; π</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">定义：行向量 π 满足</span><br><span class="line">  π P = π，  πᵢ ≥ 0，  Σᵢ πᵢ = 1</span><br><span class="line">解读：如果今天的状态分布是 π，明天还是 π —— 分布意义上的「不动点」</span><br><span class="line">线性代数视角：</span><br><span class="line">  π 是 P 属于特征值 1 的左特征向量</span><br><span class="line">  随机矩阵行和为 1 ⟹ 全 1 列向量是特征值 1 的右特征向量 ⟹ 1 总是特征值</span><br><span class="line">  Perron-Frobenius 定理：非负不可约矩阵，最大特征值 1 对应唯一正特征向量</span><br><span class="line">  ⟹ 不可约链的平稳分布存在且唯一，πᵢ = 1 / mᵢ（平均返回时间的倒数）</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-6-极限定理：为什么链会「忘记出身」"><a href="#2-6-极限定理：为什么链会「忘记出身」" class="headerlink" title="2.6 极限定理：为什么链会「忘记出身」"></a>2.6 极限定理：为什么链会「忘记出身」</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">马尔可夫链基本极限定理：</span><br><span class="line">  不可约 + 非周期 + 正常返</span><br><span class="line">  ⟹ 对任意 i, j：lim_&#123;n→∞&#125; pᵢⱼ⁽ⁿ⁾ = πⱼ</span><br><span class="line">  即 Pⁿ 的每一行都收敛到 π，与初始状态无关</span><br><span class="line"></span><br><span class="line">周期性的破坏（反例）：</span><br><span class="line">  P = [[0, 1], [1, 0]]（两状态每步互换）</span><br><span class="line">  平稳分布 π = (1/2, 1/2) 存在，但 Pⁿ 在 P 与 I 之间震荡，永不收敛</span><br><span class="line">  结论：非周期是收敛的必要条件；自环 pᵢᵢ &gt; 0 是非周期的充分条件</span><br><span class="line"></span><br><span class="line">工程意义：</span><br><span class="line">  「跑足够久后样本分布 ≈ π」——这正是 MCMC 的全部理论基础</span><br><span class="line">  PageRank 的幂迭代收敛，靠的也是这条定理</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-7-完整例题：天气模型算平稳分布"><a href="#2-7-完整例题：天气模型算平稳分布" class="headerlink" title="2.7 完整例题：天气模型算平稳分布"></a>2.7 完整例题：天气模型算平稳分布</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">状态：0 = 晴，1 = 雨</span><br><span class="line">转移矩阵：P = [[0.9, 0.1],</span><br><span class="line">               [0.5, 0.5]]</span><br><span class="line">  （今天晴 ⟹ 明天晴概率 0.9；今天雨 ⟹ 明天晴概率 0.5）</span><br><span class="line"></span><br><span class="line">求 π = (π₀, π₁)，解 πP = π：</span><br><span class="line">  π₀ = 0.9 π₀ + 0.5 π₁   ⟹   0.1 π₀ = 0.5 π₁   ⟹   π₀ = 5 π₁</span><br><span class="line">  π₀ + π₁ = 1             ⟹   π = (5/6, 1/6) ≈ (0.833, 0.167)</span><br><span class="line"></span><br><span class="line">解读：长期看约 83.3% 的日子是晴天，与第一天是晴是雨无关</span><br><span class="line"></span><br><span class="line">验证极限定理（P 的特征值是 1 与 0.4，收敛速率由 |λ₂| = 0.4 控制）：</span><br><span class="line">  P²  = [[0.86,   0.14  ], [0.70,   0.30  ]]</span><br><span class="line">  P⁴  ≈ [[0.8376, 0.1624], [0.8120, 0.1880]]</span><br><span class="line">  P¹⁰ ≈ [[0.8334, 0.1666], [0.8332, 0.1668]]   —— 两行几乎相等 ≈ π</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 天气模型：幂迭代与特征向量两种方法求平稳分布</span></span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">P = np.array([[<span class="number">0.9</span>, <span class="number">0.1</span>],</span><br><span class="line">              [<span class="number">0.5</span>, <span class="number">0.5</span>]])              <span class="comment"># 行：今天；列：明天</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法一：幂迭代 mu_&#123;n+1&#125; = mu_n @ P，观察 Pⁿ 的行收敛</span></span><br><span class="line">mu = np.array([<span class="number">1.0</span>, <span class="number">0.0</span>])               <span class="comment"># 初始分布：第一天必晴</span></span><br><span class="line"><span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">30</span>):</span><br><span class="line">    mu = mu @ P</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;幂迭代 30 步:&quot;</span>, mu)              <span class="comment"># ≈ [0.8333 0.1667]</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;P^10 =&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(np.linalg.matrix_power(P, <span class="number">10</span>))    <span class="comment"># 两行都 ≈ π</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法二：解 πP = π，即 P 属于特征值 1 的左特征向量</span></span><br><span class="line">eigvals, eigvecs = np.linalg.eig(P.T)   <span class="comment"># 左特征向量 = Pᵀ 的右特征向量</span></span><br><span class="line">pi = eigvecs[:, np.argmin(np.<span class="built_in">abs</span>(eigvals - <span class="number">1</span>))].real</span><br><span class="line">pi = pi / pi.<span class="built_in">sum</span>()                      <span class="comment"># 归一化为概率分布</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;特征向量法 π =&quot;</span>, pi)             <span class="comment"># ≈ [0.8333 0.1667]</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;验证 πP =&quot;</span>, pi @ P)              <span class="comment"># 与 π 相同</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;次特征值 =&quot;</span>, <span class="built_in">sorted</span>(eigvals.real)[<span class="number">0</span>])  <span class="comment"># 0.4，决定收敛速度</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-8-PageRank-就是一个马尔可夫链的平稳分布"><a href="#2-8-PageRank-就是一个马尔可夫链的平稳分布" class="headerlink" title="2.8 PageRank 就是一个马尔可夫链的平稳分布"></a>2.8 PageRank 就是一个马尔可夫链的平稳分布</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">模型：网上冲浪者在网页图上随机游走</span><br><span class="line">  以概率 α ≈ 0.85 沿当前页的某个出链跳转（跟随链接）</span><br><span class="line">  以概率 1 − α 随机跳到全网任意一页（「瞬移」，解决悬挂节点与不可约性）</span><br><span class="line">转移矩阵：P = α · Ĥ + (1 − α) · E / n</span><br><span class="line">  Ĥ：归一化链接矩阵（悬挂页用全 1/n 行补齐）</span><br><span class="line">  E：全 1 矩阵；E/n 保证 P 不可约 + 非周期（任何页一步可达任何页）</span><br><span class="line">PageRank 向量 := 平稳分布 π，满足 πP = π</span><br><span class="line">  πᵢ = 「长期看，冲浪者停留在页面 i 的时间占比」= 页面重要性</span><br><span class="line">计算：幂迭代 πₙ₊₁ = πₙ P</span><br><span class="line">  —— Google 早期核心计算，就是当时世界上最大规模的特征向量计算</span><br><span class="line">  收敛速度由 α 控制（次特征值 ≈ α）：α = 0.85 时几十次迭代即收敛</span><br><span class="line">启示：面对「特征行为涌现自局部规则」的系统（网页、引用、社交），</span><br><span class="line">  先问一句：它的平稳分布是什么？</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/advanced-math/ch18-1.png" alt="马尔可夫链"></p>
+<p><em>图 18-1　状态转移概率图（左），长期占比收敛到平稳分布 π（右）</em></p>
+<h2 id="3-吸收马尔可夫链"><a href="#3-吸收马尔可夫链" class="headerlink" title="3. 吸收马尔可夫链"></a>3. 吸收马尔可夫链</h2><h3 id="3-1-吸收态与标准形"><a href="#3-1-吸收态与标准形" class="headerlink" title="3.1 吸收态与标准形"></a>3.1 吸收态与标准形</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">吸收态：pᵢᵢ = 1 —— 进去了就出不来（破产、通关、进程退出、转化/流失）</span><br><span class="line">吸收链：从任何状态都能在有限步内到达某个吸收态</span><br><span class="line">标准形（把瞬态排前面、吸收态排后面）：</span><br><span class="line">  P = [[Q, R],</span><br><span class="line">       [0, I]]</span><br><span class="line">  Q：瞬态 → 瞬态 的转移块（行和 &lt; 1 的缺口流向吸收态）</span><br><span class="line">  R：瞬态 → 吸收态 的转移块</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-基本矩阵-N-I-−-Q-⁻¹"><a href="#3-2-基本矩阵-N-I-−-Q-⁻¹" class="headerlink" title="3.2 基本矩阵 N &#x3D; (I − Q)⁻¹"></a>3.2 基本矩阵 N &#x3D; (I − Q)⁻¹</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">基本矩阵：N = (I − Q)⁻¹ = I + Q + Q² + Q³ + ...（Neumann 级数）</span><br><span class="line">含义：Nᵢⱼ = 从瞬态 i 出发，被吸收前访问瞬态 j 的期望次数</span><br><span class="line">  证明思路：Qᵏ 的 (i,j) 元 = 第 k 步恰在 j 的概率，对 k 求和 = 期望访问次数</span><br><span class="line">为什么可逆：吸收链 ⟹ Qⁿ → 0 ⟹ Q 的谱半径 &lt; 1 ⟹ (I − Q) 可逆</span><br><span class="line"></span><br><span class="line">两个核心公式：</span><br><span class="line">  平均吸收时间：t = N · 1（1 为全 1 列向量）</span><br><span class="line">    tᵢ = 从瞬态 i 出发，期望多少步被吸收</span><br><span class="line">  吸收概率：B = N · R</span><br><span class="line">    Bᵢₐ = 从瞬态 i 出发，最终被吸收态 a 吸收的概率</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-例题：随机游走的吸收分析"><a href="#3-3-例题：随机游走的吸收分析" class="headerlink" title="3.3 例题：随机游走的吸收分析"></a>3.3 例题：随机游走的吸收分析</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">状态 &#123;0, 1, 2, 3&#125;：0 = 破产（吸收），3 = 翻倍离场（吸收）</span><br><span class="line">1、2 为瞬态，每步等概率左/右移一格</span><br><span class="line">标准形（瞬态 &#123;1,2&#125; 在前）：</span><br><span class="line">  Q = [[0,   0.5],    R = [[0.5, 0  ],</span><br><span class="line">       [0.5, 0  ]]          [0,   0.5]]</span><br><span class="line"></span><br><span class="line">I − Q = [[1, −0.5], [−0.5, 1]]，det = 0.75</span><br><span class="line">N = (I−Q)⁻¹ = (1/0.75) · [[1, 0.5], [0.5, 1]]</span><br><span class="line">            = [[4/3, 2/3], [2/3, 4/3]]</span><br><span class="line"></span><br><span class="line">平均吸收时间：t = N·1 = (2, 2)ᵀ</span><br><span class="line">  从状态 1 或 2 出发，平均 2 步内见分晓</span><br><span class="line">吸收概率：B = N·R = [[2/3, 1/3], [1/3, 2/3]]</span><br><span class="line">  从状态 1 出发：P(破产) = 2/3，P(翻倍离场) = 1/3</span><br><span class="line">  直觉：离哪个吸收态近，就更容易被哪个吸收</span><br><span class="line"></span><br><span class="line">工程对号：</span><br><span class="line">  用户漏斗分析：注册→激活→留存 vs 流失，平均生命周期 = 平均吸收时间</span><br><span class="line">  代码可达性：死代码是无法到达吸收态的瞬态</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 吸收链：验证 N = (I−Q)⁻¹、t = N·1、B = N·R</span></span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">Q = np.array([[<span class="number">0.0</span>, <span class="number">0.5</span>],</span><br><span class="line">              [<span class="number">0.5</span>, <span class="number">0.0</span>]])          <span class="comment"># 瞬态 &#123;1,2&#125; 之间互跳</span></span><br><span class="line">R = np.array([[<span class="number">0.5</span>, <span class="number">0.0</span>],</span><br><span class="line">              [<span class="number">0.0</span>, <span class="number">0.5</span>]])          <span class="comment"># 1→破产(0)，2→离场(3)</span></span><br><span class="line"></span><br><span class="line">N = np.linalg.inv(np.eye(<span class="number">2</span>) - Q)    <span class="comment"># 基本矩阵</span></span><br><span class="line">t = N @ np.ones(<span class="number">2</span>)                  <span class="comment"># 平均吸收时间</span></span><br><span class="line">B = N @ R                           <span class="comment"># 吸收概率矩阵</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;N =&quot;</span>, N.tolist())            <span class="comment"># [[1.333, 0.667], [0.667, 1.333]]</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;t =&quot;</span>, t)                     <span class="comment"># [2. 2.]</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;B =&quot;</span>, B.tolist())            <span class="comment"># [[0.667, 0.333], [0.333, 0.667]]</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Monte Carlo 验证：从状态 1 出发模拟十万次</span></span><br><span class="line">rng = np.random.default_rng(<span class="number">3</span>)</span><br><span class="line">steps, ruin = [], <span class="number">0</span></span><br><span class="line"><span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">100_000</span>):</span><br><span class="line">    s, n = <span class="number">1</span>, <span class="number">0</span>                     <span class="comment"># 当前状态、步数</span></span><br><span class="line">    <span class="keyword">while</span> s <span class="keyword">in</span> (<span class="number">1</span>, <span class="number">2</span>):</span><br><span class="line">        s += rng.choice([-<span class="number">1</span>, <span class="number">1</span>])    <span class="comment"># 等概率左右走</span></span><br><span class="line">        n += <span class="number">1</span></span><br><span class="line">    steps.append(n)</span><br><span class="line">    ruin += (s == <span class="number">0</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;模拟平均步数 =&quot;</span>, <span class="built_in">round</span>(np.mean(steps), <span class="number">3</span>), <span class="string">&quot;（理论 2）&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;模拟破产概率 =&quot;</span>, <span class="built_in">round</span>(ruin / <span class="number">100_000</span>, <span class="number">3</span>), <span class="string">&quot;（理论 2/3）&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-连续时间马尔可夫链（简述）"><a href="#4-连续时间马尔可夫链（简述）" class="headerlink" title="4. 连续时间马尔可夫链（简述）"></a>4. 连续时间马尔可夫链（简述）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">动机：离散时间假设「事件都发生在整点」，真实系统的跳转时刻是连续的</span><br><span class="line">速率矩阵（生成元）Q：</span><br><span class="line">  qᵢⱼ ≥ 0（i ≠ j）：从 i 跳到 j 的速率（单位时间的跳跃强度）</span><br><span class="line">  行和为 0：qᵢᵢ = −Σⱼ≠ᵢ qᵢⱼ = −qᵢ</span><br><span class="line">行为分解（指数分布接管一切）：</span><br><span class="line">  在状态 i 停留时间 ~ Exp(qᵢ)</span><br><span class="line">  离开后以概率 qᵢⱼ / qᵢ 跳到 j —— 内嵌一条离散马尔可夫链</span><br><span class="line">Kolmogorov 方程（各一句话）：</span><br><span class="line">  后向方程：P′(t) = Q P(t)（按「第一步往哪跳」分解）</span><br><span class="line">  前向方程：P′(t) = P(t) Q（按「最后时刻从哪来」分解）</span><br><span class="line">  统一解：P(t) = e^&#123;Qt&#125;（矩阵指数；工程师可理解为「无限小步的 Pⁿ」）</span><br><span class="line">平稳分布：π Q = 0（流入 = 流出，称为全局平衡方程）</span><br><span class="line">生灭过程：状态为整数，每步只允许 ±1 跳</span><br><span class="line">  出生率 λₙ、死亡率 μₙ；M/M/1 队列的队长就是生灭过程</span><br><span class="line">  平稳分布（细致平衡）：πₙ = π₀ · Πₖ (λₖ₋₁ / μₖ)，需 Σ πₙ 收敛（λ &lt; μ）</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-泊松过程"><a href="#5-泊松过程" class="headerlink" title="5. 泊松过程"></a>5. 泊松过程</h2><h3 id="5-1-定义三条件"><a href="#5-1-定义三条件" class="headerlink" title="5.1 定义三条件"></a>5.1 定义三条件</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">计数过程 N(t) = [0, t] 内发生的事件数，强度 λ &gt; 0，满足：</span><br><span class="line">  ① N(0) = 0</span><br><span class="line">  ② 独立增量：不相交时间区间内的计数相互独立</span><br><span class="line">  ③ 平稳增量 + 稀有性：</span><br><span class="line">     P(N(h) = 1) = λh + o(h)     短区间内恰一个事件 ∝ 区间长</span><br><span class="line">     P(N(h) ≥ 2) = o(h)          短区间内两个以上事件可忽略</span><br><span class="line">直觉：事件「均匀、独立、稀有」地撒在时间轴上</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-核心结论：计数与间隔互为表里"><a href="#5-2-核心结论：计数与间隔互为表里" class="headerlink" title="5.2 核心结论：计数与间隔互为表里"></a>5.2 核心结论：计数与间隔互为表里</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">计数分布：N(t) ~ Poisson(λt)</span><br><span class="line">  P(N(t) = k) = e^(−λt) · (λt)ᵏ / k!，  E[N(t)] = λt</span><br><span class="line">到达间隔：T₁, T₂, ... 独立同分布 ~ Exp(λ)，密度 f(t) = λe^(−λt)</span><br><span class="line">  关键等式：&#123;N(t) = 0&#125; ⟺ &#123;T₁ &gt; t&#125; —— 计数视角与间隔视角的桥</span><br><span class="line">第 n 次到达时刻：Sₙ = T₁ + ... + Tₙ ~ Gamma(n, λ)（Erlang 分布）</span><br><span class="line"></span><br><span class="line">指数分布的无记忆性：</span><br><span class="line">  P(T &gt; s + t | T &gt; s) = P(T &gt; t)</span><br><span class="line">  已等了 s 分钟没等到，再等 t 分钟的概率与重新等一样</span><br><span class="line">  指数分布是唯一具有无记忆性的连续分布（离散对应：几何分布）</span><br><span class="line">  工程警示：设备老化、偏态到达都不满足无记忆性，别乱套指数分布</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/advanced-math/ch18-3.png" alt="泊松过程"></p>
+<p><em>图 18-3　计数呈阶梯状到达，期望 λt 为直线，事件间隔服从指数分布</em></p>
+<h3 id="5-3-合并与细分定理"><a href="#5-3-合并与细分定理" class="headerlink" title="5.3 合并与细分定理"></a>5.3 合并与细分定理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">合并：N₁ ~ PP(λ₁)，N₂ ~ PP(λ₂)，相互独立</span><br><span class="line">  ⟹ N₁ + N₂ ~ PP(λ₁ + λ₂)</span><br><span class="line">  且 N₁+N₂ 中某个事件来自 N₁ 的概率 = λ₁ / (λ₁ + λ₂)</span><br><span class="line">细分（稀释）：N ~ PP(λ)，每个事件独立地以概率 p 被标记</span><br><span class="line">  ⟹ 被标记的子流 ~ PP(pλ)，未标记的子流 ~ PP((1−p)λ)，且二者独立</span><br><span class="line">直觉：泊松流在「叠加」与「随机抽取」下封闭 —— 排队网络可分解的理论根基</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-例题：呼叫中心-服务器请求"><a href="#5-4-例题：呼叫中心-服务器请求" class="headerlink" title="5.4 例题：呼叫中心 &#x2F; 服务器请求"></a>5.4 例题：呼叫中心 &#x2F; 服务器请求</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">呼叫中心：来电服从 λ = 6 个/分钟的泊松过程</span><br><span class="line">① 1 分钟内至少 4 个来电：</span><br><span class="line">   P(N(1) ≥ 4) = 1 − Σₖ₌₀³ e^(−6)·6ᵏ/k!</span><br><span class="line">              = 1 − e^(−6)·(1 + 6 + 18 + 36)</span><br><span class="line">              = 1 − 61 e^(−6) ≈ 1 − 0.1512 ≈ 0.8488</span><br><span class="line">② 连续 2 分钟无来电：</span><br><span class="line">   P(N(2) = 0) = e^(−12) ≈ 6.1×10^(−6)</span><br><span class="line">   等价视角：P(T₁ &gt; 2) = e^(−6×2) —— 计数与间隔互为表里的实例</span><br><span class="line">③ 合并：电话 λ₁ = 6、在线工单 λ₂ = 2 独立</span><br><span class="line">   ⟹ 总请求流 ~ PP(8)；下一个请求是电话的概率 = 6/8 = 0.75</span><br><span class="line">④ 细分：30% 来电是投诉 ⟹ 投诉流 ~ PP(1.8)，与非投诉流独立</span><br><span class="line">容量启示：均值只决定平均值，波动由 Poisson 方差 = 均值决定</span><br><span class="line">  按 λ 配坐席必然 50% 时间不够用 —— 排队论（Erlang C）才是正解</span><br><span class="line">非齐次推广（一句话）：λ = λ(t)，N(t) ~ Poisson(∫₀ᵗ λ(s)ds)</span><br><span class="line">  —— 早高峰 / 晚高峰请求建模</span><br></pre></td></tr></table></figure>
+
+<h2 id="6-布朗运动与-Wiener-过程"><a href="#6-布朗运动与-Wiener-过程" class="headerlink" title="6. 布朗运动与 Wiener 过程"></a>6. 布朗运动与 Wiener 过程</h2><h3 id="6-1-定义"><a href="#6-1-定义" class="headerlink" title="6.1 定义"></a>6.1 定义</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">标准布朗运动 B(t)（Wiener 过程）满足：</span><br><span class="line">  ① B(0) = 0</span><br><span class="line">  ② 样本轨道连续（t ↦ B(t) 是连续函数）</span><br><span class="line">  ③ 独立增量</span><br><span class="line">  ④ 正态增量：B(t) − B(s) ~ N(0, t − s)（方差 = 时间长度）</span><br><span class="line">核心数字特征：</span><br><span class="line">  E[B(t)] = 0， Var(B(t)) = t</span><br><span class="line">  Cov(B(s), B(t)) = min(s, t)（共享时间段越长，相关性越强）</span><br><span class="line">直觉：粒子被无数微小随机碰撞推动；位移是海量小冲击之和</span><br><span class="line">  —— 中心极限定理在时间轴上的连续版，方差随时间线性累积</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-轨道的奇异性质（一句话版本）"><a href="#6-2-轨道的奇异性质（一句话版本）" class="headerlink" title="6.2 轨道的奇异性质（一句话版本）"></a>6.2 轨道的奇异性质（一句话版本）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">处处连续、处处不可微：</span><br><span class="line">  局部涨落尺度 ≈ √h，斜率 ≈ √h / h = 1/√h → ∞（h → 0）</span><br><span class="line">  轨道无限锯齿、长度无限 —— 普通微积分对它失效</span><br><span class="line">二次变差：把 [0, t] 切分取极限，Σ(ΔBᵢ)² → t（依概率收敛）</span><br><span class="line">  记作 [B, B](t) = t，微分形式：(dB)² = dt</span><br><span class="line">  对比：普通光滑函数的二次变差为 0</span><br><span class="line">  —— 这一条是整个随机微积分的根基</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/advanced-math/ch18-2.png" alt="布朗运动"></p>
+<p><em>图 18-2　路径连续却处处不可导，独立增量服从正态分布</em></p>
+<h3 id="6-3-与扩散方程的联系：热核"><a href="#6-3-与扩散方程的联系：热核" class="headerlink" title="6.3 与扩散方程的联系：热核"></a>6.3 与扩散方程的联系：热核</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">B(t) 的密度：p(x, t) = (1 / √(2πt)) · e^(−x²/(2t))</span><br><span class="line">它恰好是热方程（扩散方程）的基本解：</span><br><span class="line">  ∂p/∂t = (1/2) · ∂²p/∂x²</span><br><span class="line">  初始为点源 δ(x)，解就是上面的高斯核（热核）</span><br><span class="line">物理对应：一滴墨水在水中的扩散 = 无数分子各自做布朗运动</span><br><span class="line">数学对应：随机过程（微观粒子视角）⟺ 偏微分方程（宏观密度视角）</span><br><span class="line">  —— Feynman-Kac 公式把两者焊死，也是期权定价两种语言的翻译器</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-4-几何布朗运动与金融建模（一句话）"><a href="#6-4-几何布朗运动与金融建模（一句话）" class="headerlink" title="6.4 几何布朗运动与金融建模（一句话）"></a>6.4 几何布朗运动与金融建模（一句话）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">几何布朗运动：dS = μS dt + σS dB</span><br><span class="line">  漂移项 μS dt：确定性增长；扩散项 σS dB：成比例的随机扰动</span><br><span class="line">解：S(t) = S₀ · e^&#123;(μ − σ²/2) t + σB(t)&#125; —— 对数正态分布</span><br><span class="line">一句话：Black-Scholes 期权定价模型假设标的价格服从几何布朗运动</span><br><span class="line">  注意指数里的 −σ²/2：波动本身拖累复合增长（波动率税）</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-5-随机微积分入口：Ito-公式（点到为止）"><a href="#6-5-随机微积分入口：Ito-公式（点到为止）" class="headerlink" title="6.5 随机微积分入口：Itô 公式（点到为止）"></a>6.5 随机微积分入口：Itô 公式（点到为止）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Itô 公式：对光滑 f，</span><br><span class="line">  df(B(t)) = f′(B(t)) dB(t) + (1/2) f″(B(t)) dt</span><br><span class="line">对比普通链式法则 df = f′ dx —— 多出二阶项 (1/2) f″ dt</span><br><span class="line">来源：泰勒展开中 (dB)² 不消失而是等于 dt（二次变差非零）</span><br><span class="line">一句话记忆：布朗运动的世界里，二阶项是一阶效应</span><br><span class="line">到此为止：会用 numpy 模拟、知道 SDE 解的存在性即可，</span><br><span class="line">  深入请参阅随机分析专著</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-MCMC-采样（工程重头戏）"><a href="#7-MCMC-采样（工程重头戏）" class="headerlink" title="7. MCMC 采样（工程重头戏）"></a>7. MCMC 采样（工程重头戏）</h2><h3 id="7-1-为什么需要-MCMC"><a href="#7-1-为什么需要-MCMC" class="headerlink" title="7.1 为什么需要 MCMC"></a>7.1 为什么需要 MCMC</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">贝叶斯推断的后验：p(θ | D) = p(D | θ) p(θ) / p(D)</span><br><span class="line">  分母 p(D) = ∫ p(D | θ) p(θ) dθ 是高维积分，几乎永远无闭式解</span><br><span class="line">直接采样的困境：</span><br><span class="line">  拒绝采样：高维下接受率指数衰减</span><br><span class="line">  重要性采样：好提议分布难以构造，权重方差爆炸</span><br><span class="line">  —— 维数灾难：10 维以上传统方法基本失效</span><br><span class="line">MCMC 的核心思想（天才的转向）：</span><br><span class="line">  不直接采 π，而是构造一条以 π 为平稳分布的马尔可夫链</span><br><span class="line">  由第 2.6 节极限定理：链跑足够久后，Xₙ 的分布 ≈ π</span><br><span class="line">  之后的样本就是 π 的（相关）样本，可做蒙特卡洛估计</span><br><span class="line">关键便利：只需要 π 的非归一化形式 π̃（比值会约掉归一化常数）</span><br><span class="line">  —— 贝叶斯里 p(D) 从此不用算了</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-Metropolis-Hastings-算法"><a href="#7-2-Metropolis-Hastings-算法" class="headerlink" title="7.2 Metropolis-Hastings 算法"></a>7.2 Metropolis-Hastings 算法</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">输入：目标分布的非归一化密度 π̃，提议分布 q(y | x)，初始点 x₀</span><br><span class="line">迭代：</span><br><span class="line">  ① 从 q(y | x) 采样候选点 y</span><br><span class="line">  ② 计算接受率：</span><br><span class="line">     α = min( 1,  π(y) q(x | y) / ( π(x) q(y | x) ) )</span><br><span class="line">  ③ 以概率 α 接受：x ← y；否则留在原地：x ← x</span><br><span class="line">  ④ 记录当前 x 为一个样本</span><br><span class="line"></span><br><span class="line">为什么有效（细致平衡条件）：</span><br><span class="line">  π(x) · q(y|x) · α(x→y) = π(y) · q(x|y) · α(y→x)</span><br><span class="line">  两边对 x 求和 ⟹ π P = π ⟹ π 是平稳分布</span><br><span class="line">  直觉：α 的设计恰好让「从 x 流向 y 的概率质量 = 从 y 流回 x 的」</span><br><span class="line">对称提议特例（经典 Metropolis）：q(y|x) = q(x|y)（如高斯随机游走）</span><br><span class="line">  α = min(1, π(y) / π(x)) —— 上山必接受，下山按比值掷骰</span><br><span class="line">提议步长调参（经验法则）：</span><br><span class="line">  步长太大：提议常跑出高密度区，接受率暴跌，链原地不动</span><br><span class="line">  步长太小：接受率高但移动慢，样本自相关严重</span><br><span class="line">  高斯随机游走的健康接受率 ≈ 0.234 ~ 0.44</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-Gibbs-采样"><a href="#7-3-Gibbs-采样" class="headerlink" title="7.3 Gibbs 采样"></a>7.3 Gibbs 采样</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">思想：多维分布不会整体采，但「固定其余坐标、只采一维」往往会</span><br><span class="line">算法：θ = (θ₁, ..., θd)，轮流从全条件分布采样：</span><br><span class="line">  θ₁ ← p(θ₁ | θ₂, ..., θd, D)</span><br><span class="line">  θ₂ ← p(θ₂ | θ₁, ..., θd, D)</span><br><span class="line">  ...（逐坐标刷新一轮算一次迭代）</span><br><span class="line">本质：MH 的特例 —— 用全条件分布当提议，接受率恒为 1</span><br><span class="line">适用：共轭结构使全条件分布有闭式的模型</span><br><span class="line">  经典案例：LDA 主题模型、高斯混合模型、缺失数据插补</span><br><span class="line">局限：坐标强相关时链混合缓慢（像在狭长山谷里沿坐标轴挪动）</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-4-收敛诊断与-burn-in（一句话版）"><a href="#7-4-收敛诊断与-burn-in（一句话版）" class="headerlink" title="7.4 收敛诊断与 burn-in（一句话版）"></a>7.4 收敛诊断与 burn-in（一句话版）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">burn-in：丢弃链的前段（尚未到达平稳区的样本），只保留后段</span><br><span class="line">收敛诊断：</span><br><span class="line">  多链比较：从不同初始点跑多条链，Gelman-Rubin R̂ ≈ 1（&lt; 1.01）视为收敛</span><br><span class="line">  自相关 / 有效样本量 ESS：MCMC 样本相关，n 个样本只顶 ESS 个独立样本</span><br><span class="line">  迹线图（trace plot）：健康链条应像「毛毛虫」一样无趋势无周期抖动</span><br><span class="line">与贝叶斯推断的关系（总结）：</span><br><span class="line">  MCMC 让「只要写得下 先验 × 似然，就能做贝叶斯」成为现实</span><br><span class="line">  现代工具：PyMC、Stan（NUTS —— MH 的哈密顿升级，用梯度高效探索）</span><br><span class="line">  贝叶斯深度学习的后验近似，底层同样是这一套</span><br></pre></td></tr></table></figure>
+
+<h2 id="8-鞅与停时（简述）"><a href="#8-鞅与停时（简述）" class="headerlink" title="8. 鞅与停时（简述）"></a>8. 鞅与停时（简述）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">鞅定义：E|Xₙ| &lt; ∞ 且</span><br><span class="line">  E[Xₙ₊₁ | X₀, ..., Xₙ] = Xₙ</span><br><span class="line">  已知全部历史，下一步的条件期望 = 当前值</span><br><span class="line">公平博弈直觉：</span><br><span class="line">  Xₙ = 赌 n 局后的累积财富；鞅 ⟺ 每局期望收益为零 ⟺ 博弈公平</span><br><span class="line">  上鞅（≤）：庄家优势局，越赌越穷；下鞅（≥）：玩家优势局</span><br><span class="line">经典例子：</span><br><span class="line">  对称随机游走 Sₙ（p = 1/2 时）</span><br><span class="line">  似然比过程 Π q(Xᵢ)/p(Xᵢ)（在 p 下是鞅 —— 序列概率比检验 SPRT 的根基）</span><br><span class="line">  Polya 坛子中黑球比例</span><br><span class="line">停时：随机时刻 τ 是停时，如果 &#123;τ ≤ n&#125; 只由前 n 步决定（不许预知未来）</span><br><span class="line">  「第一次翻倍时离场」是停时；「在最高点前一天离场」不是停时</span><br><span class="line">可选停时定理（一句话）：</span><br><span class="line">  有界停时（或一致可积条件）下，E[X_τ] = E[X₀]</span><br><span class="line">  —— 「不存在稳赚的择时策略」的严格数学表述：</span><br><span class="line">    公平博弈里，任何不预知未来的离场规则都改变不了期望收益</span><br><span class="line">  量化警示：回测里赚钱的择时策略，要么违规看了未来，要么不在鞅设定里</span><br></pre></td></tr></table></figure>
+
+<h2 id="9-随机过程-→-ML-工程对照表"><a href="#9-随机过程-→-ML-工程对照表" class="headerlink" title="9. 随机过程 → ML &#x2F; 工程对照表"></a>9. 随机过程 → ML &#x2F; 工程对照表</h2><table>
+<thead>
+<tr>
+<th>随机过程概念</th>
+<th>ML &#x2F; 工程对应</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>马尔可夫链平稳分布 πP &#x3D; π</td>
+<td>PageRank：网页图随机游走的长期停留分布</td>
+</tr>
+<tr>
+<td>马尔可夫链 + 隐状态</td>
+<td>HMM 与词性标注 &#x2F; 语音识别：Viterbi 解码、前向后向算法</td>
+</tr>
+<tr>
+<td>MCMC（MH &#x2F; Gibbs）</td>
+<td>贝叶斯深度学习与概率编程：PyMC &#x2F; Stan 的后验采样</td>
+</tr>
+<tr>
+<td>布朗运动 &#x2F; SDE</td>
+<td>扩散模型（DDPM &#x2F; Score SDE）：前向加噪是扩散，反向去噪是反向 SDE</td>
+</tr>
+<tr>
+<td>马尔可夫决策过程 MDP</td>
+<td>强化学习：转移矩阵 + 奖励 + 折扣，Bellman 方程的宿主</td>
+</tr>
+<tr>
+<td>泊松过程 &#x2F; 排队论</td>
+<td>容量规划：线程池 &#x2F; 连接池 &#x2F; 坐席 sizing，M&#x2F;M&#x2F;1 延迟估算</td>
+</tr>
+<tr>
+<td>指数分布无记忆性</td>
+<td>可靠性工程：MTBF 建模、故障间隔分析、恒定失效率假设</td>
+</tr>
+<tr>
+<td>CTMC 生灭过程</td>
+<td>M&#x2F;M&#x2F;1、M&#x2F;M&#x2F;c 队列：服务台数量与等待时间权衡</td>
+</tr>
+<tr>
+<td>鞅 &#x2F; 可选停时定理</td>
+<td>量化交易「择时无效」判据、序列检验 SPRT、A&#x2F;B 提前终止分析</td>
+</tr>
+<tr>
+<td>Gibbs 采样</td>
+<td>LDA 主题模型、协同过滤中的缺失值插补</td>
+</tr>
+<tr>
+<td>高斯过程（布朗运动的近亲）</td>
+<td>贝叶斯优化代理模型、超参搜索、时空插值 kriging</td>
+</tr>
+<tr>
+<td>吸收马尔可夫链</td>
+<td>漏斗转化 &#x2F; 用户流失分析：平均生命周期 &#x3D; 平均吸收时间</td>
+</tr>
+</tbody></table>
+<h2 id="10-Python-实战"><a href="#10-Python-实战" class="headerlink" title="10. Python 实战"></a>10. Python 实战</h2><h3 id="10-1-模拟马尔可夫链并验证-πP-π"><a href="#10-1-模拟马尔可夫链并验证-πP-π" class="headerlink" title="10.1 模拟马尔可夫链并验证 πP &#x3D; π"></a>10.1 模拟马尔可夫链并验证 πP &#x3D; π</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 模拟马尔可夫链：用长期访问频率逼近平稳分布，并验证 πP = π</span></span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">rng = np.random.default_rng(<span class="number">42</span>)</span><br><span class="line">P = np.array([[<span class="number">0.9</span>, <span class="number">0.1</span>],</span><br><span class="line">              [<span class="number">0.5</span>, <span class="number">0.5</span>]])               <span class="comment"># 0 = 晴, 1 = 雨</span></span><br><span class="line"></span><br><span class="line">n_steps = <span class="number">200_000</span></span><br><span class="line">x = <span class="number">0</span>                                    <span class="comment"># 从晴天出发</span></span><br><span class="line">counts = np.zeros(<span class="number">2</span>)</span><br><span class="line"><span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(n_steps):</span><br><span class="line">    x = rng.choice(<span class="number">2</span>, p=P[x])            <span class="comment"># 按当前状态所在行抽样下一状态</span></span><br><span class="line">    counts[x] += <span class="number">1</span></span><br><span class="line"></span><br><span class="line">freq = counts / n_steps                  <span class="comment"># 经验访问频率</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;经验频率 =&quot;</span>, freq)                <span class="comment"># ≈ [0.8333 0.1667] = π</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;freq @ P =&quot;</span>, freq @ P)            <span class="comment"># 与 freq 几乎相同：πP = π 得证</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;理论 π = (5/6, 1/6) ≈&quot;</span>, <span class="number">5</span>/<span class="number">6</span>, <span class="number">1</span>/<span class="number">6</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-2-模拟泊松过程：计数-Poisson-λt-，间隔-Exp-λ"><a href="#10-2-模拟泊松过程：计数-Poisson-λt-，间隔-Exp-λ" class="headerlink" title="10.2 模拟泊松过程：计数 ~ Poisson(λt)，间隔 ~ Exp(λ)"></a>10.2 模拟泊松过程：计数 ~ Poisson(λt)，间隔 ~ Exp(λ)</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 模拟泊松过程：验证「计数~Poisson(λt)，间隔~Exp(λ)」互为表里</span></span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">rng = np.random.default_rng(<span class="number">0</span>)</span><br><span class="line">lam = <span class="number">6.0</span>                                <span class="comment"># λ = 6 个请求/分钟</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 生成一条长请求流：到达间隔独立同分布 Exp(λ)</span></span><br><span class="line">n_events = <span class="number">600_000</span></span><br><span class="line">gaps = rng.exponential(<span class="number">1</span> / lam, n_events)    <span class="comment"># 到达间隔，均值 1/λ</span></span><br><span class="line">arrival_times = np.cumsum(gaps)              <span class="comment"># 各事件的到达时刻</span></span><br><span class="line">T_total = arrival_times[-<span class="number">1</span>]</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;总时长 ≈&quot;</span>, <span class="built_in">round</span>(T_total), <span class="string">&quot;分钟，事件数 =&quot;</span>, n_events)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证 1：间隔均值 ≈ 1/λ；尾部概率 P(T &gt; t) ≈ e^(−λt)</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;间隔均值 =&quot;</span>, <span class="built_in">round</span>(gaps.mean(), <span class="number">4</span>), <span class="string">&quot;（理论 1/λ =&quot;</span>, <span class="built_in">round</span>(<span class="number">1</span>/lam, <span class="number">4</span>), <span class="string">&quot;）&quot;</span>)</span><br><span class="line">t0 = <span class="number">0.2</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;P(间隔 &gt; 0.2) 经验 =&quot;</span>, <span class="built_in">round</span>((gaps &gt; t0).mean(), <span class="number">4</span>),</span><br><span class="line">      <span class="string">&quot;（理论 e^(−1.2) =&quot;</span>, <span class="built_in">round</span>(np.exp(-lam * t0), <span class="number">4</span>), <span class="string">&quot;）&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证 2：每分钟事件计数 ~ Poisson(λ)</span></span><br><span class="line">marks = np.arange(<span class="number">1</span>, <span class="built_in">int</span>(T_total) + <span class="number">1</span>)           <span class="comment"># 每分钟的分界点</span></span><br><span class="line">per_minute = np.diff(np.searchsorted(arrival_times, marks))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;每分钟计数均值 =&quot;</span>, <span class="built_in">round</span>(per_minute.mean(), <span class="number">3</span>), <span class="string">&quot;（理论 λ =&quot;</span>, lam, <span class="string">&quot;）&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;每分钟计数方差 =&quot;</span>, <span class="built_in">round</span>(per_minute.var(), <span class="number">3</span>), <span class="string">&quot;（理论 = 均值）&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;P(N=0) 经验 =&quot;</span>, <span class="built_in">round</span>((per_minute == <span class="number">0</span>).mean(), <span class="number">5</span>),</span><br><span class="line">      <span class="string">&quot;（理论 e^(−6) =&quot;</span>, <span class="built_in">round</span>(np.exp(-lam), <span class="number">5</span>), <span class="string">&quot;）&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-3-模拟布朗运动轨道与二次变差"><a href="#10-3-模拟布朗运动轨道与二次变差" class="headerlink" title="10.3 模拟布朗运动轨道与二次变差"></a>10.3 模拟布朗运动轨道与二次变差</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 模拟布朗运动：轨道、端点分布、二次变差 [B,B](t) = t</span></span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">rng = np.random.default_rng(<span class="number">7</span>)</span><br><span class="line">T, n = <span class="number">1.0</span>, <span class="number">10_000</span></span><br><span class="line">dt = T / n</span><br><span class="line"></span><br><span class="line"><span class="comment"># 单条轨道：增量 dB ~ N(0, dt)，累加即轨道</span></span><br><span class="line">dB = rng.normal(<span class="number">0.0</span>, np.sqrt(dt), n)</span><br><span class="line">B = np.concatenate([[<span class="number">0.0</span>], np.cumsum(dB)])</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;单条轨道终点 B(1) =&quot;</span>, <span class="built_in">round</span>(B[-<span class="number">1</span>], <span class="number">3</span>))   <span class="comment"># N(0,1) 的一个样本</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 多条轨道：验证 B(1) ~ N(0, 1)</span></span><br><span class="line">m = <span class="number">50_000</span></span><br><span class="line">endpoints = np.cumsum(rng.normal(<span class="number">0.0</span>, np.sqrt(dt), (m, n)), axis=<span class="number">1</span>)[:, -<span class="number">1</span>]</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;B(1) 样本均值 =&quot;</span>, <span class="built_in">round</span>(endpoints.mean(), <span class="number">3</span>), <span class="string">&quot;（理论 0）&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;B(1) 样本方差 =&quot;</span>, <span class="built_in">round</span>(endpoints.var(), <span class="number">3</span>), <span class="string">&quot;（理论 1）&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 二次变差：Σ(ΔB)² → T，数值上感受 (dB)² = dt</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;二次变差 Σ(ΔB)² =&quot;</span>, <span class="built_in">round</span>(np.<span class="built_in">sum</span>(dB ** <span class="number">2</span>), <span class="number">4</span>), <span class="string">&quot;（理论 T = 1）&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 对比：光滑函数（直线）的二次变差 = 0</span></span><br><span class="line">x = np.linspace(<span class="number">0</span>, <span class="number">1</span>, n + <span class="number">1</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;直线的二次变差 ≈&quot;</span>, np.<span class="built_in">sum</span>(np.diff(x) ** <span class="number">2</span>))  <span class="comment"># ≈ 0</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="10-4-手写-Metropolis-Hastings：采一个双峰分布"><a href="#10-4-手写-Metropolis-Hastings：采一个双峰分布" class="headerlink" title="10.4 手写 Metropolis-Hastings：采一个双峰分布"></a>10.4 手写 Metropolis-Hastings：采一个双峰分布</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Metropolis-Hastings：采样双峰混合分布 0.3·N(−2, 0.5²) + 0.7·N(2, 1²)</span></span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">rng = np.random.default_rng(<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">target</span>(<span class="params">x</span>):</span><br><span class="line">    <span class="comment"># 非归一化目标密度（公共常数会在接受率的比值中约掉，但 1/σ 不可省）</span></span><br><span class="line">    <span class="keyword">return</span> (<span class="number">0.3</span> * np.exp(-(x + <span class="number">2</span>) ** <span class="number">2</span> / (<span class="number">2</span> * <span class="number">0.25</span>)) / <span class="number">0.5</span></span><br><span class="line">            + <span class="number">0.7</span> * np.exp(-(x - <span class="number">2</span>) ** <span class="number">2</span> / <span class="number">2.0</span>))</span><br><span class="line"></span><br><span class="line">n_iter = <span class="number">200_000</span></span><br><span class="line">burn_in = <span class="number">20_000</span></span><br><span class="line">proposal_sd = <span class="number">1.5</span>                        <span class="comment"># 高斯随机游走提议的步长</span></span><br><span class="line">samples = np.empty(n_iter)</span><br><span class="line">x, accepted = <span class="number">0.0</span>, <span class="number">0</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(n_iter):</span><br><span class="line">    y = x + rng.normal(<span class="number">0.0</span>, proposal_sd)         <span class="comment"># 对称提议 q(y|x)</span></span><br><span class="line">    alpha = <span class="built_in">min</span>(<span class="number">1.0</span>, target(y) / target(x))      <span class="comment"># 对称提议：α = min(1, π(y)/π(x))</span></span><br><span class="line">    <span class="keyword">if</span> rng.random() &lt; alpha:</span><br><span class="line">        x = y</span><br><span class="line">        accepted += <span class="number">1</span></span><br><span class="line">    samples[i] = x</span><br><span class="line"></span><br><span class="line">s = samples[burn_in:]                            <span class="comment"># 丢弃 burn-in，只保留平稳段</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;接受率 =&quot;</span>, <span class="built_in">round</span>(accepted / n_iter, <span class="number">3</span>))   <span class="comment"># 健康区间约 0.2 ~ 0.5</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;P(x &lt; 0) 经验 =&quot;</span>, <span class="built_in">round</span>((s &lt; <span class="number">0</span>).mean(), <span class="number">3</span>), <span class="string">&quot;（理论 ≈ 0.316）&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;样本均值 =&quot;</span>, <span class="built_in">round</span>(s.mean(), <span class="number">3</span>), <span class="string">&quot;（理论 0.3×(−2)+0.7×2 = 0.8）&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;样本标准差 =&quot;</span>, <span class="built_in">round</span>(s.std(), <span class="number">3</span>))</span><br></pre></td></tr></table></figure>
+
+<h2 id="11-验收清单"><a href="#11-验收清单" class="headerlink" title="11. 验收清单"></a>11. 验收清单</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">□ 能用「随机变量 vs 随机过程」一句话点题：概率论加时间轴</span><br><span class="line">□ 能说出状态空间 × 指标集的四种组合并各举一例</span><br><span class="line">□ 能定义有限维分布，并说出 Kolmogorov 存在性定理的一句话版本</span><br><span class="line">□ 能区分独立增量、平稳增量、严平稳、宽平稳</span><br><span class="line">□ 能写出马尔可夫性定义并解释「现在包含预测未来所需的一切」</span><br><span class="line">□ 能写出转移矩阵的两条性质（非负、行和为 1）与 μₙ = μ₀Pⁿ</span><br><span class="line">□ 能默写 Chapman-Kolmogorov 方程 P^(m+n) = P^m P^n 并解释「枚举中转站」</span><br><span class="line">□ 能区分互通 / 常返 / 瞬返 / 正常返 / 零常返 / 周期 / 遍历 / 不可约</span><br><span class="line">□ 能写出平稳分布方程 πP = π，并从特征向量与 Perron-Frobenius 两个视角解释</span><br><span class="line">□ 能陈述极限定理（不可约 + 非周期 + 正常返 ⟹ Pⁿ 行收敛到 π）并举周期反例</span><br><span class="line">□ 能手算天气模型的 π = (5/6, 1/6) 并解释 P¹⁰ 两行为何几乎相同</span><br><span class="line">□ 能解释 PageRank = 随机游走链的平稳分布，以及 α 瞬移项如何保证不可约</span><br><span class="line">□ 能写出吸收链三件套：N = (I−Q)⁻¹、t = N·1、B = N·R 并手算第 3.3 节例题</span><br><span class="line">□ 能写出 CTMC 速率矩阵 Q 的行和约束与 P(t) = e^&#123;Qt&#125;，说出 πQ = 0</span><br><span class="line">□ 能复述泊松过程定义三条件（N(0)=0、独立增量、平稳增量+稀有性）</span><br><span class="line">□ 能写出 N(t) ~ Poisson(λt) 与间隔 ~ Exp(λ)，并用 &#123;N(t)=0&#125;⟺&#123;T₁&gt;t&#125; 互相推导</span><br><span class="line">□ 能解释指数分布无记忆性及其工程适用边界</span><br><span class="line">□ 能陈述泊松流的合并定理（λ₁+λ₂）与细分定理（pλ）</span><br><span class="line">□ 能写出布朗运动定义四条件与 Cov(B(s),B(t)) = min(s,t)</span><br><span class="line">□ 能用 √h / h = 1/√h 一句话解释轨道处处不可微</span><br><span class="line">□ 能写出二次变差 [B,B](t) = t 与 Itô 修正 (dB)² = dt</span><br><span class="line">□ 能写出热核 p(x,t) 满足 ∂p/∂t = (1/2)∂²p/∂x²，说出微观-宏观对应</span><br><span class="line">□ 能写出几何布朗运动解 S(t) = S₀e^&#123;(μ−σ²/2)t+σB(t)&#125; 并解释 −σ²/2</span><br><span class="line">□ 能写出 MH 接受率 α = min(1, π(y)q(x|y)/(π(x)q(y|x))) 并解释细致平衡</span><br><span class="line">□ 能说明为何 MCMC 只需非归一化密度、Gibbs 是 MH 接受率恒 1 的特例</span><br><span class="line">□ 能说出 burn-in、R̂、ESS 各自诊断什么</span><br><span class="line">□ 能写出鞅定义 E[Xₙ₊₁|历史] = Xₙ 并解释可选停时定理为何封杀择时策略</span><br><span class="line">□ 能独立运行四个 Python 实战：链频率验证、泊松间隔、布朗轨道、MH 双峰</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p><strong>相关文章</strong>：<a href="/advanced-math/mit-advanced-math-guide/">高等数学总览</a> · <a href="/advanced-math/probability-statistics-guide/">概率论与数理统计</a> · <a href="/advanced-math/dynamical-systems-guide/">动力系统与混沌</a></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E5%AD%A6%E5%9F%BA%E7%A1%80/" rel="tag"># 数学基础</a>
+              <a href="/tags/%E9%9A%8F%E6%9C%BA%E8%BF%87%E7%A8%8B/" rel="tag"># 随机过程</a>
+              <a href="/tags/%E9%A9%AC%E5%B0%94%E5%8F%AF%E5%A4%AB%E9%93%BE/" rel="tag"># 马尔可夫链</a>
+              <a href="/tags/%E6%B3%8A%E6%9D%BE%E8%BF%87%E7%A8%8B/" rel="tag"># 泊松过程</a>
+              <a href="/tags/%E5%B8%83%E6%9C%97%E8%BF%90%E5%8A%A8/" rel="tag"># 布朗运动</a>
+              <a href="/tags/MCMC/" rel="tag"># MCMC</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/concurrency/threadpool-task-orchestration/" rel="prev" title="基于线程池的任务流程编排实战">
+                  <i class="fa fa-angle-left"></i> 基于线程池的任务流程编排实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/advanced-math/real-analysis-measure-guide/" rel="next" title="第19章 实分析与测度论初步：完备性 · 一致收敛 · Lebesgue积分">
+                  第19章 实分析与测度论初步：完备性 · 一致收敛 · Lebesgue积分 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">2.5m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">37:15</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>
