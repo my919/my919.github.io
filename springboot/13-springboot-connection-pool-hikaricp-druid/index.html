@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十三章：数据库连接池：HikariCP与Druid对比与落地概念基础JDBC 连接池负责复用数据库连接，避免每次请求都新建 TCP 与认证开销。本仓库（Spring Boot 4.0.6 + dynamic-datasource + MyBatis-Flex）默认使用 HikariCP；本文对比 HikariCP 与 Druid，并给出在本项目中的配置方式、监控与选型建议。  连接池是什么：容器">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十三章：数据库连接池：HikariCP与Druid对比与落地">
+<meta property="og:url" content="https://my919.github.io/springboot/13-springboot-connection-pool-hikaricp-druid/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十三章：数据库连接池：HikariCP与Druid对比与落地概念基础JDBC 连接池负责复用数据库连接，避免每次请求都新建 TCP 与认证开销。本仓库（Spring Boot 4.0.6 + dynamic-datasource + MyBatis-Flex）默认使用 HikariCP；本文对比 HikariCP 与 Druid，并给出在本项目中的配置方式、监控与选型建议。  连接池是什么：容器">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-17T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.597Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="SpringBoot">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/springboot/13-springboot-connection-pool-hikaricp-druid/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/springboot/13-springboot-connection-pool-hikaricp-druid/","path":"springboot/13-springboot-connection-pool-hikaricp-druid/","title":"第十三章：数据库连接池：HikariCP与Druid对比与落地"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十三章：数据库连接池：HikariCP与Druid对比与落地 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E4%B8%89%E7%AB%A0%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0%EF%BC%9AHikariCP%E4%B8%8EDruid%E5%AF%B9%E6%AF%94%E4%B8%8E%E8%90%BD%E5%9C%B0"><span class="nav-number">1.</span> <span class="nav-text">第十三章：数据库连接池：HikariCP与Druid对比与落地</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E8%BF%9E%E6%8E%A5%E6%B1%A0"><span class="nav-number">1.2.</span> <span class="nav-text">为什么需要连接池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%80%9F%E8%BF%98%E8%BF%9E%E6%8E%A5%E6%B5%81%E7%A8%8B"><span class="nav-number">1.3.</span> <span class="nav-text">借还连接流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#HikariCP-%E5%86%85%E9%83%A8%E5%AE%9E%E7%8E%B0%E8%A6%81%E7%82%B9"><span class="nav-number">1.4.</span> <span class="nav-text">HikariCP 内部实现要点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-ConcurrentBag%EF%BC%9A%E6%97%A0%E9%94%81%E5%80%9F%E8%BF%98"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. ConcurrentBag：无锁借还</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-FastList-%E6%9B%BF%E4%BB%A3-ArrayList"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. FastList 替代 ArrayList</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%AD%97%E8%8A%82%E7%A0%81%E7%BA%A7%E4%BC%98%E5%8C%96"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 字节码级优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%BF%9E%E6%8E%A5%E7%8A%B6%E6%80%81%E6%9C%BA%E4%B8%8E-Housekeeper"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. 连接状态机与 Housekeeper</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#HikariCP-%E4%B8%8E-Druid-%E5%AF%B9%E6%AF%94"><span class="nav-number">1.5.</span> <span class="nav-text">HikariCP 与 Druid 对比</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%AE%9A%E4%BD%8D"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 定位</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%80%A7%E8%83%BD%E4%B8%8E%E8%B5%84%E6%BA%90%EF%BC%88%E7%BB%8F%E9%AA%8C%E7%BB%93%E8%AE%BA%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 性能与资源（经验结论）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%8A%9F%E8%83%BD%E5%B7%AE%E5%BC%82%EF%BC%88%E7%A8%8B%E5%BA%8F%E5%91%98%E9%9C%80%E7%9F%A5%E9%81%93%E7%9A%84%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 功能差异（程序员需知道的）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E9%A1%B9%E7%9B%AE%E8%90%BD%E5%9C%B0%EF%BC%9AHikariCP%EF%BC%88%E5%BD%93%E5%89%8D%E6%96%B9%E6%A1%88%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">本项目落地：HikariCP（当前方案）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%BE%9D%E8%B5%96%EF%BC%88%E5%B7%B2%E6%9C%89%EF%BC%89"><span class="nav-number">1.6.1.</span> <span class="nav-text">1. 依赖（已有）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E9%85%8D%E7%BD%AE%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.6.2.</span> <span class="nav-text">2. 配置示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E4%BB%A3%E7%A0%81%E4%BE%A7%E5%88%87%E6%8D%A2%E6%95%B0%E6%8D%AE%E6%BA%90"><span class="nav-number">1.6.3.</span> <span class="nav-text">3. 代码侧切换数据源</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%85%B3%E9%94%AE%E5%8F%82%E6%95%B0%E8%B0%83%E4%BC%98"><span class="nav-number">1.6.4.</span> <span class="nav-text">4. 关键参数调优</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E9%AA%8C%E8%AF%81"><span class="nav-number">1.6.5.</span> <span class="nav-text">5. 验证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E7%9B%91%E6%8E%A7%EF%BC%88HikariCP%EF%BC%89"><span class="nav-number">1.6.6.</span> <span class="nav-text">6. 监控（HikariCP）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%E6%B3%84%E6%BC%8F%E6%A3%80%E6%B5%8B"><span class="nav-number">1.7.</span> <span class="nav-text">连接泄漏检测</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Hikari-%E7%9A%84-leak-detection-threshold"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. Hikari 的 leak-detection-threshold</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Druid-%E7%9A%84-removeAbandoned"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. Druid 的 removeAbandoned</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E9%98%B2%E5%BE%A1%E6%80%A7%E5%86%99%E6%B3%95"><span class="nav-number">1.7.3.</span> <span class="nav-text">3. 防御性写法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%AF%E9%80%89%E6%96%B9%E6%A1%88%EF%BC%9A%E5%88%87%E6%8D%A2%E4%B8%BA-Druid"><span class="nav-number">1.8.</span> <span class="nav-text">可选方案：切换为 Druid</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%B7%BB%E5%8A%A0%E4%BE%9D%E8%B5%96"><span class="nav-number">1.8.1.</span> <span class="nav-text">1. 添加依赖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-dynamic-datasource-Druid-%E9%85%8D%E7%BD%AE"><span class="nav-number">1.8.2.</span> <span class="nav-text">2. dynamic-datasource + Druid 配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Druid-%E7%9B%91%E6%8E%A7%E9%A1%B5%EF%BC%88%E4%BB%85-dev-%E5%86%85%E7%BD%91%EF%BC%89"><span class="nav-number">1.8.3.</span> <span class="nav-text">3. Druid 监控页（仅 dev &#x2F; 内网）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-Wall-%E9%98%B2%E7%81%AB%E5%A2%99%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.8.4.</span> <span class="nav-text">4. Wall 防火墙示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%95%E6%95%B0%E6%8D%AE%E6%BA%90%E5%9C%BA%E6%99%AF%EF%BC%88%E6%97%A0-dynamic-datasource%EF%BC%89"><span class="nav-number">1.9.</span> <span class="nav-text">单数据源场景（无 dynamic-datasource）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%89%E5%9E%8B%E5%BB%BA%E8%AE%AE%EF%BC%88%E6%9C%AC%E4%BB%93%E5%BA%93%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">选型建议（本仓库）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="nav-number">1.11.</span> <span class="nav-text">常见问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6%E4%B8%8E%E9%93%BE%E6%8E%A5"><span class="nav-number">1.12.</span> <span class="nav-text">相关文件与链接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.13.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/springboot/13-springboot-connection-pool-hikaricp-druid/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十三章：数据库连接池：HikariCP与Druid对比与落地 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十三章：数据库连接池：HikariCP与Druid对比与落地
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-17 11:00:00" itemprop="dateCreated datePublished" datetime="2026-05-17T11:00:00+08:00">2026-05-17</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/SpringBoot/" itemprop="url" rel="index"><span itemprop="name">SpringBoot</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>9k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>8 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十三章：数据库连接池：HikariCP与Druid对比与落地"><a href="#第十三章：数据库连接池：HikariCP与Druid对比与落地" class="headerlink" title="第十三章：数据库连接池：HikariCP与Druid对比与落地"></a>第十三章：数据库连接池：HikariCP与Druid对比与落地</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p>JDBC 连接池负责<strong>复用数据库连接</strong>，避免每次请求都新建 TCP 与认证开销。本仓库（<strong>Spring Boot 4.0.6 + dynamic-datasource + MyBatis-Flex</strong>）默认使用 <strong>HikariCP</strong>；本文对比 <strong>HikariCP</strong> 与 <strong>Druid</strong>，并给出在本项目中的<strong>配置方式、监控与选型建议</strong>。</p>
+<ol>
+<li><strong>连接池是什么</strong>：容器维护一批<strong>已建立的数据库连接</strong>，<code>getConnection()</code> 变成「<strong>借出 &#x2F; 归还</strong>」，省去每次 TCP 握手与认证的开销。</li>
+<li><strong>为什么必须用池</strong>：无池时高并发下<strong>连接数暴涨</strong>、数据库被打满；有池后 <strong><code>maximum-pool-size</code> 上限</strong>保护数据库，等待队列 + <strong><code>connection-timeout</code></strong> 让过载行为可控。</li>
+<li><strong>应用线程 ≠ 数据库连接</strong>：Web 线程等待 IO 时可<strong>提前归还连接</strong>回池，供其他请求使用，少量连接即可服务大量请求。</li>
+<li><strong>HikariCP vs Druid</strong>：<strong>HikariCP</strong> 是 <strong>Spring Boot 2+ 内置默认</strong>，极致性能、依赖最少；<strong>Druid</strong> 用一定开销换来<strong>监控页、慢 SQL 统计、Wall 防火墙</strong>等治理能力。</li>
+<li><strong>本项目现状</strong>：<strong>dynamic-datasource</strong> 管理 <strong>MySQL（primary）+ PostgreSQL</strong> 双库，未引入 Druid 依赖时框架默认 <strong>HikariCP</strong>；下文给出落地配置、监控、Druid 切换与选型建议。</li>
+</ol>
+<p>前置阅读：<a href="/springboot/02-springboot-multi-profile-config/">第二章：SpringBoot 多环境配置：Profile 激活与优先级</a>、<a href="/springboot/05-springboot-integrate-mybatis-flex-multi-datasource/">第五章：SpringBoot 集成 MyBatis-Flex 与多数据源</a>。</p>
+<h2 id="为什么需要连接池"><a href="#为什么需要连接池" class="headerlink" title="为什么需要连接池"></a>为什么需要连接池</h2><table>
+<thead>
+<tr>
+<th>无池</th>
+<th>有池</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>每次 <code>getConnection()</code> 走完整握手</td>
+<td>从池中借出已建连，用完归还</td>
+</tr>
+<tr>
+<td>高并发下连接数暴涨、DB 被打满</td>
+<td><code>maximum-pool-size</code> 上限保护数据库</td>
+</tr>
+<tr>
+<td>慢请求拖垮数据库</td>
+<td>等待队列 + 超时（<code>connection-timeout</code>）可控</td>
+</tr>
+</tbody></table>
+<p>应用线程 ≠ 数据库连接：Web 线程可在等待 IO 时释放连接回池，供其他请求使用。</p>
+<h2 id="借还连接流程"><a href="#借还连接流程" class="headerlink" title="借还连接流程"></a>借还连接流程</h2><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant T as 业务线程
+  participant P as HikariCP 池
+  participant DB as MySQL&#x2F;PostgreSQL
+
+  T-&gt;&gt;P: getConnection
+  alt 池中有空闲连接
+    P--&gt;&gt;T: 返回 Connection
+  else 池满
+    P--&gt;&gt;T: 等待或 timeout
+  end
+  T-&gt;&gt;DB: SQL
+  T-&gt;&gt;P: close 归还
+</code>
+</pre>
+
+<h2 id="HikariCP-内部实现要点"><a href="#HikariCP-内部实现要点" class="headerlink" title="HikariCP 内部实现要点"></a>HikariCP 内部实现要点</h2><p>HikariCP 之所以快，核心在三个非常规设计：</p>
+<h3 id="1-ConcurrentBag：无锁借还"><a href="#1-ConcurrentBag：无锁借还" class="headerlink" title="1. ConcurrentBag：无锁借还"></a>1. ConcurrentBag：无锁借还</h3><p>传统池用 <code>BlockingQueue</code> 存空闲连接，借还都要拿锁。Hikari 自研 <strong><code>ConcurrentBag</code></strong>：</p>
+<ul>
+<li>每个线程持有 <strong><code>ThreadLocal</code> 副本列表</strong>，先查自己最近用过的连接——大概率<strong>直接命中</strong>，零竞争。</li>
+<li>没命中再扫<strong>共享列表</strong>（<code>CopyOnWriteArrayList</code>），通过 CAS 标记借用。</li>
+<li>都没有才走<strong>全局等待队列</strong>（<code>SynchronousQueue</code> 模式）阻塞或超时。</li>
+</ul>
+<p>热点路径几乎无锁，这是 Hikari 高 QPS 下延迟稳定的主因。</p>
+<h3 id="2-FastList-替代-ArrayList"><a href="#2-FastList-替代-ArrayList" class="headerlink" title="2. FastList 替代 ArrayList"></a>2. FastList 替代 ArrayList</h3><p><code>PoolEntry</code>&#x2F;<code>Statement</code> 列表用自研 <code>FastList</code>：去掉 <code>ArrayList</code> 的<strong>范围检查</strong>，并按 Hikari「<strong>尾删为主</strong>」的访问模式把 <code>remove</code> 改为<strong>从尾部反向扫描</strong>。微小改动带来显著 I-cache 友好性。</p>
+<h3 id="3-字节码级优化"><a href="#3-字节码级优化" class="headerlink" title="3. 字节码级优化"></a>3. 字节码级优化</h3><p>通过 <strong>Javassist</strong> 生成 <code>ProxyConnection</code>&#x2F;<code>ProxyStatement</code> 等代理类，把 <code>Connection.close()</code> 改写为「<strong>归还到池</strong>」而不是真正关闭；同时把 <code>isClosed()</code> 等检查内联，减少栈帧。</p>
+<h3 id="4-连接状态机与-Housekeeper"><a href="#4-连接状态机与-Housekeeper" class="headerlink" title="4. 连接状态机与 Housekeeper"></a>4. 连接状态机与 Housekeeper</h3><p>后台 <strong><code>houseKeeper</code> 线程</strong>每 30s 扫一次池：</p>
+<ul>
+<li>关闭超出 <code>max-lifetime</code> 的连接。</li>
+<li>空闲连接超过 <code>idle-timeout</code> 且高于 <code>minimum-idle</code> 时回收。</li>
+<li><code>keepalive-time</code> 到点发送轻量探测（默认 <code>SELECT 1</code> 或 JDBC4 <code>isValid</code>）防半死连接。</li>
+</ul>
+<p>理解这四点后再看参数表（下文），调优会更有体感：<strong><code>max-lifetime</code> 是给 houseKeeper 看的</strong>，<strong><code>keepalive-time</code> 是给半死连接兜底</strong>。</p>
+<h2 id="HikariCP-与-Druid-对比"><a href="#HikariCP-与-Druid-对比" class="headerlink" title="HikariCP 与 Druid 对比"></a>HikariCP 与 Druid 对比</h2><h3 id="1-定位"><a href="#1-定位" class="headerlink" title="1. 定位"></a>1. 定位</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th><strong>HikariCP</strong></th>
+<th><strong>Druid（Alibaba）</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Spring Boot 默认</strong></td>
+<td><strong>Boot 2+ 内置默认</strong>（<code>spring-boot-starter-jdbc</code>）</td>
+<td>需额外依赖与配置</td>
+</tr>
+<tr>
+<td><strong>设计目标</strong></td>
+<td>极致性能、代码精简、稳定</td>
+<td>性能 + <strong>监控统计</strong> + <strong>SQL 防火墙</strong></td>
+</tr>
+<tr>
+<td><strong>监控</strong></td>
+<td>JMX &#x2F; Micrometer（连接数、等待时间等）</td>
+<td><strong>StatViewServlet</strong>、慢 SQL、Wall 防注入</td>
+</tr>
+<tr>
+<td><strong>多数据源</strong></td>
+<td>与 <strong>dynamic-datasource</strong> 天然搭配（本项目现状）</td>
+<td>支持，配置项更多</td>
+</tr>
+<tr>
+<td><strong>社区与许可</strong></td>
+<td>BSD，Spring 生态一等公民</td>
+<td>Apache 2.0，国内 Java 项目常见</td>
+</tr>
+<tr>
+<td><strong>典型适用</strong></td>
+<td>云原生、微服务、追求默认即最优</td>
+<td>需要 SQL 审计、慢查询分析、运维可视化</td>
+</tr>
+</tbody></table>
+<h3 id="2-性能与资源（经验结论）"><a href="#2-性能与资源（经验结论）" class="headerlink" title="2. 性能与资源（经验结论）"></a>2. 性能与资源（经验结论）</h3><ul>
+<li><strong>HikariCP</strong>：字节码级优化、锁粒度小，Benchmark 中长期领先，<strong>内存占用通常更低</strong>；Spring 官方默认有其理由。  </li>
+<li><strong>Druid</strong>：性能同样优秀，额外功能（Filter、Wall、监控页）带来一定开销；换来<strong>可观测与 SQL 治理</strong>能力。</li>
+</ul>
+<p>二者在生产环境都能稳定运行；差异更多在<strong>运维需求</strong>而非「能不能用」。</p>
+<h3 id="3-功能差异（程序员需知道的）"><a href="#3-功能差异（程序员需知道的）" class="headerlink" title="3. 功能差异（程序员需知道的）"></a>3. 功能差异（程序员需知道的）</h3><table>
+<thead>
+<tr>
+<th>能力</th>
+<th>HikariCP</th>
+<th>Druid</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>连接泄漏检测</td>
+<td><code>leak-detection-threshold</code></td>
+<td><code>remove-abandoned</code> 等</td>
+</tr>
+<tr>
+<td>慢 SQL</td>
+<td>需配合 <strong>P6Spy</strong> &#x2F; <strong>datasource-proxy</strong> &#x2F; APM</td>
+<td>内置 <code>stat</code> Filter</td>
+</tr>
+<tr>
+<td>SQL 防火墙</td>
+<td>无（靠 ORM &#x2F; 预编译）</td>
+<td><strong>WallFilter</strong> 防全表更新等</td>
+</tr>
+<tr>
+<td>Web 控制台</td>
+<td>无</td>
+<td><code>/druid/*</code> 统计页</td>
+</tr>
+<tr>
+<td>Actuator 指标</td>
+<td><code>hikaricp.connections.*</code></td>
+<td>需 Druid Spring Boot Starter 集成</td>
+</tr>
+</tbody></table>
+<h2 id="本项目落地：HikariCP（当前方案）"><a href="#本项目落地：HikariCP（当前方案）" class="headerlink" title="本项目落地：HikariCP（当前方案）"></a>本项目落地：HikariCP（当前方案）</h2><p>本仓库通过 <strong><a target="_blank" rel="noopener" href="https://github.com/baomidou/dynamic-datasource">dynamic-datasource</a></strong> 管理 <strong>MySQL（primary）+ PostgreSQL</strong>，<strong>未引入 Druid 依赖</strong>时框架默认 <strong>HikariCP</strong>。</p>
+<h3 id="1-依赖（已有）"><a href="#1-依赖（已有）" class="headerlink" title="1. 依赖（已有）"></a>1. 依赖（已有）</h3><figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">implementation <span class="string">&#x27;com.baomidou:dynamic-datasource-spring-boot4-starter:4.5.0&#x27;</span></span><br><span class="line">implementation <span class="string">&#x27;org.springframework.boot:spring-boot-starter-jdbc&#x27;</span></span><br><span class="line">runtimeOnly <span class="string">&#x27;com.mysql:mysql-connector-j&#x27;</span></span><br><span class="line">runtimeOnly <span class="string">&#x27;org.postgresql:postgresql&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-配置示例"><a href="#2-配置示例" class="headerlink" title="2. 配置示例"></a>2. 配置示例</h3><p><code>application.yaml</code>（公共池参数 + 多数据源，与 <a href="/springboot/05-springboot-integrate-mybatis-flex-multi-datasource/">第五章：SpringBoot 集成 MyBatis-Flex 与多数据源</a> 一致）：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">dynamic:</span></span><br><span class="line">      <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">      <span class="attr">primary:</span> <span class="string">mysql</span></span><br><span class="line">      <span class="attr">strict:</span> <span class="literal">false</span></span><br><span class="line">      <span class="attr">hikari:</span></span><br><span class="line">        <span class="attr">pool-name:</span> <span class="string">app-dynamic-hikari</span></span><br><span class="line">        <span class="attr">maximum-pool-size:</span> <span class="number">20</span></span><br><span class="line">        <span class="attr">minimum-idle:</span> <span class="number">5</span></span><br><span class="line">        <span class="attr">connection-timeout:</span> <span class="number">30000</span></span><br><span class="line">        <span class="attr">idle-timeout:</span> <span class="number">600000</span></span><br><span class="line">        <span class="attr">max-lifetime:</span> <span class="number">1800000</span></span><br><span class="line">        <span class="attr">keepalive-time:</span> <span class="number">300000</span></span><br><span class="line">      <span class="attr">datasource:</span></span><br><span class="line">        <span class="attr">mysql:</span></span><br><span class="line">          <span class="attr">url:</span> <span class="string">jdbc:mysql://192.168.1.22:30000/study?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=Asia/Shanghai</span></span><br><span class="line">          <span class="attr">username:</span> <span class="string">root</span></span><br><span class="line">          <span class="attr">password:</span> <span class="string">$&#123;MYSQL_PASSWORD:Pi=3.1415&#125;</span></span><br><span class="line">          <span class="attr">driver-class-name:</span> <span class="string">com.mysql.cj.jdbc.Driver</span></span><br><span class="line">        <span class="attr">pgsql:</span></span><br><span class="line">          <span class="attr">url:</span> <span class="string">jdbc:postgresql://192.168.1.22:30001/postgres</span></span><br><span class="line">          <span class="attr">username:</span> <span class="string">postgres</span></span><br><span class="line">          <span class="attr">password:</span> <span class="string">$&#123;PG_PASSWORD:Pi=3.1415&#125;</span></span><br><span class="line">          <span class="attr">driver-class-name:</span> <span class="string">org.postgresql.Driver</span></span><br></pre></td></tr></table></figure>
+
+<p>说明：</p>
+<ul>
+<li><strong><code>spring.datasource.dynamic.hikari.*</code></strong>：对 dynamic-datasource 下<strong>每个</strong> Hikari 池生效的全局默认（除非单库覆盖）。  </li>
+<li><strong><code>primary: mysql</code></strong>：未标注 <code>@DS</code> 时使用 MySQL。  </li>
+<li>密码建议走环境变量或 <code>application-prod.yaml</code>，勿提交仓库（见 <a href="/springboot/02-springboot-multi-profile-config/">第二章：SpringBoot 多环境配置：Profile 激活与优先级</a>）。</li>
+</ul>
+<h3 id="3-代码侧切换数据源"><a href="#3-代码侧切换数据源" class="headerlink" title="3. 代码侧切换数据源"></a>3. 代码侧切换数据源</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ReportService</span> &#123;</span><br><span class="line">    <span class="meta">@DS(&quot;mysql&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">long</span> <span class="title function_">countUsers</span><span class="params">()</span> &#123; ... &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@DS(&quot;pgsql&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">List</span>&lt;AuditRow&gt; <span class="title function_">listAudit</span><span class="params">()</span> &#123; ... &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>连接池与 <code>@DS</code> 无关：每个逻辑数据源各自维护一个池。</p>
+<h3 id="4-关键参数调优"><a href="#4-关键参数调优" class="headerlink" title="4. 关键参数调优"></a>4. 关键参数调优</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>maximum-pool-size</code></td>
+<td>最大连接数</td>
+<td>≤ DB <code>max_connections</code> &#x2F; 实例数；本模板 <strong>20</strong> 适合 dev</td>
+</tr>
+<tr>
+<td><code>minimum-idle</code></td>
+<td>最小空闲连接</td>
+<td>与峰值无关，略低于 max 即可</td>
+</tr>
+<tr>
+<td><code>connection-timeout</code></td>
+<td>借连接最长等待（ms）</td>
+<td><strong>30s</strong>；过短易误报超时</td>
+</tr>
+<tr>
+<td><code>max-lifetime</code></td>
+<td>连接最大存活（ms）</td>
+<td>略小于 DB&#x2F;中间件 <code>wait_timeout</code>，防服务端踢连接</td>
+</tr>
+<tr>
+<td><code>idle-timeout</code></td>
+<td>空闲回收</td>
+<td>仅当 <code>minimum-idle &lt; maximum-pool-size</code> 时生效</td>
+</tr>
+<tr>
+<td><code>keepalive-time</code></td>
+<td>保活探测间隔</td>
+<td>长连接场景减少「半死连接」</td>
+</tr>
+</tbody></table>
+<p><strong>估算</strong>：若应用部署 <strong>N</strong> 个实例，每实例 <code>maximum-pool-size=M</code>，MySQL 侧至少预留 <strong>N × M</strong>（再加 admin、批任务余量）。</p>
+<h3 id="5-验证"><a href="#5-验证" class="headerlink" title="5. 验证"></a>5. 验证</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl http://localhost:8082/test/db</span><br></pre></td></tr></table></figure>
+
+<p>返回 <code>sysUserCount</code> 等表示 MySQL 池与 Mapper 正常；对 <code>@DS(&quot;pgsql&quot;)</code> 接口单独写集成测试或临时接口验证第二数据源。</p>
+<h3 id="6-监控（HikariCP）"><a href="#6-监控（HikariCP）" class="headerlink" title="6. 监控（HikariCP）"></a>6. 监控（HikariCP）</h3><p>开启 Actuator 后（本项目 Admin 已集成），可查看：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">management:</span></span><br><span class="line">  <span class="attr">endpoints:</span></span><br><span class="line">    <span class="attr">web:</span></span><br><span class="line">      <span class="attr">exposure:</span></span><br><span class="line">        <span class="attr">include:</span> <span class="string">health,metrics</span></span><br></pre></td></tr></table></figure>
+
+<p>关注 Micrometer 指标：<code>hikaricp.connections.active</code>、<code>hikaricp.connections.pending</code>、<code>hikaricp.connections.timeout</code>。与 <a href="/springboot/06-springboot-integrate-admin-monitor/">第六章：SpringBoot 集成 Spring Boot Admin 监控</a>、站内 Prometheus&#x2F;Grafana（见 <a href="/service/">服务</a>）可进一步做大盘与告警。</p>
+<h2 id="连接泄漏检测"><a href="#连接泄漏检测" class="headerlink" title="连接泄漏检测"></a>连接泄漏检测</h2><p>「<strong>借出未还</strong>」是连接池最常见的隐患：业务代码 <code>getConnection()</code> 后忘了 <code>close()</code>（或异常路径未走到 close），连接被业务长期持有，池被慢慢耗光。</p>
+<h3 id="1-Hikari-的-leak-detection-threshold"><a href="#1-Hikari-的-leak-detection-threshold" class="headerlink" title="1. Hikari 的 leak-detection-threshold"></a>1. Hikari 的 leak-detection-threshold</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">dynamic:</span></span><br><span class="line">      <span class="attr">hikari:</span></span><br><span class="line">        <span class="attr">leak-detection-threshold:</span> <span class="number">60000</span>   <span class="comment"># ms，借出超 60s 未还则打 WARN 日志</span></span><br></pre></td></tr></table></figure>
+
+<p>启用后，Hikari 在借出连接时启动一个延时任务，到点未归还就把<strong>借出点的完整堆栈</strong>打到日志：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">WARN  c.z.h.p.ProxyLeakTask - Connection leak detection triggered for</span><br><span class="line">  conn=HikariProxyConnection@123456 wrapping com.mysql.cj.jdbc.ConnectionImpl@abc,</span><br><span class="line">  stack trace follows:</span><br><span class="line">    java.lang.Exception: Apparent connection leak detected</span><br><span class="line">      at org.my919.springboot.service.ReportService.listAudit(ReportService.java:42)</span><br><span class="line">      ...</span><br></pre></td></tr></table></figure>
+
+<p><strong>生产建议</strong>：先设为 <code>0</code>（关闭）跑稳定版本，<strong>排障时</strong>临时打开（<code>60000</code>~&#96;120000&#96;ms）；长期开启会带来少量定时任务开销，但对慢查询接口可能误报。</p>
+<h3 id="2-Druid-的-removeAbandoned"><a href="#2-Druid-的-removeAbandoned" class="headerlink" title="2. Druid 的 removeAbandoned"></a>2. Druid 的 removeAbandoned</h3><p>Druid 走另一条路：直接<strong>强制回收</strong>疑似泄漏的连接：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">dynamic:</span></span><br><span class="line">      <span class="attr">druid:</span></span><br><span class="line">        <span class="attr">remove-abandoned:</span> <span class="literal">true</span></span><br><span class="line">        <span class="attr">remove-abandoned-timeout-millis:</span> <span class="number">300000</span>   <span class="comment"># 5 分钟未还则强制关闭</span></span><br><span class="line">        <span class="attr">log-abandoned:</span> <span class="literal">true</span>                        <span class="comment"># 打借出堆栈</span></span><br></pre></td></tr></table></figure>
+
+<p>风险：长事务&#x2F;批处理任务可能被误杀，需把超时调到<strong>业务最长事务时间</strong>之上；只在内网&#x2F;排障阶段开启更稳妥。</p>
+<h3 id="3-防御性写法"><a href="#3-防御性写法" class="headerlink" title="3. 防御性写法"></a>3. 防御性写法</h3><p>业务侧用 try-with-resources 是根本解法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> (<span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> dataSource.getConnection();</span><br><span class="line">     <span class="type">PreparedStatement</span> <span class="variable">ps</span> <span class="operator">=</span> conn.prepareStatement(<span class="string">&quot;select ...&quot;</span>)) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>或者<strong>彻底交给 MyBatis-Flex</strong>：Mapper 方法内部完成借还，业务代码完全不感知 Connection——这是本仓库默认路径，几乎杜绝泄漏。</p>
+<h2 id="可选方案：切换为-Druid"><a href="#可选方案：切换为-Druid" class="headerlink" title="可选方案：切换为 Druid"></a>可选方案：切换为 Druid</h2><p>若团队需要 <strong>慢 SQL 统计、Web 监控页、Wall 防火墙</strong>，可在本项目中改为 Druid（或<strong>仅生产</strong>启用 Druid）。</p>
+<h3 id="1-添加依赖"><a href="#1-添加依赖" class="headerlink" title="1. 添加依赖"></a>1. 添加依赖</h3><figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">implementation <span class="string">&#x27;com.alibaba:druid-spring-boot-3-starter:1.2.25&#x27;</span></span><br><span class="line"><span class="comment">// 与 dynamic-datasource 并存；版本以 Maven Central 与 Boot 4 兼容性为准</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>注意：Druid 官方 starter 版本需与 <strong>Spring Boot 4 &#x2F; Jakarta</strong> 匹配；升级 Boot 大版本时务必核对 release note。</p>
+</blockquote>
+<h3 id="2-dynamic-datasource-Druid-配置"><a href="#2-dynamic-datasource-Druid-配置" class="headerlink" title="2. dynamic-datasource + Druid 配置"></a>2. dynamic-datasource + Druid 配置</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">dynamic:</span></span><br><span class="line">      <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">      <span class="attr">primary:</span> <span class="string">mysql</span></span><br><span class="line">      <span class="attr">druid:</span></span><br><span class="line">        <span class="attr">initial-size:</span> <span class="number">5</span></span><br><span class="line">        <span class="attr">min-idle:</span> <span class="number">5</span></span><br><span class="line">        <span class="attr">max-active:</span> <span class="number">20</span></span><br><span class="line">        <span class="attr">max-wait:</span> <span class="number">30000</span></span><br><span class="line">        <span class="attr">time-between-eviction-runs-millis:</span> <span class="number">60000</span></span><br><span class="line">        <span class="attr">min-evictable-idle-time-millis:</span> <span class="number">300000</span></span><br><span class="line">        <span class="attr">validation-query:</span> <span class="string">SELECT</span> <span class="number">1</span></span><br><span class="line">        <span class="attr">test-while-idle:</span> <span class="literal">true</span></span><br><span class="line">        <span class="attr">test-on-borrow:</span> <span class="literal">false</span></span><br><span class="line">        <span class="attr">test-on-return:</span> <span class="literal">false</span></span><br><span class="line">        <span class="attr">filters:</span> <span class="string">stat,wall</span></span><br><span class="line">      <span class="attr">datasource:</span></span><br><span class="line">        <span class="attr">mysql:</span></span><br><span class="line">          <span class="attr">url:</span> <span class="string">jdbc:mysql://192.168.1.22:30000/study?...</span></span><br><span class="line">          <span class="attr">username:</span> <span class="string">root</span></span><br><span class="line">          <span class="attr">password:</span> <span class="string">***</span></span><br><span class="line">          <span class="attr">driver-class-name:</span> <span class="string">com.mysql.cj.jdbc.Driver</span></span><br><span class="line">        <span class="attr">pgsql:</span></span><br><span class="line">          <span class="attr">url:</span> <span class="string">jdbc:postgresql://192.168.1.22:30001/postgres</span></span><br><span class="line">          <span class="string">...</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>引入 Druid starter 且配置 <strong><code>spring.datasource.dynamic.druid.*</code></strong> 后，dynamic-datasource 会为各数据源创建 <strong>DruidDataSource</strong>（以当前 starter 行为为准，切换后应跑一遍全量测试）。  </li>
+<li><strong>不要</strong> 同时保留 <code>hikari</code> 与 <code>druid</code> 块 expecting 混用；同一逻辑源只一种池实现。</li>
+</ul>
+<h3 id="3-Druid-监控页（仅-dev-内网）"><a href="#3-Druid-监控页（仅-dev-内网）" class="headerlink" title="3. Druid 监控页（仅 dev &#x2F; 内网）"></a>3. Druid 监控页（仅 dev &#x2F; 内网）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">druid:</span></span><br><span class="line">      <span class="attr">stat-view-servlet:</span></span><br><span class="line">        <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">        <span class="attr">url-pattern:</span> <span class="string">/druid/*</span></span><br><span class="line">        <span class="attr">login-username:</span> <span class="string">admin</span></span><br><span class="line">        <span class="attr">login-password:</span> <span class="string">$&#123;DRUID_ADMIN_PASSWORD:change-me&#125;</span></span><br><span class="line">        <span class="attr">allow:</span> <span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span></span><br><span class="line">      <span class="attr">web-stat-filter:</span></span><br><span class="line">        <span class="attr">enabled:</span> <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>生产务必</strong>：关闭公网暴露、强密码、或完全禁用 StatViewServlet，改走 Prometheus + 日志。</p>
+<h3 id="4-Wall-防火墙示例"><a href="#4-Wall-防火墙示例" class="headerlink" title="4. Wall 防火墙示例"></a>4. Wall 防火墙示例</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">druid:</span></span><br><span class="line">      <span class="attr">filter:</span></span><br><span class="line">        <span class="attr">wall:</span></span><br><span class="line">          <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">          <span class="attr">config:</span></span><br><span class="line">            <span class="attr">delete-allow:</span> <span class="literal">true</span></span><br><span class="line">            <span class="attr">drop-table-allow:</span> <span class="literal">false</span></span><br><span class="line">            <span class="attr">multi-statement-allow:</span> <span class="literal">false</span></span><br></pre></td></tr></table></figure>
+
+<p>防止误执行 <code>DROP TABLE</code>、多语句注入等（不能替代参数化查询与权限最小化）。</p>
+<h2 id="单数据源场景（无-dynamic-datasource）"><a href="#单数据源场景（无-dynamic-datasource）" class="headerlink" title="单数据源场景（无 dynamic-datasource）"></a>单数据源场景（无 dynamic-datasource）</h2><p>若某模块仅 <strong>一个 MySQL</strong>，可只用 Boot 默认 Hikari，无需 Baomidou：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">url:</span> <span class="string">jdbc:mysql://192.168.1.22:30000/study</span></span><br><span class="line">    <span class="attr">username:</span> <span class="string">root</span></span><br><span class="line">    <span class="attr">password:</span> <span class="string">***</span></span><br><span class="line">    <span class="attr">driver-class-name:</span> <span class="string">com.mysql.cj.jdbc.Driver</span></span><br><span class="line">    <span class="attr">hikari:</span></span><br><span class="line">      <span class="attr">maximum-pool-size:</span> <span class="number">10</span></span><br><span class="line">      <span class="attr">minimum-idle:</span> <span class="number">2</span></span><br></pre></td></tr></table></figure>
+
+<p><code>spring-boot-starter-jdbc</code> 会自动配置 <strong>HikariDataSource</strong>。本仓库因 <strong>MySQL + PostgreSQL</strong> 双库，故采用 dynamic-datasource。</p>
+<h2 id="选型建议（本仓库）"><a href="#选型建议（本仓库）" class="headerlink" title="选型建议（本仓库）"></a>选型建议（本仓库）</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>默认开发、与 Spring Boot 对齐、依赖最少</td>
+<td><strong>HikariCP</strong>（<strong>当前</strong>）</td>
+</tr>
+<tr>
+<td>需要 Druid 监控页、慢 SQL 榜单、Wall</td>
+<td>评估 <strong>Druid</strong>，建议 dev 启用监控、prod 收紧暴露</td>
+</tr>
+<tr>
+<td>多数据源</td>
+<td>继续 <strong>dynamic-datasource</strong> + 任选池；<code>@DS</code> 用法不变</td>
+</tr>
+<tr>
+<td>链路&#x2F;指标</td>
+<td>Hikari → Micrometer；Druid → stat + 可选接入 Grafana</td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td>测试 profile 使用 <strong>H2</strong>（见 MyBatis-Flex 文档），减小对真实池大小的依赖</td>
+</tr>
+</tbody></table>
+<h2 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>可能原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Connection is not available, request timed out</code></td>
+<td>池过小或连接泄漏</td>
+<td>增大 <code>maximum-pool-size</code>；查未关闭的 Connection；Hikari 开 <code>leak-detection-threshold</code></td>
+</tr>
+<tr>
+<td><code>Communications link failure</code> 间歇出现</td>
+<td>连接被 DB 踢掉</td>
+<td>调 <code>max-lifetime</code>；开 <code>keepalive-time</code></td>
+</tr>
+<tr>
+<td>切换 <code>@DS</code> 无效</td>
+<td>同类自调用、事务传播</td>
+<td>确保经 Spring 代理调用；检查 <code>@DS</code> 在类&#x2F;方法位置</td>
+</tr>
+<tr>
+<td>MySQL <code>Too many connections</code></td>
+<td>实例数 × 池大小超限</td>
+<td>降 M 或升 DB <code>max_connections</code>；用连接池全局规划</td>
+</tr>
+<tr>
+<td>Druid 监控 404</td>
+<td><code>stat-view-servlet</code> 未开或路径不对</td>
+<td>核对 <code>url-pattern</code> 与安全 <code>allow</code></td>
+</tr>
+</tbody></table>
+<h2 id="相关文件与链接"><a href="#相关文件与链接" class="headerlink" title="相关文件与链接"></a>相关文件与链接</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">src/main/resources/application.yaml</span><br><span class="line">src/main/resources/application-dev.yaml</span><br><span class="line">config/MapperScanConfiguration.java</span><br><span class="line">service/*  （@DS 使用处）</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>文档</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/springboot/05-springboot-integrate-mybatis-flex-multi-datasource/">第五章：SpringBoot 集成 MyBatis-Flex 与多数据源</a></td>
+<td>数据源与 <code>@DS</code></td>
+</tr>
+<tr>
+<td><a href="/springboot/02-springboot-multi-profile-config/">第二章：SpringBoot 多环境配置：Profile 激活与优先级</a></td>
+<td>各环境 URL&#x2F;密码</td>
+</tr>
+<tr>
+<td><a href="/springboot/06-springboot-integrate-admin-monitor/">第六章：SpringBoot 集成 Spring Boot Admin 监控</a></td>
+<td>健康与指标</td>
+</tr>
+<tr>
+<td><a href="/service/">服务</a></td>
+<td>局域网 MySQL <code>:30000</code>、PostgreSQL <code>:30001</code></td>
+</tr>
+</tbody></table>
+<p>官方参考：<a target="_blank" rel="noopener" href="https://github.com/brettwooldridge/HikariCP">HikariCP README</a> · <a target="_blank" rel="noopener" href="https://github.com/alibaba/druid/wiki">Druid Wiki</a> · <a target="_blank" rel="noopener" href="https://www.kancloud.cn/tracy5546/dynamic-datasource/2264611">dynamic-datasource 配置</a></p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>连接池价值</td>
+<td>复用连接、<code>maximum-pool-size</code> 上限保护数据库、超时行为可控</td>
+</tr>
+<tr>
+<td>Hikari 快的根因</td>
+<td>ConcurrentBag 无锁借还 + FastList + Javassist 代理 + houseKeeper 状态机</td>
+</tr>
+<tr>
+<td>当前方案</td>
+<td>HikariCP（Boot 默认）+ dynamic-datasource 双数据源（MySQL + PostgreSQL）</td>
+</tr>
+<tr>
+<td>关键参数</td>
+<td><code>maximum-pool-size</code> &#x2F; <code>connection-timeout</code> &#x2F; <code>max-lifetime</code> &#x2F; <code>keepalive-time</code></td>
+</tr>
+<tr>
+<td>泄漏检测</td>
+<td>Hikari <code>leak-detection-threshold</code>（告警式）；Druid <code>remove-abandoned</code>（强制回收，慎用）</td>
+</tr>
+<tr>
+<td>容量规划</td>
+<td>实例数 N × 池大小 M，须在 DB <code>max_connections</code> 预算内</td>
+</tr>
+<tr>
+<td>Druid 取舍</td>
+<td>需要监控页&#x2F;慢 SQL&#x2F;Wall 时切换；生产收紧 StatViewServlet 暴露</td>
+</tr>
+<tr>
+<td>排障入口</td>
+<td>借连接超时→池大小&#x2F;泄漏；<code>link failure</code>→<code>max-lifetime</code>&#x2F;<code>keepalive-time</code></td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/SpringBoot/" rel="tag"># SpringBoot</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/springcloudalibaba/09-sca-components-overview/" rel="prev" title="第九章：集成 Spring Cloud Alibaba：组件总览与多模块搭建">
+                  <i class="fa fa-angle-left"></i> 第九章：集成 Spring Cloud Alibaba：组件总览与多模块搭建
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/springcloudalibaba/10-sca-dubbo-rpc-governance/" rel="next" title="第十章：Dubbo：RPC 与服务治理扩展">
+                  第十章：Dubbo：RPC 与服务治理扩展 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：Nginx HTTPS 与安全概念基础 TLS 终结点：证书挂在 Nginx，客户端到 Nginx 走加密，Nginx 到后端走内网明文——证书申请、续期、算法升级集中在一处。 证书链要完整：浏览器校验的是「站点证书 → 中间证书 → 根证书」整条链，漏发中间证书是「本地 curl 通、用户浏览器报错」的常见根因。 301 比配置加密更重要：HTTP 全站 301 跳转 HTTPS，并配合">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：Nginx HTTPS 与安全">
+<meta property="og:url" content="https://my919.github.io/nginx/03-nginx-https-security/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：Nginx HTTPS 与安全概念基础 TLS 终结点：证书挂在 Nginx，客户端到 Nginx 走加密，Nginx 到后端走内网明文——证书申请、续期、算法升级集中在一处。 证书链要完整：浏览器校验的是「站点证书 → 中间证书 → 根证书」整条链，漏发中间证书是「本地 curl 通、用户浏览器报错」的常见根因。 301 比配置加密更重要：HTTP 全站 301 跳转 HTTPS，并配合">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:31:52.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.587Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="HTTPS">
+<meta property="article:tag" content="Nginx">
+<meta property="article:tag" content="TLS">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/nginx/03-nginx-https-security/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/nginx/03-nginx-https-security/","path":"nginx/03-nginx-https-security/","title":"第三章：Nginx HTTPS 与安全"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：Nginx HTTPS 与安全 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9ANginx-HTTPS-%E4%B8%8E%E5%AE%89%E5%85%A8"><span class="nav-number">1.</span> <span class="nav-text">第三章：Nginx HTTPS 与安全</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E8%AF%81%E4%B9%A6%E7%94%B3%E8%AF%B7%E4%B8%8E%E8%87%AA%E7%AD%BE"><span class="nav-number">1.2.</span> <span class="nav-text">一、证书申请与自签</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%EF%BC%9ALet%E2%80%99s-Encrypt%EF%BC%88certbot%EF%BC%89"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 生产环境：Let’s Encrypt（certbot）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%9C%AC%E5%9C%B0-%E5%86%85%E7%BD%91%EF%BC%9Aopenssl-%E8%87%AA%E7%AD%BE%EF%BC%88%E5%B7%B2%E9%AA%8C%E8%AF%81%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 本地&#x2F;内网：openssl 自签（已验证）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E8%AF%81%E4%B9%A6%E8%87%AA%E5%8A%A8%E5%8C%96%E8%BF%9B%E9%98%B6"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. 证书自动化进阶</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81HTTPS-server-%E9%85%8D%E7%BD%AE"><span class="nav-number">1.3.</span> <span class="nav-text">二、HTTPS server 配置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#HTTP-%E2%86%92-HTTPS-%E5%85%A8%E7%AB%99%E8%B7%B3%E8%BD%AC"><span class="nav-number">1.3.1.</span> <span class="nav-text">HTTP → HTTPS 全站跳转</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%9A%E8%AF%9D%E5%A4%8D%E7%94%A8%EF%BC%9A%E6%8A%8A%E6%8F%A1%E6%89%8B%E6%88%90%E6%9C%AC%E6%91%8A%E8%96%84"><span class="nav-number">1.3.2.</span> <span class="nav-text">会话复用：把握手成本摊薄</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HTTP-3%EF%BC%88QUIC%EF%BC%89"><span class="nav-number">1.3.3.</span> <span class="nav-text">HTTP&#x2F;3（QUIC）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81%EF%BC%88mTLS%EF%BC%89"><span class="nav-number">1.3.4.</span> <span class="nav-text">双向认证（mTLS）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6"><span class="nav-number">1.4.</span> <span class="nav-text">三、访问控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-allow-deny%EF%BC%88IP-%E7%99%BD%E5%90%8D%E5%8D%95%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. allow &#x2F; deny（IP 白名单）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-auth-basic%EF%BC%88%E7%AE%80%E5%8D%95%E5%AF%86%E7%A0%81%E9%97%A8%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. auth_basic（简单密码门）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E9%9A%90%E8%97%8F%E6%95%8F%E6%84%9F%E5%85%A5%E5%8F%A3"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 隐藏敏感入口</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E9%99%90%E6%B5%81%EF%BC%9Alimit-req-%E4%B8%8E-limit-conn"><span class="nav-number">1.5.</span> <span class="nav-text">四、限流：limit_req 与 limit_conn</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%AE%89%E5%85%A8%E5%93%8D%E5%BA%94%E5%A4%B4"><span class="nav-number">1.6.</span> <span class="nav-text">五、安全响应头</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.7.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/nginx/03-nginx-https-security/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：Nginx HTTPS 与安全 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：Nginx HTTPS 与安全
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:31:52" itemprop="dateCreated datePublished" datetime="2026-05-01T13:31:52+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Nginx/" itemprop="url" rel="index"><span itemprop="name">Nginx</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：Nginx-HTTPS-与安全"><a href="#第三章：Nginx-HTTPS-与安全" class="headerlink" title="第三章：Nginx HTTPS 与安全"></a>第三章：Nginx HTTPS 与安全</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>TLS 终结点</strong>：证书挂在 Nginx，客户端到 Nginx 走加密，Nginx 到后端走内网明文——证书申请、续期、算法升级集中在一处。</li>
+<li><strong>证书链要完整</strong>：浏览器校验的是「站点证书 → 中间证书 → 根证书」整条链，漏发中间证书是「本地 curl 通、用户浏览器报错」的常见根因。</li>
+<li><strong>301 比配置加密更重要</strong>：HTTP 全站 301 跳转 HTTPS，并配合 HSTS 头让浏览器后续强制走 TLS。</li>
+<li><strong>安全是分层的</strong>：TLS 之外，还有限流（<code>limit_req</code>）、访问控制（allow&#x2F;deny、auth_basic）、安全响应头，每层挡一类攻击。</li>
+<li><strong>密码学背景看 OpenSSL</strong>：算法、密钥、证书格式等原理见 <a href="/security/01-openssl-cli-guide/">第一章：OpenSSL 命令行入门与常用操作总览</a>，本章聚焦落地。</li>
+</ol>
+<blockquote>
+<p>本章 openssl 自签命令已在 OpenSSL 3.x 验证；nginx 配置基于官方语法书写（沙箱未装 nginx）。</p>
+</blockquote>
+<hr>
+<h2 id="一、证书申请与自签"><a href="#一、证书申请与自签" class="headerlink" title="一、证书申请与自签"></a>一、证书申请与自签</h2><h3 id="1-生产环境：Let’s-Encrypt（certbot）"><a href="#1-生产环境：Let’s-Encrypt（certbot）" class="headerlink" title="1. 生产环境：Let’s Encrypt（certbot）"></a>1. 生产环境：Let’s Encrypt（certbot）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> dnf install -y certbot python3-certbot-nginx</span><br><span class="line"><span class="built_in">sudo</span> certbot --nginx -d example.com -d www.example.com   <span class="comment"># 自动改 nginx 配置并续期</span></span><br><span class="line"><span class="built_in">sudo</span> certbot renew --dry-run                             <span class="comment"># 验证自动续期可用</span></span><br></pre></td></tr></table></figure>
+
+<p>certbot 会注册 systemd timer（<code>certbot-renew.timer</code>），到期自动续期并 reload nginx，<strong>无需人工干预</strong>。</p>
+<h3 id="2-本地-内网：openssl-自签（已验证）"><a href="#2-本地-内网：openssl-自签（已验证）" class="headerlink" title="2. 本地&#x2F;内网：openssl 自签（已验证）"></a>2. 本地&#x2F;内网：openssl 自签（已验证）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">openssl req -x509 -nodes -newkey rsa:2048 -days 365 \</span><br><span class="line">  -keyout privkey.pem -out fullchain.pem \</span><br><span class="line">  -subj <span class="string">&quot;/CN=example.com&quot;</span> \</span><br><span class="line">  -addext <span class="string">&quot;subjectAltName=DNS:example.com,DNS:www.example.com&quot;</span></span><br><span class="line"></span><br><span class="line">openssl x509 -<span class="keyword">in</span> fullchain.pem -noout -subject -dates    <span class="comment"># 查看证书信息</span></span><br></pre></td></tr></table></figure>
+
+<p>自签证书浏览器会告警「不受信任」，仅用于开发联调。</p>
+<h3 id="3-证书自动化进阶"><a href="#3-证书自动化进阶" class="headerlink" title="3. 证书自动化进阶"></a>3. 证书自动化进阶</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># acme.sh：比 certbot 更轻，内置几十种 DNS 服务商 API</span></span><br><span class="line">curl https://get.acme.sh | sh</span><br><span class="line">acme.sh --issue --dns dns_ali -d example.com -d <span class="string">&#x27;*.example.com&#x27;</span>   <span class="comment"># DNS-01 验证签泛域名证书</span></span><br><span class="line">acme.sh --install-cert -d example.com \</span><br><span class="line">  --key-file /etc/nginx/certs/privkey.pem \</span><br><span class="line">  --fullchain-file /etc/nginx/certs/fullchain.pem \</span><br><span class="line">  --reloadcmd <span class="string">&quot;systemctl reload nginx&quot;</span>       <span class="comment"># 续期后自动 reload</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>选择</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单域名、80 端口可达</td>
+<td>certbot &#x2F; acme.sh 的 HTTP-01 验证</td>
+</tr>
+<tr>
+<td>泛域名（<code>*.example.com</code>）</td>
+<td>必须 <strong>DNS-01</strong> 验证（API 自动添加 TXT 记录）</td>
+</tr>
+<tr>
+<td>多机共用证书</td>
+<td>一台签发 + 分发脚本（rsync&#x2F;配置中心），别每台各自申请——会触发 CA 速率限制</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、HTTPS-server-配置"><a href="#二、HTTPS-server-配置" class="headerlink" title="二、HTTPS server 配置"></a>二、HTTPS server 配置</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">443</span> ssl;</span><br><span class="line">    <span class="attribute">http2</span> <span class="literal">on</span>;                                <span class="comment"># 1.25.1+ 独立指令；旧版用 listen 443 ssl http2</span></span><br><span class="line">    <span class="attribute">server_name</span> example.com;</span><br><span class="line"></span><br><span class="line">    <span class="attribute">ssl_certificate</span>     /etc/nginx/certs/fullchain.pem;</span><br><span class="line">    <span class="attribute">ssl_certificate_key</span> /etc/nginx/certs/privkey.pem;</span><br><span class="line"></span><br><span class="line">    <span class="attribute">ssl_protocols</span> TLSv1.<span class="number">2</span> TLSv1.<span class="number">3</span>;           <span class="comment"># 关掉一切旧协议</span></span><br><span class="line">    <span class="attribute">ssl_ciphers</span> HIGH:!aNULL:!MD5;</span><br><span class="line">    <span class="attribute">ssl_prefer_server_ciphers</span> <span class="literal">on</span>;</span><br><span class="line"></span><br><span class="line">    <span class="attribute">ssl_session_cache</span>   shared:SSL:<span class="number">10m</span>;      <span class="comment"># 会话复用，减少握手开销</span></span><br><span class="line">    <span class="attribute">ssl_session_timeout</span> <span class="number">1d</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment"># OCSP Stapling：Nginx 定期向 CA 取证书吊销状态，握手时一并发给浏览器</span></span><br><span class="line">    <span class="attribute">ssl_stapling</span> <span class="literal">on</span>;</span><br><span class="line">    <span class="attribute">ssl_stapling_verify</span> <span class="literal">on</span>;</span><br><span class="line">    <span class="attribute">ssl_trusted_certificate</span> /etc/nginx/certs/fullchain.pem;   <span class="comment"># 校验 OCSP 响应用</span></span><br><span class="line">    <span class="attribute">resolver</span> <span class="number">223.5.5.5</span> <span class="number">119.29.29.29</span> valid=<span class="number">300s</span>;               <span class="comment"># 解析 CA 的 OCSP 域名</span></span><br><span class="line">    <span class="attribute">resolver_timeout</span> <span class="number">5s</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>fullchain.pem</code> 必须<strong>包含中间证书</strong>（站点证书 + 中间证书按序拼接），只给站点证书就是上面说的「部分用户报错」。</p>
+</blockquote>
+<blockquote>
+<p><strong>OCSP Stapling 的意义</strong>：浏览器默认要向 CA 的 OCSP 服务器查询证书是否被吊销——多一次外部请求拖慢握手，还把访问习惯暴露给 CA。开启 stapling 后由 Nginx 代查并缓存，握手时随证书下发，<strong>省延迟又护隐私</strong>。</p>
+</blockquote>
+<h3 id="HTTP-→-HTTPS-全站跳转"><a href="#HTTP-→-HTTPS-全站跳转" class="headerlink" title="HTTP → HTTPS 全站跳转"></a>HTTP → HTTPS 全站跳转</h3><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">80</span>;</span><br><span class="line">    <span class="attribute">server_name</span> example.com;</span><br><span class="line">    <span class="attribute">return</span> <span class="number">301</span> https://<span class="variable">$host</span><span class="variable">$request_uri</span>;    <span class="comment"># 保留原路径与参数</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># HTTPS server 内加 HSTS（浏览器记住一年内只走 https）</span></span><br><span class="line"><span class="attribute">add_header</span> Strict-Transport-Security <span class="string">&quot;max-age=31536000&quot;</span> always;</span><br></pre></td></tr></table></figure>
+
+<p>验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -I http://example.com          <span class="comment"># 301 Location: https://...</span></span><br><span class="line">curl -I https://example.com         <span class="comment"># 200，响应头含 Strict-Transport-Security</span></span><br><span class="line">openssl s_client -connect example.com:443 -servername example.com &lt; /dev/null 2&gt;/dev/null | grep -E <span class="string">&quot;subject=|Verify&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="会话复用：把握手成本摊薄"><a href="#会话复用：把握手成本摊薄" class="headerlink" title="会话复用：把握手成本摊薄"></a>会话复用：把握手成本摊薄</h3><p>完整 TLS 握手要 2-RTT + 证书校验，会话复用把这笔开销省掉大半：</p>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>配置</th>
+<th>注意</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Session Cache</td>
+<td><code>ssl_session_cache shared:SSL:10m;</code></td>
+<td>10MB 共享内存约存 4 万会话，多 worker 共享</td>
+</tr>
+<tr>
+<td>Session Ticket</td>
+<td><code>ssl_session_tickets on;</code>（默认开）</td>
+<td>多机部署须<strong>统一 ticket key</strong> 并定期轮换，否则跨机复用失败且损前向安全</td>
+</tr>
+<tr>
+<td>TLS 1.3</td>
+<td>内置 PSK 复用</td>
+<td>0-RTT 更快但有<strong>重放风险</strong>——只对幂等 GET 开启</td>
+</tr>
+</tbody></table>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 多机统一 ticket key（轮换脚本定期更新后 reload）</span></span><br><span class="line"><span class="attribute">ssl_session_ticket_key</span> /etc/nginx/tickets/current.key;</span><br><span class="line"><span class="attribute">ssl_session_ticket_key</span> /etc/nginx/tickets/previous.key;    <span class="comment"># 旧 key 解密存量 ticket</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>TLS 1.2 下优先保证 <strong>ECDHE</strong> 套件（前向安全：即使私钥日后泄露，历史会话也无法解密）——<code>ssl_ciphers</code> 中 ECDHE 排前即可。</p>
+</blockquote>
+<h3 id="HTTP-3（QUIC）"><a href="#HTTP-3（QUIC）" class="headerlink" title="HTTP&#x2F;3（QUIC）"></a>HTTP&#x2F;3（QUIC）</h3><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">443</span> ssl;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">443</span> quic reuseport;          <span class="comment"># QUIC 走 UDP，与 TCP 同端口并存</span></span><br><span class="line">    <span class="attribute">http2</span> <span class="literal">on</span>;</span><br><span class="line">    <span class="attribute">http3</span> <span class="literal">on</span>;                           <span class="comment"># nginx 1.27+（1.28/1.29 主线均已包含）</span></span><br><span class="line">    <span class="attribute">quic_retry</span> <span class="literal">on</span>;                      <span class="comment"># 强制地址验证，防伪造源地址的放大攻击</span></span><br><span class="line"></span><br><span class="line">    <span class="attribute">ssl_certificate</span>     /etc/nginx/certs/fullchain.pem;</span><br><span class="line">    <span class="attribute">ssl_certificate_key</span> /etc/nginx/certs/privkey.pem;</span><br><span class="line"></span><br><span class="line">    <span class="attribute">add_header</span> Alt-Svc <span class="string">&#x27;h3=&quot;:443&quot;; ma=86400&#x27;</span> always;   <span class="comment"># 告知浏览器下次走 HTTP/3</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>QUIC 基于 <strong>UDP 443</strong>，防火墙&#x2F;云安全组别忘了放行 UDP；</li>
+<li>首次连接仍走 TCP+TLS（HTTP&#x2F;2），浏览器拿到 <code>Alt-Svc</code> 后才升级 HTTP&#x2F;3；</li>
+<li>弱网&#x2F;移动网络收益最大：QUIC 无 TCP 队头阻塞，WiFi&#x2F;4G 切换连接不断（connection migration）。</li>
+</ol>
+<h3 id="双向认证（mTLS）"><a href="#双向认证（mTLS）" class="headerlink" title="双向认证（mTLS）"></a>双向认证（mTLS）</h3><p>服务端校验客户端证书，用于内部 API、支付回调等强身份场景：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">443</span> ssl;</span><br><span class="line">    <span class="attribute">ssl_client_certificate</span> /etc/nginx/certs/ca.crt;   <span class="comment"># 签发客户端证书的 CA</span></span><br><span class="line">    <span class="attribute">ssl_verify_client</span> <span class="literal">on</span>;                             <span class="comment"># on=强制；optional=有则验</span></span><br><span class="line">    <span class="attribute">ssl_verify_depth</span> <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line">    <span class="section">location</span> /internal/ &#123;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Client-DN <span class="variable">$ssl_client_s_dn</span>;  <span class="comment"># 客户端证书身份透传后端</span></span><br><span class="line">        <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>验证：<code>curl --cert client.crt --key client.key https://example.com/internal/</code>；无证书请求直接 400。</p>
+<hr>
+<h2 id="三、访问控制"><a href="#三、访问控制" class="headerlink" title="三、访问控制"></a>三、访问控制</h2><h3 id="1-allow-deny（IP-白名单）"><a href="#1-allow-deny（IP-白名单）" class="headerlink" title="1. allow &#x2F; deny（IP 白名单）"></a>1. allow &#x2F; deny（IP 白名单）</h3><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> /admin/ &#123;</span><br><span class="line">    <span class="attribute">allow</span> <span class="number">10.0.0.0</span>/<span class="number">8</span>;</span><br><span class="line">    <span class="attribute">allow</span> <span class="number">192.168.1.0</span>/<span class="number">24</span>;</span><br><span class="line">    <span class="attribute">deny</span>  all;                        <span class="comment"># 其余拒绝，403</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-auth-basic（简单密码门）"><a href="#2-auth-basic（简单密码门）" class="headerlink" title="2. auth_basic（简单密码门）"></a>2. auth_basic（简单密码门）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">htpasswd -c /etc/nginx/.htpasswd alice   <span class="comment"># apache2-utils / httpd-tools 提供</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> /stub_status &#123;</span><br><span class="line">    <span class="attribute">auth_basic</span> <span class="string">&quot;restricted&quot;</span>;</span><br><span class="line">    <span class="attribute">auth_basic_user_file</span> /etc/nginx/.htpasswd;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-隐藏敏感入口"><a href="#3-隐藏敏感入口" class="headerlink" title="3. 隐藏敏感入口"></a>3. 隐藏敏感入口</h3><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> <span class="regexp">~ /\.(git|env)</span>  &#123; <span class="attribute">deny</span> all; &#125;     <span class="comment"># 拦 .git/.env</span></span><br><span class="line"><span class="section">location</span> <span class="regexp">~* /(config|backup)\.(php|sql|bak)$</span> &#123; <span class="attribute">deny</span> all; &#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、限流：limit-req-与-limit-conn"><a href="#四、限流：limit-req-与-limit-conn" class="headerlink" title="四、限流：limit_req 与 limit_conn"></a>四、限流：limit_req 与 limit_conn</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># http 作用域：定义限流区（10MB 内存约 16 万 IP）</span></span><br><span class="line"><span class="attribute">limit_req_zone</span>  <span class="variable">$binary_remote_addr</span>  zone=req_perip:<span class="number">10m</span>  rate=10r/s;</span><br><span class="line"><span class="attribute">limit_conn_zone</span> <span class="variable">$binary_remote_addr</span>  zone=conn_perip:<span class="number">10m</span>;</span><br><span class="line"></span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="section">location</span> /api/ &#123;</span><br><span class="line">        <span class="attribute">limit_req</span>  zone=req_perip  burst=<span class="number">20</span>  nodelay;</span><br><span class="line">        <span class="attribute">limit_conn</span> zone=conn_perip <span class="number">10</span>;      <span class="comment"># 每 IP 并发连接 ≤ 10</span></span><br><span class="line">        <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>rate=10r/s</code></td>
+<td>平均速率（也可 <code>30r/m</code>）</td>
+</tr>
+<tr>
+<td><code>burst=20</code></td>
+<td>允许突发排队 20 个请求</td>
+</tr>
+<tr>
+<td><code>nodelay</code></td>
+<td>突发请求立刻处理不排队（超 burst 即 503）</td>
+</tr>
+</tbody></table>
+<p><strong>打点验证</strong>：被限流的请求会写 error.log（<code>limiting requests, excess: ...</code>），状态码默认 503，可用 <code>limit_req_status 429;</code> 改成更语义化的 429。</p>
+<hr>
+<h2 id="五、安全响应头"><a href="#五、安全响应头" class="headerlink" title="五、安全响应头"></a>五、安全响应头</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">add_header</span> X-Frame-Options        <span class="string">&quot;SAMEORIGIN&quot;</span> always;   <span class="comment"># 防点击劫持</span></span><br><span class="line"><span class="attribute">add_header</span> X-Content-Type-Options <span class="string">&quot;nosniff&quot;</span>    always;   <span class="comment"># 禁止 MIME 嗅探</span></span><br><span class="line"><span class="attribute">add_header</span> Strict-Transport-Security <span class="string">&quot;max-age=31536000&quot;</span> always;</span><br><span class="line"><span class="comment"># 有前端时再考虑：</span></span><br><span class="line"><span class="comment"># add_header Content-Security-Policy &quot;default-src &#x27;self&#x27;&quot; always;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>自查清单</strong>：<code>ss -tlnp</code> 确认 80&#x2F;443 对外、后端端口只绑 127.0.0.1；证书到期监控（<code>openssl x509 -enddate</code>）；error.log 常态化告警。</p>
+<p><strong>进阶加固</strong>：</p>
+<ol>
+<li><strong>DH 参数</strong>：若启用 DHE 套件，<code>openssl dhparam -out dhparam.pem 2048</code> 生成后配 <code>ssl_dhparam</code>，防 Logjam 降级攻击（纯 ECDHE 可忽略）；</li>
+<li><strong>HSTS preload</strong>：<code>max-age</code> 拉到两年并加 <code>includeSubDomains; preload</code> 后可提交进浏览器 preload 列表——<strong>不可逆</strong>，所有子域名必须支持 HTTPS，慎重；</li>
+<li><strong>证书到期巡检</strong>：<code>openssl x509 -enddate -in fullchain.pem</code> 接 crontab 定期检查，别等用户投诉才发现过期。</li>
+</ol>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>证书</td>
+<td>生产 certbot 自动续期；自签用 <code>openssl req -x509 -addext SAN</code>；链要完整</td>
+</tr>
+<tr>
+<td>HTTPS 配置</td>
+<td>TLSv1.2&#x2F;1.3、session cache 复用、<code>http2 on</code> 提速</td>
+</tr>
+<tr>
+<td>跳转</td>
+<td>80 端口 <code>return 301</code> + HSTS 头双保险</td>
+</tr>
+<tr>
+<td>访问控制</td>
+<td>allow&#x2F;deny 做 IP 白名单，auth_basic 做临时密码门</td>
+</tr>
+<tr>
+<td>限流</td>
+<td><code>limit_req_zone</code> + <code>burst/nodelay</code> 挡突发；429 更语义化</td>
+</tr>
+<tr>
+<td>安全头</td>
+<td>X-Frame-Options &#x2F; nosniff &#x2F; HSTS 三件套先配上</td>
+</tr>
+<tr>
+<td>OCSP Stapling</td>
+<td>Nginx 代查吊销状态随握手下发，省浏览器查询延迟、护隐私</td>
+</tr>
+<tr>
+<td>会话复用</td>
+<td>shared cache 10MB≈4 万会话；多机统一 ticket key；0-RTT 只对幂等 GET</td>
+</tr>
+<tr>
+<td>HTTP&#x2F;3</td>
+<td><code>listen 443 quic</code> + <code>http3 on</code>（1.27+），放行 UDP 443，Alt-Svc 引导升级</td>
+</tr>
+<tr>
+<td>mTLS</td>
+<td>ssl_client_certificate + ssl_verify_client，内部 API 强身份校验</td>
+</tr>
+</tbody></table>
+<hr>
+<p>性能是最后一公里：<a href="/nginx/04-nginx-cache-tuning/">第四章：Nginx 缓存与性能调优</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Nginx/" rel="tag"># Nginx</a>
+              <a href="/tags/HTTPS/" rel="tag"># HTTPS</a>
+              <a href="/tags/TLS/" rel="tag"># TLS</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/nginx/02-nginx-reverse-proxy-lb/" rel="prev" title="第二章：Nginx 反向代理与负载均衡">
+                  <i class="fa fa-angle-left"></i> 第二章：Nginx 反向代理与负载均衡
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/nginx/04-nginx-cache-tuning/" rel="next" title="第四章：Nginx 缓存与性能调优">
+                  第四章：Nginx 缓存与性能调优 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

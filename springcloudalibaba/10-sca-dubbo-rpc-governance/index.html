@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十章：Dubbo：RPC 与服务治理扩展概念基础Apache Dubbo 是一款 Java RPC 与服务治理框架：  本质是 RPC：消费方像调用本地方法一样调用远端接口，通过注册中心发现 Provider 地址，通信走二进制协议而非文本 HTTP。 协议与治理：支持 Triple（tri）、经典 dubbo 协议等，内置负载均衡、集群容错、超时重试等服务治理能力。 与 HTTP + Open">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十章：Dubbo：RPC 与服务治理扩展">
+<meta property="og:url" content="https://my919.github.io/springcloudalibaba/10-sca-dubbo-rpc-governance/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十章：Dubbo：RPC 与服务治理扩展概念基础Apache Dubbo 是一款 Java RPC 与服务治理框架：  本质是 RPC：消费方像调用本地方法一样调用远端接口，通过注册中心发现 Provider 地址，通信走二进制协议而非文本 HTTP。 协议与治理：支持 Triple（tri）、经典 dubbo 协议等，内置负载均衡、集群容错、超时重试等服务治理能力。 与 HTTP + Open">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-17T03:05:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.599Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="SpringCloudAlibaba">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/springcloudalibaba/10-sca-dubbo-rpc-governance/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/springcloudalibaba/10-sca-dubbo-rpc-governance/","path":"springcloudalibaba/10-sca-dubbo-rpc-governance/","title":"第十章：Dubbo：RPC 与服务治理扩展"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十章：Dubbo：RPC 与服务治理扩展 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E7%AB%A0%EF%BC%9ADubbo%EF%BC%9ARPC-%E4%B8%8E%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E6%89%A9%E5%B1%95"><span class="nav-number">1.</span> <span class="nav-text">第十章：Dubbo：RPC 与服务治理扩展</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9E%B6%E6%9E%84%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">架构说明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Dubbo-%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84%E8%A7%92%E8%89%B2"><span class="nav-number">1.3.</span> <span class="nav-text">Dubbo 核心架构角色</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Triple-%E5%8D%8F%E8%AE%AE"><span class="nav-number">1.4.</span> <span class="nav-text">Triple 协议</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1"><span class="nav-number">1.5.</span> <span class="nav-text">负载均衡</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%9B%86%E7%BE%A4%E5%AE%B9%E9%94%99"><span class="nav-number">1.6.</span> <span class="nav-text">集群容错</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B3%9B%E5%8C%96%E8%B0%83%E7%94%A8"><span class="nav-number">1.7.</span> <span class="nav-text">泛化调用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E9%80%9F%E6%9F%A5"><span class="nav-number">1.8.</span> <span class="nav-text">服务治理速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.9.</span> <span class="nav-text">前置条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%8B%A5%E5%9C%A8%E6%9C%AC%E4%BB%93%E5%BA%93%E6%97%81%E8%B7%AF%E9%9B%86%E6%88%90%EF%BC%88%E6%AD%A5%E9%AA%A4%E6%A6%82%E8%A6%81%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">若在本仓库旁路集成（步骤概要）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%88%B6-POM-%E5%A2%9E%E5%8A%A0-dubbo-bom"><span class="nav-number">1.10.1.</span> <span class="nav-text">1. 父 POM 增加 dubbo-bom</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%AD%90%E6%A8%A1%E5%9D%97%E4%BE%9D%E8%B5%96"><span class="nav-number">1.10.2.</span> <span class="nav-text">2. 子模块依赖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E9%85%8D%E7%BD%AE%E7%A4%BA%E6%84%8F%EF%BC%88%E5%8B%BF%E4%B8%8E-cloud-order-%E7%8E%B0%E6%9C%89-Feign-%E6%B7%B7%E7%94%A8%E5%90%8C%E4%B8%80%E6%8E%A5%E5%8F%A3%E9%99%A4%E9%9D%9E%E5%88%BB%E6%84%8F%E8%BF%81%E7%A7%BB%EF%BC%89"><span class="nav-number">1.10.3.</span> <span class="nav-text">3. 配置示意（勿与 cloud-order 现有 Feign 混用同一接口除非刻意迁移）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E%EF%BC%88%E9%9B%86%E6%88%90%E5%90%8E%E5%B8%B8%E7%94%A8%E9%A1%B9%EF%BC%89"><span class="nav-number">1.11.</span> <span class="nav-text">配置说明（集成后常用项）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E-OpenFeign-%E9%80%89%E5%9E%8B"><span class="nav-number">1.12.</span> <span class="nav-text">与 OpenFeign 选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81%EF%BC%88%E7%8B%AC%E7%AB%8B-Demo%EF%BC%89"><span class="nav-number">1.13.</span> <span class="nav-text">验证（独立 Demo）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="nav-number">1.14.</span> <span class="nav-text">常见问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="nav-number">1.15.</span> <span class="nav-text">参考链接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6%EF%BC%88%E6%9C%AC%E4%BB%93%E5%BA%93%EF%BC%8CFeign-%E7%8E%B0%E7%8A%B6%EF%BC%89"><span class="nav-number">1.16.</span> <span class="nav-text">相关文件（本仓库，Feign 现状）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.17.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/springcloudalibaba/10-sca-dubbo-rpc-governance/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十章：Dubbo：RPC 与服务治理扩展 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十章：Dubbo：RPC 与服务治理扩展
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-17 11:05:00" itemprop="dateCreated datePublished" datetime="2026-05-17T11:05:00+08:00">2026-05-17</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/SpringCloudAlibaba/" itemprop="url" rel="index"><span itemprop="name">SpringCloudAlibaba</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.1k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十章：Dubbo：RPC-与服务治理扩展"><a href="#第十章：Dubbo：RPC-与服务治理扩展" class="headerlink" title="第十章：Dubbo：RPC 与服务治理扩展"></a>第十章：Dubbo：RPC 与服务治理扩展</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>Apache Dubbo</strong> 是一款 Java <strong>RPC</strong> 与<strong>服务治理</strong>框架：</p>
+<ol>
+<li><strong>本质是 RPC</strong>：消费方像调用本地方法一样调用远端接口，通过<strong>注册中心</strong>发现 <strong>Provider</strong> 地址，通信走<strong>二进制协议</strong>而非文本 HTTP。</li>
+<li><strong>协议与治理</strong>：支持 <strong>Triple（tri）</strong>、经典 <strong>dubbo</strong> 协议等，内置负载均衡、集群容错、超时重试等服务治理能力。</li>
+<li><strong>与 HTTP + OpenFeign 的取舍</strong>：Dubbo 更适合<strong>高频、低延迟</strong>的内部核心调用；OpenFeign 更贴近 REST 生态，易与 <strong>Gateway、Swagger</strong> 统一。</li>
+<li><strong>本仓库现状</strong>：<strong>cloud 当前未集成 Dubbo</strong>。服务间调用使用 <strong>OpenFeign</strong>（如 <code>cloud-order</code> → <code>cloud-stock</code>），注册发现使用 <strong>Nacos</strong>，见 <a href="/springcloudalibaba/08-sca-order-stock-seata-practice/">第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务</a>、<a href="/springcloudalibaba/03-sca-integrate-nacos/">第三章：集成 Nacos：注册中心与配置中心</a>。</li>
+<li><strong>本文定位</strong>：供与 <strong>SCA 同栈</strong> 时扩展参考，说明「如果要用该怎么加、要注意什么」。</li>
+</ol>
+<p>先看 Dubbo 的角色与交互：</p>
+<h2 id="架构说明"><a href="#架构说明" class="headerlink" title="架构说明"></a>架构说明</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  Consumer[Consumer 应用]
+  Registry[(Nacos)]
+  Provider[Provider 应用]
+  Consumer --&gt;|订阅| Registry
+  Provider --&gt;|注册| Registry
+  Consumer --&gt;|RPC tri&#x2F;dubbo| Provider
+</code>
+</pre>
+
+<h2 id="Dubbo-核心架构角色"><a href="#Dubbo-核心架构角色" class="headerlink" title="Dubbo 核心架构角色"></a>Dubbo 核心架构角色</h2><table>
+<thead>
+<tr>
+<th>角色</th>
+<th>职责</th>
+<th>本场景对应</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Provider</td>
+<td>暴露 RPC 服务，向注册中心注册元数据</td>
+<td>cloud-stock（若迁移）</td>
+</tr>
+<tr>
+<td>Consumer</td>
+<td>订阅服务列表，生成接口代理发起调用</td>
+<td>cloud-order（若迁移）</td>
+</tr>
+<tr>
+<td>Registry</td>
+<td>地址注册与订阅推送</td>
+<td>复用 Nacos 3.x</td>
+</tr>
+<tr>
+<td>Monitor（可选）</td>
+<td>调用统计、拓扑展示</td>
+<td>Dubbo Admin</td>
+</tr>
+</tbody></table>
+<p>Dubbo 3.3 默认走<strong>应用级服务发现</strong>：注册的是「应用名 → 实例列表」，接口与应用的映射存元数据中心；相比 2.x 的<strong>接口级注册</strong>（每个接口一条记录），注册中心数据量随接口数膨胀的问题被根治，与 Spring Cloud 的服务模型天然对齐——这也是 Dubbo 3.x 能直接复用 Nacos 服务列表与 Gateway 生态的前提。</p>
+<h2 id="Triple-协议"><a href="#Triple-协议" class="headerlink" title="Triple 协议"></a>Triple 协议</h2><p>Dubbo 3.3 主推 <strong>Triple（tri）</strong>：</p>
+<ul>
+<li>基于 <strong>HTTP&#x2F;2</strong>，兼容 <strong>gRPC</strong> 协议，天然穿透网关、负载均衡器与 Service Mesh；</li>
+<li>支持<strong>流式调用</strong>（client&#x2F;server&#x2F;bidirectional streaming）与多路复用，长连接上可并发大量请求；</li>
+<li>跨语言友好：HTTP&#x2F;2 生态让非 Java 端（Go、前端经 grpc-web）可直接调用。</li>
+</ul>
+<p>经典 <code>dubbo</code> 协议（私有 TCP + Hessian2）单连接吞吐略高，但跨语言与基础设施支持弱。<strong>新工程直接选 <code>tri</code></strong>；存量 <code>dubbo</code> 协议可通过 <code>dubbo.protocol.name</code> 双注册平滑过渡。</p>
+<h2 id="负载均衡"><a href="#负载均衡" class="headerlink" title="负载均衡"></a>负载均衡</h2><p>Consumer 拿到多个 Provider 实例后按策略选择：</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>说明</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>random</code>（默认）</td>
+<td>加权随机</td>
+<td>大多数场景</td>
+</tr>
+<tr>
+<td><code>roundrobin</code></td>
+<td>加权轮询</td>
+<td>实例性能相近</td>
+</tr>
+<tr>
+<td><code>leastactive</code></td>
+<td>最少活跃调用数</td>
+<td>长耗时接口，让空闲实例多承担</td>
+</tr>
+<tr>
+<td><code>consistenthash</code></td>
+<td>一致性哈希（按参数）</td>
+<td>会话亲和：同参数打到同实例</td>
+</tr>
+<tr>
+<td><code>shortestresponse</code></td>
+<td>最短响应时间优先</td>
+<td>对延迟敏感的核心链路</td>
+</tr>
+</tbody></table>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">dubbo:</span></span><br><span class="line">  <span class="attr">consumer:</span></span><br><span class="line">    <span class="attr">loadbalance:</span> <span class="string">leastactive</span></span><br></pre></td></tr></table></figure>
+
+<p>也可按接口粒度覆盖：<code>@DubboReference(loadbalance = &quot;roundrobin&quot;)</code>。权重在 Provider 侧设置（<code>dubbo.provider.weight</code> 或注册中心动态调整），配合<strong>同可用区优先</strong>（<code>dubbo.consumer.cluster=zoneaware</code> 相关配置）减少跨机房调用。</p>
+<h2 id="集群容错"><a href="#集群容错" class="headerlink" title="集群容错"></a>集群容错</h2><p>调用失败后的处理策略：</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>行为</th>
+<th>风险&#x2F;适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>failover</code>（默认）</td>
+<td>失败自动换实例重试（默认 2 次）</td>
+<td><strong>非幂等接口慎用</strong>——下单扣库存会重复执行</td>
+</tr>
+<tr>
+<td><code>failfast</code></td>
+<td>只调一次，失败即抛错</td>
+<td>写操作、非幂等接口必选</td>
+</tr>
+<tr>
+<td><code>failsafe</code></td>
+<td>失败吞异常返回空</td>
+<td>日志、审计类调用</td>
+</tr>
+<tr>
+<td><code>failback</code></td>
+<td>失败后异步定时重发</td>
+<td>通知类场景</td>
+</tr>
+<tr>
+<td><code>broadcast</code></td>
+<td>广播全部实例，逐个调用</td>
+<td>本地缓存刷新</td>
+</tr>
+</tbody></table>
+<p>对应到下单链路：若改用 Dubbo，<strong>扣库存接口必须配 <code>failfast</code></strong> 或先做好幂等——否则网络抖动引发的自动重试可能造成<strong>重复扣减</strong>，而调用方拿到的只是超时异常。</p>
+<h2 id="泛化调用"><a href="#泛化调用" class="headerlink" title="泛化调用"></a>泛化调用</h2><p>没有 Provider 的接口 jar 也能调用（网关、测试平台、排障工具常用）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.dubbo.config.ApplicationConfig;</span><br><span class="line"><span class="keyword">import</span> org.apache.dubbo.config.ReferenceConfig;</span><br><span class="line"><span class="keyword">import</span> org.apache.dubbo.config.RegistryConfig;</span><br><span class="line"><span class="keyword">import</span> org.apache.dubbo.rpc.service.GenericService;</span><br><span class="line"></span><br><span class="line"><span class="type">ReferenceConfig</span>&lt;GenericService&gt; <span class="variable">reference</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ReferenceConfig</span>&lt;&gt;();</span><br><span class="line">reference.setApplication(<span class="keyword">new</span> <span class="title class_">ApplicationConfig</span>(<span class="string">&quot;demo-consumer&quot;</span>));</span><br><span class="line">reference.setRegistry(<span class="keyword">new</span> <span class="title class_">RegistryConfig</span>(<span class="string">&quot;nacos://192.168.1.22:30010&quot;</span>));</span><br><span class="line">reference.setInterface(<span class="string">&quot;org.my919.stock.api.StockService&quot;</span>);</span><br><span class="line">reference.setGeneric(<span class="string">&quot;true&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="type">GenericService</span> <span class="variable">genericService</span> <span class="operator">=</span> reference.get();</span><br><span class="line"><span class="type">Object</span> <span class="variable">result</span> <span class="operator">=</span> genericService.$invoke(</span><br><span class="line">        <span class="string">&quot;deduct&quot;</span>,</span><br><span class="line">        <span class="keyword">new</span> <span class="title class_">String</span>[]&#123;<span class="string">&quot;java.lang.Long&quot;</span>, <span class="string">&quot;int&quot;</span>&#125;,</span><br><span class="line">        <span class="keyword">new</span> <span class="title class_">Object</span>[]&#123;<span class="number">1L</span>, <span class="number">2</span>&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>要点：方法名、<strong>参数类型签名</strong>、参数值三要素手工指定，返回值是 Map&#x2F;原生类型而非强类型对象。泛化调用是 <strong>Dubbo 网关</strong>（Apache ShenYu、Higress 等）把 HTTP 请求转发为 Dubbo 调用的底层机制——想让 cloud-gateway 直接代理 Dubbo 服务时，本质就是引入这层泛化。</p>
+<h2 id="服务治理速查"><a href="#服务治理速查" class="headerlink" title="服务治理速查"></a>服务治理速查</h2><table>
+<thead>
+<tr>
+<th>能力</th>
+<th>配置示例</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>超时</td>
+<td><code>dubbo.consumer.timeout: 3000</code></td>
+<td>全局默认，接口级 <code>@DubboReference(timeout=...)</code> 覆盖</td>
+</tr>
+<tr>
+<td>重试</td>
+<td><code>dubbo.consumer.retries: 0</code></td>
+<td><strong>幂等接口才可 &gt;0</strong></td>
+</tr>
+<tr>
+<td>版本&#x2F;分组</td>
+<td><code>@DubboService(version=&quot;1.0.0&quot;, group=&quot;gray&quot;)</code></td>
+<td>多版本并行、灰度隔离</td>
+</tr>
+<tr>
+<td>直连调试</td>
+<td><code>@DubboReference(url=&quot;tri://192.168.1.100:50051&quot;)</code></td>
+<td>绕过注册中心打单机</td>
+</tr>
+<tr>
+<td>标签路由</td>
+<td>Dubbo Admin 下发路由规则</td>
+<td>按应用&#x2F;参数分流到指定实例组</td>
+</tr>
+</tbody></table>
+<h2 id="前置条件"><a href="#前置条件" class="headerlink" title="前置条件"></a>前置条件</h2><table>
+<thead>
+<tr>
+<th>项</th>
+<th>建议</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>JDK</td>
+<td>17+（本仓库为 21）</td>
+<td></td>
+</tr>
+<tr>
+<td>Nacos</td>
+<td>与 SCA <strong>2025.1.0.0</strong> 对齐的 <strong>3.1.x</strong> Server</td>
+<td>见 <a href="/springcloudalibaba/03-sca-integrate-nacos/">第三章：集成 Nacos：注册中心与配置中心</a></td>
+</tr>
+<tr>
+<td>Dubbo BOM</td>
+<td><strong>3.3.x</strong>（如 <strong>3.3.6</strong>，以 Central 为准）</td>
+<td>独立于 SCA 发行节奏</td>
+</tr>
+<tr>
+<td>本仓库</td>
+<td>—</td>
+<td>无 <code>dubbo-spring-boot-starter</code> 依赖</td>
+</tr>
+</tbody></table>
+<h2 id="若在本仓库旁路集成（步骤概要）"><a href="#若在本仓库旁路集成（步骤概要）" class="headerlink" title="若在本仓库旁路集成（步骤概要）"></a>若在本仓库旁路集成（步骤概要）</h2><h3 id="1-父-POM-增加-dubbo-bom"><a href="#1-父-POM-增加-dubbo-bom" class="headerlink" title="1. 父 POM 增加 dubbo-bom"></a>1. 父 POM 增加 dubbo-bom</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependencyManagement</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dependencies</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- 与现有 spring-cloud-alibaba-dependencies 并列 --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.apache.dubbo<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>dubbo-bom<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.3.6<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">type</span>&gt;</span>pom<span class="tag">&lt;/<span class="name">type</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">scope</span>&gt;</span>import<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dependencies</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependencyManagement</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-子模块依赖"><a href="#2-子模块依赖" class="headerlink" title="2. 子模块依赖"></a>2. 子模块依赖</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.apache.dubbo<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>dubbo-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>执行 <code>mvn dependency:tree</code> 检查与 <strong>Nacos Client 3.1.1</strong> 无冲突。</p>
+<h3 id="3-配置示意（勿与-cloud-order-现有-Feign-混用同一接口除非刻意迁移）"><a href="#3-配置示意（勿与-cloud-order-现有-Feign-混用同一接口除非刻意迁移）" class="headerlink" title="3. 配置示意（勿与 cloud-order 现有 Feign 混用同一接口除非刻意迁移）"></a>3. 配置示意（勿与 cloud-order 现有 Feign 混用同一接口除非刻意迁移）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">dubbo:</span></span><br><span class="line">  <span class="attr">application:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">cloud-stock-dubbo</span></span><br><span class="line">  <span class="attr">registry:</span></span><br><span class="line">    <span class="attr">address:</span> <span class="string">nacos://$&#123;NACOS_SERVER_ADDR:192.168.1.22:30010&#125;</span></span><br><span class="line">  <span class="attr">protocol:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">tri</span></span><br><span class="line">    <span class="attr">port:</span> <span class="number">-1</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>@DubboService</code></strong>：在 Provider（如 stock）暴露接口。  </li>
+<li><strong><code>@DubboReference</code></strong>：在 Consumer（如 order）注入代理。</li>
+</ul>
+<p><strong>注意</strong>：<code>registry.address</code> 须与 Spring Cloud 使用的 <strong>同一 Nacos</strong> 集群；namespace、group 按 Dubbo 文档配置。</p>
+<h2 id="配置说明（集成后常用项）"><a href="#配置说明（集成后常用项）" class="headerlink" title="配置说明（集成后常用项）"></a>配置说明（集成后常用项）</h2><table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>dubbo.application.name</code></td>
+<td>应用名</td>
+<td><code>cloud-stock</code></td>
+</tr>
+<tr>
+<td><code>dubbo.registry.address</code></td>
+<td>注册中心</td>
+<td><code>nacos://192.168.1.22:30010</code></td>
+</tr>
+<tr>
+<td><code>dubbo.protocol.name</code></td>
+<td>协议</td>
+<td><code>tri</code></td>
+</tr>
+<tr>
+<td><code>dubbo.protocol.port</code></td>
+<td>端口，-1 自增</td>
+<td><code>-1</code></td>
+</tr>
+<tr>
+<td><code>dubbo.consumer.timeout</code></td>
+<td>调用超时 ms</td>
+<td><code>3000</code></td>
+</tr>
+</tbody></table>
+<h2 id="与-OpenFeign-选型"><a href="#与-OpenFeign-选型" class="headerlink" title="与 OpenFeign 选型"></a>与 OpenFeign 选型</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>OpenFeign（本仓库）</th>
+<th>Dubbo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>协议</td>
+<td>HTTP&#x2F;JSON</td>
+<td>二进制 RPC &#x2F; Triple</td>
+</tr>
+<tr>
+<td>与 Gateway</td>
+<td>易统一 REST</td>
+<td>通常内部直连</td>
+</tr>
+<tr>
+<td>学习成本</td>
+<td>低</td>
+<td>需接口 jar、协议约定</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>BFF、对外 REST</td>
+<td>核心域高频调用</td>
+</tr>
+</tbody></table>
+<p>迁移下单链路前需评估：<strong>Gateway 路由</strong>、<strong>Swagger</strong>、<strong>Seata 全局事务</strong> 与 Dubbo 过滤器的组合，建议单独分支验证。</p>
+<h2 id="验证（独立-Demo）"><a href="#验证（独立-Demo）" class="headerlink" title="验证（独立 Demo）"></a>验证（独立 Demo）</h2><ol>
+<li>按 <a target="_blank" rel="noopener" href="https://dubbo.apache.org/zh-cn/overview/mannual/java-sdk/quick-start/starter/">Dubbo 快速开始</a> 起 Provider&#x2F;Consumer。  </li>
+<li>Nacos 控制台除 Spring Cloud 服务外，可见 Dubbo 注册元数据。  </li>
+<li>压测对比 Feign 与 Dubbo 延迟（本仓库无现成对比脚本）。  </li>
+<li>治理面验证：调整 Provider 权重观察流量分布变化；断开一台 Provider 观察 <code>failover</code>&#x2F;<code>failfast</code> 行为差异。</li>
+</ol>
+<h2 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h2><p><strong>Q：本仓库能否同时 Feign + Dubbo？</strong><br>A：技术上可以分接口使用，但同一业务链路易维护成本高；未在 cloud 中验证。</p>
+<p><strong>Q：Dubbo 与 Seata？</strong><br>A：需按 Dubbo + Seata 官方组合配置事务传播；当前 cloud 的 <code>@GlobalTransactional</code> 基于 Feign。</p>
+<p><strong>Q：Nacos 地址用 30010 还是 8848？</strong><br>A：与 Spring Cloud 一致：对外 NodePort 用 <strong>30010</strong>；本地 Docker 用 <strong>8848</strong>。</p>
+<p><strong>Q：Dubbo 注册的服务会出现在 Nacos 服务列表里吗？</strong><br>A：会——3.3 应用级发现注册为普通服务（应用名），与 Spring Cloud 服务同列表可见；接口元数据在「服务详情 → 元数据」中查看。</p>
+<p><strong>Q：已有 Feign 接口能直接改成 Dubbo 吗？</strong><br>A：不能直接改：Feign 接口没有 Dubbo 所需的<strong>接口 jar 契约</strong>，需要抽出 <code>xxx-api</code> 模块（只含接口 + DTO），Provider 实现、Consumer 引用都依赖它；DTO 必须实现 <code>Serializable</code> 且避免 Lombok 生成的构造器差异导致反序列化失败。</p>
+<p><strong>Q：泛化调用返回的 Map 字段丢了类型怎么办？</strong><br>A：Dubbo 3.3 泛化默认做<strong>类型擦除到 Map</strong>；需要强类型时用 <code>generic: &quot;nativejava&quot;</code> 或 <code>bean</code> 模式，或在 Consumer 侧引入 api jar 改用常规调用。</p>
+<p><strong>Q：Dubbo 的权重和 Nacos 控制台权重冲突吗？</strong><br>A：不冲突但<strong>生效层级不同</strong>：Nacos 权重作用于服务发现列表下发，Dubbo 权重作用于 RPC 层负载均衡选择；建议只用其中一种（推荐 Dubbo 侧），避免双重加权导致流量分布难预测。</p>
+<p><strong>Q：Triple 协议端口和 Spring MVC 端口冲突吗？</strong><br>A：不冲突，<code>tri</code> 默认从 <strong>50051</strong> 起（<code>port: -1</code> 时自增），与 Web 的 8001–8004 各占各的；防火墙&#x2F;NodePort 需单独放行 RPC 端口段。</p>
+<p><strong>Q：Dubbo 调用能接 Sentinel 限流吗？</strong><br>A：能，<code>dubbo-spring-boot-starter</code> 体系有 Sentinel 适配（<code>sentinel-apache-dubbo3-adapter</code>），Provider&#x2F;Consumer 双侧均可按「接口:方法」资源名配流控熔断。</p>
+<h2 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://dubbo.apache.org/zh-cn/">Apache Dubbo 官网</a></li>
+<li><a target="_blank" rel="noopener" href="https://dubbo.apache.org/zh-cn/overview/mannual/java-sdk/quick-start/starter/">Dubbo Spring Boot 快速开始</a></li>
+<li><a target="_blank" rel="noopener" href="https://sca.aliyun.com/docs/2025.x/overview/version-explain/">SCA 版本说明</a></li>
+</ul>
+<h2 id="相关文件（本仓库，Feign-现状）"><a href="#相关文件（本仓库，Feign-现状）" class="headerlink" title="相关文件（本仓库，Feign 现状）"></a>相关文件（本仓库，Feign 现状）</h2><table>
+<thead>
+<tr>
+<th>路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>cloud-order/.../StockFeignClient.java</code></td>
+<td>当前 RPC 方式为 Feign</td>
+</tr>
+<tr>
+<td><code>cloud-order/.../OrderServiceImpl.java</code></td>
+<td>业务入口</td>
+</tr>
+<tr>
+<td><code>docs/集成Nacos.md</code></td>
+<td>注册中心</td>
+</tr>
+<tr>
+<td><code>docs/集成SpringCloudAlibaba.md</code></td>
+<td>SCA 总览</td>
+</tr>
+</tbody></table>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>定位</td>
+<td>Java RPC + 服务治理框架，支持 Triple&#x2F;dubbo 协议，适合高频低延迟内部调用</td>
+</tr>
+<tr>
+<td>本仓库现状</td>
+<td>未集成；服务调用走 OpenFeign + Nacos</td>
+</tr>
+<tr>
+<td>集成路径</td>
+<td>父 POM 引 <code>dubbo-bom</code> → 子模块加 <code>dubbo-spring-boot-starter</code> → 复用同一 Nacos 注册中心</td>
+</tr>
+<tr>
+<td>选型建议</td>
+<td>对外 REST 用 Feign&#x2F;Gateway，核心域高频调用才引入 Dubbo，迁移前单独分支验证</td>
+</tr>
+</tbody></table>
+<hr>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/SpringCloudAlibaba/" rel="tag"># SpringCloudAlibaba</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/springboot/13-springboot-connection-pool-hikaricp-druid/" rel="prev" title="第十三章：数据库连接池：HikariCP与Druid对比与落地">
+                  <i class="fa fa-angle-left"></i> 第十三章：数据库连接池：HikariCP与Druid对比与落地
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/springboot/14-springboot-custom-annotation-aop/" rel="next" title="第十四章：自定义注解与AOP实现业务逻辑">
+                  第十四章：自定义注解与AOP实现业务逻辑 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

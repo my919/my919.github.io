@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法概念基础 哈希（Hash）是单向函数：任意长度输入 → 固定长度摘要（SHA-256 输出 256 bit），不可逆——无法从摘要还原原文。 三大特性：确定性（同输入必得同输出）、雪崩效应（改动 1 bit，摘要面目全非）、抗碰撞性（极难找到两个不同输入对应同一摘要）。 为什么需要：完整性校验（下载包比对、防篡改）、签名输入（">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法">
+<meta property="og:url" content="https://my919.github.io/security/03-openssl-hash-algorithms/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法概念基础 哈希（Hash）是单向函数：任意长度输入 → 固定长度摘要（SHA-256 输出 256 bit），不可逆——无法从摘要还原原文。 三大特性：确定性（同输入必得同输出）、雪崩效应（改动 1 bit，摘要面目全非）、抗碰撞性（极难找到两个不同输入对应同一摘要）。 为什么需要：完整性校验（下载包比对、防篡改）、签名输入（">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T06:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.595Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="OpenSSL">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/security/03-openssl-hash-algorithms/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/security/03-openssl-hash-algorithms/","path":"security/03-openssl-hash-algorithms/","title":"第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9AOpenSSL-%E5%93%88%E5%B8%8C%E7%AE%97%E6%B3%95%EF%BC%9ASHA-256%E3%80%81SHA-3-%E4%B8%8E%E6%8E%A8%E8%8D%90%E7%94%A8%E6%B3%95"><span class="nav-number">1.</span> <span class="nav-text">第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E6%B3%95%E9%80%89%E5%9E%8B%EF%BC%88%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">算法选型（推荐）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%B8%B8%E8%A7%81%E7%AE%97%E6%B3%95%E7%89%B9%E7%82%B9"><span class="nav-number">1.3.</span> <span class="nav-text">一、常见算法特点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-SHA-2-%E7%B3%BB%E5%88%97%EF%BC%88%E9%A6%96%E9%80%89%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. SHA-2 系列（首选）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-SHA-3-%E7%B3%BB%E5%88%97"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. SHA-3 系列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-SHA-1-MD5%EF%BC%88%E4%BB%85%E5%85%BC%E5%AE%B9%EF%BC%89"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. SHA-1 &#x2F; MD5（仅兼容）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-BLAKE2%EF%BC%88OpenSSL-3-x%EF%BC%89"><span class="nav-number">1.3.4.</span> <span class="nav-text">4. BLAKE2（OpenSSL 3.x）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%9B%BD%E5%AF%86-SM3%EF%BC%88%E5%90%88%E8%A7%84%E5%9C%BA%E6%99%AF%EF%BC%89"><span class="nav-number">1.3.5.</span> <span class="nav-text">5. 国密 SM3（合规场景）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%8E%A8%E8%8D%90%E7%94%A8%E6%B3%95"><span class="nav-number">1.4.</span> <span class="nav-text">二、推荐用法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%A0%A1%E9%AA%8C%E4%B8%8B%E8%BD%BD%E5%8C%85"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. 校验下载包</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%AE%A1%E9%81%93-%E5%AD%97%E7%AC%A6%E4%B8%B2%EF%BC%88%E6%B3%A8%E6%84%8F%E6%8D%A2%E8%A1%8C%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 管道 &#x2F; 字符串（注意换行）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E9%85%8D%E5%90%88%E6%95%B0%E5%AD%97%E7%AD%BE%E5%90%8D"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 配合数字签名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%9F%A5%E7%9C%8B%E6%9C%AC%E6%9C%BA%E6%94%AF%E6%8C%81"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. 查看本机支持</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E6%80%A7%E8%83%BD%E5%9F%BA%E5%87%86%E5%AF%B9%E6%AF%94%EF%BC%88openssl-speed%EF%BC%89"><span class="nav-number">1.4.5.</span> <span class="nav-text">5. 性能基准对比（openssl speed）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%B8%B8%E8%A7%81%E8%AF%AF%E7%94%A8%E4%B8%8E%E9%81%BF%E5%9D%91"><span class="nav-number">1.5.</span> <span class="nav-text">三、常见误用与避坑</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%AF%AF%E7%94%A8%E5%9C%BA%E6%99%AF%E5%AF%B9%E7%85%A7%E8%A1%A8"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 误用场景对照表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%91%BD%E4%BB%A4%E8%A1%8C%E6%A0%A1%E9%AA%8C%E8%84%9A%E6%9C%AC%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 命令行校验脚本示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E7%BC%96%E7%A8%8B%E6%8E%A5%E5%8F%A3%E7%AE%80%E4%BB%8B%EF%BC%88libcrypto%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">四、编程接口简介（libcrypto）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E4%B8%8E%E3%80%8C%E5%8A%A0%E5%AF%86%E3%80%8D%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="nav-number">1.7.</span> <span class="nav-text">五、与「加密」的区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%93%88%E5%B8%8C%E5%9C%A8%E8%AF%81%E4%B9%A6%E4%B8%8E-TLS-%E4%B8%AD%E7%9A%84%E9%AB%98%E9%A2%91%E5%BA%94%E7%94%A8"><span class="nav-number">1.8.</span> <span class="nav-text">六、哈希在证书与 TLS 中的高频应用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%AF%81%E4%B9%A6%E6%8C%87%E7%BA%B9%EF%BC%88fingerprint%EF%BC%89%E6%A0%B8%E5%AF%B9"><span class="nav-number">1.8.1.</span> <span class="nav-text">1. 证书指纹（fingerprint）核对</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%AF%86%E9%92%A5-CSR-%E8%AF%81%E4%B9%A6%E4%B8%89%E6%96%B9%E4%B8%80%E8%87%B4%E6%80%A7%E6%A0%A1%E9%AA%8C"><span class="nav-number">1.8.2.</span> <span class="nav-text">2. 密钥&#x2F;CSR&#x2F;证书三方一致性校验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-TLS-1-3-%E4%B8%AD%E7%9A%84%E5%93%88%E5%B8%8C%E5%88%86%E5%B7%A5"><span class="nav-number">1.8.3.</span> <span class="nav-text">3. TLS 1.3 中的哈希分工</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"><span class="nav-number">1.9.</span> <span class="nav-text">延伸阅读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/security/03-openssl-hash-algorithms/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 14:00:00" itemprop="dateCreated datePublished" datetime="2026-05-01T14:00:00+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%AE%89%E5%85%A8/" itemprop="url" rel="index"><span itemprop="name">安全</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>4.9k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：OpenSSL-哈希算法：SHA-256、SHA-3-与推荐用法"><a href="#第三章：OpenSSL-哈希算法：SHA-256、SHA-3-与推荐用法" class="headerlink" title="第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法"></a>第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>哈希（Hash）是单向函数</strong>：任意长度输入 → <strong>固定长度摘要</strong>（SHA-256 输出 256 bit），<strong>不可逆</strong>——无法从摘要还原原文。</li>
+<li><strong>三大特性</strong>：<strong>确定性</strong>（同输入必得同输出）、<strong>雪崩效应</strong>（改动 1 bit，摘要面目全非）、<strong>抗碰撞性</strong>（极难找到两个不同输入对应同一摘要）。</li>
+<li><strong>为什么需要</strong>：<strong>完整性校验</strong>（下载包比对、防篡改）、<strong>签名输入</strong>（先哈希再签名，见第六章）、<strong>口令派生</strong>（加盐迭代，见第七章）、区块链 Merkle 树等。</li>
+<li><strong>哈希 ≠ 加密</strong>：哈希<strong>不可逆、无密钥</strong>，用于<strong>完整性与指纹</strong>；对称加密<strong>可逆、有密钥</strong>，用于<strong>保密性</strong>（本章末尾有对照表）。</li>
+<li><strong>选型一句话</strong>：新系统一律 <strong>SHA-256 &#x2F; SHA-512</strong>，需要算法多样性时上 <strong>SHA-3</strong>；<strong>MD5、SHA-1</strong> 仅用于遗留系统兼容。</li>
+</ol>
+<h2 id="算法选型（推荐）"><a href="#算法选型（推荐）" class="headerlink" title="算法选型（推荐）"></a>算法选型（推荐）</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐</th>
+<th>避免</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>文件完整性校验、软件发布</td>
+<td><strong>SHA-256</strong>、<strong>SHA-512</strong></td>
+<td>MD5、SHA-1</td>
+</tr>
+<tr>
+<td>密码存储</td>
+<td><strong>Argon2</strong> &#x2F; <strong>bcrypt</strong>（应用层库）+ 盐；OpenSSL 侧用 <strong>PBKDF2-HMAC-SHA256</strong> 见 <a href="/security/07-openssl-kdf-random/">第七章：OpenSSL 密钥派生与随机数：PBKDF2、rand 与推荐用法</a></td>
+<td>裸 SHA-256(password)</td>
+</tr>
+<tr>
+<td>证书&#x2F;CSR 签名摘要</td>
+<td><strong>SHA-256</strong></td>
+<td>SHA-1</td>
+</tr>
+<tr>
+<td>长数据流式哈希</td>
+<td><strong>SHA-256</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>新标准&#x2F;长摘要需求</td>
+<td><strong>SHA-3-256</strong></td>
+<td>—</td>
+</tr>
+</tbody></table>
+<pre>
+<code class="mermaid">
+
+flowchart LR
+  Data[文件或消息] --&gt; H[SHA-256 &#x2F; SHA-512]
+  H --&gt; Digest[固定长度摘要 hex&#x2F;base64]
+  Digest --&gt; Use[校验 &#x2F; 签名输入 &#x2F; 区块链 Merkle 等]
+</code>
+</pre>
+
+<hr>
+<h2 id="一、常见算法特点"><a href="#一、常见算法特点" class="headerlink" title="一、常见算法特点"></a>一、常见算法特点</h2><h3 id="1-SHA-2-系列（首选）"><a href="#1-SHA-2-系列（首选）" class="headerlink" title="1. SHA-2 系列（首选）"></a>1. SHA-2 系列（<strong>首选</strong>）</h3><table>
+<thead>
+<tr>
+<th>算法</th>
+<th>输出长度</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SHA-256</strong></td>
+<td>256 bit</td>
+<td><strong>默认推荐</strong>；TLS、Git、证书、区块链广泛使用</td>
+</tr>
+<tr>
+<td><strong>SHA-384</strong></td>
+<td>384 bit</td>
+<td>更高安全余量</td>
+</tr>
+<tr>
+<td><strong>SHA-512</strong></td>
+<td>512 bit</td>
+<td>大文件、64 位 CPU 上常更快</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl dgst -sha256 file.bin</span><br><span class="line">openssl sha256 file.bin</span><br><span class="line">openssl dgst -sha512 file.bin</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-SHA-3-系列"><a href="#2-SHA-3-系列" class="headerlink" title="2. SHA-3 系列"></a>2. SHA-3 系列</h3><p>基于 <strong>Keccak</strong>，与 SHA-2 <strong>结构不同</strong>；适合需要与 SHA-2 <strong>算法多样性</strong>的场景（合规、新标准）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openssl dgst -sha3-256 file.bin</span><br><span class="line">openssl dgst -sha3-512 file.bin</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-SHA-1-MD5（仅兼容）"><a href="#3-SHA-1-MD5（仅兼容）" class="headerlink" title="3. SHA-1 &#x2F; MD5（仅兼容）"></a>3. SHA-1 &#x2F; MD5（<strong>仅兼容</strong>）</h3><table>
+<thead>
+<tr>
+<th>算法</th>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SHA-1</strong></td>
+<td>已破碰撞</td>
+<td>勿用于签名、证书；老 Git 对象可能仍见</td>
+</tr>
+<tr>
+<td><strong>MD5</strong></td>
+<td>已破碰撞</td>
+<td>仅文件<strong>非安全</strong>校验或遗留系统</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 仅当对接老系统时使用</span></span><br><span class="line">openssl dgst -md5 legacy.iso</span><br><span class="line">openssl dgst -sha1 old-artifact</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-BLAKE2（OpenSSL-3-x）"><a href="#4-BLAKE2（OpenSSL-3-x）" class="headerlink" title="4. BLAKE2（OpenSSL 3.x）"></a>4. BLAKE2（OpenSSL 3.x）</h3><p>高性能现代哈希；若本机 <code>openssl list -digest-algorithms</code> 含 <strong>BLAKE2b512</strong> 可用：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl dgst -blake2b512 file.bin</span><br></pre></td></tr></table></figure>
+
+<p>BLAKE2 在纯软件实现下通常快于 SHA-2 系列，且设计上自带抗长度扩展特性，适合日志指纹、去重存储等高性能场景。</p>
+<h3 id="5-国密-SM3（合规场景）"><a href="#5-国密-SM3（合规场景）" class="headerlink" title="5. 国密 SM3（合规场景）"></a>5. 国密 SM3（合规场景）</h3><p><strong>SM3</strong> 是中国国家密码管理局发布的杂凑算法（GM&#x2F;T 0004），输出 <strong>256 bit</strong>，结构与 SHA-256 同属 Merkle–Damgård 家族，常配合 <strong>SM2 签名</strong>、<strong>SM4 加密</strong> 出现在等保、金融、政务合规场景中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># OpenSSL 3.5 LTS 已内置 SM3</span></span><br><span class="line">openssl dgst -sm3 file.bin</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看本机是否支持</span></span><br><span class="line">openssl list -digest-algorithms | grep -i sm3</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>选型建议：仅在<strong>有明确国密合规要求</strong>时启用 SM3；面向国际互操作的系统仍以 SHA-2 &#x2F; SHA-3 为主。</p>
+</blockquote>
+<hr>
+<h2 id="二、推荐用法"><a href="#二、推荐用法" class="headerlink" title="二、推荐用法"></a>二、推荐用法</h2><h3 id="1-校验下载包"><a href="#1-校验下载包" class="headerlink" title="1. 校验下载包"></a>1. 校验下载包</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -LO https://example.com/app.tar.gz</span><br><span class="line">openssl dgst -sha256 app.tar.gz</span><br><span class="line"><span class="comment"># 与官网公布的 SHA256 比对</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-管道-字符串（注意换行）"><a href="#2-管道-字符串（注意换行）" class="headerlink" title="2. 管道 &#x2F; 字符串（注意换行）"></a>2. 管道 &#x2F; 字符串（注意换行）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> -n <span class="string">&quot;payload&quot;</span> | openssl dgst -sha256</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>echo</code> 默认带 <code>\n</code></strong>，校验短字符串务必 <strong><code>-n</code></strong>。</p>
+<h3 id="3-配合数字签名"><a href="#3-配合数字签名" class="headerlink" title="3. 配合数字签名"></a>3. 配合数字签名</h3><p>摘要算法常作为签名输入（见 <a href="/security/06-openssl-digital-signature-hmac/">第六章：OpenSSL 数字签名与 HMAC：完整性、身份与推荐用法</a>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openssl dgst -sha256 -sign private.key -out sign.sig data.bin</span><br><span class="line">openssl dgst -sha256 -verify public.key -signature sign.sig data.bin</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-查看本机支持"><a href="#4-查看本机支持" class="headerlink" title="4. 查看本机支持"></a>4. 查看本机支持</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl list -digest-algorithms</span><br></pre></td></tr></table></figure>
+
+<p>OpenSSL 3.x 中部分老旧算法在 <strong>legacy provider</strong>，需 <code>-provider legacy</code> 才可用（不推荐启用除非维护遗留）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 一次性启用 legacy provider 运行 MD4 等老算法（仅演示）</span></span><br><span class="line">openssl dgst -provider legacy -md4 old.bin</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-性能基准对比（openssl-speed）"><a href="#5-性能基准对比（openssl-speed）" class="headerlink" title="5. 性能基准对比（openssl speed）"></a>5. 性能基准对比（openssl speed）</h3><p>不同硬件上哈希吞吐差异巨大，选型前用 <strong><code>openssl speed</code></strong> 实测本机性能（OpenSSL 3.5 LTS，x86_64 开启 SHA-NI 的参考量级）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl speed -seconds 3 sha256 sha512 sha3-256 blake2b512</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>算法</th>
+<th>1KB 块参考吞吐</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SHA-256</strong></td>
+<td>高（SHA-NI 加速）</td>
+<td>通用默认</td>
+</tr>
+<tr>
+<td><strong>SHA-512</strong></td>
+<td>64 位平台常高于 SHA-256</td>
+<td>内部按 64 位字运算</td>
+</tr>
+<tr>
+<td><strong>SHA-3-256</strong></td>
+<td>明显低于 SHA-256</td>
+<td>无专用指令集时</td>
+</tr>
+<tr>
+<td><strong>BLAKE2b512</strong></td>
+<td>常优于 SHA-512</td>
+<td>纯软件实现友好</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>结论：有 SHA-NI &#x2F; ARMv8 SHA 扩展的 CPU 上 SHA-256 性价比最高；没有硬件加速时 SHA-512 与 BLAKE2 反而更快。</p>
+</blockquote>
+<hr>
+<h2 id="三、常见误用与避坑"><a href="#三、常见误用与避坑" class="headerlink" title="三、常见误用与避坑"></a>三、常见误用与避坑</h2><h3 id="1-误用场景对照表"><a href="#1-误用场景对照表" class="headerlink" title="1. 误用场景对照表"></a>1. 误用场景对照表</h3><table>
+<thead>
+<tr>
+<th>误用</th>
+<th>风险</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>用 <strong>MD5&#x2F;SHA-1</strong> 做签名校验</td>
+<td>碰撞已破，可伪造同摘要文件</td>
+<td>SHA-256 &#x2F; SHA-512</td>
+</tr>
+<tr>
+<td><strong>裸 SHA-256(password)</strong> 存口令</td>
+<td>彩虹表 + GPU 秒破</td>
+<td>PBKDF2 &#x2F; Argon2（见第七章）</td>
+</tr>
+<tr>
+<td><strong>SHA-256(secret || data)</strong> 当 MAC</td>
+<td>长度扩展攻击</td>
+<td>用 <strong>HMAC-SHA256</strong>（见第六章）</td>
+</tr>
+<tr>
+<td>把 Base64 当哈希 &#x2F; 加密</td>
+<td>可逆编码，无安全性</td>
+<td>只用于传输编码</td>
+</tr>
+<tr>
+<td>大文件一次性读入内存哈希</td>
+<td>OOM</td>
+<td>流式分块（命令行天然流式；代码用 <code>EVP_DigestUpdate</code>）</td>
+</tr>
+</tbody></table>
+<h3 id="2-命令行校验脚本示例"><a href="#2-命令行校验脚本示例" class="headerlink" title="2. 命令行校验脚本示例"></a>2. 命令行校验脚本示例</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 发布方生成校验文件</span></span><br><span class="line">openssl dgst -sha256 app.tar.gz | awk <span class="string">&#x27;&#123;print $2&#125;&#x27;</span> &gt; app.tar.gz.sha256</span><br><span class="line"></span><br><span class="line"><span class="comment"># 用户侧验证（与官方公布的值比对）</span></span><br><span class="line">expected=<span class="string">&quot;<span class="subst">$(curl -sL https://example.com/app.tar.gz.sha256)</span>&quot;</span></span><br><span class="line">actual=<span class="string">&quot;<span class="subst">$(openssl dgst -sha256 app.tar.gz | awk &#x27;&#123;print $2&#125;&#x27;)</span>&quot;</span></span><br><span class="line">[[ <span class="string">&quot;<span class="variable">$expected</span>&quot;</span> == <span class="string">&quot;<span class="variable">$actual</span>&quot;</span> ]] &amp;&amp; <span class="built_in">echo</span> OK || <span class="built_in">echo</span> <span class="string">&quot;MISMATCH&quot;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、编程接口简介（libcrypto）"><a href="#四、编程接口简介（libcrypto）" class="headerlink" title="四、编程接口简介（libcrypto）"></a>四、编程接口简介（libcrypto）</h2><p>命令行之外，OpenSSL 的哈希能力通过 <strong>libcrypto</strong> 的 <strong>EVP 高级接口</strong> 提供给 C&#x2F;C++ 程序；Go&#x2F;Java&#x2F;Python 等语言的密码库底层也多经由此（或其 fork）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* EVP 流式哈希骨架（OpenSSL 3.x） */</span></span><br><span class="line">EVP_MD_CTX *ctx = EVP_MD_CTX_new();</span><br><span class="line">EVP_DigestInit_ex(ctx, EVP_sha256(), <span class="literal">NULL</span>);</span><br><span class="line">EVP_DigestUpdate(ctx, buf, len);   <span class="comment">/* 可多次调用，天然流式 */</span></span><br><span class="line">EVP_DigestFinal_ex(ctx, out, &amp;outlen);</span><br><span class="line">EVP_MD_CTX_free(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>要点：<strong>永远用 EVP 系列接口</strong>，不要直接调 <code>SHA256_Init</code> 等底层函数（3.x 已标记废弃）；provider 机制下算法由名称动态解析，便于未来切换到国密或后量子实现。</p>
+<hr>
+<h2 id="五、与「加密」的区别"><a href="#五、与「加密」的区别" class="headerlink" title="五、与「加密」的区别"></a>五、与「加密」的区别</h2><table>
+<thead>
+<tr>
+<th></th>
+<th>哈希</th>
+<th>对称加密</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>可逆</td>
+<td><strong>否</strong></td>
+<td>是（有密钥）</td>
+</tr>
+<tr>
+<td>用途</td>
+<td>完整性、指纹</td>
+<td>保密性</td>
+</tr>
+<tr>
+<td>OpenSSL 命令</td>
+<td><strong><code>dgst</code></strong></td>
+<td><strong><code>enc</code></strong></td>
+</tr>
+</tbody></table>
+<p><strong>Base64</strong>（<code>openssl base64</code>）只是编码，<strong>不是哈希也不是加密</strong>。</p>
+<hr>
+<h2 id="六、哈希在证书与-TLS-中的高频应用"><a href="#六、哈希在证书与-TLS-中的高频应用" class="headerlink" title="六、哈希在证书与 TLS 中的高频应用"></a>六、哈希在证书与 TLS 中的高频应用</h2><h3 id="1-证书指纹（fingerprint）核对"><a href="#1-证书指纹（fingerprint）核对" class="headerlink" title="1. 证书指纹（fingerprint）核对"></a>1. 证书指纹（fingerprint）核对</h3><p>安装根证书、 pinning、电话&#x2F;邮件核对证书真伪时用的就是<strong>证书的哈希指纹</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看证书的 SHA-256 指纹（浏览器「证书信息」里显示的就是它）</span></span><br><span class="line">openssl x509 -<span class="keyword">in</span> cert.crt -noout -fingerprint -sha256</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在线核对站点指纹</span></span><br><span class="line"><span class="built_in">echo</span> | openssl s_client -connect example.com:443 2&gt;/dev/null \</span><br><span class="line">  | openssl x509 -noout -fingerprint -sha256</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-密钥-CSR-证书三方一致性校验"><a href="#2-密钥-CSR-证书三方一致性校验" class="headerlink" title="2. 密钥&#x2F;CSR&#x2F;证书三方一致性校验"></a>2. 密钥&#x2F;CSR&#x2F;证书三方一致性校验</h3><p>第一章用 <strong>modulus</strong> 的 MD5 比对 RSA 密钥与证书是否配对；其本质就是「对公开参数做哈希再比对摘要」。OpenSSL 3.x 推荐改用更通用的 <strong>pubkey 哈希</strong> 写法：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">openssl pkey -<span class="keyword">in</span> private.key -pubout | openssl dgst -sha256</span><br><span class="line">openssl req  -<span class="keyword">in</span> cert.csr   -pubkey | openssl dgst -sha256</span><br><span class="line">openssl x509 -<span class="keyword">in</span> cert.crt   -pubkey -noout | openssl dgst -sha256</span><br><span class="line"><span class="comment"># 三者摘要一致 ⇒ 私钥、CSR、证书同属一个密钥对</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-TLS-1-3-中的哈希分工"><a href="#3-TLS-1-3-中的哈希分工" class="headerlink" title="3. TLS 1.3 中的哈希分工"></a>3. TLS 1.3 中的哈希分工</h3><table>
+<thead>
+<tr>
+<th>用途</th>
+<th>算法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>握手 transcript 摘要</td>
+<td>SHA-256 &#x2F; SHA-384（随套件）</td>
+</tr>
+<tr>
+<td>证书签名摘要</td>
+<td>SHA-256 起步，<strong>禁止 SHA-1</strong></td>
+</tr>
+<tr>
+<td>HKDF 派生流量密钥</td>
+<td>SHA-256 &#x2F; SHA-384</td>
+</tr>
+<tr>
+<td>记录层完整性</td>
+<td>由 AEAD 的 Auth Tag 承担（不再需要单独 HMAC）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>这就是为什么 TLS 1.3 套件名里直接写哈希算法（如 <code>TLS_AES_256_GCM_SHA384</code>）——哈希已从「可协商选项」变成「与套件绑定的固定组件」。</p>
+</blockquote>
+<hr>
+<h2 id="延伸阅读"><a href="#延伸阅读" class="headerlink" title="延伸阅读"></a>延伸阅读</h2><table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/security/04-openssl-symmetric-encryption/">第四章：OpenSSL 对称加密：AES-GCM、ChaCha20 与推荐用法</a></td>
+<td>AES-256-GCM 文件加密</td>
+</tr>
+<tr>
+<td><a href="/security/06-openssl-digital-signature-hmac/">第六章：OpenSSL 数字签名与 HMAC：完整性、身份与推荐用法</a></td>
+<td>带密钥的完整性</td>
+</tr>
+<tr>
+<td><a href="/network/04-https-tls-guide/">第四章：HTTPS 详解：TLS 握手、证书与 openssl&#x2F;curl 示例</a></td>
+<td>TLS 中的 SHA-256 握手</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>默认选择</td>
+<td><strong>SHA-256</strong>（TLS、Git、证书通用）；大文件&#x2F;64 位平台用 <strong>SHA-512</strong>；新标准用 <strong>SHA-3</strong>；国密合规用 <strong>SM3</strong></td>
+</tr>
+<tr>
+<td>已淘汰</td>
+<td><strong>MD5 &#x2F; SHA-1</strong> 碰撞已破，仅遗留兼容，禁用于签名与证书</td>
+</tr>
+<tr>
+<td>命令要点</td>
+<td><strong><code>openssl dgst -sha256 file</code></strong>；字符串管道务必 <strong><code>echo -n</code></strong> 防换行干扰；老算法走 <strong><code>-provider legacy</code></strong></td>
+</tr>
+<tr>
+<td>性能实测</td>
+<td>选型前用 <strong><code>openssl speed</code></strong> 实测；有无 SHA-NI 结论相反</td>
+</tr>
+<tr>
+<td>常见误用</td>
+<td>MD5&#x2F;SHA-1 做签名校验、裸哈希存口令、<code>SHA256(secret||data)</code> 当 MAC 全部禁止</td>
+</tr>
+<tr>
+<td>编程接口</td>
+<td>C 代码用 <strong>EVP_Digest*</strong> 流式接口，勿直接调底层 <code>SHA256_Init</code></td>
+</tr>
+<tr>
+<td>概念澄清</td>
+<td>哈希<strong>不可逆</strong>保完整性，<strong>Base64</strong> 只是编码，都不是加密</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OpenSSL/" rel="tag"># OpenSSL</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/security/01-openssl-cli-guide/" rel="prev" title="第一章：OpenSSL 命令行入门与常用操作总览">
+                  <i class="fa fa-angle-left"></i> 第一章：OpenSSL 命令行入门与常用操作总览
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/security/04-openssl-symmetric-encryption/" rel="next" title="第四章：OpenSSL 对称加密：AES-GCM、ChaCha20 与推荐用法">
+                  第四章：OpenSSL 对称加密：AES-GCM、ChaCha20 与推荐用法 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

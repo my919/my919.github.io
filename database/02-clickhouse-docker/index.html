@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第二章：Docker 部署 ClickHouse 实践概念基础 为什么用容器跑 ClickHouse：一条命令拉起、版本随标签固定、环境与宿主机解耦——本地分析环境与生产部署的基础单元。 数据持久化是底线：必须把数据目录 &#x2F;var&#x2F;lib&#x2F;clickhouse 挂载到命名卷或宿主机目录，否则容器删除即数据清零。 初始化语义：.sql &#x2F; .sh 放入 &#x2F;docker-entrypoint">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第二章：Docker 部署 ClickHouse 实践">
+<meta property="og:url" content="https://my919.github.io/database/02-clickhouse-docker/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第二章：Docker 部署 ClickHouse 实践概念基础 为什么用容器跑 ClickHouse：一条命令拉起、版本随标签固定、环境与宿主机解耦——本地分析环境与生产部署的基础单元。 数据持久化是底线：必须把数据目录 &#x2F;var&#x2F;lib&#x2F;clickhouse 挂载到命名卷或宿主机目录，否则容器删除即数据清零。 初始化语义：.sql &#x2F; .sh 放入 &#x2F;docker-entrypoint">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T13:57:13.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.569Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="ClickHouse">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="Docker Compose">
+<meta property="article:tag" content="Kubernetes">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/database/02-clickhouse-docker/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/database/02-clickhouse-docker/","path":"database/02-clickhouse-docker/","title":"第二章：Docker 部署 ClickHouse 实践"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第二章：Docker 部署 ClickHouse 实践 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E7%AB%A0%EF%BC%9ADocker-%E9%83%A8%E7%BD%B2-ClickHouse-%E5%AE%9E%E8%B7%B5"><span class="nav-number">1.</span> <span class="nav-text">第二章：Docker 部署 ClickHouse 实践</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.2.</span> <span class="nav-text">前置条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ClickHouse-%E9%95%9C%E5%83%8F%E9%80%89%E6%8B%A9"><span class="nav-number">1.3.</span> <span class="nav-text">ClickHouse 镜像选择</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%AE%98%E6%96%B9%E9%95%9C%E5%83%8F%EF%BC%88%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 官方镜像（推荐）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%8F%98%E4%BD%93%E8%AF%B4%E6%98%8E"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 变体说明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%88%9D%E5%A7%8B%E5%8C%96%E8%84%9A%E6%9C%AC"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. 初始化脚本</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%95%E5%AE%B9%E5%99%A8%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2%EF%BC%88docker-run%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">单容器一键部署（docker run）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker-Compose-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2"><span class="nav-number">1.5.</span> <span class="nav-text">Docker Compose 一键部署</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kubernetes-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2%EF%BC%88%E5%8D%95%E6%96%87%E4%BB%B6%E5%AE%8C%E6%95%B4%E6%B8%85%E5%8D%95%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">Kubernetes 一键部署（单文件完整清单）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E9%98%B6%EF%BC%9A%E8%87%AA%E5%AE%9A%E4%B9%89%E9%85%8D%E7%BD%AE%E6%8C%82%E8%BD%BD"><span class="nav-number">1.7.</span> <span class="nav-text">进阶：自定义配置挂载</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E9%98%B6%EF%BC%9AKeeper-%E5%89%AF%E6%9C%AC%E9%9B%86%E7%BE%A4%EF%BC%88Compose-%E8%B5%B7%E6%AD%A5%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">进阶：Keeper + 副本集群（Compose 起步）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%90%E7%BB%B4%EF%BC%9AToo-many-parts-%E6%8E%92%E6%9F%A5"><span class="nav-number">1.9.</span> <span class="nav-text">运维：Too many parts 排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%90%E7%BB%B4%EF%BC%9A%E5%A4%87%E4%BB%BD%E4%B8%8E%E6%81%A2%E5%A4%8D"><span class="nav-number">1.10.</span> <span class="nav-text">运维：备份与恢复</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%83%A8%E7%BD%B2%E6%96%B9%E5%BC%8F%E9%80%9F%E6%9F%A5"><span class="nav-number">1.11.</span> <span class="nav-text">部署方式速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.12.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/database/02-clickhouse-docker/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第二章：Docker 部署 ClickHouse 实践 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第二章：Docker 部署 ClickHouse 实践
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 21:57:13" itemprop="dateCreated datePublished" datetime="2026-05-01T21:57:13+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/" itemprop="url" rel="index"><span itemprop="name">数据库</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>11k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>10 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第二章：Docker-部署-ClickHouse-实践"><a href="#第二章：Docker-部署-ClickHouse-实践" class="headerlink" title="第二章：Docker 部署 ClickHouse 实践"></a>第二章：Docker 部署 ClickHouse 实践</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>为什么用容器跑 ClickHouse</strong>：一条命令拉起、版本随标签固定、环境与宿主机解耦——本地分析环境与生产部署的基础单元。</li>
+<li><strong>数据持久化是底线</strong>：必须把数据目录 <strong><code>/var/lib/clickhouse</code></strong> 挂载到<strong>命名卷</strong>或宿主机目录，否则容器删除即数据清零。</li>
+<li><strong>初始化语义</strong>：<strong><code>.sql</code> &#x2F; <code>.sh</code></strong> 放入 <strong><code>/docker-entrypoint-initdb.d</code></strong>（卷挂载），仅在<strong>首次初始化空数据目录</strong>时执行，已有数据卷时不会重复执行。</li>
+<li><strong>端口与账号</strong>：<strong>HTTP 8123</strong> + <strong>Native 9000</strong> 双端口对外；<strong><code>CLICKHOUSE_USER</code></strong> &#x2F; <strong><code>CLICKHOUSE_PASSWORD</code></strong> 配合 <strong><code>CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1</code></strong> 可用 SQL 管理用户与权限。</li>
+<li><strong>三种部署形态</strong>：<strong><code>docker run</code></strong> 单容器 → <strong>Docker Compose</strong>（声明式 + 健康检查）→ <strong>Kubernetes</strong>（Secret + PVC + 探针），按环境复杂度逐级选用；表引擎与查询用法见 <a href="/database/01-clickhouse-guide/">第一章：ClickHouse 列式存储入门</a>。</li>
+</ol>
+<h2 id="前置条件"><a href="#前置条件" class="headerlink" title="前置条件"></a>前置条件</h2><p>本机已安装 <strong><code>docker</code></strong>，并能使用 <strong><code>docker compose</code></strong>（<strong>Compose V2</strong> 插件，命令为 <strong><code>docker compose</code></strong>；若仍使用旧版独立程序，则将下文中的 <strong><code>docker compose</code></strong> 换成 <strong><code>docker-compose</code></strong>）。</p>
+<p>验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker version</span><br><span class="line">docker compose version</span><br></pre></td></tr></table></figure>
+
+<p>满足即可，与宿主机操作系统无关。</p>
+<h2 id="ClickHouse-镜像选择"><a href="#ClickHouse-镜像选择" class="headerlink" title="ClickHouse 镜像选择"></a>ClickHouse 镜像选择</h2><h3 id="1-官方镜像（推荐）"><a href="#1-官方镜像（推荐）" class="headerlink" title="1. 官方镜像（推荐）"></a>1. 官方镜像（推荐）</h3><ul>
+<li><strong>仓库</strong>：<strong><code>clickhouse/clickhouse-server</code></strong>（Docker Hub 官方组织镜像，与 <strong>ClickHouse</strong> 发行节奏一致）。  </li>
+<li><strong>常用标签</strong>：  <ul>
+<li><strong><code>clickhouse/clickhouse-server:25.8</code></strong>：<strong>25.x LTS</strong>（2025 年 8 月长期支持版），生产首选。  </li>
+<li><strong><code>clickhouse/clickhouse-server:25.3</code></strong>：25.x 上半年 LTS；<strong><code>...:latest</code></strong> 滚动跟踪最新（以 <a target="_blank" rel="noopener" href="https://hub.docker.com/r/clickhouse/clickhouse-server/tags">Docker Hub clickhouse-server tags</a> 为准）。</li>
+</ul>
+</li>
+<li><strong>生产建议</strong>：固定具体补丁标签或记录 <strong>digest</strong>，避免 <strong><code>latest</code></strong> 漂移导致行为变化。</li>
+</ul>
+<h3 id="2-变体说明"><a href="#2-变体说明" class="headerlink" title="2. 变体说明"></a>2. 变体说明</h3><table>
+<thead>
+<tr>
+<th>需求</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>访问控制</strong></td>
+<td>设置 <strong><code>CLICKHOUSE_USER</code></strong>、<strong><code>CLICKHOUSE_PASSWORD</code></strong> 时，建议同时 <strong><code>CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1</code></strong>，以便用 <strong>SQL</strong> 管理用户与权限（与官方镜像说明一致）。</td>
+</tr>
+<tr>
+<td><strong>协议与端口</strong></td>
+<td><strong>HTTP</strong> 默认 <strong>8123</strong>，<strong>Native</strong> 默认 <strong>9000</strong>；客户端按协议选择端口。</td>
+</tr>
+<tr>
+<td><strong>ARM64</strong>（Apple Silicon 等）</td>
+<td>多数标签提供多架构；若拉取失败，换标签或在 Hub 查看 <strong>OS&#x2F;ARCH</strong>。</td>
+</tr>
+<tr>
+<td><strong>极简&#x2F;定制</strong></td>
+<td>社区编排模板与 <strong><code>bitnami/clickhouse</code></strong> 等路径、变量不同，切换镜像时需对照该镜像文档。</td>
+</tr>
+</tbody></table>
+<h3 id="3-初始化脚本"><a href="#3-初始化脚本" class="headerlink" title="3. 初始化脚本"></a>3. 初始化脚本</h3><p>将 <strong><code>.sql</code> &#x2F; <code>.sh</code></strong> 放入 <strong><code>/docker-entrypoint-initdb.d</code></strong>（通过卷挂载），仅在<strong>首次初始化空数据目录</strong>时执行；已有数据卷时不会重复执行。</p>
+<h2 id="单容器一键部署（docker-run）"><a href="#单容器一键部署（docker-run）" class="headerlink" title="单容器一键部署（docker run）"></a>单容器一键部署（<code>docker run</code>）</h2><p>在<strong>当前目录</strong>先建数据与初始化目录（仅首次）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p ./ch-data ./ch-init</span><br></pre></td></tr></table></figure>
+
+<p><strong>一条命令</strong>启动（请按需改账号、密码、库名、端口、卷路径；示例仅供本地）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name clickhouse-dev -e CLICKHOUSE_USER=app -e CLICKHOUSE_PASSWORD=dev-change-me -e CLICKHOUSE_DB=default -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 -p 8123:8123 -p 9000:9000 -v <span class="string">&quot;<span class="subst">$(pwd)</span>/ch-data:/var/lib/clickhouse&quot;</span> -v <span class="string">&quot;<span class="subst">$(pwd)</span>/ch-init:/docker-entrypoint-initdb.d:ro&quot;</span> clickhouse/clickhouse-server:25.8</span><br></pre></td></tr></table></figure>
+
+<p>常用运维一条命令：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker logs -f clickhouse-dev</span><br><span class="line">docker stop clickhouse-dev &amp;&amp; docker <span class="built_in">rm</span> clickhouse-dev</span><br></pre></td></tr></table></figure>
+
+<p>本机 <strong>HTTP</strong> 探测示例：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -sS <span class="string">&quot;http://127.0.0.1:8123/ping&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Native</strong> 客户端示例（与镜像内 <strong><code>clickhouse-client</code></strong> 主版本一致即可）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker <span class="built_in">exec</span> -it clickhouse-dev clickhouse-client -u app --password dev-change-me --query <span class="string">&quot;SELECT version()&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Docker-Compose-一键部署"><a href="#Docker-Compose-一键部署" class="headerlink" title="Docker Compose 一键部署"></a>Docker Compose 一键部署</h2><p>将下面内容保存为 <strong><code>docker-compose.clickhouse.yml</code></strong>（与前文<strong>前置条件</strong>要求一致：已能执行 <strong><code>docker compose</code></strong>）。敏感项建议放在同目录 <strong><code>.env</code></strong>（加入 <strong><code>.gitignore</code></strong>），勿长期写死在仓库。</p>
+<p><strong>一条命令</strong>启动全栈（在 <strong><code>docker-compose.clickhouse.yml</code></strong> 所在目录执行）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.clickhouse.yml up -d</span><br></pre></td></tr></table></figure>
+
+<p>以下为 <strong><code>docker-compose.clickhouse.yml</code></strong> 全文：<strong><code>version</code></strong>、<strong><code>name</code></strong>、<strong>命名卷</strong>、<strong>健康检查</strong>。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">&quot;3.8&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">name:</span> <span class="string">clickhouse-stack</span></span><br><span class="line"></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">clickhouse:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">clickhouse/clickhouse-server:25.8</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">clickhouse-25</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">unless-stopped</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">CLICKHOUSE_USER:</span> <span class="string">$&#123;CLICKHOUSE_USER:-app&#125;</span></span><br><span class="line">      <span class="attr">CLICKHOUSE_PASSWORD:</span> <span class="string">$&#123;CLICKHOUSE_PASSWORD:-dev-change-me&#125;</span></span><br><span class="line">      <span class="attr">CLICKHOUSE_DB:</span> <span class="string">$&#123;CLICKHOUSE_DB:-default&#125;</span></span><br><span class="line">      <span class="attr">CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT:</span> <span class="string">&quot;1&quot;</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">Asia/Shanghai</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;8123:8123&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;9000:9000&quot;</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">ch_data:/var/lib/clickhouse</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./ch-init:/docker-entrypoint-initdb.d:ro</span></span><br><span class="line">    <span class="attr">ulimits:</span></span><br><span class="line">      <span class="attr">nofile:</span></span><br><span class="line">        <span class="attr">soft:</span> <span class="number">262144</span></span><br><span class="line">        <span class="attr">hard:</span> <span class="number">262144</span></span><br><span class="line">    <span class="attr">healthcheck:</span></span><br><span class="line">      <span class="attr">test:</span> [<span class="string">&quot;CMD-SHELL&quot;</span>, <span class="string">&quot;wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping || exit 1&quot;</span>]</span><br><span class="line">      <span class="attr">interval:</span> <span class="string">10s</span></span><br><span class="line">      <span class="attr">timeout:</span> <span class="string">5s</span></span><br><span class="line">      <span class="attr">retries:</span> <span class="number">12</span></span><br><span class="line">      <span class="attr">start_period:</span> <span class="string">40s</span></span><br><span class="line"></span><br><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="attr">ch_data:</span></span><br><span class="line">    <span class="attr">driver:</span> <span class="string">local</span></span><br></pre></td></tr></table></figure>
+
+<p>同目录可选 <strong><code>.env</code></strong>（勿提交）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CLICKHOUSE_USER=app</span><br><span class="line">CLICKHOUSE_PASSWORD=your-strong-password</span><br><span class="line">CLICKHOUSE_DB=default</span><br></pre></td></tr></table></figure>
+
+<p>查看状态、日志、停止并删除容器（保留数据卷）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.clickhouse.yml ps</span><br><span class="line">docker compose -f docker-compose.clickhouse.yml logs -f clickhouse</span><br><span class="line">docker compose -f docker-compose.clickhouse.yml down</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>down</code></strong> 默认保留命名卷 <strong><code>ch_data</code></strong>；若需清空数据加 <strong><code>docker compose ... down -v</code></strong>（<strong>会删库</strong>）。</p>
+<h2 id="Kubernetes-一键部署（单文件完整清单）"><a href="#Kubernetes-一键部署（单文件完整清单）" class="headerlink" title="Kubernetes 一键部署（单文件完整清单）"></a>Kubernetes 一键部署（单文件完整清单）</h2><p>将下面内容保存为 <strong><code>clickhouse-k8s.yaml</code></strong> 后，<strong>一条命令</strong>应用：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl apply -f clickhouse-k8s.yaml</span><br></pre></td></tr></table></figure>
+
+<p>清单含 <strong>Secret</strong>（业务用户与库名）、<strong>PVC</strong>、<strong>Deployment</strong>、<strong>ClusterIP Service</strong>（<strong>8123</strong>、<strong>9000</strong>）。未写 <strong><code>storageClassName</code></strong> 时使用集群默认 <strong>StorageClass</strong>；无默认 <strong>SC</strong> 时请在 <strong>PVC</strong> 中补上 <strong><code>storageClassName</code></strong>。命名空间为 <strong><code>default</code></strong>，可按需修改 <strong><code>metadata.namespace</code></strong>。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Secret</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">clickhouse-secret</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">type:</span> <span class="string">Opaque</span></span><br><span class="line"><span class="attr">stringData:</span></span><br><span class="line">  <span class="attr">CLICKHOUSE_USER:</span> <span class="string">&quot;app&quot;</span></span><br><span class="line">  <span class="attr">CLICKHOUSE_PASSWORD:</span> <span class="string">&quot;请替换为强密码&quot;</span></span><br><span class="line">  <span class="attr">CLICKHOUSE_DB:</span> <span class="string">&quot;default&quot;</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">PersistentVolumeClaim</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">clickhouse-data</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">accessModes:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ReadWriteOnce</span></span><br><span class="line">  <span class="attr">resources:</span></span><br><span class="line">    <span class="attr">requests:</span></span><br><span class="line">      <span class="attr">storage:</span> <span class="string">50Gi</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">clickhouse</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">clickhouse</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">replicas:</span> <span class="number">1</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">clickhouse</span></span><br><span class="line">  <span class="attr">strategy:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">Recreate</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">metadata:</span></span><br><span class="line">      <span class="attr">labels:</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">clickhouse</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">clickhouse</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">clickhouse/clickhouse-server:25.8</span></span><br><span class="line">          <span class="attr">ports:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">8123</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">http</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">9000</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">native</span></span><br><span class="line">          <span class="attr">env:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">CLICKHOUSE_USER</span></span><br><span class="line">              <span class="attr">valueFrom:</span></span><br><span class="line">                <span class="attr">secretKeyRef:</span></span><br><span class="line">                  <span class="attr">name:</span> <span class="string">clickhouse-secret</span></span><br><span class="line">                  <span class="attr">key:</span> <span class="string">CLICKHOUSE_USER</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">CLICKHOUSE_PASSWORD</span></span><br><span class="line">              <span class="attr">valueFrom:</span></span><br><span class="line">                <span class="attr">secretKeyRef:</span></span><br><span class="line">                  <span class="attr">name:</span> <span class="string">clickhouse-secret</span></span><br><span class="line">                  <span class="attr">key:</span> <span class="string">CLICKHOUSE_PASSWORD</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">CLICKHOUSE_DB</span></span><br><span class="line">              <span class="attr">valueFrom:</span></span><br><span class="line">                <span class="attr">secretKeyRef:</span></span><br><span class="line">                  <span class="attr">name:</span> <span class="string">clickhouse-secret</span></span><br><span class="line">                  <span class="attr">key:</span> <span class="string">CLICKHOUSE_DB</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">&quot;1&quot;</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">TZ</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">&quot;Asia/Shanghai&quot;</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> <span class="string">/var/lib/clickhouse</span></span><br><span class="line">          <span class="attr">readinessProbe:</span></span><br><span class="line">            <span class="attr">httpGet:</span></span><br><span class="line">              <span class="attr">path:</span> <span class="string">/ping</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">8123</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">15</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">5</span></span><br><span class="line">            <span class="attr">timeoutSeconds:</span> <span class="number">3</span></span><br><span class="line">            <span class="attr">failureThreshold:</span> <span class="number">24</span></span><br><span class="line">          <span class="attr">livenessProbe:</span></span><br><span class="line">            <span class="attr">httpGet:</span></span><br><span class="line">              <span class="attr">path:</span> <span class="string">/ping</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">8123</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">60</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">15</span></span><br><span class="line">            <span class="attr">timeoutSeconds:</span> <span class="number">5</span></span><br><span class="line">            <span class="attr">failureThreshold:</span> <span class="number">6</span></span><br><span class="line">          <span class="attr">resources:</span></span><br><span class="line">            <span class="attr">requests:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;1Gi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;500m&quot;</span></span><br><span class="line">            <span class="attr">limits:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;4Gi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;2000m&quot;</span></span><br><span class="line">      <span class="attr">volumes:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">          <span class="attr">persistentVolumeClaim:</span></span><br><span class="line">            <span class="attr">claimName:</span> <span class="string">clickhouse-data</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Service</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">clickhouse</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">clickhouse</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">ClusterIP</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">clickhouse</span></span><br><span class="line">  <span class="attr">ports:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">http</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">8123</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">8123</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">native</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">9000</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">9000</span></span><br></pre></td></tr></table></figure>
+
+<p>查看资源与连接前检查：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get pods,svc,pvc -l app=clickhouse</span><br></pre></td></tr></table></figure>
+
+<p>集群内 <strong>HTTP</strong> 示例：<strong><code>http://clickhouse.default.svc.cluster.local:8123/</code></strong>（带鉴权的查询需在 <strong>URL</strong> 或 <strong>Header</strong> 中按官方 <strong>HTTP</strong> 接口说明传用户与密码）。</p>
+<p><strong>说明</strong>：<strong><code>strategy: Recreate</code></strong> 避免 <strong>RWO</strong> 卷被多副本 <strong>RollingUpdate</strong> 同时挂载；<strong>Keeper</strong>、分片、副本与高可用请使用 <strong>ClickHouse Operator</strong> 或专用编排方案，勿直接水平扩展上述 <strong>Deployment</strong>。</p>
+<h2 id="进阶：自定义配置挂载"><a href="#进阶：自定义配置挂载" class="headerlink" title="进阶：自定义配置挂载"></a>进阶：自定义配置挂载</h2><p>镜像默认配置在 <strong><code>/etc/clickhouse-server/</code></strong>，生产常需覆盖两类：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p ./ch-config/config.d ./ch-config/users.d</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>./ch-config/config.d/network.xml</code></strong>（允许外部访问 + 打开 Prometheus 指标端点）：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">clickhouse</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">listen_host</span>&gt;</span>0.0.0.0<span class="tag">&lt;/<span class="name">listen_host</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">prometheus</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">endpoint</span>&gt;</span>/metrics<span class="tag">&lt;/<span class="name">endpoint</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">port</span>&gt;</span>9363<span class="tag">&lt;/<span class="name">port</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">prometheus</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">clickhouse</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong><code>./ch-config/users.d/app.xml</code></strong>（声明式建只读用户）：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">clickhouse</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">users</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">report</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">password</span>&gt;</span>report-change-me<span class="tag">&lt;/<span class="name">password</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">networks</span>&gt;</span><span class="tag">&lt;<span class="name">ip</span>&gt;</span>::/0<span class="tag">&lt;/<span class="name">ip</span>&gt;</span><span class="tag">&lt;/<span class="name">networks</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">profile</span>&gt;</span>readonly<span class="tag">&lt;/<span class="name">profile</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">quota</span>&gt;</span>default<span class="tag">&lt;/<span class="name">quota</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">report</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">users</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">clickhouse</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>挂载进容器（Compose 片段）：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">./ch-config/config.d:/etc/clickhouse-server/config.d:ro</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">./ch-config/users.d:/etc/clickhouse-server/users.d:ro</span></span><br></pre></td></tr></table></figure>
+
+<p><strong><code>config.d</code> &#x2F; <code>users.d</code></strong> 下的文件会<strong>按文件名排序合并</strong>进主配置，无需改动镜像内默认文件。</p>
+<h2 id="进阶：Keeper-副本集群（Compose-起步）"><a href="#进阶：Keeper-副本集群（Compose-起步）" class="headerlink" title="进阶：Keeper + 副本集群（Compose 起步）"></a>进阶：Keeper + 副本集群（Compose 起步）</h2><p>最小可复制拓扑：<strong>1 个 Keeper + 2 个 clickhouse 节点互为副本</strong>。保存为 <strong><code>docker-compose.ch-cluster.yml</code></strong>：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">&quot;3.8&quot;</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">ch-cluster</span></span><br><span class="line"></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">keeper:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">clickhouse/clickhouse-keeper:25.8</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">ch-keeper</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">keeper_data:/var/lib/clickhouse-keeper</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">ch_net</span>]</span><br><span class="line"></span><br><span class="line">  <span class="attr">ch1:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">clickhouse/clickhouse-server:25.8</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">ch-node1</span></span><br><span class="line">    <span class="attr">depends_on:</span> [<span class="string">keeper</span>]</span><br><span class="line">    <span class="attr">ports:</span> [<span class="string">&quot;8123:8123&quot;</span>, <span class="string">&quot;9000:9000&quot;</span>]</span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">ch1_data:/var/lib/clickhouse</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./ch-cluster-config:/etc/clickhouse-server/config.d:ro</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">ch_net</span>]</span><br><span class="line"></span><br><span class="line">  <span class="attr">ch2:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">clickhouse/clickhouse-server:25.8</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">ch-node2</span></span><br><span class="line">    <span class="attr">depends_on:</span> [<span class="string">keeper</span>]</span><br><span class="line">    <span class="attr">ports:</span> [<span class="string">&quot;8124:8123&quot;</span>, <span class="string">&quot;9001:9000&quot;</span>]</span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">ch2_data:/var/lib/clickhouse</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./ch-cluster-config:/etc/clickhouse-server/config.d:ro</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">ch_net</span>]</span><br><span class="line"></span><br><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="attr">keeper_data:</span></span><br><span class="line">  <span class="attr">ch1_data:</span></span><br><span class="line">  <span class="attr">ch2_data:</span></span><br><span class="line"></span><br><span class="line"><span class="attr">networks:</span></span><br><span class="line">  <span class="attr">ch_net:</span></span><br></pre></td></tr></table></figure>
+
+<p><strong><code>./ch-cluster-config/cluster.xml</code></strong>（两节点共用，宏按节点区分可各挂一份）：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">clickhouse</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">cluster</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">my_cluster</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">shard</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">replica</span>&gt;</span><span class="tag">&lt;<span class="name">host</span>&gt;</span>ch1<span class="tag">&lt;/<span class="name">host</span>&gt;</span><span class="tag">&lt;<span class="name">port</span>&gt;</span>9000<span class="tag">&lt;/<span class="name">port</span>&gt;</span><span class="tag">&lt;/<span class="name">replica</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">replica</span>&gt;</span><span class="tag">&lt;<span class="name">host</span>&gt;</span>ch2<span class="tag">&lt;/<span class="name">host</span>&gt;</span><span class="tag">&lt;<span class="name">port</span>&gt;</span>9000<span class="tag">&lt;/<span class="name">port</span>&gt;</span><span class="tag">&lt;/<span class="name">replica</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">shard</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">my_cluster</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">cluster</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">keeper_server</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">host</span>&gt;</span>keeper<span class="tag">&lt;/<span class="name">host</span>&gt;</span><span class="tag">&lt;<span class="name">port</span>&gt;</span>9181<span class="tag">&lt;/<span class="name">port</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">keeper_server</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">zookeeper</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">node</span>&gt;</span><span class="tag">&lt;<span class="name">host</span>&gt;</span>keeper<span class="tag">&lt;/<span class="name">host</span>&gt;</span><span class="tag">&lt;<span class="name">port</span>&gt;</span>9181<span class="tag">&lt;/<span class="name">port</span>&gt;</span><span class="tag">&lt;/<span class="name">node</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">zookeeper</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">macros</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">shard</span>&gt;</span>01<span class="tag">&lt;/<span class="name">shard</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">replica</span>&gt;</span>ch1<span class="tag">&lt;/<span class="name">replica</span>&gt;</span>  <span class="comment">&lt;!-- ch2 节点挂载时改为 ch2 --&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">macros</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">clickhouse</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>启动后建副本表验证：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> demo.t <span class="keyword">ON</span> CLUSTER my_cluster (id UInt64)</span><br><span class="line">ENGINE <span class="operator">=</span> ReplicatedMergeTree(<span class="string">&#x27;/clickhouse/tables/&#123;shard&#125;/t&#x27;</span>, <span class="string">&#x27;&#123;replica&#125;&#x27;</span>)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> id;</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT INTO</span> demo.t <span class="keyword">VALUES</span> (<span class="number">1</span>), (<span class="number">2</span>);</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> demo.t;  <span class="comment">-- 在另一节点执行也能查到</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>注意</strong>：Keeper 生产必须 <strong>3&#x2F;5 奇数节点</strong>；上面的单 Keeper 仅供本地体验复制链路。分片扩容、跨机房拓扑用 <strong>ClickHouse Operator</strong>。</p>
+</blockquote>
+<h2 id="运维：Too-many-parts-排查"><a href="#运维：Too-many-parts-排查" class="headerlink" title="运维：Too many parts 排查"></a>运维：Too many parts 排查</h2><p>高频小批写入会产生海量小 part，merge 跟不上时报 <strong><code>DB::Exception: Too many parts (300+)</code></strong> 并拒绝写入。排查三步：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 1. 看 part 数量与体积分布</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="keyword">partition</span>, <span class="built_in">count</span>() <span class="keyword">AS</span> parts, <span class="built_in">sum</span>(<span class="keyword">rows</span>) <span class="keyword">AS</span> <span class="keyword">rows</span></span><br><span class="line"><span class="keyword">FROM</span> system.parts</span><br><span class="line"><span class="keyword">WHERE</span> <span class="keyword">table</span> <span class="operator">=</span> <span class="string">&#x27;events&#x27;</span> <span class="keyword">AND</span> active</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> <span class="keyword">partition</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> parts <span class="keyword">DESC</span> LIMIT <span class="number">10</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 2. 看 merge 是否积压</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> system.merges;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 3. 看后台任务压力</span></span><br><span class="line"><span class="keyword">SELECT</span> metric, <span class="keyword">value</span> <span class="keyword">FROM</span> system.metrics</span><br><span class="line"><span class="keyword">WHERE</span> metric <span class="keyword">LIKE</span> <span class="string">&#x27;%Merge%&#x27;</span> <span class="keyword">OR</span> metric <span class="keyword">LIKE</span> <span class="string">&#x27;%Part%&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>处置</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>治本</td>
+<td>写入端<strong>攒批</strong>（每批 ≥ 几万行），或走 <strong>Buffer 表 &#x2F; Kafka 引擎</strong>消费</td>
+</tr>
+<tr>
+<td>应急</td>
+<td><code>OPTIMIZE TABLE ... FINAL</code> 强制合并（大表慎用，IO 风暴）</td>
+</tr>
+<tr>
+<td>调参</td>
+<td>提高 <code>background_pool_size</code>、放宽 <code>parts_to_throw_insert</code>（仅争取时间）</td>
+</tr>
+</tbody></table>
+<h2 id="运维：备份与恢复"><a href="#运维：备份与恢复" class="headerlink" title="运维：备份与恢复"></a>运维：备份与恢复</h2><p><strong>方案一：SQL 级备份</strong>（25.x 内置，小表方便）：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">BACKUP <span class="keyword">TABLE</span> analytics.events <span class="keyword">TO</span> Disk(<span class="string">&#x27;backups&#x27;</span>, <span class="string">&#x27;events_20261025.zip&#x27;</span>);</span><br><span class="line">RESTORE <span class="keyword">TABLE</span> analytics.events <span class="keyword">FROM</span> Disk(<span class="string">&#x27;backups&#x27;</span>, <span class="string">&#x27;events_20261025.zip&#x27;</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>方案二：<code>clickhouse-backup</code> 工具</strong>（社区主流，支持 S3&#x2F;增量）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">docker run --<span class="built_in">rm</span> --network ch_net \</span><br><span class="line">  -v ch1_data:/var/lib/clickhouse \</span><br><span class="line">  altinity/clickhouse-backup:latest \</span><br><span class="line">  clickhouse-backup create my_backup</span><br></pre></td></tr></table></figure>
+
+<p><strong>方案三：卷快照</strong>：停机或 <code>FREEZE</code> 后对数据卷做文件系统级快照，配合定时任务滚动保留。无论哪种，<strong>恢复演练</strong>必须进运维日历。</p>
+<h2 id="部署方式速查"><a href="#部署方式速查" class="headerlink" title="部署方式速查"></a>部署方式速查</h2><table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>前置</strong></td>
+<td>已安装 <strong><code>docker</code></strong> 与 <strong><code>docker compose</code></strong>（或 <strong><code>docker-compose</code></strong>）</td>
+</tr>
+<tr>
+<td><strong>镜像</strong></td>
+<td>优先 <strong><code>clickhouse/clickhouse-server:25.8</code></strong> &#x2F; 固定补丁标签；<strong><code>CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1</code></strong> 与账号环境变量配套使用</td>
+</tr>
+<tr>
+<td><strong>单容器</strong></td>
+<td><strong><code>mkdir</code></strong> 后一条 <strong><code>docker run ...</code></strong>（暴露 <strong>8123</strong>、<strong>9000</strong>）</td>
+</tr>
+<tr>
+<td><strong>Compose</strong></td>
+<td>保存 <strong><code>docker-compose.clickhouse.yml</code></strong> 后 <strong><code>docker compose -f ... up -d</code></strong></td>
+</tr>
+<tr>
+<td><strong>Kubernetes</strong></td>
+<td>保存 <strong><code>clickhouse-k8s.yaml</code></strong> 后 <strong><code>kubectl apply -f ...</code></strong></td>
+</tr>
+</tbody></table>
+<p>生产环境请配合备份、监控、网络策略与 <strong>TLS</strong>（<strong>8123</strong> 对外时务必加固）；<strong>Secret</strong> 建议对接 <strong>External Secrets</strong> &#x2F; <strong>Sealed Secrets</strong> 等管控流程。</p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>镜像选择</td>
+<td>官方 <code>clickhouse/clickhouse-server:25.8</code>（25.x LTS）起步，生产固定补丁标签或 digest</td>
+</tr>
+<tr>
+<td>单容器</td>
+<td><code>mkdir</code> 建卷目录后一条 <code>docker run</code>，暴露 8123 &#x2F; 9000 双端口</td>
+</tr>
+<tr>
+<td>Compose</td>
+<td><code>docker-compose.clickhouse.yml</code> + <code>.env</code> 管理敏感项，healthcheck 走 HTTP &#x2F;ping</td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td>Secret + PVC + Deployment（Recreate）+ HTTP 探针，一条 <code>kubectl apply</code></td>
+</tr>
+<tr>
+<td>配置挂载</td>
+<td><code>config.d</code> &#x2F; <code>users.d</code> 按文件名合并进主配置，声明式管网络与用户</td>
+</tr>
+<tr>
+<td>集群起步</td>
+<td>Keeper + 双节点 <code>ReplicatedMergeTree</code> Compose 体验复制链路；生产 Keeper 奇数节点</td>
+</tr>
+<tr>
+<td>运维抓手</td>
+<td><code>system.parts</code> 盯 part 防 <code>Too many parts</code>；备份三选一且必须演练恢复</td>
+</tr>
+<tr>
+<td>生产提醒</td>
+<td>数据卷 + 备份 + 认证 + TLS（8123 对外务必加固）；分片交给 Operator</td>
+</tr>
+</tbody></table>
+<hr>
+<p>环境跑通后进入查询实战：<a href="/database/03-clickhouse-query-tuning/">第三章：ClickHouse 查询与性能调优</a> 覆盖索引裁剪、物化视图与 JOIN 优化；Keeper、副本分片与 Operator 集群运维可按需深入。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/ClickHouse/" rel="tag"># ClickHouse</a>
+              <a href="/tags/Docker/" rel="tag"># Docker</a>
+              <a href="/tags/Docker-Compose/" rel="tag"># Docker Compose</a>
+              <a href="/tags/Kubernetes/" rel="tag"># Kubernetes</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/database/02-postgresql-docker/" rel="prev" title="第二章：Docker 部署 PostgreSQL 实践">
+                  <i class="fa fa-angle-left"></i> 第二章：Docker 部署 PostgreSQL 实践
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/database/03-clickhouse-query-tuning/" rel="next" title="第三章：ClickHouse 查询与性能调优">
+                  第三章：ClickHouse 查询与性能调优 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

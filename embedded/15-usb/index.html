@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口概念基础 USB（Universal Serial Bus，通用串行总线）是 主机中心（Host-centric） 的有线总线：所有事务都由 Host 发起，Device 只能被动响应——与 CAN 的多主对等、LIN 的主从调度都不相同。 树形寻址：Host 经 Root Hub → Hub 树形扩展挂载设备，靠枚举过程为每个设备分配唯一地">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口">
+<meta property="og:url" content="https://my919.github.io/embedded/15-usb/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口概念基础 USB（Universal Serial Bus，通用串行总线）是 主机中心（Host-centric） 的有线总线：所有事务都由 Host 发起，Device 只能被动响应——与 CAN 的多主对等、LIN 的主从调度都不相同。 树形寻址：Host 经 Root Hub → Hub 树形扩展挂载设备，靠枚举过程为每个设备分配唯一地">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:16:19.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.576Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Embedded">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/embedded/15-usb/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/embedded/15-usb/","path":"embedded/15-usb/","title":"第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E4%BA%94%E7%AB%A0%EF%BC%9AUSB-%E6%80%BB%E7%BA%BF%EF%BC%9A%E6%8B%93%E6%89%91%E3%80%81%E6%8F%8F%E8%BF%B0%E7%AC%A6%E4%B8%8E-CDC-%E8%99%9A%E6%8B%9F%E4%B8%B2%E5%8F%A3"><span class="nav-number">1.</span> <span class="nav-text">第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BB%E6%9C%BA%E2%80%93%E8%AE%BE%E5%A4%87%E6%8B%93%E6%89%91"><span class="nav-number">1.2.</span> <span class="nav-text">主机–设备拓扑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E6%8B%93%E6%89%91"><span class="nav-number">1.3.</span> <span class="nav-text">一、拓扑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E9%80%9F%E5%BA%A6%E7%AD%89%E7%BA%A7"><span class="nav-number">1.4.</span> <span class="nav-text">二、速度等级</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%8F%8F%E8%BF%B0%E7%AC%A6%E4%B8%8E-Class"><span class="nav-number">1.5.</span> <span class="nav-text">三、描述符与 Class</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8F%8F%E8%BF%B0%E7%AC%A6%E5%B1%82%E7%BA%A7%E8%AF%A6%E8%A7%A3"><span class="nav-number">1.5.1.</span> <span class="nav-text">描述符层级详解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B%E7%A7%8D%E4%BC%A0%E8%BE%93%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.5.2.</span> <span class="nav-text">四种传输类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9E%9A%E4%B8%BE%E6%B5%81%E7%A8%8B%EF%BC%88%E6%8F%92%E5%85%A5%E5%90%8E%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">枚举流程（插入后发生了什么）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81CDC-%E8%99%9A%E6%8B%9F%E4%B8%B2%E5%8F%A3"><span class="nav-number">1.6.</span> <span class="nav-text">四、CDC 虚拟串口</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CDC-ACM-%E7%9A%84%E6%8E%A5%E5%8F%A3%E7%BB%84%E6%88%90"><span class="nav-number">1.6.1.</span> <span class="nav-text">CDC ACM 的接口组成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TinyUSB-%E5%AE%9E%E7%8E%B0%E8%A6%81%E7%82%B9%EF%BC%88%E6%A6%82%E5%BF%B5%EF%BC%89"><span class="nav-number">1.6.2.</span> <span class="nav-text">TinyUSB 实现要点（概念）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CDC-%E4%B8%8E%E7%9C%9F-UART-%E5%AF%B9%E6%AF%94"><span class="nav-number">1.6.3.</span> <span class="nav-text">CDC 与真 UART 对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%BC%80%E5%8F%91%E8%A6%81%E7%82%B9"><span class="nav-number">1.7.</span> <span class="nav-text">五、嵌入式开发要点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Full-Speed-%E7%A1%AC%E4%BB%B6%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="nav-number">1.7.1.</span> <span class="nav-text">Full Speed 硬件检查清单</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux-%E4%BE%A7%E8%B0%83%E8%AF%95"><span class="nav-number">1.7.2.</span> <span class="nav-text">Linux 侧调试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95"><span class="nav-number">1.7.3.</span> <span class="nav-text">常见问题清单</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.8.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/embedded/15-usb/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:16:19" itemprop="dateCreated datePublished" datetime="2026-05-01T13:16:19+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">嵌入式</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>3.8k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>3 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十五章：USB-总线：拓扑、描述符与-CDC-虚拟串口"><a href="#第十五章：USB-总线：拓扑、描述符与-CDC-虚拟串口" class="headerlink" title="第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口"></a>第十五章：USB 总线：拓扑、描述符与 CDC 虚拟串口</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>USB</strong>（<strong>Universal Serial Bus</strong>，通用串行总线）是 <strong>主机中心（Host-centric）</strong> 的有线总线：<strong>所有事务都由 Host 发起</strong>，Device 只能被动响应——与 CAN 的多主对等、LIN 的主从调度都不相同。</li>
+<li><strong>树形寻址</strong>：Host 经 <strong>Root Hub → Hub</strong> 树形扩展挂载设备，靠<strong>枚举</strong>过程为每个设备分配<strong>唯一地址</strong>，再读<strong>描述符</strong>获知它是谁、能做什么。</li>
+<li><strong>描述符即自描述</strong>：<strong>设备描述符 → 配置 → 接口 → 端点</strong>层层描述，插入即枚举，无需跳线或硬编码地址——「即插即用」的机制本质。</li>
+<li><strong>速度分级演进</strong>：<strong>Low&#x2F;Full&#x2F;High Speed（1.5M&#x2F;12M&#x2F;480 Mbps）→ USB 3.x（5 Gbps+）→ USB4</strong>；MCU 侧 <strong>Full Speed 12 Mbps</strong> 仍最常见。</li>
+<li><strong>定位</strong>：PC 与外设的<strong>标准互联</strong>；嵌入式里最常见的玩法是 <strong>CDC 虚拟串口</strong>与 <strong>HID</strong>，Type-C 时代还要关注 <strong>PD 供电协商</strong>与 <strong>Alt Mode</strong>。</li>
+</ol>
+<p>主机-设备树形拓扑：</p>
+<h2 id="主机–设备拓扑"><a href="#主机–设备拓扑" class="headerlink" title="主机–设备拓扑"></a>主机–设备拓扑</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  Host[USB Host PC] --&gt; Hub[Hub 可选]
+  Hub --&gt; Dev1[Device 键鼠]
+  Hub --&gt; Dev2[Device CDC 串口]
+</code>
+</pre>
+
+<hr>
+<h2 id="一、拓扑"><a href="#一、拓扑" class="headerlink" title="一、拓扑"></a>一、拓扑</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Host (PC) ── Root Hub ── Device</span><br><span class="line">                      └── Hub ── 多 Device</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>Host</strong> 发起事务；<strong>Device</strong> 响应。  </li>
+<li><strong>OTG</strong> 设备可切换 Host&#x2F;Device（手机接 U 盘）。</li>
+</ul>
+<p>补充规则：</p>
+<ul>
+<li><strong>最多 5 级 Hub、127 个设备</strong>（7 位地址，地址 0 保留给未枚举设备）。</li>
+<li><strong>Host 轮询</strong>：连 Interrupt 端点也是 Host 按声明周期来「问」设备有没有数据——USB 没有真正意义上的设备中断。</li>
+<li><strong>帧定时</strong>：Full Speed 每 1 ms 一个 SOF 帧，所有传输被调度进帧里，这是 USB 带宽分配的基本节拍。</li>
+</ul>
+<hr>
+<h2 id="二、速度等级"><a href="#二、速度等级" class="headerlink" title="二、速度等级"></a>二、速度等级</h2><table>
+<thead>
+<tr>
+<th>版本</th>
+<th>速率（量级）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>USB 2.0 HS</strong></td>
+<td>480 Mbps</td>
+</tr>
+<tr>
+<td><strong>USB 3.x</strong></td>
+<td>5 Gbps+</td>
+</tr>
+<tr>
+<td><strong>USB4</strong></td>
+<td>基于 Thunderbolt 生态</td>
+</tr>
+</tbody></table>
+<p><strong>Full Speed 12 Mbps</strong> 仍常见于 MCU Device。</p>
+<p>完整分级：</p>
+<table>
+<thead>
+<tr>
+<th>等级</th>
+<th>速率</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Low Speed</td>
+<td>1.5 Mbps</td>
+<td>键鼠（延迟不敏感、线材便宜）</td>
+</tr>
+<tr>
+<td>Full Speed</td>
+<td>12 Mbps</td>
+<td>MCU CDC&#x2F;HID，绝大多数 STM32F1&#x2F;F4</td>
+</tr>
+<tr>
+<td>High Speed</td>
+<td>480 Mbps</td>
+<td>U 盘、摄像头、高速数据采集（需专用 PHY）</td>
+</tr>
+<tr>
+<td>SuperSpeed</td>
+<td>5&#x2F;10&#x2F;20 Gbps</td>
+<td>USB 3.x，独立差分对全双工</td>
+</tr>
+<tr>
+<td>USB4</td>
+<td>20&#x2F;40 Gbps</td>
+<td>Type-C 隧道化 PCIe&#x2F;DP</td>
+</tr>
+</tbody></table>
+<p>MCU 内置的多为 FS 控制器；HS 需外挂 ULPI PHY 或选带 HS PHY 的型号（STM32F7&#x2F;H7、ESP32-S3 等仍多为 FS）。</p>
+<hr>
+<h2 id="三、描述符与-Class"><a href="#三、描述符与-Class" class="headerlink" title="三、描述符与 Class"></a>三、描述符与 Class</h2><ul>
+<li><strong>设备描述符</strong> → <strong>配置</strong> → <strong>接口</strong> → <strong>端点</strong>。  </li>
+<li><strong>Class</strong>：<strong>HID</strong>（键鼠）、<strong>MSC</strong>（U 盘）、<strong>CDC-ACM</strong>（虚拟 <a href="/embedded/04-uart/">第四章：UART</a>）、<strong>Audio</strong>、<strong>Video</strong> 等。  </li>
+<li><strong>Vendor Specific</strong>：自定义 <strong>Bulk&#x2F;Interrupt</strong> 端点 + 主机驱动&#x2F;libusb。</li>
+</ul>
+<h3 id="描述符层级详解"><a href="#描述符层级详解" class="headerlink" title="描述符层级详解"></a>描述符层级详解</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Device Descriptor        VID/PID、USB 版本、设备类、EP0 包长</span><br><span class="line"> └── Configuration       供电需求(mA)、接口数量、是否自供电/总线供电</span><br><span class="line">      └── Interface      Class/SubClass/Protocol → 决定加载哪个驱动</span><br><span class="line">           └── Endpoint  地址(IN 0x81/OUT 0x01)、类型、包长、轮询周期</span><br></pre></td></tr></table></figure>
+
+<p>一个设备可以有<strong>多个接口</strong>：如「CDC + HID」复合设备——调试串口与用户按键共存，PC 上同时出现 COM 口和 HID 设备。</p>
+<h3 id="四种传输类型"><a href="#四种传输类型" class="headerlink" title="四种传输类型"></a>四种传输类型</h3><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>特点</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Control</strong></td>
+<td>双向、必支持（EP0）</td>
+<td>枚举、类请求</td>
+</tr>
+<tr>
+<td><strong>Interrupt</strong></td>
+<td>周期轮询、小数据、有界延迟</td>
+<td>HID 键鼠、CDC 通知</td>
+</tr>
+<tr>
+<td><strong>Bulk</strong></td>
+<td>大数据、无延迟保证、带宽填满</td>
+<td>U 盘、虚拟串口数据</td>
+</tr>
+<tr>
+<td><strong>Isochronous</strong></td>
+<td>定带宽、不重传</td>
+<td>音频、视频</td>
+</tr>
+</tbody></table>
+<h3 id="枚举流程（插入后发生了什么）"><a href="#枚举流程（插入后发生了什么）" class="headerlink" title="枚举流程（插入后发生了什么）"></a>枚举流程（插入后发生了什么）</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">1) Host 检测到 D+/D- 上拉 → 复位总线 → 设备以地址 0 响应</span><br><span class="line">2) GET_DESCRIPTOR(Device)      → 获知 EP0 能力</span><br><span class="line">3) SET_ADDRESS                 → 分配唯一地址</span><br><span class="line">4) GET_DESCRIPTOR(Configuration→Interface→Endpoint) 全量读取</span><br><span class="line">5) 按 VID/PID 与 Class 匹配驱动（CDC→usbser/CDC-ACM 驱动）</span><br><span class="line">6) SET_CONFIGURATION           → 设备进入工作状态</span><br></pre></td></tr></table></figure>
+
+<p>任何一步失败都表现为「无法识别的 USB 设备」，按此流程逐步排查即可定位。</p>
+<hr>
+<h2 id="四、CDC-虚拟串口"><a href="#四、CDC-虚拟串口" class="headerlink" title="四、CDC 虚拟串口"></a>四、CDC 虚拟串口</h2><p>MCU 通过 <strong>USB CDC ACM</strong> 暴露 <strong><code>/dev/ttyACM0</code></strong>（Linux）或 <strong>COM</strong> 口（Windows），应用层与 UART 类似发字节，物理层是 USB 包。</p>
+<p>与 <a href="/embedded/05-rs232/">第五章：RS232</a>：<strong>USB 转串口</strong> 芯片（<strong>CH340</strong>、<strong>CP2102</strong>、<strong>FT232</strong>）内部即 UART ↔ USB 桥接。</p>
+<h3 id="CDC-ACM-的接口组成"><a href="#CDC-ACM-的接口组成" class="headerlink" title="CDC ACM 的接口组成"></a>CDC ACM 的接口组成</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Interface 0: Communication Class (控制)</span><br><span class="line">    └── EP 0x82 Interrupt IN     状态通知</span><br><span class="line">Interface 1: Data Class (数据)</span><br><span class="line">    └── EP 0x03 Bulk OUT         Host → Device</span><br><span class="line">    └── EP 0x81 Bulk IN          Device → Host</span><br></pre></td></tr></table></figure>
+
+<h3 id="TinyUSB-实现要点（概念）"><a href="#TinyUSB-实现要点（概念）" class="headerlink" title="TinyUSB 实现要点（概念）"></a>TinyUSB 实现要点（概念）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 收到主机数据回调</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">tud_cdc_rx_cb</span><span class="params">(<span class="type">uint8_t</span> itf)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">uint8_t</span> buf[<span class="number">64</span>];</span><br><span class="line">    <span class="type">uint32_t</span> n = tud_cdc_read(buf, <span class="keyword">sizeof</span>(buf));</span><br><span class="line">    handle_bytes(buf, n);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 发送（无需关心波特率——虚拟串口的&quot;波特率&quot;是礼貌性设置）</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">log_write</span><span class="params">(<span class="type">const</span> <span class="type">char</span> *s)</span></span><br><span class="line">&#123;</span><br><span class="line">    tud_cdc_write(s, <span class="built_in">strlen</span>(s));</span><br><span class="line">    tud_cdc_write_flush();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>虚拟串口的波特率是摆设</strong>：Bulk 传输按 USB 全速跑，PC 侧设 9600 或 921600 实际速度一样；只有 SET_LINE_CODING 请求会通知设备（设备可用它触发 Bootloader 之类的魔法——Arduino 的 1200 bps touch 就是这个原理）。</p>
+<h3 id="CDC-与真-UART-对比"><a href="#CDC-与真-UART-对比" class="headerlink" title="CDC 与真 UART 对比"></a>CDC 与真 UART 对比</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>USB CDC</th>
+<th>UART + 转换芯片</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>速率</td>
+<td>12 Mbps 链路，实际吞吐数百 KB&#x2F;s</td>
+<td>受波特率限制</td>
+</tr>
+<tr>
+<td>接线</td>
+<td>一根 USB 线</td>
+<td>USB 线 + 转换器 + 杜邦线</td>
+</tr>
+<tr>
+<td>缓冲</td>
+<td>USB 控制器 FIFO，不易丢字节</td>
+<td>需流控防溢出</td>
+</tr>
+<tr>
+<td>固件成本</td>
+<td>需跑 USB 协议栈</td>
+<td>UART 裸驱即可</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="五、嵌入式开发要点"><a href="#五、嵌入式开发要点" class="headerlink" title="五、嵌入式开发要点"></a>五、嵌入式开发要点</h2><ul>
+<li><strong>STM32 USB Device Library</strong>、<strong>TinyUSB</strong>、<strong>ESP32-S2&#x2F;S3</strong> USB OTG。  </li>
+<li><strong>枚举失败</strong>：检查 <strong>D+&#x2F;D-</strong>、<strong>1.5k 上拉</strong>（Full Speed Device）、供电与描述符。  </li>
+<li><strong>USB 3 &#x2F; Type-C</strong>：<strong>PD</strong> 协商、<strong>Alt Mode</strong>（DP&#x2F;Thunderbolt）另论。</li>
+</ul>
+<p>规范：<a target="_blank" rel="noopener" href="https://www.usb.org/documents">https://www.usb.org/documents</a></p>
+<h3 id="Full-Speed-硬件检查清单"><a href="#Full-Speed-硬件检查清单" class="headerlink" title="Full Speed 硬件检查清单"></a>Full Speed 硬件检查清单</h3><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>D+ 上拉</td>
+<td>1.5kΩ（FS 设备标识）；由 MCU 内部&#x2F;三极管控制，可控上拉实现软件重枚举</td>
+</tr>
+<tr>
+<td>D-&#x2F;D+ 走线</td>
+<td>等长、90Ω 差分阻抗（普通板放宽些也能用）、远离时钟</td>
+</tr>
+<tr>
+<td>时钟</td>
+<td>FS USB 通常要求 48 MHz ±0.25%，很多 MCU 必须外晶振（HSI 精度不够）</td>
+</tr>
+<tr>
+<td>供电</td>
+<td>总线供电设备要在描述符里如实申报电流（≤500 mA @USB2）</td>
+</tr>
+<tr>
+<td>ESD</td>
+<td>USB 接口外露，TVS 管必备</td>
+</tr>
+</tbody></table>
+<h3 id="Linux-侧调试"><a href="#Linux-侧调试" class="headerlink" title="Linux 侧调试"></a>Linux 侧调试</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">lsusb                          <span class="comment"># 列出设备：确认枚举成功</span></span><br><span class="line">lsusb -v -d 0483:5740          <span class="comment"># 展开全部描述符</span></span><br><span class="line">dmesg | <span class="built_in">tail</span>                   <span class="comment"># 看内核加载了哪个驱动（cdc_acm）</span></span><br><span class="line"><span class="built_in">sudo</span> <span class="built_in">cat</span> /sys/kernel/debug/usb/devices</span><br></pre></td></tr></table></figure>
+
+<p>Python 侧收发（pyserial 对 &#x2F;dev&#x2F;ttyACM0 透明）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> serial</span><br><span class="line">ser = serial.Serial(<span class="string">&quot;/dev/ttyACM0&quot;</span>, <span class="number">115200</span>, timeout=<span class="number">1</span>)  <span class="comment"># 波特率无所谓</span></span><br><span class="line">ser.write(<span class="string">b&quot;hello\n&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(ser.readline())</span><br></pre></td></tr></table></figure>
+
+<h3 id="常见问题清单"><a href="#常见问题清单" class="headerlink" title="常见问题清单"></a>常见问题清单</h3><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>可能原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>设备完全无反应</td>
+<td>1.5k 上拉没使能；USB 时钟没到 48 MHz；DP&#x2F;DM 接反</td>
+</tr>
+<tr>
+<td>「无法识别的 USB 设备」</td>
+<td>描述符长度字段错；EP0 响应超时；供电不足</td>
+</tr>
+<tr>
+<td>枚举到一半断掉</td>
+<td>堆栈太小（USB 栈吃 RAM）；描述符在 Flash 对齐问题</td>
+</tr>
+<tr>
+<td>高速收发丢数据</td>
+<td>应用层读太慢，端点 NAK 溢出；加大缓冲或提高读取频率</td>
+</tr>
+<tr>
+<td>Windows 要装驱动</td>
+<td>Win10 之前 CDC-ACM 需 inf；或换 HID（免驱）&#x2F;WinUSB</td>
+</tr>
+</tbody></table>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>拓扑</td>
+<td>Host 中心 + Hub 树形扩展，事务全部由 Host 发起</td>
+</tr>
+<tr>
+<td>即插即用</td>
+<td>枚举分配地址 + 分层描述符自描述</td>
+</tr>
+<tr>
+<td>复用机制</td>
+<td>Class 驱动标准化（HID&#x2F;MSC&#x2F;CDC 等），免装驱动</td>
+</tr>
+<tr>
+<td>嵌入式常用</td>
+<td>CDC 虚拟串口、HID；协议栈可上 TinyUSB</td>
+</tr>
+<tr>
+<td>排障要点</td>
+<td>枚举失败先查 D+&#x2F;D-、1.5k 上拉、供电与描述符</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Embedded/" rel="tag"># Embedded</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/embedded/14-nfc/" rel="prev" title="第十四章：NFC 近场通信：工作模式与 NDEF">
+                  <i class="fa fa-angle-left"></i> 第十四章：NFC 近场通信：工作模式与 NDEF
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/embedded/16-zigbee/" rel="next" title="第十六章：Zigbee：基于 802.15.4 的 Mesh 组网">
+                  第十六章：Zigbee：基于 802.15.4 的 Mesh 组网 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

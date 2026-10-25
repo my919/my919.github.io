@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例概念基础 跑在 SSH 上的文件传输子系统：SFTP 是 SSH 协议族中的子系统，直接复用 SSH 的加密、完整性与认证——单端口（22）单连接搞定文件操作。 不是「FTP over SSH」：与 第七章：FTP 详解：双连接模型、主动&#x2F;被动与 lftp 示例 的双连接模型无关；也不同 scp（单次拷贝）与 rsync（增">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例">
+<meta property="og:url" content="https://my919.github.io/network/08-sftp-protocol/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例概念基础 跑在 SSH 上的文件传输子系统：SFTP 是 SSH 协议族中的子系统，直接复用 SSH 的加密、完整性与认证——单端口（22）单连接搞定文件操作。 不是「FTP over SSH」：与 第七章：FTP 详解：双连接模型、主动&#x2F;被动与 lftp 示例 的双连接模型无关；也不同 scp（单次拷贝）与 rsync（增">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:49:04.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.585Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Protocol">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/network/08-sftp-protocol/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/network/08-sftp-protocol/","path":"network/08-sftp-protocol/","title":"第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%85%AB%E7%AB%A0%EF%BC%9ASFTP-%E8%AF%A6%E8%A7%A3%EF%BC%9ASSH-%E5%AD%90%E7%B3%BB%E7%BB%9F%E3%80%81%E5%8D%8F%E8%AE%AE%E6%A0%88%E4%B8%8E-sftp-%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%9C%E7%94%A8%E4%B8%8E%E5%8D%8F%E8%AE%AE%E6%A0%88%EF%BC%88%E5%8E%9F%E7%90%86%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">作用与协议栈（原理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E-SCP%E3%80%81rsync-over-SSH-%E7%9A%84%E5%8F%96%E8%88%8D"><span class="nav-number">1.3.</span> <span class="nav-text">与 SCP、rsync over SSH 的取舍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%A4%E4%BA%92%E5%BC%8F-sftp"><span class="nav-number">1.4.</span> <span class="nav-text">交互式 sftp</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%B9%E5%A4%84%E7%90%86%EF%BC%9A-b-%E8%84%9A%E6%9C%AC%E6%96%87%E4%BB%B6"><span class="nav-number">1.5.</span> <span class="nav-text">批处理：-b 脚本文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E-SSH-%E5%AF%86%E9%92%A5%EF%BC%88%E9%85%8D%E5%90%88%E4%BD%9C%E7%94%A8%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">与 SSH 密钥（配合作用）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E7%AB%AF%E9%85%8D%E7%BD%AE%EF%BC%88OpenSSH%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">服务端配置（OpenSSH）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E9%80%9F%E6%9F%A5"><span class="nav-number">1.8.</span> <span class="nav-text">常见故障速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%89%E5%85%A8%E6%B3%A8%E6%84%8F"><span class="nav-number">1.9.</span> <span class="nav-text">安全注意</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/network/08-sftp-protocol/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:49:04" itemprop="dateCreated datePublished" datetime="2026-05-01T12:49:04+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" itemprop="url" rel="index"><span itemprop="name">计算机网络</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>2.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>2 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第八章：SFTP-详解：SSH-子系统、协议栈与-sftp-示例"><a href="#第八章：SFTP-详解：SSH-子系统、协议栈与-sftp-示例" class="headerlink" title="第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例"></a>第八章：SFTP 详解：SSH 子系统、协议栈与 sftp 示例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>跑在 SSH 上的文件传输子系统</strong>：<strong>SFTP</strong> 是 <strong>SSH</strong> 协议族中的<strong>子系统</strong>，直接复用 <strong>SSH</strong> 的<strong>加密、完整性与认证</strong>——单端口（<strong>22</strong>）单连接搞定文件操作。</li>
+<li><strong>不是「FTP over SSH」</strong>：与 <a href="/network/07-ftp-protocol/">第七章：FTP 详解：双连接模型、主动&#x2F;被动与 lftp 示例</a> 的<strong>双连接</strong>模型无关；也不同 <strong>scp</strong>（单次拷贝）与 <strong>rsync</strong>（增量同步，协议不等同 SFTP）。</li>
+<li><strong>为什么是公网首选</strong>：默认<strong>强加密</strong>、防火墙只需放行一个端口、可复用 <strong>SSH 密钥</strong>免密认证；而 <strong>FTPS</strong> 虽加密仍保留双连接复杂性。</li>
+<li><strong>交互与批处理兼得</strong>：<strong><code>sftp</code></strong> 支持交互浏览目录（<code>ls/cd/get/put</code>），也支持 <strong><code>-b</code></strong> 批处理脚本，适合自动化。</li>
+</ol>
+<p>先看它在协议栈中的位置：</p>
+<h2 id="作用与协议栈（原理）"><a href="#作用与协议栈（原理）" class="headerlink" title="作用与协议栈（原理）"></a>作用与协议栈（原理）</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[ SFTP 子系统：文件操作 PDU ]</span><br><span class="line">            ↓</span><br><span class="line">[ SSH 传输层：加密、完整性、压缩(可选) ]</span><br><span class="line">            ↓</span><br><span class="line">[ TCP ]</span><br><span class="line">            ↓</span><br><span class="line">[ IP ]</span><br></pre></td></tr></table></figure>
+
+<p><strong>SFTP</strong> 是 <strong>SSH</strong> 协议族中的<strong>子系统</strong>，与 <strong>shell</strong> 会话可并存于同一 <strong>SSH</strong> 连接实现上（由服务器策略决定）。</p>
+<p><strong>协议报文要点（概念）</strong>：<strong>SFTP</strong> 是<strong>二进制请求&#x2F;响应</strong>协议，每条消息为「长度 + 类型 + 请求 ID + 载荷」。客户端发 <strong><code>SSH_FXP_OPEN / READ / WRITE / CLOSE / READDIR / STAT / REMOVE / RENAME</code></strong> 等请求，服务端回 <strong><code>SSH_FXP_HANDLE / DATA / STATUS / ATTRS</code></strong> 等响应；<strong>请求 ID</strong> 允许<strong>多请求并行在途</strong>（pipelining），这是它比「一问一答」的 <strong>FTP</strong> 控制连接更适合高延迟链路的原因之一。<strong>协议版本</strong>常见为 <strong>v3</strong>（OpenSSH 实现），扩展能力在 <strong><code>SSH_FXP_INIT</code></strong> 握手时协商。</p>
+<h2 id="与-SCP、rsync-over-SSH-的取舍"><a href="#与-SCP、rsync-over-SSH-的取舍" class="headerlink" title="与 SCP、rsync over SSH 的取舍"></a>与 <strong>SCP</strong>、<strong>rsync over SSH</strong> 的取舍</h2><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SFTP</strong></td>
+<td>交互浏览目录、断点续传能力依客户端而定</td>
+</tr>
+<tr>
+<td><strong>scp</strong></td>
+<td>单次拷贝简单文件</td>
+</tr>
+<tr>
+<td><strong>rsync -e ssh</strong></td>
+<td>增量同步目录，底层仍是 <strong>SSH</strong> 隧道，协议不等同于 <strong>SFTP</strong></td>
+</tr>
+</tbody></table>
+<p><strong>选型口诀</strong>：一次性拷贝用 <strong>scp</strong>；要「看看远端有什么再决定拿哪个」用 <strong>SFTP</strong>；反复同步大目录用 <strong>rsync</strong>（只传差异块，最省带宽）。</p>
+<h2 id="交互式-sftp"><a href="#交互式-sftp" class="headerlink" title="交互式 sftp"></a>交互式 <code>sftp</code></h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sftp user@example.com</span><br></pre></td></tr></table></figure>
+
+<p>常用子命令：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ls</span><br><span class="line">cd remote_dir</span><br><span class="line">lcd local_dir</span><br><span class="line">get remote.txt</span><br><span class="line">put local.txt</span><br><span class="line">mkdir newdir</span><br><span class="line">bye</span><br></pre></td></tr></table></figure>
+
+<p>几个高频但易忘的子命令：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">get -a remote.bin        # 断点续传（append）</span><br><span class="line">get -r logs/             # 递归下载整个目录</span><br><span class="line">put -r ./dist/           # 递归上传</span><br><span class="line">df -h .                  # 查看远端磁盘空间</span><br><span class="line">chmod 644 file.txt       # 改远端权限</span><br><span class="line">rename old.txt new.txt   # 重命名</span><br></pre></td></tr></table></figure>
+
+<h2 id="批处理：-b-脚本文件"><a href="#批处理：-b-脚本文件" class="headerlink" title="批处理：-b 脚本文件"></a>批处理：<code>-b</code> 脚本文件</h2><p><strong><code>batch.txt</code></strong>：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cd incoming</span><br><span class="line">put /local/path/report.csv</span><br><span class="line">ls -l</span><br><span class="line">bye</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sftp -b batch.txt user@example.com</span><br></pre></td></tr></table></figure>
+
+<p>批处理默认<strong>遇错即停</strong>；在命令前加 <strong><code>-</code></strong> 可忽略单条失败（如 <code>-rm maybe_absent.txt</code>）。自动化场景建议同时加 <strong><code>-oBatchMode=yes</code></strong>，确保任何交互式询问（密码、主机指纹）都直接报错而不是挂起脚本：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sftp -oBatchMode=<span class="built_in">yes</span> -b batch.txt user@example.com</span><br></pre></td></tr></table></figure>
+
+<h2 id="与-SSH-密钥（配合作用）"><a href="#与-SSH-密钥（配合作用）" class="headerlink" title="与 SSH 密钥（配合作用）"></a>与 <strong>SSH 密钥</strong>（配合作用）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N <span class="string">&quot;&quot;</span></span><br><span class="line">ssh-copy-id user@example.com</span><br><span class="line">sftp user@example.com</span><br></pre></td></tr></table></figure>
+
+<p>私钥权限过宽时 <strong>OpenSSH</strong> 会拒绝加载（<strong><code>chmod 600 ~/.ssh/id_ed25519</code></strong>）。</p>
+<h2 id="服务端配置（OpenSSH）"><a href="#服务端配置（OpenSSH）" class="headerlink" title="服务端配置（OpenSSH）"></a>服务端配置（OpenSSH）</h2><p><strong><code>sshd_config</code></strong> 中启用 <strong>SFTP</strong> 子系统（发行版默认已带）：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Subsystem sftp internal-sftp</span><br></pre></td></tr></table></figure>
+
+<p><strong>只给文件传输、不给 shell</strong> 的典型写法（配合 <strong>chroot</strong>）：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Match Group sftponly</span><br><span class="line">    ChrootDirectory /data/sftp/%u</span><br><span class="line">    ForceCommand internal-sftp</span><br><span class="line">    AllowTcpForwarding no</span><br><span class="line">    X11Forwarding no</span><br></pre></td></tr></table></figure>
+
+<p>注意 <strong>chroot 目录属主必须是 root 且不可被该用户写</strong>（通常把可写区放在 chroot 内的子目录，如 <code>/data/sftp/%u/incoming</code>），否则登录即被拒。</p>
+<h2 id="常见故障速查"><a href="#常见故障速查" class="headerlink" title="常见故障速查"></a>常见故障速查</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>优先怀疑</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Permission denied (publickey)</code></td>
+<td>公钥未加入 <strong><code>authorized_keys</code></strong>；私钥权限非 600；服务端禁了密钥登录</td>
+</tr>
+<tr>
+<td>能 ssh 但 sftp 拒绝</td>
+<td><strong><code>Subsystem sftp</code></strong> 未配；或被 <code>ForceCommand</code> 限制</td>
+</tr>
+<tr>
+<td>chroot 后立刻断连</td>
+<td><strong>chroot 目录属主&#x2F;权限</strong>不符合要求（须 root 拥有）</td>
+</tr>
+<tr>
+<td>批处理挂住不动</td>
+<td>出现交互式询问；加 <strong><code>-oBatchMode=yes</code></strong> 暴露错误</td>
+</tr>
+<tr>
+<td>大文件慢</td>
+<td>单连接<strong>窗口</strong>与 <strong>RTT</strong> 限制；试 <strong><code>-B</code></strong> 增大缓冲或用 <strong>rsync</strong> 分片</td>
+</tr>
+</tbody></table>
+<h2 id="安全注意"><a href="#安全注意" class="headerlink" title="安全注意"></a>安全注意</h2><ul>
+<li>优先 <strong>密钥认证</strong>，禁用密码（<code>PasswordAuthentication no</code>，变更前确认已有可用密钥）。  </li>
+<li>公网暴露 <strong>22</strong> 必配 <strong>fail2ban</strong> 或改高位端口 + 安全组白名单；密钥定期轮换。  </li>
+<li><strong>SFTP</strong> 全程密文，抓包只能看到加密后的 <a href="/network/09-ssh-protocol/">第九章：SSH 详解：加密远程登录、密钥与端口转发示例</a> 通道流量，排障主要靠<strong>客户端 <code>-v</code></strong> 与服务端 <strong><code>auth.log</code></strong>。</li>
+</ul>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>定位</td>
+<td><strong>SSH 子系统</strong>：复用 SSH 加密与认证，单端口 <strong>22</strong> 单连接</td>
+</tr>
+<tr>
+<td>选型</td>
+<td>交互&#x2F;批处理选 <strong>SFTP</strong>；单次拷贝用 <strong>scp</strong>；增量同步用 <strong>rsync</strong></td>
+</tr>
+<tr>
+<td>认证</td>
+<td>配 <strong>SSH 密钥</strong>免密；私钥须 <strong><code>chmod 600</code></strong></td>
+</tr>
+<tr>
+<td>服务端</td>
+<td>加固靠 <strong>chroot</strong>、<strong>ForceCommand</strong>、<strong>AllowUsers</strong>（<code>sshd_config</code>）</td>
+</tr>
+<tr>
+<td>排障</td>
+<td><code>-v</code> 看握手细节；批处理加 <strong><code>-oBatchMode=yes</code></strong> 防挂起</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Protocol/" rel="tag"># Protocol</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/network/07-ftp-protocol/" rel="prev" title="第七章：FTP 详解：双连接模型、主动&#x2F;被动与 lftp 示例">
+                  <i class="fa fa-angle-left"></i> 第七章：FTP 详解：双连接模型、主动/被动与 lftp 示例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/network/09-ssh-protocol/" rel="next" title="第九章：SSH 详解：加密远程登录、密钥与端口转发示例">
+                  第九章：SSH 详解：加密远程登录、密钥与端口转发示例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

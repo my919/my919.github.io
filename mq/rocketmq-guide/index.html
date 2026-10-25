@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="MQ · RocketMQ 从 0 到生产落地。四大组件与存储模型 · Docker 部署 · 消息类型全景 · 原生&#x2F;Spring Boot 生产消费 · 顺序消息 · 延时消息 · 事务消息 · 可靠性 · 堆积治理 · 订单状态流转案例。重点讲 RocketMQ 区别于 Kafka、RabbitMQ 的独有能力，代码带中文注释，可直接抄用。  技术栈速查   类别 选型 用途">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RocketMQ 从入门到落地">
+<meta property="og:url" content="https://my919.github.io/mq/rocketmq-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="MQ · RocketMQ 从 0 到生产落地。四大组件与存储模型 · Docker 部署 · 消息类型全景 · 原生&#x2F;Spring Boot 生产消费 · 顺序消息 · 延时消息 · 事务消息 · 可靠性 · 堆积治理 · 订单状态流转案例。重点讲 RocketMQ 区别于 Kafka、RabbitMQ 的独有能力，代码带中文注释，可直接抄用。  技术栈速查   类别 选型 用途">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-10-25T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T13:25:04.650Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="RocketMQ">
+<meta property="article:tag" content="事务消息">
+<meta property="article:tag" content="分布式">
+<meta property="article:tag" content="消息队列">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/mq/rocketmq-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/mq/rocketmq-guide/","path":"mq/rocketmq-guide/","title":"RocketMQ 从入门到落地"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>RocketMQ 从入门到落地 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#MQ-%C2%B7-RocketMQ"><span class="nav-number">1.</span> <span class="nav-text">MQ · RocketMQ</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E6%A0%88%E9%80%9F%E6%9F%A5"><span class="nav-number">1.1.</span> <span class="nav-text">技术栈速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5%E8%AF%B4%E6%98%8E"><span class="nav-number">1.2.</span> <span class="nav-text">1. 概念说明</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E5%9B%9B%E5%A4%A7%E7%BB%84%E4%BB%B6"><span class="nav-number">1.2.1.</span> <span class="nav-text">1.1 四大组件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="nav-number">1.2.2.</span> <span class="nav-text">1.2 核心概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E5%AD%98%E5%82%A8%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.2.3.</span> <span class="nav-text">1.3 存储模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-%E4%B8%8E-Kafka%E3%80%81RabbitMQ-%E5%AF%B9%E6%AF%94"><span class="nav-number">1.2.4.</span> <span class="nav-text">1.4 与 Kafka、RabbitMQ 对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-RocketMQ-5-x-%E7%9A%84%E5%8F%98%E5%8C%96"><span class="nav-number">1.2.5.</span> <span class="nav-text">1.5 RocketMQ 5.x 的变化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E9%83%A8%E7%BD%B2"><span class="nav-number">1.3.</span> <span class="nav-text">2. 部署</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-docker-compose-%E8%B5%B7%E4%B8%89%E4%BB%B6%E5%A5%97"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 docker-compose 起三件套</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-broker-conf-%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 broker.conf 关键配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E9%9B%86%E7%BE%A4%E5%BD%A2%E6%80%81%E9%80%89%E5%9E%8B"><span class="nav-number">1.3.3.</span> <span class="nav-text">2.3 集群形态选型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-%E6%8E%A7%E5%88%B6%E5%8F%B0%E4%BD%BF%E7%94%A8"><span class="nav-number">1.3.4.</span> <span class="nav-text">2.4 控制台使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83-checklist"><span class="nav-number">1.3.5.</span> <span class="nav-text">2.5 生产环境 checklist</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E6%B6%88%E6%81%AF%E7%B1%BB%E5%9E%8B%E6%80%BB%E8%A7%88"><span class="nav-number">1.4.</span> <span class="nav-text">3. 消息类型总览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-Java-%E7%94%9F%E4%BA%A7%E4%B8%8E%E6%B6%88%E8%B4%B9"><span class="nav-number">1.5.</span> <span class="nav-text">4. Java 生产与消费</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%8E%9F%E7%94%9F%E7%94%9F%E4%BA%A7%E8%80%85%EF%BC%9A%E5%90%8C%E6%AD%A5%E3%80%81%E5%BC%82%E6%AD%A5%E3%80%81%E5%8D%95%E5%90%91"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 原生生产者：同步、异步、单向</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E5%8E%9F%E7%94%9F%E6%B6%88%E8%B4%B9%E8%80%85%EF%BC%9A%E9%9B%86%E7%BE%A4%E6%B6%88%E8%B4%B9%E4%B8%8E%E5%B9%BF%E6%92%AD%E6%B6%88%E8%B4%B9"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 原生消费者：集群消费与广播消费</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E4%BD%8D%E7%82%B9%E6%8F%90%E4%BA%A4%E4%B8%8E%E9%87%8D%E5%A4%8D%E6%B6%88%E8%B4%B9"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 位点提交与重复消费</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E9%A1%BA%E5%BA%8F%E6%B6%88%E6%81%AF"><span class="nav-number">1.6.</span> <span class="nav-text">5. 顺序消息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%85%A8%E5%B1%80%E9%A1%BA%E5%BA%8F%E4%B8%8E%E5%88%86%E5%8C%BA%E9%A1%BA%E5%BA%8F"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 全局顺序与分区顺序</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E7%94%9F%E4%BA%A7%E7%AB%AF%EF%BC%9AMessageQueueSelector"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 生产端：MessageQueueSelector</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E6%B6%88%E8%B4%B9%E7%AB%AF%EF%BC%9AMessageListenerOrderly"><span class="nav-number">1.6.3.</span> <span class="nav-text">5.3 消费端：MessageListenerOrderly</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-%E9%A1%BA%E5%BA%8F%E6%B6%88%E6%81%AF%E7%9A%84%E4%B8%89%E4%B8%AA%E5%89%8D%E6%8F%90"><span class="nav-number">1.6.4.</span> <span class="nav-text">5.4 顺序消息的三个前提</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E5%BB%B6%E6%97%B6%E6%B6%88%E6%81%AF"><span class="nav-number">1.7.</span> <span class="nav-text">6. 延时消息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-4-x-%E7%9A%84-18-%E4%B8%AA%E5%BB%B6%E6%97%B6%E7%BA%A7%E5%88%AB"><span class="nav-number">1.7.1.</span> <span class="nav-text">6.1 4.x 的 18 个延时级别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-5-x-%E4%BB%BB%E6%84%8F%E6%97%B6%E9%97%B4%E5%AE%9A%E6%97%B6%E6%B6%88%E6%81%AF"><span class="nav-number">1.7.2.</span> <span class="nav-text">6.2 5.x 任意时间定时消息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="nav-number">1.7.3.</span> <span class="nav-text">6.3 实现原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-%E8%90%BD%E5%9C%B0%EF%BC%9A%E8%AE%A2%E5%8D%95-30-%E5%88%86%E9%92%9F%E6%9C%AA%E6%94%AF%E4%BB%98%E8%87%AA%E5%8A%A8%E5%85%B3%E5%8D%95"><span class="nav-number">1.7.4.</span> <span class="nav-text">6.4 落地：订单 30 分钟未支付自动关单</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF"><span class="nav-number">1.8.</span> <span class="nav-text">7. 事务消息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%B5%81%E7%A8%8B"><span class="nav-number">1.8.1.</span> <span class="nav-text">7.1 两阶段流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%83%BD%E8%A7%A3%E5%86%B3%E3%80%8C%E6%9C%AC%E5%9C%B0%E4%BA%8B%E5%8A%A1%E4%B8%8E%E5%8F%91%E6%B6%88%E6%81%AF%E4%B8%8D%E4%B8%80%E8%87%B4%E3%80%8D"><span class="nav-number">1.8.2.</span> <span class="nav-text">7.2 为什么能解决「本地事务与发消息不一致」</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-%E5%AE%8C%E6%95%B4%E4%BB%A3%E7%A0%81"><span class="nav-number">1.8.3.</span> <span class="nav-text">7.3 完整代码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-%E5%9B%9E%E6%9F%A5%E6%AC%A1%E6%95%B0%E3%80%81%E8%B6%85%E6%97%B6%E4%B8%8E%E5%B9%82%E7%AD%89"><span class="nav-number">1.8.4.</span> <span class="nav-text">7.4 回查次数、超时与幂等</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-%E4%B8%8E%E6%9C%AC%E5%9C%B0%E6%B6%88%E6%81%AF%E8%A1%A8%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-number">1.8.5.</span> <span class="nav-text">7.5 与本地消息表方案对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%8F%AF%E9%9D%A0%E6%80%A7%E4%BF%9D%E9%9A%9C"><span class="nav-number">1.9.</span> <span class="nav-text">8. 可靠性保障</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-1-%E5%8F%91%E9%80%81%E7%AB%AF"><span class="nav-number">1.9.1.</span> <span class="nav-text">8.1 发送端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-Broker-%E7%AB%AF"><span class="nav-number">1.9.2.</span> <span class="nav-text">8.2 Broker 端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-%E6%B6%88%E8%B4%B9%E7%AB%AF%E9%87%8D%E8%AF%95%E4%B8%8E%E6%AD%BB%E4%BF%A1"><span class="nav-number">1.9.3.</span> <span class="nav-text">8.3 消费端重试与死信</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-4-%E5%B9%82%E7%AD%89%EF%BC%9A%E5%94%AF%E4%B8%80%E4%B8%9A%E5%8A%A1%E9%94%AE-%E5%8E%BB%E9%87%8D%E8%A1%A8"><span class="nav-number">1.9.4.</span> <span class="nav-text">8.4 幂等：唯一业务键 + 去重表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-5-%E6%B6%88%E6%81%AF%E8%BD%A8%E8%BF%B9"><span class="nav-number">1.9.5.</span> <span class="nav-text">8.5 消息轨迹</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E5%A0%86%E7%A7%AF%E4%B8%8E%E6%B6%88%E8%B4%B9%E6%B2%BB%E7%90%86"><span class="nav-number">1.10.</span> <span class="nav-text">9. 堆积与消费治理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-%E5%A0%86%E7%A7%AF%E5%8E%9F%E5%9B%A0%E5%AE%9A%E4%BD%8D"><span class="nav-number">1.10.1.</span> <span class="nav-text">9.1 堆积原因定位</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-%E6%8F%90%E5%8D%87%E6%B6%88%E8%B4%B9%E8%83%BD%E5%8A%9B"><span class="nav-number">1.10.2.</span> <span class="nav-text">9.2 提升消费能力</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-%E9%99%90%E6%B5%81%E4%B8%8E%E9%99%8D%E7%BA%A7"><span class="nav-number">1.10.3.</span> <span class="nav-text">9.3 限流与降级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-%E5%85%B3%E9%94%AE%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87"><span class="nav-number">1.10.4.</span> <span class="nav-text">9.4 关键监控指标</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-Spring-Boot-%E9%9B%86%E6%88%90"><span class="nav-number">1.11.</span> <span class="nav-text">10. Spring Boot 集成</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#10-1-%E4%BE%9D%E8%B5%96"><span class="nav-number">1.11.1.</span> <span class="nav-text">10.1 依赖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-2-%E9%85%8D%E7%BD%AE"><span class="nav-number">1.11.2.</span> <span class="nav-text">10.2 配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-3-%E7%94%9F%E4%BA%A7%E8%80%85%EF%BC%9ARocketMQTemplate"><span class="nav-number">1.11.3.</span> <span class="nav-text">10.3 生产者：RocketMQTemplate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-4-%E6%B6%88%E8%B4%B9%E8%80%85%EF%BC%9A-RocketMQMessageListener"><span class="nav-number">1.11.4.</span> <span class="nav-text">10.4 消费者：@RocketMQMessageListener</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#11-%E8%90%BD%E5%9C%B0%E6%A1%88%E4%BE%8B%EF%BC%9A%E8%AE%A2%E5%8D%95%E7%8A%B6%E6%80%81%E6%B5%81%E8%BD%AC"><span class="nav-number">1.12.</span> <span class="nav-text">11. 落地案例：订单状态流转</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#11-1-%E6%97%B6%E5%BA%8F"><span class="nav-number">1.12.1.</span> <span class="nav-text">11.1 时序</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-2-%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF%E4%BF%9D%E8%AF%81%E3%80%8C%E8%AE%A2%E5%8D%95%E8%90%BD%E5%BA%93-%E6%89%A3%E5%BA%93%E5%AD%98%E6%B6%88%E6%81%AF%E3%80%8D%E4%B8%80%E8%87%B4"><span class="nav-number">1.12.2.</span> <span class="nav-text">11.2 事务消息保证「订单落库 + 扣库存消息」一致</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-3-%E5%BB%B6%E6%97%B6%E5%85%B3%E5%8D%95%E4%B8%8E%E6%B6%88%E8%B4%B9%E5%B9%82%E7%AD%89"><span class="nav-number">1.12.3.</span> <span class="nav-text">11.3 延时关单与消费幂等</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E8%AF%AF%E7%94%A8%E4%B8%8E%E9%99%B7%E9%98%B1"><span class="nav-number">1.13.</span> <span class="nav-text">常见误用与陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%9F%E6%9F%A5%E5%8D%A1%E7%89%87"><span class="nav-number">1.14.</span> <span class="nav-text">速查卡片</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.15.</span> <span class="nav-text">常用命令</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/mq/rocketmq-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="RocketMQ 从入门到落地 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          RocketMQ 从入门到落地
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-10-25 10:00:00 / 修改时间：21:25:04" itemprop="dateCreated datePublished" datetime="2026-10-25T10:00:00+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" itemprop="url" rel="index"><span itemprop="name">消息队列</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>24k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>21 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="MQ-·-RocketMQ"><a href="#MQ-·-RocketMQ" class="headerlink" title="MQ · RocketMQ"></a>MQ · RocketMQ</h1><blockquote>
+<p>从 0 到生产落地。四大组件与存储模型 · Docker 部署 · 消息类型全景 · 原生&#x2F;Spring Boot 生产消费 · 顺序消息 · 延时消息 · 事务消息 · 可靠性 · 堆积治理 · 订单状态流转案例。重点讲 RocketMQ 区别于 Kafka、RabbitMQ 的独有能力，代码带中文注释，可直接抄用。</p>
+</blockquote>
+<h2 id="技术栈速查"><a href="#技术栈速查" class="headerlink" title="技术栈速查"></a>技术栈速查</h2><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>选型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>消息中间件</td>
+<td>RocketMQ 5.x（4.9.x 仍是主流存量）</td>
+<td>业务消息、事务消息、顺序消息</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>Docker &#x2F; docker-compose</td>
+<td>本地开发与单机验证</td>
+</tr>
+<tr>
+<td>运维控制台</td>
+<td>rocketmq-dashboard</td>
+<td>Topic、消费进度、堆积查看</td>
+</tr>
+<tr>
+<td>Java 客户端</td>
+<td>rocketmq-client 5.x（经典 Remoting）&#x2F; rocketmq-client-java（gRPC）</td>
+<td>生产消费</td>
+</tr>
+<tr>
+<td>Spring 集成</td>
+<td>rocketmq-spring-boot-starter 2.3.x</td>
+<td>自动装配、模板发送</td>
+</tr>
+<tr>
+<td>监控</td>
+<td>Prometheus + rocketmq-exporter</td>
+<td>TPS、堆积、延迟告警</td>
+</tr>
+</tbody></table>
+<h2 id="1-概念说明"><a href="#1-概念说明" class="headerlink" title="1. 概念说明"></a>1. 概念说明</h2><h3 id="1-1-四大组件"><a href="#1-1-四大组件" class="headerlink" title="1.1 四大组件"></a>1.1 四大组件</h3><table>
+<thead>
+<tr>
+<th>组件</th>
+<th>角色</th>
+<th>关键点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>NameServer</td>
+<td>路由注册中心</td>
+<td>无状态、节点间互不通信，Broker 定时心跳上报路由</td>
+</tr>
+<tr>
+<td>Broker</td>
+<td>存储与转发</td>
+<td>负责消息写入 CommitLog、消费拉取、主从同步</td>
+</tr>
+<tr>
+<td>Producer</td>
+<td>生产者</td>
+<td>从 NameServer 取路由，按队列发送，支持重试</td>
+</tr>
+<tr>
+<td>Consumer</td>
+<td>消费者</td>
+<td>拉取消息、提交位点，同组内分摊队列</td>
+</tr>
+</tbody></table>
+<p><strong>为什么不用 ZooKeeper</strong>：RocketMQ 只需要「最终一致的路由信息」，Broker 向所有 NameServer 注册，客户端读任意一台即可。NameServer 之间不选举、不同步，单台挂掉不影响已缓存的客户端路由，可用性优先（AP）。ZooKeeper 的强一致选举在机房故障时可能不可写，且运维更重。代价是 NameServer 路由可能短暂不一致，客户端需容忍并定期刷新。</p>
+<h3 id="1-2-核心概念"><a href="#1-2-核心概念" class="headerlink" title="1.2 核心概念"></a>1.2 核心概念</h3><table>
+<thead>
+<tr>
+<th>概念</th>
+<th>说明</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Topic</td>
+<td>消息一级分类，如 ORDER_TOPIC</td>
+<td>生产环境应预创建，关闭自动创建</td>
+</tr>
+<tr>
+<td>MessageQueue</td>
+<td>Topic 的分片，又称队列</td>
+<td>并行度与顺序性的基本单元</td>
+</tr>
+<tr>
+<td>Tag</td>
+<td>消息二级分类，消费端可过滤</td>
+<td>只做轻量过滤，不要当路由用</td>
+</tr>
+<tr>
+<td>Key</td>
+<td>业务唯一键，如订单号</td>
+<td>用于查询消息、幂等与排查</td>
+</tr>
+<tr>
+<td>ConsumerGroup</td>
+<td>消费者组</td>
+<td>组内分摊队列，组间各自消费一份</td>
+</tr>
+<tr>
+<td>Offset</td>
+<td>消费位点</td>
+<td>集群消费存在 Broker，广播消费存在本地</td>
+</tr>
+</tbody></table>
+<h3 id="1-3-存储模型"><a href="#1-3-存储模型" class="headerlink" title="1.3 存储模型"></a>1.3 存储模型</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Producer</span><br><span class="line">   │  顺序追加（所有 Topic 共用一个大文件）</span><br><span class="line">   ▼</span><br><span class="line">CommitLog（默认单文件 1GB，写满即新建）</span><br><span class="line">   │</span><br><span class="line">   ├── ConsumeQueue / topic / queueId / 00000000000000000000</span><br><span class="line">   │       每条索引固定 20 字节：8B 物理偏移 + 4B 消息长度 + 8B Tag 哈希</span><br><span class="line">   │</span><br><span class="line">   └── IndexFile</span><br><span class="line">           按 Key 建立的哈希索引，支持按消息 Key 反查物理位置</span><br></pre></td></tr></table></figure>
+
+<p>高吞吐的三个原因：</p>
+<ol>
+<li><strong>顺序写</strong>：所有消息不分 Topic 追加到 CommitLog，磁盘寻道被降到最低。</li>
+<li><strong>mmap 与页缓存</strong>：CommitLog 通过内存映射读写，命中页缓存时几乎不碰磁盘；消费按 ConsumeQueue 索引随机读，也优先命中页缓存。</li>
+<li><strong>异步刷盘</strong>：默认 ASYNC_FLUSH，写入页缓存即返回，由后台线程批量刷盘；可靠性要求高时再切 SYNC_FLUSH。</li>
+</ol>
+<p>注意：Kafka 用 sendfile 做零拷贝，RocketMQ 因需要「按索引随机读」而选择 mmap，二者都是为了避免用户态与内核态之间的多余拷贝。</p>
+<h3 id="1-4-与-Kafka、RabbitMQ-对比"><a href="#1-4-与-Kafka、RabbitMQ-对比" class="headerlink" title="1.4 与 Kafka、RabbitMQ 对比"></a>1.4 与 Kafka、RabbitMQ 对比</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>RocketMQ</th>
+<th>Kafka</th>
+<th>RabbitMQ</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>吞吐</td>
+<td>十万到百万级&#x2F;s</td>
+<td>百万级&#x2F;s</td>
+<td>万级&#x2F;s</td>
+</tr>
+<tr>
+<td>延迟</td>
+<td>毫秒级</td>
+<td>毫秒级</td>
+<td>亚毫秒到毫秒</td>
+</tr>
+<tr>
+<td>顺序</td>
+<td>单队列内严格有序</td>
+<td>单分区内有序</td>
+<td>单队列内有序</td>
+</tr>
+<tr>
+<td>事务消息</td>
+<td>原生半消息 + 回查</td>
+<td>事务 API 仅限 Kafka 读写</td>
+<td>无原生，需要本地消息表</td>
+</tr>
+<tr>
+<td>延时消息</td>
+<td>原生，4.x 十八档 &#x2F; 5.x 任意时刻</td>
+<td>不支持，需外部调度</td>
+<td>插件或 TTL + 死信</td>
+</tr>
+<tr>
+<td>堆积能力</td>
+<td>亿级，堆积主要占磁盘</td>
+<td>亿级，分区过多时性能下降</td>
+<td>堆积后内存与磁盘压力明显</td>
+</tr>
+<tr>
+<td>运维复杂度</td>
+<td>中等，NameServer 轻量</td>
+<td>中等，KRaft 后简化</td>
+<td>单机简单，集群与镜像队列复杂</td>
+</tr>
+<tr>
+<td>生态</td>
+<td>国内电商金融、阿里系</td>
+<td>大数据与流处理最强</td>
+<td>协议多、路由灵活</td>
+</tr>
+</tbody></table>
+<p>结论：业务消息、订单履约、需要事务&#x2F;延时&#x2F;顺序的场景优先 RocketMQ；日志采集、流式计算选 Kafka；复杂路由与传统企业集成选 RabbitMQ。Kafka 细节见 <a href="/mq/kafka-guide/">Kafka 指南</a>，RabbitMQ 见 <a href="/mq/rabbitmq-guide/">RabbitMQ 指南</a>。</p>
+<h3 id="1-5-RocketMQ-5-x-的变化"><a href="#1-5-RocketMQ-5-x-的变化" class="headerlink" title="1.5 RocketMQ 5.x 的变化"></a>1.5 RocketMQ 5.x 的变化</h3><p><strong>Proxy 接入层</strong>：无状态网关，统一 gRPC 协议，多语言客户端不再各自实现 Remoting。<strong>gRPC 客户端</strong>：<code>rocketmq-client-java</code> 5.x，新项目推荐，存量仍可用经典客户端。<strong>任意时间定时消息</strong>：不再受 18 个固定档位限制，按时间戳投递，秒级精度。<strong>存算分离</strong>：Broker 计算与存储解耦，扩缩容更弹性，适合云原生部署。</p>
+<h2 id="2-部署"><a href="#2-部署" class="headerlink" title="2. 部署"></a>2. 部署</h2><h3 id="2-1-docker-compose-起三件套"><a href="#2-1-docker-compose-起三件套" class="headerlink" title="2.1 docker-compose 起三件套"></a>2.1 docker-compose 起三件套</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># docker-compose.yml：NameServer + Broker + Dashboard</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">namesrv:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">apache/rocketmq:5.3.1</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">rmqnamesrv</span></span><br><span class="line">    <span class="attr">command:</span> <span class="string">sh</span> <span class="string">mqnamesrv</span>                     <span class="comment"># 启动 NameServer</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;9876:9876&quot;</span>                           <span class="comment"># 路由注册与查询端口</span></span><br><span class="line">    <span class="attr">networks:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">rmq</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">broker:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">apache/rocketmq:5.3.1</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">rmqbroker</span></span><br><span class="line">    <span class="attr">depends_on:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">namesrv</span></span><br><span class="line">    <span class="attr">command:</span> <span class="string">sh</span> <span class="string">mqbroker</span> <span class="string">-c</span> <span class="string">/home/rocketmq/rocketmq-5.3.1/conf/broker.conf</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;10911:10911&quot;</span>                         <span class="comment"># 主端口：收发消息</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;10909:10909&quot;</span>                         <span class="comment"># VIP 通道端口</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./broker.conf:/home/rocketmq/rocketmq-5.3.1/conf/broker.conf</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./store:/home/rocketmq/store</span>          <span class="comment"># 消息存储目录，务必挂载</span></span><br><span class="line">    <span class="attr">networks:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">rmq</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">dashboard:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">apacherocketmq/rocketmq-dashboard:latest</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">rmqdashboard</span></span><br><span class="line">    <span class="attr">depends_on:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">namesrv</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">JAVA_OPTS:</span> <span class="string">&quot;-Drocketmq.namesrv.addr=namesrv:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false&quot;</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;8080:8080&quot;</span>                           <span class="comment"># 控制台</span></span><br><span class="line">    <span class="attr">networks:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">rmq</span></span><br><span class="line"></span><br><span class="line"><span class="attr">networks:</span></span><br><span class="line">  <span class="attr">rmq:</span></span><br><span class="line">    <span class="attr">driver:</span> <span class="string">bridge</span></span><br></pre></td></tr></table></figure>
+
+<p>启动后访问 <code>http://localhost:8080</code> 即为控制台。宿主机上的 Java 程序连接 <code>127.0.0.1:9876</code> 时，Broker 返回的地址必须是宿主机可达地址，所以下面的 <code>brokerIP1</code> 不能填容器内网 IP。</p>
+<h3 id="2-2-broker-conf-关键配置"><a href="#2-2-broker-conf-关键配置" class="headerlink" title="2.2 broker.conf 关键配置"></a>2.2 broker.conf 关键配置</h3><figure class="highlight properties"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">brokerClusterName</span> = <span class="string">DefaultCluster</span></span><br><span class="line"><span class="attr">brokerName</span> = <span class="string">broker-a</span></span><br><span class="line"><span class="attr">brokerId</span> = <span class="string">0</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 路由注册地址：容器内用服务名</span></span><br><span class="line"><span class="attr">namesrvAddr</span> = <span class="string">namesrv:9876</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 对外暴露的 IP：本机开发填宿主机局域网 IP，不要填 127.0.0.1 或容器 IP</span></span><br><span class="line"><span class="attr">brokerIP1</span> = <span class="string">192.168.1.10</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 主从角色：ASYNC_MASTER 异步复制，SYNC_MASTER 同步双写</span></span><br><span class="line"><span class="attr">brokerRole</span> = <span class="string">ASYNC_MASTER</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 刷盘方式：ASYNC_FLUSH 异步刷盘，SYNC_FLUSH 同步刷盘</span></span><br><span class="line"><span class="attr">flushDiskType</span> = <span class="string">ASYNC_FLUSH</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 单个 CommitLog 文件大小，默认 1GB，通常不需要改</span></span><br><span class="line"><span class="attr">mapedFileSizeCommitLog</span> = <span class="string">1073741824</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 磁盘使用率超过 88% 停止写入，防止磁盘打满</span></span><br><span class="line"><span class="attr">diskMaxUsedSpaceRatio</span> = <span class="string">88</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 生产环境关闭自动建 Topic，避免队列数不可控</span></span><br><span class="line"><span class="attr">autoCreateTopicEnable</span> = <span class="string">false</span></span><br><span class="line"><span class="attr">autoCreateSubscriptionGroup</span> = <span class="string">false</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 消息保留 48 小时，凌晨 4 点清理过期文件</span></span><br><span class="line"><span class="attr">fileReservedTime</span> = <span class="string">48</span></span><br><span class="line"><span class="attr">deleteWhen</span> = <span class="string">04</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>可选值</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>brokerRole</td>
+<td>ASYNC_MASTER &#x2F; SYNC_MASTER &#x2F; SLAVE</td>
+<td>同步双写可靠但 RT 增加约 1 个网络往返</td>
+</tr>
+<tr>
+<td>flushDiskType</td>
+<td>ASYNC_FLUSH &#x2F; SYNC_FLUSH</td>
+<td>同步刷盘掉电不丢，但 TPS 明显下降</td>
+</tr>
+<tr>
+<td>mapedFileSizeCommitLog</td>
+<td>1GB 左右</td>
+<td>过大导致清理粒度粗，过小导致文件数过多</td>
+</tr>
+<tr>
+<td>diskMaxUsedSpaceRatio</td>
+<td>75 到 90</td>
+<td>触发后 Broker 拒写，必须配合磁盘告警</td>
+</tr>
+</tbody></table>
+<h3 id="2-3-集群形态选型"><a href="#2-3-集群形态选型" class="headerlink" title="2.3 集群形态选型"></a>2.3 集群形态选型</h3><ul>
+<li><strong>2 主 2 从（同步双写）</strong>：每个 master 配一个 slave，<code>brokerRole=SYNC_MASTER</code> + <code>flushDiskType=SYNC_FLUSH</code>。消息写入主并同步到从、刷盘成功才返回，主挂掉可读从，金融与订单场景常用。代价是 RT 与硬件成本上升。</li>
+<li><strong>DLedger</strong>：基于 Raft 的自动选主，至少 3 副本，master 宕机自动切换，无需人工改配置。写放大明显、吞吐下降，适合「不能接受人工切换」的中小集群。5.x 也提供 Controller 模式做主备自动切换。</li>
+<li><strong>单主</strong>：只用于开发与压测，生产不推荐。</li>
+</ul>
+<h3 id="2-4-控制台使用"><a href="#2-4-控制台使用" class="headerlink" title="2.4 控制台使用"></a>2.4 控制台使用</h3><p>Dashboard 提供 Topic 管理、消息查询（按 Topic&#x2F;Key&#x2F;MessageId）、消费进度与堆积量、消费者连接、死信查看。排查线上问题时，第一眼看 <code>Consumer</code> 页的 Diff（堆积量）和 <code>Message</code> 页按 Key 查询消息轨迹。</p>
+<h3 id="2-5-生产环境-checklist"><a href="#2-5-生产环境-checklist" class="headerlink" title="2.5 生产环境 checklist"></a>2.5 生产环境 checklist</h3><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>磁盘</td>
+<td>SSD 或 RAID10，容量按「峰值 TPS × 保留时长」估算并留 40% 余量</td>
+</tr>
+<tr>
+<td>页缓存</td>
+<td>预留 50% 以上物理内存给页缓存，Broker JVM 不要吃光内存</td>
+</tr>
+<tr>
+<td>JVM</td>
+<td>8 到 16GB，<code>-Xms</code> 与 <code>-Xmx</code> 相等，G1，避免 Full GC 停顿影响心跳</td>
+</tr>
+<tr>
+<td>文件句柄</td>
+<td><code>ulimit -n 655350</code>，CommitLog 与 ConsumeQueue 文件数量很大</td>
+</tr>
+<tr>
+<td>Swap</td>
+<td>关闭 swap，避免刷盘抖动</td>
+</tr>
+</tbody></table>
+<h2 id="3-消息类型总览"><a href="#3-消息类型总览" class="headerlink" title="3. 消息类型总览"></a>3. 消息类型总览</h2><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>语义</th>
+<th>适用场景</th>
+<th>发送 API</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>普通消息</td>
+<td>至少一次投递，可能重复</td>
+<td>通知、事件、异步解耦</td>
+<td><code>send</code> &#x2F; <code>syncSend</code></td>
+</tr>
+<tr>
+<td>顺序消息</td>
+<td>同一队列内严格有序</td>
+<td>订单状态流转、binlog 同步</td>
+<td><code>send(msg, selector, arg)</code></td>
+</tr>
+<tr>
+<td>延时消息</td>
+<td>到期后才可被消费</td>
+<td>超时关单、延时通知</td>
+<td><code>setDelayTimeLevel</code> &#x2F; 定时消息</td>
+</tr>
+<tr>
+<td>事务消息</td>
+<td>本地事务与发消息最终一致</td>
+<td>订单落库 + 扣库存消息</td>
+<td><code>sendMessageInTransaction</code></td>
+</tr>
+<tr>
+<td>批量消息</td>
+<td>多条消息一次发送</td>
+<td>大批量导入、日志聚合</td>
+<td><code>send(Collection&lt;Message&gt;)</code></td>
+</tr>
+<tr>
+<td>死信消息</td>
+<td>重试耗尽后的兜底消息</td>
+<td>人工排查与补偿</td>
+<td>无需发送，Broker 自动转入</td>
+</tr>
+</tbody></table>
+<p>批量消息单次总量建议不超过 1MB，且同一批必须同 Topic；超大消息不要硬塞，消息体控制在 4MB 以内，大对象放对象存储、消息只带 URL。</p>
+<h2 id="4-Java-生产与消费"><a href="#4-Java-生产与消费" class="headerlink" title="4. Java 生产与消费"></a>4. Java 生产与消费</h2><h3 id="4-1-原生生产者：同步、异步、单向"><a href="#4-1-原生生产者：同步、异步、单向" class="headerlink" title="4.1 原生生产者：同步、异步、单向"></a>4.1 原生生产者：同步、异步、单向</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> java.nio.charset.StandardCharsets;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.producer.DefaultMQProducer;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.producer.SendCallback;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.producer.SendResult;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.message.Message;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ProducerDemo</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="comment">// 生产者组：同类生产者使用同一组名，事务消息回查也依赖它</span></span><br><span class="line">        <span class="type">DefaultMQProducer</span> <span class="variable">producer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultMQProducer</span>(<span class="string">&quot;order_producer_group&quot;</span>);</span><br><span class="line">        producer.setNamesrvAddr(<span class="string">&quot;127.0.0.1:9876&quot;</span>);     <span class="comment">// 多台用分号分隔</span></span><br><span class="line">        producer.setSendMsgTimeout(<span class="number">3000</span>);              <span class="comment">// 单次发送超时，毫秒</span></span><br><span class="line">        producer.setRetryTimesWhenSendFailed(<span class="number">2</span>);       <span class="comment">// 同步发送失败重试次数，共尝试 3 次</span></span><br><span class="line">        producer.start();</span><br><span class="line"></span><br><span class="line">        <span class="type">Message</span> <span class="variable">msg</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Message</span>(</span><br><span class="line">                <span class="string">&quot;ORDER_TOPIC&quot;</span>,                          <span class="comment">// Topic：一级分类</span></span><br><span class="line">                <span class="string">&quot;ORDER_CREATED&quot;</span>,                        <span class="comment">// Tag：二级分类</span></span><br><span class="line">                <span class="string">&quot;ORDER_202610250001&quot;</span>,                   <span class="comment">// Key：业务唯一键</span></span><br><span class="line">                <span class="string">&quot;订单创建成功&quot;</span>.getBytes(StandardCharsets.UTF_8));</span><br><span class="line">        msg.putUserProperty(<span class="string">&quot;orderId&quot;</span>, <span class="string">&quot;10001&quot;</span>);        <span class="comment">// 自定义属性，消费端可读取</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1）同步发送：拿到 Broker 明确响应，核心业务用这种</span></span><br><span class="line">        <span class="type">SendResult</span> <span class="variable">result</span> <span class="operator">=</span> producer.send(msg);</span><br><span class="line">        System.out.println(<span class="string">&quot;状态=&quot;</span> + result.getSendStatus()</span><br><span class="line">                + <span class="string">&quot; msgId=&quot;</span> + result.getMsgId()</span><br><span class="line">                + <span class="string">&quot; 队列=&quot;</span> + result.getMessageQueue());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2）异步发送：不阻塞主线程，但必须在回调里处理失败</span></span><br><span class="line">        producer.send(msg, <span class="keyword">new</span> <span class="title class_">SendCallback</span>() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">onSuccess</span><span class="params">(SendResult sendResult)</span> &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;异步发送成功: &quot;</span> + sendResult.getMsgId());</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">onException</span><span class="params">(Throwable e)</span> &#123;</span><br><span class="line">                <span class="comment">// 失败必须落库或重试，否则这条消息就丢了</span></span><br><span class="line">                System.err.println(<span class="string">&quot;异步发送失败，需补偿: &quot;</span> + e.getMessage());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3）单向发送：不等结果，只适合日志等允许丢失的场景</span></span><br><span class="line">        producer.sendOneway(msg);</span><br><span class="line"></span><br><span class="line">        producer.shutdown();                            <span class="comment">// 应用关闭时释放资源</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>SendResult</code> 的关键字段：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>含义</th>
+<th>怎么用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>sendStatus</td>
+<td>SEND_OK &#x2F; FLUSH_DISK_TIMEOUT &#x2F; FLUSH_SLAVE_TIMEOUT &#x2F; SLAVE_NOT_AVAILABLE</td>
+<td>非 SEND_OK 一律视为不可靠，需要重试或告警</td>
+</tr>
+<tr>
+<td>msgId</td>
+<td>客户端生成的全局唯一 ID</td>
+<td>业务日志关联</td>
+</tr>
+<tr>
+<td>offsetMsgId</td>
+<td>Broker 生成的物理位点 ID</td>
+<td>按位点精确查消息</td>
+</tr>
+<tr>
+<td>messageQueue</td>
+<td>topic + brokerName + queueId</td>
+<td>判断是否落到预期队列</td>
+</tr>
+<tr>
+<td>transactionId</td>
+<td>事务消息专用</td>
+<td>排查半消息</td>
+</tr>
+</tbody></table>
+<h3 id="4-2-原生消费者：集群消费与广播消费"><a href="#4-2-原生消费者：集群消费与广播消费" class="headerlink" title="4.2 原生消费者：集群消费与广播消费"></a>4.2 原生消费者：集群消费与广播消费</h3><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>语义</th>
+<th>位点存储</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CLUSTERING</td>
+<td>同组内每个队列只被一个实例消费</td>
+<td>Broker</td>
+<td>绝大多数业务</td>
+</tr>
+<tr>
+<td>BROADCASTING</td>
+<td>每个实例都消费全量消息</td>
+<td>本地文件</td>
+<td>本地缓存刷新、配置推送</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.consumer.ConsumeFromWhere;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.message.MessageExt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ConsumerDemo</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="type">DefaultMQPushConsumer</span> <span class="variable">consumer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultMQPushConsumer</span>(<span class="string">&quot;order_consumer_group&quot;</span>);</span><br><span class="line">        consumer.setNamesrvAddr(<span class="string">&quot;127.0.0.1:9876&quot;</span>);</span><br><span class="line">        <span class="comment">// 新消费组从最后一条开始；首次上线要消费历史则用 CONSUME_FROM_FIRST_OFFSET</span></span><br><span class="line">        consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET);</span><br><span class="line">        <span class="comment">// Tag 过滤：|| 表示或，* 表示全部；SQL92 过滤需 Broker 开启</span></span><br><span class="line">        consumer.subscribe(<span class="string">&quot;ORDER_TOPIC&quot;</span>, <span class="string">&quot;ORDER_CREATED || ORDER_PAID&quot;</span>);</span><br><span class="line">        consumer.setConsumeThreadMin(<span class="number">20</span>);               <span class="comment">// 消费线程下限</span></span><br><span class="line">        consumer.setConsumeThreadMax(<span class="number">64</span>);               <span class="comment">// 消费线程上限</span></span><br><span class="line">        consumer.setConsumeMessageBatchMaxSize(<span class="number">1</span>);      <span class="comment">// 一次拉取交给监听器的条数</span></span><br><span class="line"></span><br><span class="line">        consumer.registerMessageListener((MessageListenerConcurrently) (msgs, context) -&gt; &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="keyword">for</span> (MessageExt msg : msgs) &#123;</span><br><span class="line">                    <span class="comment">// 业务处理内部必须做幂等；重复消费是必然的</span></span><br><span class="line">                    System.out.println(<span class="string">&quot;收到: &quot;</span> + msg.getKeys()</span><br><span class="line">                            + <span class="string">&quot; 重试次数=&quot;</span> + msg.getReconsumeTimes());</span><br><span class="line">                    orderService.handle(msg.getBody(), msg.getKeys());</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">return</span> ConsumeConcurrentlyStatus.CONSUME_SUCCESS;   <span class="comment">// 整批成功才推进位点</span></span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                <span class="comment">// 返回 RECONSUME_LATER 才会重试；catch 后返回 SUCCESS 等于丢消息</span></span><br><span class="line">                <span class="keyword">return</span> ConsumeConcurrentlyStatus.RECONSUME_LATER;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        consumer.start();</span><br><span class="line">        System.out.println(<span class="string">&quot;消费者已启动&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-位点提交与重复消费"><a href="#4-3-位点提交与重复消费" class="headerlink" title="4.3 位点提交与重复消费"></a>4.3 位点提交与重复消费</h3><p>Push 消费者底层仍是拉取，位点由客户端定时上报 Broker（默认每 5 秒）。消费成功但位点尚未上报时进程崩溃，重启后会从旧位点重新消费，因此<strong>重复不可避免</strong>。正确心态是接受「至少一次」，用业务唯一键做幂等，而不是追求「恰好一次」。可靠性机制的系统性梳理见 <a href="/mq/mq-reliability-guide/">消息可靠性指南</a> 与 <a href="/mq/mq-reliability-final-guide/">可靠性最终方案</a>。</p>
+<h2 id="5-顺序消息"><a href="#5-顺序消息" class="headerlink" title="5. 顺序消息"></a>5. 顺序消息</h2><h3 id="5-1-全局顺序与分区顺序"><a href="#5-1-全局顺序与分区顺序" class="headerlink" title="5.1 全局顺序与分区顺序"></a>5.1 全局顺序与分区顺序</h3><p>RocketMQ 只保证<strong>同一 MessageQueue 内</strong>的顺序。所谓全局顺序，只能把 Topic 建成 1 个队列并由单线程消费，吞吐极低，生产几乎不用。正确做法是<strong>分区顺序</strong>：按订单号、用户 ID 等业务键哈希选队列，让同一实体的事件串行。</p>
+<h3 id="5-2-生产端：MessageQueueSelector"><a href="#5-2-生产端：MessageQueueSelector" class="headerlink" title="5.2 生产端：MessageQueueSelector"></a>5.2 生产端：MessageQueueSelector</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> java.util.List;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.producer.MessageQueueSelector;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.message.Message;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.message.MessageQueue;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 按订单号选队列：同一订单的创建、支付、发货永远进入同一队列</span></span><br><span class="line">producer.send(msg, <span class="keyword">new</span> <span class="title class_">MessageQueueSelector</span>() &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">MessageQueue</span> <span class="title function_">select</span><span class="params">(List&lt;MessageQueue&gt; mqs, Message msg, Object arg)</span> &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">orderNo</span> <span class="operator">=</span> (String) arg;</span><br><span class="line">        <span class="type">int</span> <span class="variable">index</span> <span class="operator">=</span> Math.abs(orderNo.hashCode()) % mqs.size();</span><br><span class="line">        <span class="keyword">return</span> mqs.get(index);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;, orderNo);</span><br></pre></td></tr></table></figure>
+
+<p>注意：队列数变化会导致哈希取模结果变化，顺序被打乱。因此顺序 Topic 的队列数要在创建时定好，避免在线扩缩容。</p>
+<h3 id="5-3-消费端：MessageListenerOrderly"><a href="#5-3-消费端：MessageListenerOrderly" class="headerlink" title="5.3 消费端：MessageListenerOrderly"></a>5.3 消费端：MessageListenerOrderly</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyStatus;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.message.MessageExt;</span><br><span class="line"></span><br><span class="line">consumer.registerMessageListener((MessageListenerOrderly) (msgs, context) -&gt; &#123;</span><br><span class="line">    <span class="keyword">for</span> (MessageExt msg : msgs) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            orderService.handle(msg.getBody(), msg.getKeys());</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            <span class="comment">// 挂起当前队列片刻再重试，后面的消息不会越过这条失败消息</span></span><br><span class="line">            <span class="keyword">return</span> ConsumeOrderlyStatus.SUSPEND_CURRENT_QUEUE_A_MOMENT;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ConsumeOrderlyStatus.SUCCESS;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>顺序消费失败会阻塞当前队列并持续重试，不具备并发消费那样「重试 16 次进死信」的兜底，必须配置堆积与失败告警，并保证消费逻辑不会永久失败。</p>
+<h3 id="5-4-顺序消息的三个前提"><a href="#5-4-顺序消息的三个前提" class="headerlink" title="5.4 顺序消息的三个前提"></a>5.4 顺序消息的三个前提</h3><ol>
+<li><strong>单队列</strong>：同一业务键的消息必须进入同一队列。</li>
+<li><strong>单线程消费</strong>：必须使用 <code>MessageListenerOrderly</code>，Broker 对队列加锁，同队列同一时刻只有一个消费者线程处理。</li>
+<li><strong>发送顺序一致</strong>：业务侧要保证「先创建后支付」的发送顺序，多线程并发发送同一订单仍可能乱序，必要时在发送端按订单号串行。</li>
+</ol>
+<h2 id="6-延时消息"><a href="#6-延时消息" class="headerlink" title="6. 延时消息"></a>6. 延时消息</h2><h3 id="6-1-4-x-的-18-个延时级别"><a href="#6-1-4-x-的-18-个延时级别" class="headerlink" title="6.1 4.x 的 18 个延时级别"></a>6.1 4.x 的 18 个延时级别</h3><table>
+<thead>
+<tr>
+<th>级别</th>
+<th>延时</th>
+<th>级别</th>
+<th>延时</th>
+<th>级别</th>
+<th>延时</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>1s</td>
+<td>7</td>
+<td>3m</td>
+<td>13</td>
+<td>9m</td>
+</tr>
+<tr>
+<td>2</td>
+<td>5s</td>
+<td>8</td>
+<td>4m</td>
+<td>14</td>
+<td>10m</td>
+</tr>
+<tr>
+<td>3</td>
+<td>10s</td>
+<td>9</td>
+<td>5m</td>
+<td>15</td>
+<td>20m</td>
+</tr>
+<tr>
+<td>4</td>
+<td>30s</td>
+<td>10</td>
+<td>6m</td>
+<td>16</td>
+<td>30m</td>
+</tr>
+<tr>
+<td>5</td>
+<td>1m</td>
+<td>11</td>
+<td>7m</td>
+<td>17</td>
+<td>1h</td>
+</tr>
+<tr>
+<td>6</td>
+<td>2m</td>
+<td>12</td>
+<td>8m</td>
+<td>18</td>
+<td>2h</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.message.Message;</span><br><span class="line"></span><br><span class="line"><span class="type">Message</span> <span class="variable">msg</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Message</span>(<span class="string">&quot;ORDER_TOPIC&quot;</span>, <span class="string">&quot;ORDER_TIMEOUT&quot;</span>,</span><br><span class="line">        orderNo, <span class="string">&quot;检查订单是否支付&quot;</span>.getBytes(StandardCharsets.UTF_8));</span><br><span class="line">msg.setDelayTimeLevel(<span class="number">16</span>);   <span class="comment">// 级别 16 = 30 分钟，等级与时间的映射由 Broker 配置决定</span></span><br><span class="line">producer.send(msg);</span><br></pre></td></tr></table></figure>
+
+<p>级别可通过 Broker 的 <code>messageDelayLevel</code> 配置调整，但改配置会影响所有 Topic，生产环境不要随意改。4.x 无法表达「任意时间」，只能落到最近的档位。</p>
+<h3 id="6-2-5-x-任意时间定时消息"><a href="#6-2-5-x-任意时间定时消息" class="headerlink" title="6.2 5.x 任意时间定时消息"></a>6.2 5.x 任意时间定时消息</h3><p>5.x 支持按投递时间戳发送，秒级精度，常见上限约 40 天（以具体版本配置为准）。经典客户端仍可用延时级别，新项目建议用 gRPC 客户端：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> java.time.Duration;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.apis.ClientConfiguration;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.apis.ClientServiceProvider;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.apis.message.Message;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.apis.producer.Producer;</span><br><span class="line"></span><br><span class="line"><span class="type">ClientServiceProvider</span> <span class="variable">provider</span> <span class="operator">=</span> ClientServiceProvider.loadService();</span><br><span class="line"><span class="type">ClientConfiguration</span> <span class="variable">configuration</span> <span class="operator">=</span> ClientConfiguration.newBuilder()</span><br><span class="line">        .setEndpoints(<span class="string">&quot;127.0.0.1:8081&quot;</span>).build();   <span class="comment">// 5.x Proxy gRPC 地址（需部署 mqproxy），不是 NameServer</span></span><br><span class="line"><span class="type">Producer</span> <span class="variable">producer</span> <span class="operator">=</span> provider.newProducerBuilder()</span><br><span class="line">        .setClientConfiguration(configuration)</span><br><span class="line">        .setTopics(<span class="string">&quot;ORDER_TOPIC&quot;</span>)</span><br><span class="line">        .build();</span><br><span class="line"></span><br><span class="line"><span class="type">Message</span> <span class="variable">message</span> <span class="operator">=</span> provider.newMessageBuilder()</span><br><span class="line">        .setTopic(<span class="string">&quot;ORDER_TOPIC&quot;</span>)</span><br><span class="line">        .setKeys(orderNo)</span><br><span class="line">        .setTag(<span class="string">&quot;ORDER_TIMEOUT&quot;</span>)</span><br><span class="line">        .setBody(<span class="string">&quot;检查订单是否支付&quot;</span>.getBytes(StandardCharsets.UTF_8))</span><br><span class="line">        .setDeliveryTimestamp(System.currentTimeMillis() + Duration.ofMinutes(<span class="number">30</span>).toMillis())</span><br><span class="line">        .build();</span><br><span class="line">producer.send(message);</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-实现原理"><a href="#6-3-实现原理" class="headerlink" title="6.3 实现原理"></a>6.3 实现原理</h3><ul>
+<li><strong>4.x</strong>：延时消息先写入内部 Topic <code>SCHEDULE_TOPIC_XXXX</code>，队列 ID 等于「级别减一」；<code>ScheduleMessageService</code> 按级别定时扫描到期消息，再还原到原 Topic 的真实队列。</li>
+<li><strong>5.x</strong>：Broker 内置时间轮（TimerWheel），按投递时间戳分槽，到期投递，避免 18 档位限制。</li>
+</ul>
+<h3 id="6-4-落地：订单-30-分钟未支付自动关单"><a href="#6-4-落地：订单-30-分钟未支付自动关单" class="headerlink" title="6.4 落地：订单 30 分钟未支付自动关单"></a>6.4 落地：订单 30 分钟未支付自动关单</h3><p>下单成功后发送一条 30 分钟后的延时消息（4.x 用 <code>setDelayTimeLevel(16)</code>，5.x 用投递时间戳），消费端收到后先查库：仍为待支付才关单，已支付则直接确认消费。</p>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>延时消息</td>
+<td>精准、无需扫表、天然削峰</td>
+<td>依赖 MQ 可靠性，消息丢失需兜底对账</td>
+</tr>
+<tr>
+<td>定时扫表</td>
+<td>实现简单、状态可控</td>
+<td>扫表压力大、时间精度受调度周期限制</td>
+</tr>
+<tr>
+<td>延时消息 + 扫表兜底</td>
+<td>精准且可自愈</td>
+<td>需要状态机与对账逻辑</td>
+</tr>
+</tbody></table>
+<p>生产建议第三种：延时消息做主路径，低频扫表补偿异常订单。分布式事务的其他方案见 <a href="/distributed/distributed-transaction-guide/">分布式事务指南</a>。</p>
+<h2 id="7-事务消息"><a href="#7-事务消息" class="headerlink" title="7. 事务消息"></a>7. 事务消息</h2><h3 id="7-1-两阶段流程"><a href="#7-1-两阶段流程" class="headerlink" title="7.1 两阶段流程"></a>7.1 两阶段流程</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">① 发送半消息（half message）</span><br><span class="line">   Producer ──────────────► Broker：写入 RMQ_SYS_TRANS_HALF_TOPIC，消费者不可见</span><br><span class="line"></span><br><span class="line">② 执行本地事务</span><br><span class="line">   Producer：订单落库（同一个本地事务）</span><br><span class="line"></span><br><span class="line">③ 提交或回滚</span><br><span class="line">   成功 ──► COMMIT_MESSAGE ──► Broker 把消息转到 ORDER_TOPIC，消费者可见</span><br><span class="line">   失败 ──► ROLLBACK_MESSAGE ──► Broker 删除半消息</span><br><span class="line"></span><br><span class="line">④ 回查（第 ③ 步结果丢失时）</span><br><span class="line">   Broker ──► Producer.checkLocalTransaction ──► COMMIT / ROLLBACK / UNKNOW</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-为什么能解决「本地事务与发消息不一致」"><a href="#7-2-为什么能解决「本地事务与发消息不一致」" class="headerlink" title="7.2 为什么能解决「本地事务与发消息不一致」"></a>7.2 为什么能解决「本地事务与发消息不一致」</h3><p>普通方案先落库再发消息，发消息失败就出现「订单存在但没有库存消息」；先发消息再落库，落库失败就出现「库存被扣但没有订单」。事务消息把半消息作为「预备状态」：本地事务成功才让消息可见，本地事务失败则回滚；提交结果丢失时 Broker 主动回查本地数据库，最终达成一致。它是<strong>最终一致</strong>，不是强一致，消费端仍需幂等。</p>
+<h3 id="7-3-完整代码"><a href="#7-3-完整代码" class="headerlink" title="7.3 完整代码"></a>7.3 完整代码</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> java.util.concurrent.ArrayBlockingQueue;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.ExecutorService;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.ThreadPoolExecutor;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.TimeUnit;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.producer.LocalTransactionState;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.producer.TransactionListener;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.producer.TransactionMQProducer;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.client.producer.TransactionSendResult;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.ThreadFactoryImpl;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.message.Message;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.common.message.MessageExt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TransactionProducerDemo</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="type">TransactionMQProducer</span> <span class="variable">producer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">TransactionMQProducer</span>(<span class="string">&quot;order_tx_group&quot;</span>);</span><br><span class="line">        producer.setNamesrvAddr(<span class="string">&quot;127.0.0.1:9876&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 回查线程池：Broker 回查本地事务时执行 checkLocalTransaction</span></span><br><span class="line">        <span class="type">ExecutorService</span> <span class="variable">executor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ThreadPoolExecutor</span>(<span class="number">2</span>, <span class="number">5</span>, <span class="number">100</span>, TimeUnit.SECONDS,</span><br><span class="line">                <span class="keyword">new</span> <span class="title class_">ArrayBlockingQueue</span>&lt;&gt;(<span class="number">2000</span>),</span><br><span class="line">                <span class="keyword">new</span> <span class="title class_">ThreadFactoryImpl</span>(<span class="string">&quot;tx-check-thread-&quot;</span>));</span><br><span class="line">        producer.setExecutorService(executor);</span><br><span class="line">        producer.setTransactionListener(<span class="keyword">new</span> <span class="title class_">OrderTransactionListener</span>());</span><br><span class="line">        producer.start();</span><br><span class="line"></span><br><span class="line">        <span class="type">Order</span> <span class="variable">order</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Order</span>(<span class="string">&quot;ORDER_202610250001&quot;</span>, <span class="number">10001</span>, <span class="number">19900</span>);</span><br><span class="line">        <span class="type">Message</span> <span class="variable">msg</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Message</span>(<span class="string">&quot;ORDER_TOPIC&quot;</span>, <span class="string">&quot;ORDER_CREATED&quot;</span>, order.getOrderNo(),</span><br><span class="line">                JSON.toJSONString(order).getBytes(StandardCharsets.UTF_8));</span><br><span class="line">        <span class="comment">// 第二个参数会原样传给 executeLocalTransaction 的 arg</span></span><br><span class="line">        <span class="type">TransactionSendResult</span> <span class="variable">result</span> <span class="operator">=</span> producer.sendMessageInTransaction(msg, order);</span><br><span class="line">        System.out.println(<span class="string">&quot;本地事务状态=&quot;</span> + result.getLocalTransactionState());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">OrderTransactionListener</span> <span class="keyword">implements</span> <span class="title class_">TransactionListener</span> &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">LocalTransactionState</span> <span class="title function_">executeLocalTransaction</span><span class="params">(Message msg, Object arg)</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="type">Order</span> <span class="variable">order</span> <span class="operator">=</span> (Order) arg;</span><br><span class="line">            orderService.saveOrder(order);                  <span class="comment">// 本地事务：写订单表</span></span><br><span class="line">            <span class="keyword">return</span> LocalTransactionState.COMMIT_MESSAGE;    <span class="comment">// 提交，半消息转正</span></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            <span class="keyword">return</span> LocalTransactionState.ROLLBACK_MESSAGE;  <span class="comment">// 回滚，半消息删除</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">LocalTransactionState</span> <span class="title function_">checkLocalTransaction</span><span class="params">(MessageExt msg)</span> &#123;</span><br><span class="line">        <span class="comment">// 回查必须只读、幂等：按业务唯一键查订单是否真的落库</span></span><br><span class="line">        <span class="type">boolean</span> <span class="variable">exists</span> <span class="operator">=</span> orderService.existsByOrderNo(msg.getKeys());</span><br><span class="line">        <span class="keyword">if</span> (exists) &#123;</span><br><span class="line">            <span class="keyword">return</span> LocalTransactionState.COMMIT_MESSAGE;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 查不到先不表态，等待下一次回查；直接 ROLLBACK 可能误删已成功的消息</span></span><br><span class="line">        <span class="keyword">return</span> LocalTransactionState.UNKNOW;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-4-回查次数、超时与幂等"><a href="#7-4-回查次数、超时与幂等" class="headerlink" title="7.4 回查次数、超时与幂等"></a>7.4 回查次数、超时与幂等</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>transactionTimeOut</td>
+<td>6s</td>
+<td>单次回查超时</td>
+</tr>
+<tr>
+<td>transactionCheckMax</td>
+<td>15</td>
+<td>最大回查次数，超过后丢弃并告警</td>
+</tr>
+<tr>
+<td>transactionCheckInterval</td>
+<td>60s</td>
+<td>回查间隔</td>
+</tr>
+</tbody></table>
+<p>回查接口的要求：</p>
+<ol>
+<li><strong>幂等</strong>：同一订单被回查多次不能产生副作用。</li>
+<li><strong>只读</strong>：回查中不要再次发消息或修改订单状态。</li>
+<li><strong>可判定</strong>：查询结果要能明确区分「成功、失败、未知」，未知返回 <code>UNKNOW</code>，不要猜。</li>
+</ol>
+<h3 id="7-5-与本地消息表方案对比"><a href="#7-5-与本地消息表方案对比" class="headerlink" title="7.5 与本地消息表方案对比"></a>7.5 与本地消息表方案对比</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>一致性</th>
+<th>实现成本</th>
+<th>吞吐影响</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RocketMQ 事务消息</td>
+<td>最终一致，Broker 回查兜底</td>
+<td>低，客户端原生支持</td>
+<td>多一次半消息写入与回查</td>
+<td>订单、支付等核心链路</td>
+</tr>
+<tr>
+<td>本地消息表 + 定时补偿</td>
+<td>最终一致，靠扫表重发</td>
+<td>中，需要消息表与调度</td>
+<td>业务库多一次写入</td>
+<td>跨多种 MQ、无法改中间件</td>
+</tr>
+<tr>
+<td>最大努力通知</td>
+<td>弱，依赖重试</td>
+<td>低</td>
+<td>小</td>
+<td>非核心通知</td>
+</tr>
+</tbody></table>
+<p>事务消息并不能替代消费端幂等；它只保证「本地事务成功则消息一定可投递」，重复投递仍然存在。</p>
+<h2 id="8-可靠性保障"><a href="#8-可靠性保障" class="headerlink" title="8. 可靠性保障"></a>8. 可靠性保障</h2><h3 id="8-1-发送端"><a href="#8-1-发送端" class="headerlink" title="8.1 发送端"></a>8.1 发送端</h3><ul>
+<li>核心消息使用<strong>同步发送</strong>，判断 <code>SendStatus</code> 是否为 <code>SEND_OK</code>，非 OK 立即重试或落库补偿。</li>
+<li>异步发送必须在 <code>onException</code> 中记录并补偿，不能只写一个空回调。</li>
+<li>设置合理超时与重试次数；重试仍失败的进入本地重试表，由定时任务兜底。</li>
+</ul>
+<h3 id="8-2-Broker-端"><a href="#8-2-Broker-端" class="headerlink" title="8.2 Broker 端"></a>8.2 Broker 端</h3><table>
+<thead>
+<tr>
+<th>组合</th>
+<th>可靠性</th>
+<th>性能</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ASYNC_FLUSH + ASYNC_MASTER</td>
+<td>最低，宕机可能丢</td>
+<td>最高</td>
+<td>日志、非核心</td>
+</tr>
+<tr>
+<td>SYNC_FLUSH + ASYNC_MASTER</td>
+<td>单机不丢，主宕机可能丢</td>
+<td>中</td>
+<td>一般业务</td>
+</tr>
+<tr>
+<td>SYNC_FLUSH + SYNC_MASTER</td>
+<td>最高，主从都落盘才返回</td>
+<td>最低</td>
+<td>订单、支付、资金</td>
+</tr>
+</tbody></table>
+<p>注意：<code>SYNC_FLUSH</code> 只保证本机刷盘，主节点磁盘损坏仍可能丢；<code>ASYNC_MASTER</code> 下主宕机时未同步的消息会丢。两者必须成对评估，不能混搭后误以为可靠。</p>
+<h3 id="8-3-消费端重试与死信"><a href="#8-3-消费端重试与死信" class="headerlink" title="8.3 消费端重试与死信"></a>8.3 消费端重试与死信</h3><p>并发消费失败返回 <code>RECONSUME_LATER</code>，Broker 按递增间隔重试，默认最多 16 次，仍失败则转入死信 Topic：<code>%DLQ%</code> 加消费者组名。死信不会自动处理，必须监控并人工消费。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 消费死信：新建消费者组订阅死信 Topic（需要有权限）</span></span><br><span class="line"><span class="type">DefaultMQPushConsumer</span> <span class="variable">dlqConsumer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">DefaultMQPushConsumer</span>(<span class="string">&quot;dlq_reader_group&quot;</span>);</span><br><span class="line">dlqConsumer.setNamesrvAddr(<span class="string">&quot;127.0.0.1:9876&quot;</span>);</span><br><span class="line">dlqConsumer.subscribe(<span class="string">&quot;%DLQ%order_consumer_group&quot;</span>, <span class="string">&quot;*&quot;</span>);</span><br><span class="line">dlqConsumer.registerMessageListener((MessageListenerConcurrently) (msgs, context) -&gt; &#123;</span><br><span class="line">    <span class="keyword">for</span> (MessageExt msg : msgs) &#123;</span><br><span class="line">        deadLetterService.save(msg);   <span class="comment">// 落库、告警、人工修复，不要直接丢弃</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ConsumeConcurrentlyStatus.CONSUME_SUCCESS;</span><br><span class="line">&#125;);</span><br><span class="line">dlqConsumer.start();</span><br></pre></td></tr></table></figure>
+
+<h3 id="8-4-幂等：唯一业务键-去重表"><a href="#8-4-幂等：唯一业务键-去重表" class="headerlink" title="8.4 幂等：唯一业务键 + 去重表"></a>8.4 幂等：唯一业务键 + 去重表</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> mq_consume_log (</span><br><span class="line">    id             <span class="type">BIGINT</span> UNSIGNED AUTO_INCREMENT <span class="keyword">PRIMARY KEY</span>,</span><br><span class="line">    consume_key    <span class="type">VARCHAR</span>(<span class="number">128</span>) <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;唯一消费键：业务ID + 场景&#x27;</span>,</span><br><span class="line">    consumer_group <span class="type">VARCHAR</span>(<span class="number">64</span>)  <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;消费者组，隔离不同业务&#x27;</span>,</span><br><span class="line">    status         TINYINT      <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="number">1</span> COMMENT <span class="string">&#x27;1成功 0处理中&#x27;</span>,</span><br><span class="line">    created_at     DATETIME     <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span>,</span><br><span class="line">    <span class="keyword">UNIQUE</span> KEY uk_consume (consume_key, consumer_group)   <span class="comment">-- 唯一约束挡住重复</span></span><br><span class="line">) ENGINE <span class="operator">=</span> InnoDB <span class="keyword">DEFAULT</span> CHARSET <span class="operator">=</span> utf8mb4 COMMENT <span class="operator">=</span> <span class="string">&#x27;消息消费去重表&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>处理流程：先 <code>INSERT</code> 去重记录，唯一键冲突说明已处理过，直接返回成功；插入成功再执行业务，业务失败则删除记录并返回重试。高并发场景也可用 Redis 做前置去重：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SET order:ORDER_202610250001:created 1 NX EX 86400   <span class="comment"># 返回 OK 表示首次，nil 表示重复</span></span><br></pre></td></tr></table></figure>
+
+<p>Redis 去重只能降低重复概率，最终仍要依赖数据库唯一约束兜底。业务幂等的更多写法见 <a href="/database/sql-business-models-advanced-guide/">SQL 业务模型进阶</a>。</p>
+<h3 id="8-5-消息轨迹"><a href="#8-5-消息轨迹" class="headerlink" title="8.5 消息轨迹"></a>8.5 消息轨迹</h3><p>原生客户端用 <code>producer.setEnableMsgTrace(true)</code> 与 <code>consumer.setEnableMsgTrace(true)</code> 开启轨迹，默认写入 <code>RMQ_SYS_TRACE_TOPIC</code>；Spring Boot 配置 <code>rocketmq.producer.enable-msg-trace: true</code> 即可。轨迹能回答「消息何时发送、何时入库、何时被谁消费」，是排查丢失与重复的第一手证据。</p>
+<h2 id="9-堆积与消费治理"><a href="#9-堆积与消费治理" class="headerlink" title="9. 堆积与消费治理"></a>9. 堆积与消费治理</h2><h3 id="9-1-堆积原因定位"><a href="#9-1-堆积原因定位" class="headerlink" title="9.1 堆积原因定位"></a>9.1 堆积原因定位</h3><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>可能原因</th>
+<th>排查</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>堆积持续上涨</td>
+<td>消费 TPS 小于生产 TPS</td>
+<td>对比生产与消费 TPS 曲线</td>
+</tr>
+<tr>
+<td>堆积突然上涨</td>
+<td>消费线程阻塞、下游超时</td>
+<td>看消费 RT、线程栈、下游监控</td>
+</tr>
+<tr>
+<td>个别队列堆积</td>
+<td>队列倾斜或 rebalance 频繁</td>
+<td>看各队列 Diff 与消费者实例变化</td>
+</tr>
+<tr>
+<td>堆积后回落慢</td>
+<td>批量太小、并发不足</td>
+<td>调大批次与消费线程</td>
+</tr>
+</tbody></table>
+<h3 id="9-2-提升消费能力"><a href="#9-2-提升消费能力" class="headerlink" title="9.2 提升消费能力"></a>9.2 提升消费能力</h3><ol>
+<li><strong>增加队列数</strong>：队列是并行上限。队列数创建时确定，调整需评估 rebalance，缩容不支持，稳妥做法是新建 Topic 迁移。</li>
+<li><strong>批量消费</strong>：调大 <code>consumeMessageBatchMaxSize</code>（如 10 到 32），减少网络与位点提交开销。</li>
+<li><strong>提高并发度</strong>：<code>consumeThreadMin/Max</code> 调到与下游承受能力匹配，不要盲目拉满。</li>
+<li><strong>扩消费者实例</strong>：实例数不要超过队列数，否则多出的实例分不到队列，纯空转。</li>
+<li><strong>5.x POP 消费</strong>：无状态消费，避免 rebalance 造成的停顿，适合大规模弹性伸缩。</li>
+</ol>
+<h3 id="9-3-限流与降级"><a href="#9-3-限流与降级" class="headerlink" title="9.3 限流与降级"></a>9.3 限流与降级</h3><p>消费端用令牌桶限制对下游的 QPS；下游故障时快速失败并返回重试，避免线程全部阻塞。非核心消费可临时降级为「只记录、不调用下游」，恢复后补偿。</p>
+<h3 id="9-4-关键监控指标"><a href="#9-4-关键监控指标" class="headerlink" title="9.4 关键监控指标"></a>9.4 关键监控指标</h3><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>含义</th>
+<th>告警建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>生产 TPS</td>
+<td>每秒写入消息数</td>
+<td>突降可能上游故障</td>
+</tr>
+<tr>
+<td>消费 TPS</td>
+<td>每秒消费消息数</td>
+<td>持续低于生产 TPS 即堆积</td>
+</tr>
+<tr>
+<td>堆积量 Diff</td>
+<td>未消费消息总数</td>
+<td>按业务设阈值，如 10 万</td>
+</tr>
+<tr>
+<td>消费延迟</td>
+<td>消息生产到消费的时间差</td>
+<td>核心链路超过 1 分钟告警</td>
+</tr>
+<tr>
+<td>消费失败率</td>
+<td>重试与死信比例</td>
+<td>死信出现即告警</td>
+</tr>
+</tbody></table>
+<h2 id="10-Spring-Boot-集成"><a href="#10-Spring-Boot-集成" class="headerlink" title="10. Spring Boot 集成"></a>10. Spring Boot 集成</h2><h3 id="10-1-依赖"><a href="#10-1-依赖" class="headerlink" title="10.1 依赖"></a>10.1 依赖</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.apache.rocketmq<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>rocketmq-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>2.3.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span>   <span class="comment">&lt;!-- 兼容 RocketMQ 5.x 经典协议 --&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="10-2-配置"><a href="#10-2-配置" class="headerlink" title="10.2 配置"></a>10.2 配置</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">rocketmq:</span></span><br><span class="line">  <span class="attr">name-server:</span> <span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span><span class="string">:9876</span>          <span class="comment"># NameServer 地址</span></span><br><span class="line">  <span class="attr">producer:</span></span><br><span class="line">    <span class="attr">group:</span> <span class="string">order-producer-group</span>        <span class="comment"># 生产者组</span></span><br><span class="line">    <span class="attr">send-message-timeout:</span> <span class="number">3000</span>         <span class="comment"># 发送超时，毫秒</span></span><br><span class="line">    <span class="attr">retry-times-when-send-failed:</span> <span class="number">2</span>    <span class="comment"># 同步发送重试次数</span></span><br><span class="line">    <span class="attr">enable-msg-trace:</span> <span class="literal">true</span>             <span class="comment"># 开启消息轨迹</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="10-3-生产者：RocketMQTemplate"><a href="#10-3-生产者：RocketMQTemplate" class="headerlink" title="10.3 生产者：RocketMQTemplate"></a>10.3 生产者：RocketMQTemplate</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.rocketmq.spring.core.RocketMQTemplate;</span><br><span class="line"><span class="keyword">import</span> org.springframework.stereotype.Service;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderMessageProducer</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> RocketMQTemplate rocketMQTemplate;</span><br><span class="line"></span><br><span class="line">    <span class="type">public</span> <span class="title function_">OrderMessageProducer</span><span class="params">(RocketMQTemplate rocketMQTemplate)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.rocketMQTemplate = rocketMQTemplate;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 普通消息：destination 格式为 topic:tag</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">sendCreated</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">        rocketMQTemplate.syncSend(<span class="string">&quot;ORDER_TOPIC:ORDER_CREATED&quot;</span>, order);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 顺序消息：hashKey 决定队列，同一订单进同一队列</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">sendOrderly</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">        rocketMQTemplate.syncSendOrderly(<span class="string">&quot;ORDER_TOPIC:ORDER_PAID&quot;</span>, order, order.getOrderNo());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 延时消息：延时秒数，starter 自动换算为延时级别</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">sendTimeoutCheck</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">        rocketMQTemplate.syncSendDelayTimeSeconds(<span class="string">&quot;ORDER_TOPIC:ORDER_TIMEOUT&quot;</span>, order, <span class="number">30</span> * <span class="number">60</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 事务消息：第二个参数是业务参数，会传给事务监听器</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">sendCreatedInTransaction</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">        rocketMQTemplate.sendMessageInTransaction(<span class="string">&quot;ORDER_TOPIC:ORDER_CREATED&quot;</span>, order, order);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-4-消费者：-RocketMQMessageListener"><a href="#10-4-消费者：-RocketMQMessageListener" class="headerlink" title="10.4 消费者：@RocketMQMessageListener"></a>10.4 消费者：@RocketMQMessageListener</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.rocketmq.spring.annotation.ConsumeMode;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.spring.annotation.MessageModel;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.spring.annotation.RocketMQMessageListener;</span><br><span class="line"><span class="keyword">import</span> org.apache.rocketmq.spring.core.RocketMQListener;</span><br><span class="line"><span class="keyword">import</span> org.springframework.stereotype.Component;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="meta">@RocketMQMessageListener(</span></span><br><span class="line"><span class="meta">        topic = &quot;ORDER_TOPIC&quot;,</span></span><br><span class="line"><span class="meta">        selectorExpression = &quot;ORDER_CREATED&quot;,       // Tag 过滤，默认 *</span></span><br><span class="line"><span class="meta">        consumerGroup = &quot;order-consumer-group&quot;,</span></span><br><span class="line"><span class="meta">        messageModel = MessageModel.CLUSTERING,     // 集群消费</span></span><br><span class="line"><span class="meta">        consumeMode = ConsumeMode.CONCURRENTLY)</span>     <span class="comment">// 顺序消费改为 ORDERLY</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderCreatedListener</span> <span class="keyword">implements</span> <span class="title class_">RocketMQListener</span>&lt;Order&gt; &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">onMessage</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">        <span class="comment">// 抛异常即消费失败，starter 会返回 RECONSUME_LATER 触发重试</span></span><br><span class="line">        orderService.handleCreated(order);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="11-落地案例：订单状态流转"><a href="#11-落地案例：订单状态流转" class="headerlink" title="11. 落地案例：订单状态流转"></a>11. 落地案例：订单状态流转</h2><h3 id="11-1-时序"><a href="#11-1-时序" class="headerlink" title="11.1 时序"></a>11.1 时序</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">用户下单</span><br><span class="line">   │</span><br><span class="line">   ├─ 1. 发送半消息 ──────────────► Broker（对消费者不可见）</span><br><span class="line">   │</span><br><span class="line">   ├─ 2. 本地事务：orders 表插入订单（状态 WAIT_PAY）</span><br><span class="line">   │        ├─ 成功 ──► COMMIT_MESSAGE ──► 消息转入 ORDER_TOPIC</span><br><span class="line">   │        └─ 失败 ──► ROLLBACK_MESSAGE ──► 半消息删除</span><br><span class="line">   │</span><br><span class="line">   ├─ 3. 提交结果丢失 ──► Broker 回查订单表，决定提交或回滚</span><br><span class="line">   │</span><br><span class="line">   ├─ 4. 库存服务消费 ORDER_CREATED ──► 扣减库存（orderNo 幂等）</span><br><span class="line">   │</span><br><span class="line">   └─ 5. 30 分钟后 ORDER_TIMEOUT 到期</span><br><span class="line">            └─ 关单服务查库：仍为 WAIT_PAY 才关单，已支付则忽略</span><br></pre></td></tr></table></figure>
+
+<h3 id="11-2-事务消息保证「订单落库-扣库存消息」一致"><a href="#11-2-事务消息保证「订单落库-扣库存消息」一致" class="headerlink" title="11.2 事务消息保证「订单落库 + 扣库存消息」一致"></a>11.2 事务消息保证「订单落库 + 扣库存消息」一致</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 事务监听器：订单落库与消息提交绑定</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">OrderTxListener</span> <span class="keyword">implements</span> <span class="title class_">TransactionListener</span> &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">LocalTransactionState</span> <span class="title function_">executeLocalTransaction</span><span class="params">(Message msg, Object arg)</span> &#123;</span><br><span class="line">        <span class="type">Order</span> <span class="variable">order</span> <span class="operator">=</span> (Order) arg;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            orderService.createOrder(order);                 <span class="comment">// 本地事务</span></span><br><span class="line">            <span class="keyword">return</span> LocalTransactionState.COMMIT_MESSAGE;     <span class="comment">// 扣库存消息可见</span></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            <span class="keyword">return</span> LocalTransactionState.ROLLBACK_MESSAGE;   <span class="comment">// 订单没落库，消息作废</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">LocalTransactionState</span> <span class="title function_">checkLocalTransaction</span><span class="params">(MessageExt msg)</span> &#123;</span><br><span class="line">        <span class="comment">// 回查只读且幂等：订单存在即提交，不存在先返回 UNKNOW 等下次</span></span><br><span class="line">        <span class="keyword">return</span> orderService.existsByOrderNo(msg.getKeys())</span><br><span class="line">                ? LocalTransactionState.COMMIT_MESSAGE</span><br><span class="line">                : LocalTransactionState.UNKNOW;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="11-3-延时关单与消费幂等"><a href="#11-3-延时关单与消费幂等" class="headerlink" title="11.3 延时关单与消费幂等"></a>11.3 延时关单与消费幂等</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 关单消费：消息只是触发器，真正的状态判断以数据库为准</span></span><br><span class="line"><span class="meta">@RocketMQMessageListener(</span></span><br><span class="line"><span class="meta">        topic = &quot;ORDER_TOPIC&quot;,</span></span><br><span class="line"><span class="meta">        selectorExpression = &quot;ORDER_TIMEOUT&quot;,</span></span><br><span class="line"><span class="meta">        consumerGroup = &quot;order-timeout-group&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderTimeoutListener</span> <span class="keyword">implements</span> <span class="title class_">RocketMQListener</span>&lt;Order&gt; &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">onMessage</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">        <span class="comment">// 幂等 + 状态机：只有待支付订单才能关闭</span></span><br><span class="line">        <span class="type">boolean</span> <span class="variable">closed</span> <span class="operator">=</span> orderService.closeIfWaitPay(order.getOrderNo());</span><br><span class="line">        <span class="keyword">if</span> (!closed) &#123;</span><br><span class="line">            <span class="keyword">return</span>;   <span class="comment">// 已支付或已关闭，直接确认消费，不触发无意义重试</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 关单成功后发通知消息，同样由下游幂等消费</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 原子关单：带状态条件的更新天然幂等，重复执行不会改坏数据</span></span><br><span class="line"><span class="keyword">UPDATE</span> orders</span><br><span class="line"><span class="keyword">SET</span> status <span class="operator">=</span> <span class="string">&#x27;CLOSED&#x27;</span>, closed_at <span class="operator">=</span> NOW()</span><br><span class="line"><span class="keyword">WHERE</span> order_no <span class="operator">=</span> <span class="string">&#x27;ORDER_202610250001&#x27;</span></span><br><span class="line">  <span class="keyword">AND</span> status <span class="operator">=</span> <span class="string">&#x27;WAIT_PAY&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>整条链路的一致性由三部分共同保证：事务消息解决「本地事务与消息」的原子性，延时消息解决「超时触发」，唯一键与状态条件更新解决「重复消费」。任何一环都不能单独承诺「恰好一次」。</p>
+<h2 id="常见误用与陷阱"><a href="#常见误用与陷阱" class="headerlink" title="常见误用与陷阱"></a>常见误用与陷阱</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>后果</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>以为 RocketMQ 保证全局顺序</td>
+<td>多队列并发下顺序错乱</td>
+<td>只依赖队列内顺序，按业务键选队列</td>
+</tr>
+<tr>
+<td>消费者实例数大于队列数</td>
+<td>多余实例分不到队列，纯空转</td>
+<td>实例数不超过队列数，或增加队列</td>
+</tr>
+<tr>
+<td>事务消息回查查不到就回滚</td>
+<td>本地事务已成功但消息被误删</td>
+<td>查不到返回 UNKNOW，等待下次回查</td>
+</tr>
+<tr>
+<td>回查接口有写操作、不幂等</td>
+<td>重复回查造成重复扣款或状态错乱</td>
+<td>回查只读、可重复执行</td>
+</tr>
+<tr>
+<td>异步发送不处理回调异常</td>
+<td>消息丢失且无感知</td>
+<td>onException 落库并补偿</td>
+</tr>
+<tr>
+<td>SYNC_FLUSH 搭配 ASYNC_MASTER</td>
+<td>主宕机仍丢消息，误判可靠</td>
+<td>核心链路用 SYNC_FLUSH + SYNC_MASTER</td>
+</tr>
+<tr>
+<td>生产环境开启自动建 Topic</td>
+<td>Topic 泛滥、默认 4 队列、路由混乱</td>
+<td>关闭自动创建，预建 Topic 与订阅组</td>
+</tr>
+<tr>
+<td>用 Tag 做业务路由</td>
+<td>Tag 数量失控，过滤能力有限</td>
+<td>按消息类型拆 Topic，Tag 只做二级过滤</td>
+</tr>
+<tr>
+<td>消费端 catch 异常后返回 SUCCESS</td>
+<td>消息被确认，直接丢失</td>
+<td>返回 RECONSUME_LATER 并记录日志</td>
+</tr>
+<tr>
+<td>重试消息未做幂等</td>
+<td>重复扣库存、重复发券</td>
+<td>唯一业务键 + 去重表或状态条件更新</td>
+</tr>
+<tr>
+<td>死信队列无人处理</td>
+<td>消息永久滞留，业务缺口无人知晓</td>
+<td>监控 %DLQ% 并建消费脚本人工处理</td>
+</tr>
+<tr>
+<td>以为延时消息精确到毫秒</td>
+<td>4.x 只有 18 档，实际投递偏移大</td>
+<td>按档位设计，5.x 也只承诺秒级</td>
+</tr>
+<tr>
+<td>用延时消息做 7 天以上的长周期任务</td>
+<td>超出支持范围或占用定时资源</td>
+<td>长周期用状态表 + 定时任务扫描</td>
+</tr>
+<tr>
+<td>顺序消息用并发监听器消费</td>
+<td>顺序保证失效</td>
+<td>使用 MessageListenerOrderly</td>
+</tr>
+<tr>
+<td>单机 NameServer 上生产</td>
+<td>注册中心单点，新客户端无法获取路由</td>
+<td>至少 2 台 NameServer</td>
+</tr>
+<tr>
+<td>Broker 磁盘打满</td>
+<td>写入被拒绝，生产端大量失败</td>
+<td>设置 diskMaxUsedSpaceRatio 并做容量告警</td>
+</tr>
+</tbody></table>
+<h2 id="速查卡片"><a href="#速查卡片" class="headerlink" title="速查卡片"></a>速查卡片</h2><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>默认值 &#x2F; 结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>NameServer 端口</td>
+<td>9876</td>
+</tr>
+<tr>
+<td>Broker 主端口 &#x2F; VIP 端口</td>
+<td>10911 &#x2F; 10909</td>
+</tr>
+<tr>
+<td>刷盘</td>
+<td>ASYNC_FLUSH，核心业务改 SYNC_FLUSH</td>
+</tr>
+<tr>
+<td>主从</td>
+<td>ASYNC_MASTER，核心业务改 SYNC_MASTER</td>
+</tr>
+<tr>
+<td>发送重试</td>
+<td>同步默认 2 次，共 3 次尝试</td>
+</tr>
+<tr>
+<td>消费重试</td>
+<td>并发消费最多 16 次，之后进 %DLQ% 组名</td>
+</tr>
+<tr>
+<td>延时档位</td>
+<td>4.x 共 18 档，1s 到 2h</td>
+</tr>
+<tr>
+<td>消费线程</td>
+<td>默认 20 到 64</td>
+</tr>
+<tr>
+<td>顺序保证</td>
+<td>仅单队列内有序</td>
+</tr>
+<tr>
+<td>事务回查</td>
+<td>默认最多 15 次，间隔 60 秒</td>
+</tr>
+<tr>
+<td>消费语义</td>
+<td>至少一次，必须幂等</td>
+</tr>
+</tbody></table>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看集群与 Topic 列表（在 Broker 容器内执行，-n 指定 NameServer）</span></span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin clusterList -n namesrv:9876</span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin topicList -n namesrv:9876</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建 Topic：8 读 8 写队列（顺序 Topic 队列数要一次定好）</span></span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin updateTopic \</span><br><span class="line">  -n namesrv:9876 -c DefaultCluster -t ORDER_TOPIC -r 8 -w 8</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 Topic 路由与队列分布</span></span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin topicRoute -n namesrv:9876 -t ORDER_TOPIC</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看消费进度与堆积（Diff 即未消费条数）</span></span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin consumerProgress -n namesrv:9876 -g order-consumer-group</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看消费者连接与订阅关系</span></span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin consumerConnection -n namesrv:9876 -g order-consumer-group</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 按业务 Key 查询消息（排查是否发送成功）</span></span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin queryMsgByKey \</span><br><span class="line">  -n namesrv:9876 -t ORDER_TOPIC -k ORDER_202610250001</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看死信 Topic（重试耗尽的消费者组）</span></span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin topicList -n namesrv:9876 | grep DLQ</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重置消费位点到指定时间（危险：会造成重复消费，先确认幂等）</span></span><br><span class="line">docker <span class="built_in">exec</span> -it rmqbroker sh mqadmin resetOffsetByTime \</span><br><span class="line">  -n namesrv:9876 -g order-consumer-group -t ORDER_TOPIC -s 0</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Dashboard 启动（本地 jar 方式）</span></span><br><span class="line">java -jar rocketmq-dashboard-2.0.0.jar \</span><br><span class="line">  --server.port=8080 \</span><br><span class="line">  --rocketmq.config.namesrvAddr=127.0.0.1:9876</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/" rel="tag"># 分布式</a>
+              <a href="/tags/RocketMQ/" rel="tag"># RocketMQ</a>
+              <a href="/tags/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" rel="tag"># 消息队列</a>
+              <a href="/tags/%E4%BA%8B%E5%8A%A1%E6%B6%88%E6%81%AF/" rel="tag"># 事务消息</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/database/sql-business-models-advanced-guide/" rel="prev" title="经典业务 SQL 建模实战（进阶篇）：审批流 · 审计 · 多租户 · 站内信 · 工单 · 对账 · 调度">
+                  <i class="fa fa-angle-left"></i> 经典业务 SQL 建模实战（进阶篇）：审批流 · 审计 · 多租户 · 站内信 · 工单 · 对账 · 调度
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/database/mongodb-guide/" rel="next" title="MongoDB 从入门到落地">
+                  MongoDB 从入门到落地 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

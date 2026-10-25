@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第六章：IP 协议详解：原理、编址与排障示例概念基础 网络层的「全局门牌号」：IP 给互联网上每台参与通信的主机接口分配 IP 地址，使跨网段寻址成为可能——IPv4 32 bit 点分十进制，IPv6 128 bit 冒号十六进制。 无连接、尽力交付（best-effort）：IP 不保证分组一定到达、不保证顺序、不负责重传；可靠性由上层（如 第一章：TCP 协议详解：连接、可靠传输与编程示例）">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第六章：IP 协议详解：原理、编址与排障示例">
+<meta property="og:url" content="https://my919.github.io/network/06-ip-protocol/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第六章：IP 协议详解：原理、编址与排障示例概念基础 网络层的「全局门牌号」：IP 给互联网上每台参与通信的主机接口分配 IP 地址，使跨网段寻址成为可能——IPv4 32 bit 点分十进制，IPv6 128 bit 冒号十六进制。 无连接、尽力交付（best-effort）：IP 不保证分组一定到达、不保证顺序、不负责重传；可靠性由上层（如 第一章：TCP 协议详解：连接、可靠传输与编程示例）">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:48:09.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.585Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="IP">
+<meta property="article:tag" content="Protocol">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/network/06-ip-protocol/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/network/06-ip-protocol/","path":"network/06-ip-protocol/","title":"第六章：IP 协议详解：原理、编址与排障示例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第六章：IP 协议详解：原理、编址与排障示例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%85%AD%E7%AB%A0%EF%BC%9AIP-%E5%8D%8F%E8%AE%AE%E8%AF%A6%E8%A7%A3%EF%BC%9A%E5%8E%9F%E7%90%86%E3%80%81%E7%BC%96%E5%9D%80%E4%B8%8E%E6%8E%92%E9%9A%9C%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第六章：IP 协议详解：原理、编址与排障示例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%9C%E7%94%A8%E4%B8%8E%E8%AE%BE%E8%AE%A1%E7%9B%AE%E6%A0%87"><span class="nav-number">1.2.</span> <span class="nav-text">作用与设计目标</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-IP-%E8%A7%A3%E5%86%B3%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. IP 解决什么问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E4%B8%8E%E4%B8%8A%E4%B8%8B%E5%B1%82%E7%9A%84%E5%85%B3%E7%B3%BB%EF%BC%88%E7%AE%80%E5%9B%BE%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 与上下层的关系（简图）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IPv4-%E6%8A%A5%E6%96%87%E4%B8%8E%E7%BC%96%E5%9D%80%E5%8E%9F%E7%90%86%EF%BC%88%E6%A6%82%E5%BF%B5%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">IPv4 报文与编址原理（概念）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-IPv4-%E9%A6%96%E9%83%A8%E5%85%B3%E9%94%AE%E5%AD%97%E6%AE%B5%EF%BC%88%E7%90%86%E8%A7%A3%E6%8E%92%E9%9A%9C%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. IPv4 首部关键字段（理解排障）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%AD%90%E7%BD%91%E4%B8%8E-CIDR"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 子网与 CIDR</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%88%86%E7%89%87%E4%B8%8E-MTU%EF%BC%88%E5%AE%9E%E6%88%98%E8%A6%81%E7%82%B9%EF%BC%89"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. 分片与 MTU（实战要点）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BD%AC%E5%8F%91%E4%B8%8E%E8%B7%AF%E7%94%B1%EF%BC%88%E5%8E%9F%E7%90%86%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">转发与路由（原理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IPv6-%E8%A6%81%E7%82%B9%EF%BC%88%E4%B8%8E-IPv4-%E5%AF%B9%E7%85%A7%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">IPv6 要点（与 IPv4 对照）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E-TCP%E3%80%81UDP%E3%80%81DNS-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-number">1.6.</span> <span class="nav-text">与 TCP、UDP、DNS 的关系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E4%B8%8E%E5%91%BD%E4%BB%A4%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.7.</span> <span class="nav-text">代码与命令示例</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%9F%A5%E7%9C%8B%E6%9C%AC%E6%9C%BA-IP-%E4%B8%8E%E8%B7%AF%E7%94%B1%EF%BC%88Linux%EF%BC%89"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. 查看本机 IP 与路由（Linux）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%BF%9E%E9%80%9A%E6%80%A7%EF%BC%9A-ping%EF%BC%88ICMP-%E4%BE%9D%E8%B5%96-IP%EF%BC%89"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. 连通性： ping（ICMP 依赖 IP）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Python%EF%BC%9A%E8%A7%A3%E6%9E%90%E5%9F%9F%E5%90%8D%E5%88%B0-A-AAAA%EF%BC%88%E8%B0%83%E7%94%A8%E7%B3%BB%E7%BB%9F%E8%A7%A3%E6%9E%90%E5%99%A8%EF%BC%89"><span class="nav-number">1.7.3.</span> <span class="nav-text">3. Python：解析域名到 A &#x2F; AAAA（调用系统解析器）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-traceroute%EF%BC%88%E8%B7%AF%E5%BE%84%E6%8E%A2%E6%B5%8B%EF%BC%8C%E5%AE%9E%E7%8E%B0%E5%9B%A0%E7%B3%BB%E7%BB%9F%E8%80%8C%E5%BC%82%EF%BC%89"><span class="nav-number">1.7.4.</span> <span class="nav-text">4. traceroute（路径探测，实现因系统而异）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E6%8A%93%E5%8C%85%E8%BF%87%E6%BB%A4%EF%BC%88tcpdump-Wireshark%EF%BC%89"><span class="nav-number">1.7.5.</span> <span class="nav-text">5. 抓包过滤（tcpdump &#x2F; Wireshark）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E9%80%9F%E6%9F%A5"><span class="nav-number">1.8.</span> <span class="nav-text">常见故障速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.9.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/network/06-ip-protocol/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第六章：IP 协议详解：原理、编址与排障示例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第六章：IP 协议详解：原理、编址与排障示例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:48:09" itemprop="dateCreated datePublished" datetime="2026-05-01T12:48:09+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" itemprop="url" rel="index"><span itemprop="name">计算机网络</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>3.7k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>3 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第六章：IP-协议详解：原理、编址与排障示例"><a href="#第六章：IP-协议详解：原理、编址与排障示例" class="headerlink" title="第六章：IP 协议详解：原理、编址与排障示例"></a>第六章：IP 协议详解：原理、编址与排障示例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>网络层的「全局门牌号」</strong>：<strong>IP</strong> 给互联网上每台参与通信的主机接口分配 <strong>IP 地址</strong>，使跨网段寻址成为可能——<strong>IPv4</strong> 32 bit 点分十进制，<strong>IPv6</strong> 128 bit 冒号十六进制。</li>
+<li><strong>无连接、尽力交付（best-effort）</strong>：<strong>IP</strong> 不保证分组一定到达、不保证顺序、不负责重传；<strong>可靠性</strong>由上层（如 <a href="/network/01-tcp-protocol/">第一章：TCP 协议详解：连接、可靠传输与编程示例</a>）或应用自行实现。</li>
+<li><strong>转发靠路由表</strong>：路由器按<strong>最长前缀匹配</strong>决定下一跳；主机用<strong>默认路由</strong>（<strong><code>0.0.0.0/0</code></strong>）把非本子网流量交给网关。</li>
+<li><strong>承上启下</strong>：向上用<strong>协议号</strong>区分载荷（<strong>TCP(6)</strong>、<strong>UDP(17)</strong>、<strong>ICMP(1)</strong>），向下适配以太网、<strong>Wi-Fi</strong>、隧道等链路；超过链路 <strong>MTU</strong> 时触发<strong>分片</strong>。</li>
+</ol>
+<p>带着这四点看协议细节：</p>
+<h2 id="作用与设计目标"><a href="#作用与设计目标" class="headerlink" title="作用与设计目标"></a>作用与设计目标</h2><h3 id="1-IP-解决什么问题"><a href="#1-IP-解决什么问题" class="headerlink" title="1. IP 解决什么问题"></a>1. IP 解决什么问题</h3><ul>
+<li><strong>统一寻址</strong>：给互联网上每台参与通信的主机接口分配 <strong>IP 地址</strong>，使跨网段寻址成为可能。  </li>
+<li><strong>无连接、尽力交付（best-effort）</strong>：<strong>IP</strong> 不保证分组一定到达、不保证顺序、不负责重传；<strong>可靠性</strong>由上层（如 <a href="/network/01-tcp-protocol/">第一章：TCP 协议详解：连接、可靠传输与编程示例</a>）或应用自行实现。  </li>
+<li><strong>多路复用下层链路</strong>：无论是以太网、<strong>Wi‑Fi</strong> 还是隧道，都可承载 <strong>IP</strong> 分组。</li>
+</ul>
+<h3 id="2-与上下层的关系（简图）"><a href="#2-与上下层的关系（简图）" class="headerlink" title="2. 与上下层的关系（简图）"></a>2. 与上下层的关系（简图）</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[ 应用层 HTTP / DNS 客户端 … ]</span><br><span class="line">        ↓</span><br><span class="line">[ 传输层 TCP / UDP ]  ← 端口号区分进程</span><br><span class="line">        ↓</span><br><span class="line">[ 网络层 IP ]         ← 本文：逻辑寻址与分组</span><br><span class="line">        ↓</span><br><span class="line">[ 链路层 以太网 … ]   ← MAC 帧、交换机</span><br></pre></td></tr></table></figure>
+
+<h2 id="IPv4-报文与编址原理（概念）"><a href="#IPv4-报文与编址原理（概念）" class="headerlink" title="IPv4 报文与编址原理（概念）"></a>IPv4 报文与编址原理（概念）</h2><h3 id="1-IPv4-首部关键字段（理解排障）"><a href="#1-IPv4-首部关键字段（理解排障）" class="headerlink" title="1. IPv4 首部关键字段（理解排障）"></a>1. IPv4 首部关键字段（理解排障）</h3><table>
+<thead>
+<tr>
+<th>字段（概念）</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>源 &#x2F; 目的地址</strong></td>
+<td>各 <strong>32 bit</strong>，点分十进制如 <strong><code>192.168.1.10</code></strong></td>
+</tr>
+<tr>
+<td><strong>TTL</strong></td>
+<td>每经路由器减 <strong>1</strong>，到 <strong>0</strong> 丢弃，防路由环路</td>
+</tr>
+<tr>
+<td><strong>协议号</strong></td>
+<td>指示载荷是 <strong>TCP(6)</strong>、<strong>UDP(17)</strong>、<strong>ICMP(1)</strong> 等</td>
+</tr>
+<tr>
+<td><strong>总长度 &#x2F; 分片相关</strong></td>
+<td>超过链路 <strong>MTU</strong> 时可能触发 <strong>IP 分片</strong>（<strong>IPv6</strong> 主要在源端处理）</td>
+</tr>
+</tbody></table>
+<p><strong>首部逐字段速查</strong>（<strong>RFC 791</strong>，无选项时固定 <strong>20 字节</strong>）：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>位宽</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Version</strong></td>
+<td>4</td>
+<td>恒为 <strong>4</strong></td>
+</tr>
+<tr>
+<td><strong>IHL</strong></td>
+<td>4</td>
+<td>首部长度，单位 <strong>32 bit 字</strong>（5 &#x3D; 20 字节）</td>
+</tr>
+<tr>
+<td><strong>DSCP &#x2F; ECN</strong></td>
+<td>8</td>
+<td><strong>QoS</strong> 标记与显式拥塞通知（旧称 <strong>TOS</strong>）</td>
+</tr>
+<tr>
+<td><strong>Total Length</strong></td>
+<td>16</td>
+<td>首部 + 载荷总长，最大 <strong>65535</strong> 字节</td>
+</tr>
+<tr>
+<td><strong>Identification</strong></td>
+<td>16</td>
+<td>同一报文各分片共享，用于重组</td>
+</tr>
+<tr>
+<td><strong>Flags</strong></td>
+<td>3</td>
+<td><strong>DF</strong>（禁止分片）、<strong>MF</strong>（还有后续分片）</td>
+</tr>
+<tr>
+<td><strong>Fragment Offset</strong></td>
+<td>13</td>
+<td>本片在原报文中的偏移（8 字节为单位）</td>
+</tr>
+<tr>
+<td><strong>TTL</strong></td>
+<td>8</td>
+<td>跳数寿命，常见初值 64&#x2F;128&#x2F;255</td>
+</tr>
+<tr>
+<td><strong>Protocol</strong></td>
+<td>8</td>
+<td>载荷协议号：<strong>6&#x3D;TCP、17&#x3D;UDP、1&#x3D;ICMP</strong></td>
+</tr>
+<tr>
+<td><strong>Header Checksum</strong></td>
+<td>16</td>
+<td>仅校验首部，每跳重算</td>
+</tr>
+<tr>
+<td><strong>Source &#x2F; Destination</strong></td>
+<td>32+32</td>
+<td>源与目的 <strong>IPv4</strong> 地址</td>
+</tr>
+</tbody></table>
+<h3 id="2-子网与-CIDR"><a href="#2-子网与-CIDR" class="headerlink" title="2. 子网与 CIDR"></a>2. 子网与 CIDR</h3><p><strong>IP 地址 &#x3D; 网络前缀 + 主机号</strong>。<strong><code>/24</code></strong> 表示前 <strong>24 bit</strong> 为网络部分，主机部分 <strong>8 bit</strong>，共 <strong>256</strong> 个地址（含网络地址与广播地址用法依场景而定）。同一二层广播域内主机须在<strong>同一子网</strong>才能「直连」互通；跨子网则须走<strong>默认网关</strong>（路由器）。</p>
+<p><strong>快速心算示例</strong>：<code>192.168.1.0/26</code> 主机位 <strong>6 bit</strong> → 每段 <strong>64</strong> 地址 → 子网为 <code>.0/.64/.128/.192</code> 四段，其中 <code>192.168.1.100</code> 落在 <code>.64–.127</code> 段，网络地址 <code>.64</code>、广播地址 <code>.127</code>、可用主机 <code>.65–.126</code>。</p>
+<p><strong>RFC 1918 私有地址</strong>（内网常用）：</p>
+<ul>
+<li><strong><code>10.0.0.0/8</code></strong>、<strong><code>172.16.0.0/12</code></strong>、<strong><code>192.168.0.0/16</code></strong></li>
+</ul>
+<p>另有特殊段：<strong><code>127.0.0.0/8</code></strong>（回环）、<strong><code>169.254.0.0/16</code></strong>（链路本地，DHCP 失败时自配）、<strong><code>100.64.0.0/10</code></strong>（运营商级 <strong>NAT</strong>，<strong>RFC 6598</strong>）。</p>
+<h3 id="3-分片与-MTU（实战要点）"><a href="#3-分片与-MTU（实战要点）" class="headerlink" title="3. 分片与 MTU（实战要点）"></a>3. 分片与 MTU（实战要点）</h3><ul>
+<li>链路 <strong>MTU</strong> 常见 <strong>1500</strong>；隧道（<strong>GRE&#x2F;IPsec&#x2F;PPPoE</strong>）会再占几十字节，出口实际可用更小。  </li>
+<li>置 <strong>DF</strong> 位的大包若超 <strong>MTU</strong>，路由器应回 <strong>ICMP Fragmentation Needed</strong>（<strong>PMTUD</strong> 依据）；该 <strong>ICMP</strong> 被防火墙误杀就会形成「<strong>PMTU 黑洞</strong>」——表现为<strong>小请求通、大响应卡死</strong>。  </li>
+<li>排查技巧：<code>ping -M do -s 1472 目标</code>（<strong>Linux</strong>）逐级调整载荷定位可用 <strong>MTU</strong>。</li>
+</ul>
+<h2 id="转发与路由（原理）"><a href="#转发与路由（原理）" class="headerlink" title="转发与路由（原理）"></a>转发与路由（原理）</h2><p>路由器根据<strong>路由表</strong>最长前缀匹配决定下一跳；主机则主要使用<strong>默认路由</strong>（<strong><code>0.0.0.0/0</code></strong>）把非本子网流量交给网关。<strong>NAT</strong> 可在私网与公网之间改写地址&#x2F;端口，但 <strong>NAT</strong> 不是传输层协议；端到端排障仍要区分 <strong>「IP 层是否可达」</strong> 与 <strong>「端口映射&#x2F;防火墙策略」</strong>。</p>
+<p><strong>主机视角的发包决策</strong>（简化）：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">目的 IP 与本机同子网？</span><br><span class="line">   ├─ 是 → ARP 解析目的 MAC → 直连二层发出</span><br><span class="line">   └─ 否 → ARP 解析默认网关 MAC → 帧发给网关，IP 目的地址不变</span><br></pre></td></tr></table></figure>
+
+<p>注意：<strong>二层帧的 MAC 每跳重写，三层 IP 源&#x2F;目的（无 NAT 时）全程不变</strong>——这是抓包时区分「链路问题」与「路由问题」的基准。</p>
+<h2 id="IPv6-要点（与-IPv4-对照）"><a href="#IPv6-要点（与-IPv4-对照）" class="headerlink" title="IPv6 要点（与 IPv4 对照）"></a>IPv6 要点（与 IPv4 对照）</h2><ul>
+<li><strong>128 bit</strong> 地址，冒号十六进制表示；存在<strong>链路本地</strong>、<strong>唯一本地</strong>、<strong>全局单播</strong> 等范围。  </li>
+<li><strong>邻居发现（NDP）</strong> 承担类似 <strong>IPv4 ARP</strong> 的链路地址解析角色。  </li>
+<li>双栈环境下 <a href="/network/10-dns-protocol/">第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例</a> 常同时返回 <strong>A</strong> 与 <strong>AAAA</strong>，应用与运维需同时考虑两条路径的防火墙与 <strong>MTU</strong>（<strong>IPv6</strong> 最小 <strong>MTU</strong> 要求为 <strong>1280</strong>）。</li>
+</ul>
+<p><strong>首部差异速览</strong>：<strong>IPv6</strong> 固定首部 <strong>40 字节</strong>、去除首部校验和、分片移到<strong>扩展首部</strong>且只允许源端分片；<strong>TTL</strong> 更名为 <strong>Hop Limit</strong>，语义不变。常见前缀：<strong><code>fe80::/10</code></strong>（链路本地）、<strong><code>fc00::/7</code></strong>（唯一本地，类似私网）、<strong><code>2000::/3</code></strong>（全局单播）、<strong><code>::1</code></strong>（回环）。</p>
+<h2 id="与-TCP、UDP、DNS-的关系"><a href="#与-TCP、UDP、DNS-的关系" class="headerlink" title="与 TCP、UDP、DNS 的关系"></a>与 TCP、UDP、DNS 的关系</h2><table>
+<thead>
+<tr>
+<th>上层协议</th>
+<th>如何使用 <strong>IP</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/network/01-tcp-protocol/">第一章：TCP 协议详解：连接、可靠传输与编程示例</a></td>
+<td>在 <strong>IP</strong> 分组载荷中放 <strong>TCP 段</strong>（含端口、序号等）</td>
+</tr>
+<tr>
+<td><a href="/network/05-udp-protocol/">第五章：UDP 协议详解：数据报语义、MTU 与示例代码</a></td>
+<td>载荷为 <strong>UDP 数据报</strong></td>
+</tr>
+<tr>
+<td><a href="/network/10-dns-protocol/">第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例</a></td>
+<td>查询&#x2F;响应封装在 <strong>UDP</strong> 或 <strong>TCP</strong> 中，再封装进 <strong>IP</strong></td>
+</tr>
+</tbody></table>
+<h2 id="代码与命令示例"><a href="#代码与命令示例" class="headerlink" title="代码与命令示例"></a>代码与命令示例</h2><h3 id="1-查看本机-IP-与路由（Linux）"><a href="#1-查看本机-IP-与路由（Linux）" class="headerlink" title="1. 查看本机 IP 与路由（Linux）"></a>1. 查看本机 <strong>IP</strong> 与路由（Linux）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip -4 addr show</span><br><span class="line">ip -4 route show</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip -6 addr show</span><br><span class="line">ip -6 route show</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-连通性：-ping（ICMP-依赖-IP）"><a href="#2-连通性：-ping（ICMP-依赖-IP）" class="headerlink" title="2. 连通性： ping（ICMP 依赖 IP）"></a>2. 连通性： <strong>ping</strong>（<strong>ICMP</strong> 依赖 <strong>IP</strong>）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ping -c 4 223.5.5.5</span><br><span class="line">ping -c 4 2400:3200::1</span><br></pre></td></tr></table></figure>
+
+<p>若 <strong>ping</strong> 通 <strong>IP</strong> 但域名不通，优先查 <a href="/network/10-dns-protocol/">第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例</a> 与 <strong><code>/etc/resolv.conf</code></strong>。</p>
+<h3 id="3-Python：解析域名到-A-AAAA（调用系统解析器）"><a href="#3-Python：解析域名到-A-AAAA（调用系统解析器）" class="headerlink" title="3. Python：解析域名到 A &#x2F; AAAA（调用系统解析器）"></a>3. <strong>Python</strong>：解析域名到 <strong>A &#x2F; AAAA</strong>（调用系统解析器）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> socket</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> family, kind, proto, canon, sockaddr <span class="keyword">in</span> socket.getaddrinfo(</span><br><span class="line">    <span class="string">&quot;example.com&quot;</span>, <span class="number">443</span>, <span class="built_in">type</span>=socket.SOCK_STREAM</span><br><span class="line">):</span><br><span class="line">    <span class="built_in">print</span>(family, sockaddr)  <span class="comment"># AF_INET / AF_INET6 与 (ip, port)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-traceroute（路径探测，实现因系统而异）"><a href="#4-traceroute（路径探测，实现因系统而异）" class="headerlink" title="4. traceroute（路径探测，实现因系统而异）"></a>4. <strong>traceroute</strong>（路径探测，实现因系统而异）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">traceroute -4 -n 8.8.8.8</span><br><span class="line">tracepath -n 2400:3200::1</span><br></pre></td></tr></table></figure>
+
+<p><strong>原理</strong>：逐跳递增 <strong>TTL</strong>（<strong>1, 2, 3…</strong>），让沿途路由器依次回 <strong>ICMP Time Exceeded</strong>，从而拼出路径；<strong><code>* * *</code></strong> 表示该跳不回 ICMP（被过滤或限速），不一定是故障。</p>
+<h3 id="5-抓包过滤（tcpdump-Wireshark）"><a href="#5-抓包过滤（tcpdump-Wireshark）" class="headerlink" title="5. 抓包过滤（tcpdump &#x2F; Wireshark）"></a>5. 抓包过滤（tcpdump &#x2F; Wireshark）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> tcpdump -n -i any <span class="string">&#x27;icmp&#x27;</span>                 <span class="comment"># 只看 ping/ICMP 控制报文</span></span><br><span class="line"><span class="built_in">sudo</span> tcpdump -n -i any <span class="string">&#x27;host 8.8.8.8&#x27;</span>         <span class="comment"># 指定主机</span></span><br><span class="line"><span class="built_in">sudo</span> tcpdump -n -i any <span class="string">&#x27;ip[8] &lt; 5&#x27;</span>            <span class="comment"># TTL 小于 5（排查环路/近终点）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Wireshark</strong> 常用显示过滤：<strong><code>ip.ttl &lt; 5</code></strong>、<strong><code>icmp.type == 11</code></strong>（Time Exceeded）、<strong><code>ip.flags.df == 1</code></strong>。</p>
+<h2 id="常见故障速查"><a href="#常见故障速查" class="headerlink" title="常见故障速查"></a>常见故障速查</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>优先怀疑</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>同网段通、跨网段不通</td>
+<td><strong>默认网关</strong>未配或指向错误；网关 ACL</td>
+</tr>
+<tr>
+<td>能 ping 通网关但出不了网</td>
+<td>上游路由、<strong>NAT</strong> 出口、运营商策略</td>
+</tr>
+<tr>
+<td>小请求正常、大文件卡死</td>
+<td><strong>PMTU 黑洞</strong>（<strong>DF + ICMP 被丢</strong>）</td>
+</tr>
+<tr>
+<td><strong>DHCP</strong> 后拿到 <code>169.254.x.x</code></td>
+<td><strong>DHCP</strong> 服务器无响应，系统自配链路本地地址</td>
+</tr>
+<tr>
+<td><strong>traceroute</strong> 中间全 <code>*</code> 但能到终点</td>
+<td>中间设备过滤 <strong>ICMP</strong>，属常见现象</td>
+</tr>
+</tbody></table>
+<p>更深入主题（<strong>策略路由</strong>、<strong>Anycast</strong>、<strong>IPsec</strong>）以 <strong>RFC</strong> 与发行版 <strong>Networking</strong> 文档为准。</p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>定位</td>
+<td>网络层<strong>逻辑寻址 + 尽力交付</strong>；可靠性交给上层协议</td>
+</tr>
+<tr>
+<td>编址</td>
+<td><strong>前缀 + 主机号</strong>（CIDR）；私网用 <strong>RFC 1918</strong>，跨子网走<strong>网关</strong></td>
+</tr>
+<tr>
+<td>转发</td>
+<td>路由器<strong>最长前缀匹配</strong>；<strong>TTL</strong> 防环；<strong>NAT</strong> 只改写不路由</td>
+</tr>
+<tr>
+<td>排障</td>
+<td><code>ip addr/route</code> 看配置，<code>ping</code> 测可达，<code>traceroute</code> 看路径；域名不通先查 <strong>DNS</strong></td>
+</tr>
+<tr>
+<td>陷阱</td>
+<td><strong>PMTU 黑洞</strong>、<strong>DHCP</strong> 失败的 <code>169.254</code>、被过滤的 <strong>ICMP</strong> 假象</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Protocol/" rel="tag"># Protocol</a>
+              <a href="/tags/IP/" rel="tag"># IP</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/network/05-udp-protocol/" rel="prev" title="第五章：UDP 协议详解：数据报语义、MTU 与示例代码">
+                  <i class="fa fa-angle-left"></i> 第五章：UDP 协议详解：数据报语义、MTU 与示例代码
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/network/07-ftp-protocol/" rel="next" title="第七章：FTP 详解：双连接模型、主动&#x2F;被动与 lftp 示例">
+                  第七章：FTP 详解：双连接模型、主动/被动与 lftp 示例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

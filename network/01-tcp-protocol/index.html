@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第一章：TCP 协议详解：连接、可靠传输与编程示例概念基础 传输层的可靠字节流协议：TCP 位于 IP 之上、应用之下，把 IP 的「无连接、尽力交付」封装成可靠、有序的字节流管道——应用只管读写字节，不感知丢包与乱序。 面向连接：通信前先三次握手建立连接，结束后四次挥手释放；连接由**四元组（源 IP，源端口，目的 IP，目的端口）**唯一确定，端口解决了「进程到进程」的寻址问题（仅靠 IP 只">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第一章：TCP 协议详解：连接、可靠传输与编程示例">
+<meta property="og:url" content="https://my919.github.io/network/01-tcp-protocol/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第一章：TCP 协议详解：连接、可靠传输与编程示例概念基础 传输层的可靠字节流协议：TCP 位于 IP 之上、应用之下，把 IP 的「无连接、尽力交付」封装成可靠、有序的字节流管道——应用只管读写字节，不感知丢包与乱序。 面向连接：通信前先三次握手建立连接，结束后四次挥手释放；连接由**四元组（源 IP，源端口，目的 IP，目的端口）**唯一确定，端口解决了「进程到进程」的寻址问题（仅靠 IP 只">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:46:14.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.584Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Protocol">
+<meta property="article:tag" content="Socket">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/network/01-tcp-protocol/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/network/01-tcp-protocol/","path":"network/01-tcp-protocol/","title":"第一章：TCP 协议详解：连接、可靠传输与编程示例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第一章：TCP 协议详解：连接、可靠传输与编程示例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E7%AB%A0%EF%BC%9ATCP-%E5%8D%8F%E8%AE%AE%E8%AF%A6%E8%A7%A3%EF%BC%9A%E8%BF%9E%E6%8E%A5%E3%80%81%E5%8F%AF%E9%9D%A0%E4%BC%A0%E8%BE%93%E4%B8%8E%E7%BC%96%E7%A8%8B%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第一章：TCP 协议详解：连接、可靠传输与编程示例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-%E9%A6%96%E9%83%A8%E9%80%90%E5%AD%97%E6%AE%B5"><span class="nav-number">1.2.</span> <span class="nav-text">TCP 首部逐字段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%EF%BC%9A%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E4%B8%8E%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B%EF%BC%88%E5%8E%9F%E7%90%86%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">连接：三次握手与四次挥手（原理）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%EF%BC%88%E7%AE%80%E5%8C%96%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">三次握手（简化）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BB%BA%E7%AB%8B%E8%BF%9E%E6%8E%A5%EF%BC%88%E7%AE%80%E5%8C%96%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">建立连接（简化）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%97%AD%E8%BF%9E%E6%8E%A5%EF%BC%88%E7%AE%80%E5%8C%96%EF%BC%89"><span class="nav-number">1.3.3.</span> <span class="nav-text">关闭连接（简化）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8C%E6%95%B4%E9%80%9A%E4%BF%A1%E6%B5%81%E7%A8%8B%EF%BC%88%E4%B8%8E%E5%A5%97%E6%8E%A5%E5%AD%97-API-%E5%AF%B9%E5%BA%94%EF%BC%89"><span class="nav-number">1.3.4.</span> <span class="nav-text">完整通信流程（与套接字 API 对应）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%8A%B6%E6%80%81%E6%9C%BA%EF%BC%9A%E6%8F%A1%E6%89%8B%E4%B8%8E%E6%8C%A5%E6%89%8B%E5%85%A8%E6%99%AF"><span class="nav-number">1.3.5.</span> <span class="nav-text">状态机：握手与挥手全景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%AF%E9%9D%A0%E6%80%A7%E4%B8%8E%E7%AA%97%E5%8F%A3%EF%BC%88%E5%8E%9F%E7%90%86%E8%A6%81%E7%82%B9%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">可靠性与窗口（原理要点）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6%EF%BC%9A%E6%85%A2%E5%90%AF%E5%8A%A8%E3%80%81CUBIC-%E4%B8%8E-BBR"><span class="nav-number">1.5.</span> <span class="nav-text">拥塞控制：慢启动、CUBIC 与 BBR</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%BB%8F%E5%85%B8%E5%9B%9B%E9%98%B6%E6%AE%B5%EF%BC%88Reno-%E7%B3%BB%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 经典四阶段（Reno 系）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-CUBIC-%E4%B8%8E-BBR-%E5%AF%B9%E7%85%A7"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. CUBIC 与 BBR 对照</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E5%85%83%E7%BB%84%E4%B8%8E%E5%A5%97%E6%8E%A5%E5%AD%97"><span class="nav-number">1.6.</span> <span class="nav-text">四元组与套接字</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E7%A8%8B%E7%A4%BA%E4%BE%8B%EF%BC%9AC%EF%BC%88POSIX-Socket%EF%BC%89%E4%B8%8E-Python-%E5%9B%9E%E6%98%BE"><span class="nav-number">1.7.</span> <span class="nav-text">编程示例：C（POSIX Socket）与 Python 回显</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-C-%E6%9C%8D%E5%8A%A1%E7%AB%AF-tcp-echo-server-c"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. C 服务端 tcp_echo_server.c</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-C-%E5%AE%A2%E6%88%B7%E7%AB%AF-tcp-echo-client-c"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. C 客户端 tcp_echo_client.c</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Python-%E6%9C%8D%E5%8A%A1%E7%AB%AF-server-py"><span class="nav-number">1.7.3.</span> <span class="nav-text">3. Python 服务端 server.py</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%AE%A2%E6%88%B7%E7%AB%AF-client-py"><span class="nav-number">1.7.4.</span> <span class="nav-text">4. 客户端 client.py</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%93%E5%8C%85%E7%A4%BA%E4%BE%8B%EF%BC%88%E8%A7%82%E5%AF%9F%E6%8F%A1%E6%89%8B%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">抓包示例（观察握手）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TIME-WAIT-%E5%AE%9E%E6%93%8D%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%86%85%E6%A0%B8%E5%8F%82%E6%95%B0"><span class="nav-number">1.9.</span> <span class="nav-text">TIME_WAIT 实操排查与内核参数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%A7%82%E5%AF%9F%E8%BF%9E%E6%8E%A5%E7%8A%B6%E6%80%81%E5%88%86%E5%B8%83"><span class="nav-number">1.9.1.</span> <span class="nav-text">1. 观察连接状态分布</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%9B%B8%E5%85%B3%E5%86%85%E6%A0%B8%E5%8F%82%E6%95%B0"><span class="nav-number">1.9.2.</span> <span class="nav-text">2. 相关内核参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%B2%BB%E6%9C%AC%E6%80%9D%E8%B7%AF"><span class="nav-number">1.9.3.</span> <span class="nav-text">3. 治本思路</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%9D%A2%E8%AF%95%E9%A2%98%E9%80%9F%E8%A7%88"><span class="nav-number">1.10.</span> <span class="nav-text">常见面试题速览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/network/01-tcp-protocol/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第一章：TCP 协议详解：连接、可靠传输与编程示例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第一章：TCP 协议详解：连接、可靠传输与编程示例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:46:14" itemprop="dateCreated datePublished" datetime="2026-05-01T12:46:14+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" itemprop="url" rel="index"><span itemprop="name">计算机网络</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>11k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>10 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第一章：TCP-协议详解：连接、可靠传输与编程示例"><a href="#第一章：TCP-协议详解：连接、可靠传输与编程示例" class="headerlink" title="第一章：TCP 协议详解：连接、可靠传输与编程示例"></a>第一章：TCP 协议详解：连接、可靠传输与编程示例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>传输层的可靠字节流协议</strong>：<strong>TCP</strong> 位于 <strong>IP</strong> 之上、应用之下，把 <strong>IP</strong> 的「无连接、尽力交付」封装成<strong>可靠、有序</strong>的<strong>字节流</strong>管道——应用只管读写字节，不感知丢包与乱序。</li>
+<li><strong>面向连接</strong>：通信前先<strong>三次握手</strong>建立连接，结束后<strong>四次挥手</strong>释放；连接由**四元组（源 IP，源端口，目的 IP，目的端口）**唯一确定，<strong>端口</strong>解决了「进程到进程」的寻址问题（仅靠 <strong>IP</strong> 只能定位到主机）。</li>
+<li><strong>可靠如何实现</strong>：<strong>序号（Sequence）+ 确认（ACK）+ 重传 + 按序重组</strong>——每个方向独立编号，<strong>ACK</strong> 表示「期望收到的下一个序号」，丢失的报文由发送端重传补齐。</li>
+<li><strong>两个「窗口」各管一摊</strong>：<strong>接收窗口</strong>做<strong>流量控制</strong>（发送速率不超过接收方处理能力）；<strong>拥塞窗口</strong>做<strong>拥塞控制</strong>（不压垮网络，算法有 <strong>Cubic</strong>、<strong>BBR</strong> 等，依系统而定）。</li>
+<li><strong>为什么选它</strong>：需要<strong>稳定管道</strong>、<strong>文件传输</strong>、<strong>远程登录</strong>等「不丢、不乱」的场景选 <strong>TCP</strong>；可容忍丢包、强实时的场景见 <a href="/network/05-udp-protocol/">第五章：UDP 协议详解：数据报语义、MTU 与示例代码</a> 与 <a href="/network/15-quic-protocol/">第十五章：QUIC 详解：基于 UDP 的可靠传输、TLS 集成与 HTTP&#x2F;3</a>。</li>
+</ol>
+<h2 id="TCP-首部逐字段"><a href="#TCP-首部逐字段" class="headerlink" title="TCP 首部逐字段"></a>TCP 首部逐字段</h2><p><strong>TCP</strong> 报文段 &#x3D; <strong>首部（20~60 字节）</strong> + <strong>数据</strong>。首部前 <strong>20</strong> 字节定长，其后是可选的 <strong>Options</strong>。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"> 0                   1                   2                   3</span><br><span class="line"> 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|       源端口 Source Port        |      目的端口 Dest Port      |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|                 序号 Sequence Number (32 bit)                 |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|             确认号 Acknowledgment Number (32 bit)             |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">| 数据偏移 |保留 |U|A|P|R|S|F|    接收窗口 Window Size          |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|        校验和 Checksum          |    紧急指针 Urgent Pointer   |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br><span class="line">|                 Options（0~40 字节，可选）                     |</span><br><span class="line">+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>长度</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>源&#x2F;目的端口</strong></td>
+<td>各 16 bit</td>
+<td>进程级寻址，与 IP 组成<strong>四元组</strong></td>
+</tr>
+<tr>
+<td><strong>Sequence Number</strong></td>
+<td>32 bit</td>
+<td>本报文段<strong>第一个数据字节</strong>的序号；<strong>SYN</strong> 段携带初始序号 <strong>ISN</strong></td>
+</tr>
+<tr>
+<td><strong>Acknowledgment Number</strong></td>
+<td>32 bit</td>
+<td>「期望收到的下一个字节」，<strong>ACK&#x3D;1</strong> 时有效</td>
+</tr>
+<tr>
+<td><strong>数据偏移（Data Offset）</strong></td>
+<td>4 bit</td>
+<td>首部长度，单位 <strong>4 字节</strong>；含 Options 时大于 5</td>
+</tr>
+<tr>
+<td><strong>标志位</strong></td>
+<td>6~9 bit</td>
+<td><strong>URG &#x2F; ACK &#x2F; PSH &#x2F; RST &#x2F; SYN &#x2F; FIN</strong>（RFC 3168 又增 <strong>ECE &#x2F; CWR &#x2F; NS</strong>）</td>
+</tr>
+<tr>
+<td><strong>Window Size</strong></td>
+<td>16 bit</td>
+<td><strong>接收窗口</strong>通告；配合 <strong>Window Scale</strong> 可突破 65535</td>
+</tr>
+<tr>
+<td><strong>Checksum</strong></td>
+<td>16 bit</td>
+<td>覆盖<strong>伪首部 + TCP 首部 + 数据</strong></td>
+</tr>
+<tr>
+<td><strong>Urgent Pointer</strong></td>
+<td>16 bit</td>
+<td><strong>URG&#x3D;1</strong> 时指向紧急数据末尾（现代协议基本不用）</td>
+</tr>
+<tr>
+<td><strong>Options</strong></td>
+<td>0~40 字节</td>
+<td><strong>MSS</strong>（仅 SYN 中协商）、<strong>SACK</strong>、<strong>Window Scale</strong>、<strong>Timestamps</strong>（RTT 测量与 PAWS）等</td>
+</tr>
+</tbody></table>
+<p><strong>标志位速记</strong>：<strong>SYN</strong> 发起连接、<strong>FIN</strong> 关闭本方向、<strong>RST</strong> 异常复位、<strong>ACK</strong> 确认（建立后几乎所有段都带）、<strong>PSH</strong> 提示接收端尽快递交应用、<strong>URG</strong> 紧急指针有效。</p>
+<p>先看连接如何建立与关闭：</p>
+<h2 id="连接：三次握手与四次挥手（原理）"><a href="#连接：三次握手与四次挥手（原理）" class="headerlink" title="连接：三次握手与四次挥手（原理）"></a>连接：三次握手与四次挥手（原理）</h2><h3 id="三次握手（简化）"><a href="#三次握手（简化）" class="headerlink" title="三次握手（简化）"></a>三次握手（简化）</h3><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant C as 客户端
+  participant S as 服务端
+  C-&gt;&gt;S: SYN
+  S-&gt;&gt;C: SYN-ACK
+  C-&gt;&gt;S: ACK
+  Note over C,S: ESTABLISHED
+</code>
+</pre>
+
+<h3 id="建立连接（简化）"><a href="#建立连接（简化）" class="headerlink" title="建立连接（简化）"></a>建立连接（简化）</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">客户端                         服务端</span><br><span class="line">   |    SYN (seq=x)              |</span><br><span class="line">   |---------------------------&gt;|</span><br><span class="line">   |  SYN-ACK (ack=x+1, seq=y)  |</span><br><span class="line">   |&lt;---------------------------|</span><br><span class="line">   |    ACK (ack=y+1)           |</span><br><span class="line">   |---------------------------&gt;|</span><br><span class="line">   |        已建立 ESTABLISHED    |</span><br></pre></td></tr></table></figure>
+
+<p><strong>SYN</strong> 洪泛、<strong>半连接队列</strong>长度与 <strong>SYN Cookie</strong> 属于安全与调优范畴。</p>
+<h3 id="关闭连接（简化）"><a href="#关闭连接（简化）" class="headerlink" title="关闭连接（简化）"></a>关闭连接（简化）</h3><p>任一方发送 <strong>FIN</strong> 表示本方向不再发送数据；双方都可能 <strong>FIN</strong>，经过 <strong>TIME_WAIT</strong>（约 <strong>2MSL</strong>）状态以便旧报文从网络中消散。<strong>RST</strong> 表示异常复位。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">主动关闭端                         对端</span><br><span class="line">   |    FIN (seq=m)                  |</span><br><span class="line">   |-------------------------------&gt;|</span><br><span class="line">   |    ACK (ack=m+1)                |</span><br><span class="line">   |&lt;-------------------------------|</span><br><span class="line">   |    FIN (seq=n)                  |</span><br><span class="line">   |&lt;-------------------------------|</span><br><span class="line">   |    ACK (ack=n+1)                |</span><br><span class="line">   |-------------------------------&gt;|</span><br><span class="line">   |  主动端常见 TIME_WAIT → CLOSED   |</span><br></pre></td></tr></table></figure>
+
+<h3 id="完整通信流程（与套接字-API-对应）"><a href="#完整通信流程（与套接字-API-对应）" class="headerlink" title="完整通信流程（与套接字 API 对应）"></a>完整通信流程（与套接字 API 对应）</h3><p>把「原理」落到一次典型会话上，顺序如下。</p>
+<ol>
+<li><strong>服务端</strong>：<code>socket(AF_INET, SOCK_STREAM, 0)</code> → <code>bind</code> 监听地址与端口 → <code>listen</code>（内核维护 <strong>LISTEN</strong> 与半连接&#x2F;全连接队列）→ <code>accept</code> 阻塞直至三次握手完成，返回<strong>已连接套接字</strong>。  </li>
+<li><strong>客户端</strong>：<code>socket</code> → <code>connect</code>（内核发出 <strong>SYN</strong>，完成握手后返回）→ 双方进入 <strong>ESTABLISHED</strong>。  </li>
+<li><strong>传数据</strong>：<code>send</code> &#x2F; <code>write</code> 与 <code>recv</code> &#x2F; <code>read</code> 在用户态与内核发送&#x2F;接收缓冲区之间搬运字节；<strong>TCP</strong> 在协议层做<strong>序号、确认、重传、按序递交</strong>；<strong>滑动窗口</strong>与<strong>拥塞控制</strong>限制未确认数据量。  </li>
+<li><strong>关闭</strong>：任一方 <code>close</code> 或 <code>shutdown(SHUT_WR)</code> 触发本方向 <strong>FIN</strong>；对端 <strong>ACK</strong> 后可能仍可收数据（<strong>半关闭</strong>）；双方都发完 <strong>FIN</strong> 并确认后，主动关闭端常经历 <strong>TIME_WAIT</strong>，再回收端口与连接控制块。</li>
+</ol>
+<h3 id="状态机：握手与挥手全景"><a href="#状态机：握手与挥手全景" class="headerlink" title="状态机：握手与挥手全景"></a>状态机：握手与挥手全景</h3><p>把两端的状态变迁画在一张图上（主动方在左，被动方在右）：</p>
+<pre>
+<code class="mermaid">
+
+stateDiagram-v2
+  [*] --&gt; CLOSED
+  CLOSED --&gt; SYN_SENT: 主动方 connect 发 SYN
+  CLOSED --&gt; LISTEN: 被动方 listen
+  SYN_SENT --&gt; ESTABLISHED: 收 SYN-ACK 回 ACK
+  LISTEN --&gt; SYN_RCVD: 收 SYN 回 SYN-ACK
+  SYN_RCVD --&gt; ESTABLISHED: 收 ACK
+  ESTABLISHED --&gt; FIN_WAIT_1: 主动 close 发 FIN
+  FIN_WAIT_1 --&gt; FIN_WAIT_2: 收 ACK
+  FIN_WAIT_2 --&gt; TIME_WAIT: 收 FIN 回 ACK
+  FIN_WAIT_1 --&gt; TIME_WAIT: 双方几乎同时关 收 FIN
+  TIME_WAIT --&gt; CLOSED: 2MSL 超时
+  ESTABLISHED --&gt; CLOSE_WAIT: 收对端 FIN 回 ACK
+  CLOSE_WAIT --&gt; LAST_ACK: 应用 close 发 FIN
+  LAST_ACK --&gt; CLOSED: 收 ACK
+</code>
+</pre>
+
+<p><strong>几个经典追问</strong>：</p>
+<ul>
+<li><strong>为什么是三次握手而不是两次</strong>：两次握手无法让服务端确认「客户端能收到自己的 <strong>SYN-ACK</strong>」；若一个<strong>延迟的旧 SYN</strong> 到达，两次握手会让服务端凭空建立连接、浪费资源。第三次 <strong>ACK</strong> 同时完成了双方**初始序号（ISN）**的互认。</li>
+<li><strong>为什么挥手要四次</strong>：<strong>FIN</strong> 只表示「本方向不再发数据」；对端收到后先 <strong>ACK</strong>，但它可能还有数据没发完，发完再发自己的 <strong>FIN</strong>——两个方向<strong>独立关闭</strong>，所以比握手多一次。</li>
+<li><strong>为什么 TIME_WAIT 是 2MSL</strong>：① 最后一个 <strong>ACK</strong> 若丢失，对端会重传 <strong>FIN</strong>，<strong>TIME_WAIT</strong> 保证还能再回一次 <strong>ACK</strong>；② 让本连接的旧报文在网络中彻底消散，避免污染<strong>相同四元组</strong>的新连接。</li>
+<li><strong>半开连接与 RST</strong>：对端宕机重启后收到旧连接的报文，因无连接记录而回 <strong>RST</strong>，本端读到 <strong>RST</strong> 即报「<strong>Connection reset</strong>」。</li>
+</ul>
+<h2 id="可靠性与窗口（原理要点）"><a href="#可靠性与窗口（原理要点）" class="headerlink" title="可靠性与窗口（原理要点）"></a>可靠性与窗口（原理要点）</h2><ul>
+<li><strong>字节序号</strong>：每个方向独立编号；<strong>ACK</strong> 表示「期望收到的下一个序号」。  </li>
+<li><strong>滑动窗口</strong>：已发送未确认的字节不能无限堆积；窗口大小受<strong>接收方通告</strong>与<strong>拥塞算法</strong>共同约束。  </li>
+<li><strong>Nagle 与延迟 ACK</strong>：小报文合并与确认延迟可能增加交互延迟；低延迟场景可在套接字层关闭 <strong>Nagle</strong>（<strong><code>TCP_NODELAY</code></strong>），需权衡带宽。</li>
+</ul>
+<h2 id="拥塞控制：慢启动、CUBIC-与-BBR"><a href="#拥塞控制：慢启动、CUBIC-与-BBR" class="headerlink" title="拥塞控制：慢启动、CUBIC 与 BBR"></a>拥塞控制：慢启动、CUBIC 与 BBR</h2><p>发送速率由 <strong>发送窗口 &#x3D; min(接收窗口 rwnd，拥塞窗口 cwnd)</strong> 决定：<strong>rwnd</strong> 由对端通告（流量控制），<strong>cwnd</strong> 由本端拥塞算法动态调整（拥塞控制）。</p>
+<h3 id="1-经典四阶段（Reno-系）"><a href="#1-经典四阶段（Reno-系）" class="headerlink" title="1. 经典四阶段（Reno 系）"></a>1. 经典四阶段（Reno 系）</h3><ol>
+<li><strong>慢启动（Slow Start）</strong>：<strong>cwnd</strong> 从初始窗口 <strong>IW</strong>（现代内核常取 <strong>10</strong> 个 MSS）起，每收到一个 <strong>ACK</strong> 近似加一——<strong>每 RTT 翻倍</strong>，指数增长到阈值 <strong>ssthresh</strong>。</li>
+<li><strong>拥塞避免（Congestion Avoidance）</strong>：超过 <strong>ssthresh</strong> 后改为<strong>线性增长</strong>（约每 RTT 加 1 个 MSS），谨慎探路。</li>
+<li><strong>快重传（Fast Retransmit）</strong>：收到 <strong>3 个重复 ACK</strong> 立即重传丢失段，<strong>不等超时</strong>。</li>
+<li><strong>快恢复（Fast Recovery）</strong>：快重传后 <strong>ssthresh 减半</strong>、<strong>cwnd</strong> 从 <strong>ssthresh</strong> 线性恢复，而不是跌回慢启动重来。</li>
+</ol>
+<h3 id="2-CUBIC-与-BBR-对照"><a href="#2-CUBIC-与-BBR-对照" class="headerlink" title="2. CUBIC 与 BBR 对照"></a>2. CUBIC 与 BBR 对照</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th><strong>CUBIC</strong>（Linux 默认）</th>
+<th><strong>BBR</strong>（Google，Linux 4.9+）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>拥塞信号</td>
+<td><strong>丢包</strong>（丢包即视为拥塞、减窗）</td>
+<td><strong>瓶颈带宽 × 最小 RTT</strong> 建模，不以丢包为主要信号</td>
+</tr>
+<tr>
+<td>窗口曲线</td>
+<td>三次函数，逼近上次丢包点形成「平台期」</td>
+<td>按测得带宽 <strong>pacing</strong> 匀速发送，周期性探测</td>
+</tr>
+<tr>
+<td>缓冲膨胀</td>
+<td>深 buffer 下倾向填满队列、抬高延迟</td>
+<td>主动限制在途字节，抑制 <strong>bufferbloat</strong></td>
+</tr>
+<tr>
+<td>弱网表现</td>
+<td>随机丢包被误判为拥塞，吞吐骤降</td>
+<td>非拥塞丢包下吞吐更稳健</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>内核默认，零配置</td>
+<td>需内核支持 <strong><code>tcp_bbr</code></strong>，常配合 <strong>fq</strong> 队列</td>
+</tr>
+</tbody></table>
+<p>查看与切换算法（Linux）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看可用算法与当前算法</span></span><br><span class="line">sysctl net.ipv4.tcp_available_congestion_control</span><br><span class="line">sysctl net.ipv4.tcp_congestion_control</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启用 BBR（内核需编有 tcp_bbr 模块）</span></span><br><span class="line"><span class="built_in">sudo</span> modprobe tcp_bbr</span><br><span class="line"><span class="built_in">sudo</span> sysctl -w net.core.default_qdisc=fq</span><br><span class="line"><span class="built_in">sudo</span> sysctl -w net.ipv4.tcp_congestion_control=bbr</span><br></pre></td></tr></table></figure>
+
+<p>观察单条连接的实时拥塞状态：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ss -ti dst 93.184.216.34</span><br><span class="line"><span class="comment"># 输出含 cwnd、ssthresh、rtt/rttvar、retrans 等字段</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四元组与套接字"><a href="#四元组与套接字" class="headerlink" title="四元组与套接字"></a>四元组与套接字</h2><p>唯一确定一条 <strong>TCP</strong> 连接：<strong>（源 IP，源端口，目的 IP，目的端口）</strong>。服务端 <strong><code>LISTEN</code></strong> 在固定端口（如 <strong>80</strong>），客户端端口通常由内核临时分配。</p>
+<h2 id="编程示例：C（POSIX-Socket）与-Python-回显"><a href="#编程示例：C（POSIX-Socket）与-Python-回显" class="headerlink" title="编程示例：C（POSIX Socket）与 Python 回显"></a>编程示例：<strong>C</strong>（<strong>POSIX</strong> <strong>Socket</strong>）与 <strong>Python</strong> 回显</h2><p>以下在 <strong>Linux</strong> 下用 <strong>IPv4</strong> 回环地址演示；编译 <strong>C</strong> 需 <strong>GCC</strong> 与标准 <strong>POSIX</strong> 头文件。</p>
+<h3 id="1-C-服务端-tcp-echo-server-c"><a href="#1-C-服务端-tcp-echo-server-c" class="headerlink" title="1. C 服务端 tcp_echo_server.c"></a>1. <strong>C</strong> 服务端 <code>tcp_echo_server.c</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;arpa/inet.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;netinet/in.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PORT 9000</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BUF 4096</span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">  <span class="type">int</span> srv = socket(AF_INET, SOCK_STREAM, <span class="number">0</span>);</span><br><span class="line">  <span class="keyword">if</span> (srv &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;socket&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="type">int</span> on = <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">if</span> (setsockopt(srv, SOL_SOCKET, SO_REUSEADDR, &amp;on, <span class="keyword">sizeof</span>(on)) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;setsockopt&quot;</span>);</span><br><span class="line">    close(srv);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">addr</span>;</span></span><br><span class="line">  <span class="built_in">memset</span>(&amp;addr, <span class="number">0</span>, <span class="keyword">sizeof</span>(addr));</span><br><span class="line">  addr.sin_family = AF_INET;</span><br><span class="line">  addr.sin_port = htons(PORT);</span><br><span class="line">  addr.sin_addr.s_addr = htonl(INADDR_ANY);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (bind(srv, (<span class="keyword">struct</span> sockaddr *)&amp;addr, <span class="keyword">sizeof</span>(addr)) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;bind&quot;</span>);</span><br><span class="line">    close(srv);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (listen(srv, <span class="number">1</span>) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;listen&quot;</span>);</span><br><span class="line">    close(srv);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;listening on %d\n&quot;</span>, PORT);</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">peer</span>;</span></span><br><span class="line">  <span class="type">socklen_t</span> plen = <span class="keyword">sizeof</span>(peer);</span><br><span class="line">  <span class="type">int</span> conn = accept(srv, (<span class="keyword">struct</span> sockaddr *)&amp;peer, &amp;plen);</span><br><span class="line">  <span class="keyword">if</span> (conn &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;accept&quot;</span>);</span><br><span class="line">    close(srv);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="type">char</span> buf[BUF];</span><br><span class="line">  <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">    <span class="type">ssize_t</span> n = recv(conn, buf, <span class="keyword">sizeof</span>(buf), <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">if</span> (n &lt; <span class="number">0</span>) &#123;</span><br><span class="line">      perror(<span class="string">&quot;recv&quot;</span>);</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (n == <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="keyword">break</span>; <span class="comment">/* 对端关闭写方向 */</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">const</span> <span class="type">char</span> prefix[] = <span class="string">&quot;echo: &quot;</span>;</span><br><span class="line">    <span class="keyword">if</span> (send(conn, prefix, <span class="keyword">sizeof</span>(prefix) - <span class="number">1</span>, <span class="number">0</span>) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">      perror(<span class="string">&quot;send&quot;</span>);</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">ssize_t</span> sent = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">while</span> (sent &lt; n) &#123;</span><br><span class="line">      <span class="type">ssize_t</span> w = send(conn, buf + sent, (<span class="type">size_t</span>)(n - sent), <span class="number">0</span>);</span><br><span class="line">      <span class="keyword">if</span> (w &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">        perror(<span class="string">&quot;send&quot;</span>);</span><br><span class="line">        sent = <span class="number">-1</span>;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      sent += w;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (sent &lt; <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  close(conn);</span><br><span class="line">  close(srv);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-C-客户端-tcp-echo-client-c"><a href="#2-C-客户端-tcp-echo-client-c" class="headerlink" title="2. C 客户端 tcp_echo_client.c"></a>2. <strong>C</strong> 客户端 <code>tcp_echo_client.c</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;arpa/inet.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;netinet/in.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PORT 9000</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> BUF 4096</span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">  <span class="type">int</span> fd = socket(AF_INET, SOCK_STREAM, <span class="number">0</span>);</span><br><span class="line">  <span class="keyword">if</span> (fd &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;socket&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">addr</span>;</span></span><br><span class="line">  <span class="built_in">memset</span>(&amp;addr, <span class="number">0</span>, <span class="keyword">sizeof</span>(addr));</span><br><span class="line">  addr.sin_family = AF_INET;</span><br><span class="line">  addr.sin_port = htons(PORT);</span><br><span class="line">  <span class="keyword">if</span> (inet_pton(AF_INET, <span class="string">&quot;127.0.0.1&quot;</span>, &amp;addr.sin_addr) != <span class="number">1</span>) &#123;</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;inet_pton failed\n&quot;</span>);</span><br><span class="line">    close(fd);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (connect(fd, (<span class="keyword">struct</span> sockaddr *)&amp;addr, <span class="keyword">sizeof</span>(addr)) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;connect&quot;</span>);</span><br><span class="line">    close(fd);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="type">const</span> <span class="type">char</span> msg[] = <span class="string">&quot;hello TCP\n&quot;</span>;</span><br><span class="line">  <span class="keyword">if</span> (send(fd, msg, <span class="keyword">sizeof</span>(msg) - <span class="number">1</span>, <span class="number">0</span>) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;send&quot;</span>);</span><br><span class="line">    close(fd);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="type">char</span> buf[BUF];</span><br><span class="line">  <span class="type">ssize_t</span> n = recv(fd, buf, <span class="keyword">sizeof</span>(buf) - <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line">  <span class="keyword">if</span> (n &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    perror(<span class="string">&quot;recv&quot;</span>);</span><br><span class="line">    close(fd);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (n &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    buf[n] = <span class="string">&#x27;\0&#x27;</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%s&quot;</span>, buf);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  close(fd);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">gcc -Wall -Wextra -O2 -o tcp_echo_server tcp_echo_server.c</span><br><span class="line">gcc -Wall -Wextra -O2 -o tcp_echo_client tcp_echo_client.c</span><br><span class="line">./tcp_echo_server &amp;</span><br><span class="line">./tcp_echo_client</span><br></pre></td></tr></table></figure>
+
+<p>要点：<strong><code>SO_REUSEADDR</code></strong> 便于快速重启绑定同一端口；<strong><code>send</code> 在循环里凑满</strong>是因为 <strong>TCP</strong> 是字节流，单次 <code>send</code> 不保证一次系统调用就把全部载荷推到内核；<strong><code>recv</code> 返回 0</strong> 表示对端已关闭写方向。</p>
+<h3 id="3-Python-服务端-server-py"><a href="#3-Python-服务端-server-py" class="headerlink" title="3. Python 服务端 server.py"></a>3. <strong>Python</strong> 服务端 <code>server.py</code></h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> socket</span><br><span class="line"></span><br><span class="line">HOST = <span class="string">&quot;127.0.0.1&quot;</span></span><br><span class="line">PORT = <span class="number">9000</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> socket.socket(socket.AF_INET, socket.SOCK_STREAM) <span class="keyword">as</span> s:</span><br><span class="line">    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, <span class="number">1</span>)</span><br><span class="line">    s.bind((HOST, PORT))</span><br><span class="line">    s.listen(<span class="number">1</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;listening on&quot;</span>, PORT)</span><br><span class="line">    conn, addr = s.accept()</span><br><span class="line">    <span class="keyword">with</span> conn:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;connected from&quot;</span>, addr)</span><br><span class="line">        <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">            data = conn.recv(<span class="number">1024</span>)</span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> data:</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            conn.sendall(<span class="string">b&quot;echo: &quot;</span> + data)</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-客户端-client-py"><a href="#4-客户端-client-py" class="headerlink" title="4. 客户端 client.py"></a>4. 客户端 <code>client.py</code></h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> socket</span><br><span class="line"></span><br><span class="line">HOST = <span class="string">&quot;127.0.0.1&quot;</span></span><br><span class="line">PORT = <span class="number">9000</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> socket.socket(socket.AF_INET, socket.SOCK_STREAM) <span class="keyword">as</span> s:</span><br><span class="line">    s.connect((HOST, PORT))</span><br><span class="line">    s.sendall(<span class="string">b&quot;hello TCP\n&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(s.recv(<span class="number">1024</span>).decode(), end=<span class="string">&quot;&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">python server.py &amp;</span><br><span class="line">python client.py</span><br></pre></td></tr></table></figure>
+
+<h2 id="抓包示例（观察握手）"><a href="#抓包示例（观察握手）" class="headerlink" title="抓包示例（观察握手）"></a>抓包示例（观察握手）</h2><p>在 <strong>Linux</strong> 上（需装 <strong><code>tcpdump</code></strong>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> tcpdump -n -i any tcp port 80 and host example.com</span><br></pre></td></tr></table></figure>
+
+<p>用浏览器访问 <strong><code>http://example.com</code></strong>，可看到 <strong>SYN &#x2F; SYN-ACK &#x2F; ACK</strong> 与后续 <strong>PSH-ACK</strong> 数据段。<strong>Wireshark</strong> 的 <strong>「Follow → TCP Stream」</strong> 便于学习报文序列。</p>
+<p>一次握手 → 数据 → 挥手在 <strong>tcpdump</strong> 里的真实输出（<strong><code>-S</code></strong> 打印绝对序号）：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">21:00:01.001 IP 10.0.0.2.51342 &gt; 93.184.216.34.80: Flags [S],  seq 1000, win 64240, options [mss 1460,sackOK,TS val 100 ecr 0,wscale 7], length 0</span><br><span class="line">21:00:01.050 IP 93.184.216.34.80 &gt; 10.0.0.2.51342: Flags [S.], seq 5000, ack 1001, win 65160, options [mss 1460,sackOK,TS val 200 ecr 100,wscale 7], length 0</span><br><span class="line">21:00:01.051 IP 10.0.0.2.51342 &gt; 93.184.216.34.80: Flags [.],  ack 5001, win 502, options [TS val 101 ecr 200], length 0</span><br><span class="line">21:00:01.052 IP 10.0.0.2.51342 &gt; 93.184.216.34.80: Flags [P.], seq 1001:1079, ack 5001, length 78</span><br><span class="line">21:00:01.100 IP 93.184.216.34.80 &gt; 10.0.0.2.51342: Flags [F.], seq 5001, ack 1079, length 0</span><br></pre></td></tr></table></figure>
+
+<p>读法要点：<strong><code>Flags [S]/[S.]/[.]/[P.]/[F.]</code></strong> 依次对应 <strong>SYN、SYN-ACK、ACK、PSH-ACK、FIN-ACK</strong>；<strong><code>length</code></strong> 是载荷字节数（<strong>SYN&#x2F;FIN</strong> 各占一个「逻辑序号」但 <code>length</code> 为 0）；<strong><code>wscale 7</code></strong> 表示窗口值左移 7 位（×128）；<strong><code>TS val/ecr</code></strong> 是时间戳选项，用于 RTT 测量与防序号回绕（PAWS）。</p>
+<h2 id="TIME-WAIT-实操排查与内核参数"><a href="#TIME-WAIT-实操排查与内核参数" class="headerlink" title="TIME_WAIT 实操排查与内核参数"></a>TIME_WAIT 实操排查与内核参数</h2><p><strong>TIME_WAIT</strong> 只出现在<strong>主动关闭</strong>一侧。高并发短连接的服务端（反代、网关、爬虫客户端）常见大量 <strong>TIME_WAIT</strong>，先看再调。</p>
+<h3 id="1-观察连接状态分布"><a href="#1-观察连接状态分布" class="headerlink" title="1. 观察连接状态分布"></a>1. 观察连接状态分布</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 总览：各状态计数</span></span><br><span class="line">ss -s</span><br><span class="line"><span class="comment"># 按状态聚合（第二列为状态）</span></span><br><span class="line">ss -tan | awk <span class="string">&#x27;NR&gt;1 &#123;print $1&#125;&#x27;</span> | <span class="built_in">sort</span> | <span class="built_in">uniq</span> -c | <span class="built_in">sort</span> -rn</span><br><span class="line"><span class="comment"># 只数 TIME_WAIT</span></span><br><span class="line">ss -tan state time-wait | <span class="built_in">wc</span> -l</span><br><span class="line"><span class="comment"># 旧工具 netstat（部分发行版需安装 net-tools）</span></span><br><span class="line">netstat -ant | awk <span class="string">&#x27;/TIME_WAIT/ &#123;c++&#125; END &#123;print c+0&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-相关内核参数"><a href="#2-相关内核参数" class="headerlink" title="2. 相关内核参数"></a>2. 相关内核参数</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 允许 TIME_WAIT 套接字被新的【出方向】连接复用（客户端侧有效，现代内核已较安全）</span></span><br><span class="line">sysctl -w net.ipv4.tcp_tw_reuse=1</span><br><span class="line"><span class="comment"># TIME_WAIT 上限，超出即回收（过激，可能让对端收到 RST，慎用于入口服务端）</span></span><br><span class="line">sysctl net.ipv4.tcp_max_tw_buckets</span><br><span class="line"><span class="comment"># FIN_WAIT_2 兜底时长（注意：它【不是】TIME_WAIT 的 2MSL，两者别混淆）</span></span><br><span class="line">sysctl net.ipv4.tcp_fin_timeout</span><br><span class="line"><span class="comment"># 出方向临时端口范围：TIME_WAIT 占用端口槽位，量太大时按需放宽</span></span><br><span class="line">sysctl -w net.ipv4.ip_local_port_range=<span class="string">&quot;10240 65535&quot;</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>注意</strong>：<strong><code>tcp_tw_recycle</code></strong>（按时间戳快速回收 TIME_WAIT）在 <strong>NAT</strong> 客户端混用时会导致丢包，<strong>Linux 4.12 起已从内核移除</strong>，老教程里的这个配置不要再抄。</p>
+</blockquote>
+<h3 id="3-治本思路"><a href="#3-治本思路" class="headerlink" title="3. 治本思路"></a>3. 治本思路</h3><p><strong>TIME_WAIT 本身不是病</strong>，是协议正确性的一部分。需要处理的是「量太大」：</p>
+<ol>
+<li><strong>客户端侧</strong>（主动关闭方）：启用连接池 &#x2F; <strong>Keep-Alive</strong> 复用连接，从源头减少短连接；<code>tcp_tw_reuse=1</code> 只对<strong>出方向</strong>连接有效。</li>
+<li><strong>服务端侧</strong>：尽量让客户端先关（响应头不带 <code>Connection: close</code>），把 TIME_WAIT 留在客户端。</li>
+<li><strong>容量侧</strong>：每条 TIME_WAIT 只占少量内核内存和一个端口槽位；真正会耗尽的是<strong>出方向端口</strong>（受 <code>ip_local_port_range</code> 限制）与连接跟踪表（<code>nf_conntrack</code>，若有防火墙）。</li>
+</ol>
+<h2 id="常见面试题速览"><a href="#常见面试题速览" class="headerlink" title="常见面试题速览"></a>常见面试题速览</h2><ol>
+<li><strong>三次握手能否只两次</strong>——不能：服务端无法确认客户端已收到自己的 ISN；延迟旧 SYN 会导致服务端误建连接。</li>
+<li><strong>挥手为什么是四次</strong>——两方向独立关闭；对端 ACK 后可能还有数据要发，自己的 FIN 延后发出。</li>
+<li><strong>TIME_WAIT 何时出现、持续多久</strong>——主动关闭方，<strong>2MSL</strong>（Linux 实现约 60 秒）；作用是兜底对端 FIN 重传、等旧报文消散。</li>
+<li><strong>CLOSE_WAIT 堆积说明什么</strong>——对端已关闭而<strong>本端应用没调 close</strong>，典型应用层连接泄漏，查代码而非调内核。</li>
+<li><strong>SYN 泛洪怎么防</strong>——调大半连接队列（<code>net.ipv4.tcp_max_syn_backlog</code>）+ 开启 <strong>SYN Cookie</strong>（<code>net.ipv4.tcp_syncookies=1</code>）。</li>
+<li><strong><code>accept</code> 从哪个队列取连接</strong>——<strong>全连接队列</strong>（已完成三次握手），其长度受 <code>listen(fd, backlog)</code> 与 <code>net.core.somaxconn</code> 中<strong>较小者</strong>约束。</li>
+<li><strong>TCP 靠什么保证可靠</strong>——序号 &#x2F; ACK &#x2F; 超时重传与快重传 &#x2F; 按序重组 &#x2F; 去重 &#x2F; 校验和。</li>
+<li><strong>Nagle 与延迟 ACK 为何互坑</strong>——Nagle 攒小包等对端 ACK，对端延迟 ACK 等攒够数据，两者凑出 40ms 级空等；低延迟场景开 <strong><code>TCP_NODELAY</code></strong>。</li>
+</ol>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>连接</td>
+<td><strong>三次握手</strong>建立、<strong>四次挥手</strong>关闭；<strong>四元组</strong>唯一确定一条连接</td>
+</tr>
+<tr>
+<td>可靠</td>
+<td><strong>序号 + ACK + 重传 + 按序重组</strong>；<strong>滑动窗口</strong>兼顾流量控制与拥塞控制</td>
+</tr>
+<tr>
+<td>编程</td>
+<td>服务端 <code>socket/bind/listen/accept</code>，客户端 <code>socket/connect</code>；<code>recv</code> 返回 0 表示对端关闭写方向</td>
+</tr>
+<tr>
+<td>排障</td>
+<td><strong><code>tcpdump</code></strong> 抓 <strong>SYN&#x2F;SYN-ACK&#x2F;ACK</strong>；<strong>Wireshark</strong>「Follow → TCP Stream」看流</td>
+</tr>
+<tr>
+<td>依赖</td>
+<td><a href="/network/06-ip-protocol/">第六章：IP 协议详解：原理、编址与排障示例</a></td>
+</tr>
+</tbody></table>
+<p>调优与内核参数（<strong><code>tcp_tw_reuse</code></strong> 等）以发行版文档为准，避免盲目改生产默认值。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Protocol/" rel="tag"># Protocol</a>
+              <a href="/tags/Socket/" rel="tag"># Socket</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/datascience/02-flink-guide/" rel="prev" title="第二章：Flink 流式计算入门">
+                  <i class="fa fa-angle-left"></i> 第二章：Flink 流式计算入门
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/network/02-http-protocol/" rel="next" title="第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例">
+                  第二章：HTTP 详解：报文、方法、版本与 curl/nc 示例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

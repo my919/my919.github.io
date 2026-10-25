@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第七章：Redis ZSet 数据类型：概念、命令与案例概念基础ZSet（Sorted Set，有序集合）给每个成员挂一个分值（score），集合内部始终按 score 排序：  TYPE key 为 zset。   member 唯一；同一 member 再次 ZADD 会更新 score（不是报错、也不是新增——这是「改积分」的基础语义）。   排序方向：score 从小到大是「正序」；排行榜">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第七章：Redis ZSet 数据类型：概念、命令与案例">
+<meta property="og:url" content="https://my919.github.io/redis/07-redis-zset-type/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第七章：Redis ZSet 数据类型：概念、命令与案例概念基础ZSet（Sorted Set，有序集合）给每个成员挂一个分值（score），集合内部始终按 score 排序：  TYPE key 为 zset。   member 唯一；同一 member 再次 ZADD 会更新 score（不是报错、也不是新增——这是「改积分」的基础语义）。   排序方向：score 从小到大是「正序」；排行榜">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T09:31:13.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.592Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Redis">
+<meta property="article:tag" content="ZSet">
+<meta property="article:tag" content="排行榜">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/redis/07-redis-zset-type/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/redis/07-redis-zset-type/","path":"redis/07-redis-zset-type/","title":"第七章：Redis ZSet 数据类型：概念、命令与案例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第七章：Redis ZSet 数据类型：概念、命令与案例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%83%E7%AB%A0%EF%BC%9ARedis-ZSet-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%EF%BC%9A%E6%A6%82%E5%BF%B5%E3%80%81%E5%91%BD%E4%BB%A4%E4%B8%8E%E6%A1%88%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第七章：Redis ZSet 数据类型：概念、命令与案例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86%EF%BC%9A%E8%B7%B3%E8%A1%A8%E4%B8%8E%E5%8F%8C%E7%BB%93%E6%9E%84"><span class="nav-number">1.2.</span> <span class="nav-text">核心原理：跳表与双结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%B8%A4%E7%A7%8D%E7%BC%96%E7%A0%81"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 两种编码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-skiplist-%E7%BC%96%E7%A0%81-%E5%8F%8C%E7%BB%93%E6%9E%84"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. skiplist 编码 &#x3D; 双结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E4%B8%BA%E4%BB%80%E4%B9%88%E7%94%A8%E8%B7%B3%E8%A1%A8%E8%80%8C%E4%B8%8D%E6%98%AF%E5%B9%B3%E8%A1%A1%E6%A0%91"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. 为什么用跳表而不是平衡树</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%97%B6%E9%97%B4%E5%A4%8D%E6%9D%82%E5%BA%A6%E8%A1%A8"><span class="nav-number">1.2.4.</span> <span class="nav-text">4. 时间复杂度表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-score-%E7%B2%BE%E5%BA%A6%E4%B8%8E%E5%B9%B6%E5%8F%91%E5%AE%89%E5%85%A8"><span class="nav-number">1.2.5.</span> <span class="nav-text">5. score 精度与并发安全</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%EF%BC%88%E5%BF%85%E4%BC%9A%E5%AD%90%E9%9B%86%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">常用命令（必会子集）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">1.4.</span> <span class="nav-text">典型应用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%BC%E5%90%88%E6%A1%88%E4%BE%8B%EF%BC%88redis-cli%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">综合案例（redis-cli）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%8E%92%E8%A1%8C%E6%A6%9C%EF%BC%9A%E4%B8%8A%E6%A6%9C%E3%80%81%E6%9F%A5-Top%E3%80%81%E6%9F%A5%E5%90%8D%E6%AC%A1%E3%80%81%E5%8A%A0%E5%88%86"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 排行榜：上榜、查 Top、查名次、加分</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%BB%B6%E6%97%B6%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 延时任务队列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3%E9%99%90%E6%B5%81%EF%BC%88%E6%AF%8F%E5%88%86%E9%92%9F-100-%E6%AC%A1%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 滑动窗口限流（每分钟 100 次）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-ZADD-%E6%9D%A1%E4%BB%B6%E9%80%89%E9%A1%B9%EF%BC%9A%E5%8F%AA%E5%9C%A8%E6%9B%B4%E9%AB%98%E5%88%86%E6%97%B6%E6%9B%B4%E6%96%B0"><span class="nav-number">1.5.4.</span> <span class="nav-text">4. ZADD 条件选项：只在更高分时更新</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%A4%9A%E6%A6%9C%E8%81%9A%E5%90%88%EF%BC%9A%E6%97%A5%E6%A6%9C%E5%90%88%E6%88%90%E5%91%A8%E6%A6%9C"><span class="nav-number">1.5.5.</span> <span class="nav-text">5. 多榜聚合：日榜合成周榜</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E6%A6%9C%E5%A4%96%E7%94%A8%E6%88%B7%E6%9F%A5%E5%90%8D%E6%AC%A1%EF%BC%9ATop-%E9%A1%B5-%E3%80%8C%E6%88%91%E7%9A%84%E4%BD%8D%E7%BD%AE%E3%80%8D"><span class="nav-number">1.5.6.</span> <span class="nav-text">6. 榜外用户查名次：Top 页 +「我的位置」</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-%E7%83%AD%E6%90%9C%E6%A6%9C%EF%BC%9A%E6%97%B6%E9%97%B4%E8%A1%B0%E5%87%8F%E7%9A%84%E8%90%BD%E5%9C%B0%E5%86%99%E6%B3%95"><span class="nav-number">1.5.7.</span> <span class="nav-text">7. 热搜榜：时间衰减的落地写法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E9%98%B6%EF%BC%9A%E8%B7%B3%E8%A1%A8%E8%8A%82%E7%82%B9%E4%B8%8E%E5%B1%82%E6%95%B0"><span class="nav-number">1.6.</span> <span class="nav-text">进阶：跳表节点与层数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%A4%BA%E4%BE%8B%EF%BC%88Lettuce%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">Java 客户端示例（Lettuce）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Python-%E7%A4%BA%E4%BE%8B%EF%BC%88redis-py%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">Python 示例（redis-py）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-number">1.9.</span> <span class="nav-text">与关系型方案对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91%E4%B8%8E%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">1.10.</span> <span class="nav-text">常见坑与注意事项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/redis/07-redis-zset-type/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第七章：Redis ZSet 数据类型：概念、命令与案例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第七章：Redis ZSet 数据类型：概念、命令与案例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 17:31:13" itemprop="dateCreated datePublished" datetime="2026-05-03T17:31:13+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Redis-%E7%BC%93%E5%AD%98/" itemprop="url" rel="index"><span itemprop="name">Redis 缓存</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第七章：Redis-ZSet-数据类型：概念、命令与案例"><a href="#第七章：Redis-ZSet-数据类型：概念、命令与案例" class="headerlink" title="第七章：Redis ZSet 数据类型：概念、命令与案例"></a>第七章：Redis ZSet 数据类型：概念、命令与案例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>ZSet</strong>（Sorted Set，有序集合）给每个成员挂一个<strong>分值（score）</strong>，集合内部<strong>始终按 score 排序</strong>：</p>
+<ol>
+<li><strong><code>TYPE key</code></strong> 为 <strong><code>zset</code></strong>。  </li>
+<li><strong>member 唯一</strong>；同一 <strong>member</strong> 再次 <strong><code>ZADD</code></strong> 会<strong>更新 score</strong>（不是报错、也不是新增——这是「改积分」的基础语义）。  </li>
+<li><strong>排序方向</strong>：score 从小到大是「正序」；排行榜通常要 <strong><code>ZREVRANGE</code></strong> 降序取 Top N。  </li>
+<li>范围查询、排名 <strong><code>ZRANK</code>&#x2F;<code>ZREVRANK</code></strong> 为高频 API——「第几名」「前 100 名」「积分区间成员」都是 O(logN) 级别的现成能力，这是 Set 给不了的。  </li>
+<li>score 相同按 member <strong>字典序</strong>排序——排行榜想打破并列，可把「先到先排前」编码进 member 或微调 score（如整数积分 + 小数时间戳倒数）。</li>
+</ol>
+<h2 id="核心原理：跳表与双结构"><a href="#核心原理：跳表与双结构" class="headerlink" title="核心原理：跳表与双结构"></a>核心原理：跳表与双结构</h2><h3 id="1-两种编码"><a href="#1-两种编码" class="headerlink" title="1. 两种编码"></a>1. 两种编码</h3><p>元素少且成员短时用 <strong><code>listpack</code></strong>（7.0 前 ziplist），阈值默认 <strong><code>zset-max-listpack-entries 128</code></strong>、<strong><code>zset-max-listpack-value 64</code></strong>；一般情况用 <strong>skiplist</strong> 编码（<strong><code>OBJECT ENCODING</code></strong> 可查）。</p>
+<h3 id="2-skiplist-编码-双结构"><a href="#2-skiplist-编码-双结构" class="headerlink" title="2. skiplist 编码 &#x3D; 双结构"></a>2. skiplist 编码 &#x3D; 双结构</h3><p>同一份数据同时挂在两个索引上：</p>
+<ul>
+<li><strong>跳表（zskiplist）</strong>：按 <strong>score 排序</strong>的有序跳表，负责 <strong><code>ZRANGE</code> &#x2F; <code>ZRANGEBYSCORE</code> &#x2F; <code>ZRANK</code></strong> 等<strong>范围与排名</strong>操作，复杂度 <strong>O(logN)</strong>。每个节点带随机层数（Redis 中约 <strong>1&#x2F;4 概率升层</strong>，最大 32 层），高层是「快车道」，查找时从顶层逐层下沉。  </li>
+<li><strong>字典（dict）</strong>：member → score 映射，负责 <strong><code>ZSCORE</code></strong> 这类<strong>按成员查分值</strong>的 <strong>O(1)</strong> 操作。</li>
+</ul>
+<pre>
+<code class="mermaid">
+
+flowchart LR
+  Z[ZSet key] --&gt; S[skiplist 按 score 排序&lt;br&#x2F;&gt;范围 &#x2F; 排名 O logN]
+  Z --&gt; D[dict: member→score&lt;br&#x2F;&gt;查分 O 1]
+</code>
+</pre>
+
+<h3 id="3-为什么用跳表而不是平衡树"><a href="#3-为什么用跳表而不是平衡树" class="headerlink" title="3. 为什么用跳表而不是平衡树"></a>3. 为什么用跳表而不是平衡树</h3><p>范围查询同样高效、实现远比红黑树简单（无旋转）、节点上的 <strong>span 跨度字段</strong>让「按排名定位」天然支持（这是 <strong><code>ZRANK</code> O(logN)</strong> 的关键）——是工程权衡的典型案例。</p>
+<h3 id="4-时间复杂度表"><a href="#4-时间复杂度表" class="headerlink" title="4. 时间复杂度表"></a>4. 时间复杂度表</h3><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>复杂度</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>ZADD</code> &#x2F; <code>ZREM</code> &#x2F; <code>ZINCRBY</code></strong></td>
+<td><strong>O(logN)</strong></td>
+<td>跳表定位</td>
+</tr>
+<tr>
+<td><strong><code>ZSCORE</code></strong></td>
+<td><strong>O(1)</strong></td>
+<td>走 dict</td>
+</tr>
+<tr>
+<td><strong><code>ZRANK</code> &#x2F; <code>ZREVRANK</code></strong></td>
+<td><strong>O(logN)</strong></td>
+<td>span 字段累加得名次</td>
+</tr>
+<tr>
+<td><strong><code>ZRANGE</code> &#x2F; <code>ZREVRANGE</code></strong></td>
+<td>O(logN + M)</td>
+<td>M 为返回元素数</td>
+</tr>
+<tr>
+<td><strong><code>ZRANGEBYSCORE</code></strong></td>
+<td>O(logN + M)</td>
+<td>范围扫描</td>
+</tr>
+<tr>
+<td><strong><code>ZCARD</code></strong></td>
+<td><strong>O(1)</strong></td>
+<td>计数有缓存</td>
+</tr>
+<tr>
+<td><strong><code>ZPOPMIN</code> &#x2F; <code>ZPOPMAX</code></strong></td>
+<td>O(logN)</td>
+<td>延时队列取任务常用</td>
+</tr>
+<tr>
+<td><strong><code>ZUNIONSTORE</code> &#x2F; <code>ZINTERSTORE</code></strong></td>
+<td>O(N)+O(M·logM)</td>
+<td>多榜聚合，大集合慎实时算</td>
+</tr>
+</tbody></table>
+<h3 id="5-score-精度与并发安全"><a href="#5-score-精度与并发安全" class="headerlink" title="5. score 精度与并发安全"></a>5. score 精度与并发安全</h3><p>score 是 <strong>double</strong>，能精确表示的整数范围约 <strong>2^53</strong>；时间戳做 score 时统一<strong>毫秒或秒</strong>，避免大数值浮点误差。<strong><code>ZADD</code> 更新、<code>ZINCRBY</code> 加分</strong>都是单线程原子操作，排行榜「并发刷分」不丢更新。</p>
+<h2 id="常用命令（必会子集）"><a href="#常用命令（必会子集）" class="headerlink" title="常用命令（必会子集）"></a>常用命令（必会子集）</h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>ZADD key score member</code></strong></td>
+<td>添加或更新分值（支持 <strong><code>GT</code>&#x2F;<code>LT</code>&#x2F;<code>NX</code>&#x2F;<code>XX</code></strong> 条件）</td>
+</tr>
+<tr>
+<td><strong><code>ZRANGE</code> &#x2F; <code>ZREVRANGE</code></strong></td>
+<td>按排名升&#x2F;降序取片段（<strong><code>WITHSCORES</code></strong> 带出分数）</td>
+</tr>
+<tr>
+<td><strong><code>ZRANGEBYSCORE</code></strong></td>
+<td>按 <strong>score</strong> 区间取（<strong><code>(</code></strong> 表开区间，<strong><code>-inf</code>&#x2F;<code>+inf</code></strong> 表无穷）</td>
+</tr>
+<tr>
+<td><strong><code>ZRANK</code> &#x2F; <code>ZREVRANK</code></strong></td>
+<td>升序 &#x2F; 降序名次（<strong>0</strong> 基）</td>
+</tr>
+<tr>
+<td><strong><code>ZSCORE</code> &#x2F; <code>ZCARD</code> &#x2F; <code>ZINCRBY</code></strong></td>
+<td>查分 &#x2F; 成员数 &#x2F; 原子加分</td>
+</tr>
+<tr>
+<td><strong><code>ZREM</code> &#x2F; <code>ZPOPMIN</code> &#x2F; <code>ZPOPMAX</code></strong></td>
+<td>删除成员 &#x2F; 弹出最小&#x2F;大</td>
+</tr>
+<tr>
+<td><strong><code>ZUNIONSTORE</code> &#x2F; <code>ZINTERSTORE</code></strong></td>
+<td>多榜聚合（如日榜合周榜）</td>
+</tr>
+</tbody></table>
+<h2 id="典型应用场景"><a href="#典型应用场景" class="headerlink" title="典型应用场景"></a>典型应用场景</h2><ol>
+<li><strong>游戏 &#x2F; 活动排行榜</strong>：<strong>member&#x3D;用户 ID</strong>，<strong>score&#x3D;积分</strong>。  </li>
+<li><strong>延时任务</strong>：<strong>score&#x3D;执行时间戳</strong>，定时 <strong><code>ZRANGEBYSCORE</code></strong> 拉到期任务再 <strong><code>ZREM</code></strong>。  </li>
+<li><strong>热搜权重</strong>：结合时间衰减可周期性重算 <strong>score</strong>（逻辑在应用层）。  </li>
+<li><strong>滑动窗口限流</strong>：<strong>member&#x3D;请求 ID&#x2F;时间戳</strong>，<strong>score&#x3D;时间戳</strong>，<strong><code>ZREMRANGEBYSCORE</code></strong> 清窗口外 + <strong><code>ZCARD</code></strong> 判定——精确滑窗的经典实现。  </li>
+<li><strong>优先级队列</strong>：<strong><code>ZPOPMIN</code></strong> 取最紧急任务（score 越小越优先）。</li>
+</ol>
+<h2 id="综合案例（redis-cli）"><a href="#综合案例（redis-cli）" class="headerlink" title="综合案例（redis-cli）"></a>综合案例（redis-cli）</h2><h3 id="1-排行榜：上榜、查-Top、查名次、加分"><a href="#1-排行榜：上榜、查-Top、查名次、加分" class="headerlink" title="1. 排行榜：上榜、查 Top、查名次、加分"></a>1. 排行榜：上榜、查 Top、查名次、加分</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">redis-cli ZADD board:week1 100 user:1 200 user:2 150 user:3</span><br><span class="line">redis-cli ZREVRANGE board:week1 0 9 WITHSCORES     <span class="comment"># Top 10</span></span><br><span class="line">redis-cli ZREVRANK board:week1 user:3              <span class="comment"># 降序名次（0 基）</span></span><br><span class="line">redis-cli ZINCRBY board:week1 50 user:3            <span class="comment"># user:3 加 50 分</span></span><br><span class="line">redis-cli ZRANGEBYSCORE board:week1 150 300        <span class="comment"># 积分区间成员</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-延时任务队列"><a href="#2-延时任务队列" class="headerlink" title="2. 延时任务队列"></a>2. 延时任务队列</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生产：5 秒后执行的任务（score = 执行时间戳）</span></span><br><span class="line">redis-cli ZADD delay:queue 1748000005 <span class="string">&quot;send-email:1001&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 消费轮询：拉出所有已到期任务</span></span><br><span class="line">redis-cli ZRANGEBYSCORE delay:queue -inf 1748000005</span><br><span class="line"><span class="comment"># 拉到后用 ZREM 抢占（返回 1 才说明抢到了，天然防多消费者重复执行）</span></span><br><span class="line">redis-cli ZREM delay:queue <span class="string">&quot;send-email:1001&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-滑动窗口限流（每分钟-100-次）"><a href="#3-滑动窗口限流（每分钟-100-次）" class="headerlink" title="3. 滑动窗口限流（每分钟 100 次）"></a>3. 滑动窗口限流（每分钟 100 次）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">NOW=1748000060</span><br><span class="line">redis-cli ZADD rl:api:user:1 <span class="variable">$NOW</span> <span class="string">&quot;req:<span class="variable">$NOW</span>:<span class="variable">$RANDOM</span>&quot;</span></span><br><span class="line">redis-cli ZREMRANGEBYSCORE rl:api:user:1 0 $((NOW-<span class="number">60</span>))</span><br><span class="line">redis-cli ZCARD rl:api:user:1                      <span class="comment"># &gt;100 则拒绝</span></span><br><span class="line">redis-cli EXPIRE rl:api:user:1 120</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-ZADD-条件选项：只在更高分时更新"><a href="#4-ZADD-条件选项：只在更高分时更新" class="headerlink" title="4. ZADD 条件选项：只在更高分时更新"></a>4. ZADD 条件选项：只在更高分时更新</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># GT：仅新分 &gt; 现有分时更新（个人最高纪录天然语义）</span></span><br><span class="line">redis-cli ZADD best:user:1 GT 300 <span class="string">&quot;run1&quot;</span></span><br><span class="line"><span class="comment"># LT / NX / XX 同理：低于才更新 / 仅新增 / 仅更新</span></span><br><span class="line">redis-cli ZADD board:week1 NX 100 user:9           <span class="comment"># 已存在则不碰</span></span><br><span class="line">redis-cli ZADD board:week1 XX 500 user:1           <span class="comment"># 不存在则不建</span></span><br></pre></td></tr></table></figure>
+
+<p>比「先 <code>ZSCORE</code> 比较再 <code>ZADD</code>」少一次往返且无竞态——「只刷新纪录」类需求请直接用选项，不要应用层判断。</p>
+<h3 id="5-多榜聚合：日榜合成周榜"><a href="#5-多榜聚合：日榜合成周榜" class="headerlink" title="5. 多榜聚合：日榜合成周榜"></a>5. 多榜聚合：日榜合成周榜</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">redis-cli ZADD board:d1 100 user:1 200 user:2</span><br><span class="line">redis-cli ZADD board:d2 150 user:1 100 user:3</span><br><span class="line"><span class="comment"># 聚合 7 天得分相加，落新 key</span></span><br><span class="line">redis-cli ZUNIONSTORE board:week1 2 board:d1 board:d2 WEIGHTS 1 1</span><br><span class="line">redis-cli ZREVRANGE board:week1 0 -1 WITHSCORES    <span class="comment"># user:1=250 user:2=200 user:3=100</span></span><br><span class="line">redis-cli EXPIRE board:week1 604800</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>AGGREGATE SUM/MIN/MAX</code></strong> 可选聚合方式（默认 SUM）。日榜 key 各自设 TTL，周榜随算随弃，存储可控。</p>
+<h3 id="6-榜外用户查名次：Top-页-「我的位置」"><a href="#6-榜外用户查名次：Top-页-「我的位置」" class="headerlink" title="6. 榜外用户查名次：Top 页 +「我的位置」"></a>6. 榜外用户查名次：Top 页 +「我的位置」</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 首页：Top 10</span></span><br><span class="line">redis-cli ZREVRANGE board:week1 0 9 WITHSCORES</span><br><span class="line"><span class="comment"># 当前用户不在榜上时，单独查名次与分数拼「你当前第 N 名」</span></span><br><span class="line">redis-cli ZREVRANK board:week1 user:42             <span class="comment"># (nil) 表示未上榜</span></span><br><span class="line">redis-cli ZSCORE board:week1 user:42</span><br></pre></td></tr></table></figure>
+
+<p>这是排行榜产品的标准两段式：<strong>窗口数据走 <code>ZREVRANGE</code> 分页，个人位置走 <code>ZREVRANK + ZSCORE</code></strong>，不要为找一个人把全榜拉回客户端。</p>
+<h3 id="7-热搜榜：时间衰减的落地写法"><a href="#7-热搜榜：时间衰减的落地写法" class="headerlink" title="7. 热搜榜：时间衰减的落地写法"></a>7. 热搜榜：时间衰减的落地写法</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 每次点击加分</span></span><br><span class="line">redis-cli ZINCRBY hot:search 3 <span class="string">&quot;redis教程&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 每小时定时任务统一衰减（乘 0.9），老词自然下沉</span></span><br><span class="line">redis-cli EVAL <span class="string">&quot;local ms=redis.call(&#x27;ZRANGE&#x27;,KEYS[1],0,-1,&#x27;WITHSCORES&#x27;) for i=1,#ms,2 do redis.call(&#x27;ZADD&#x27;,KEYS[1],tonumber(ms[i+1])*0.9,ms[i]) end return #ms/2&quot;</span> 1 hot:search</span><br></pre></td></tr></table></figure>
+
+<p>「热度 &#x3D; 近期行为 × 衰减系数」是热搜&#x2F;热门商品的通用模型：<strong>写入用 ZINCRBY 累积，周期任务用 Lua 批量乘衰减系数</strong>——Lua 保证整个重算原子完成，中途无半新不旧的榜单被读到。</p>
+<h2 id="进阶：跳表节点与层数"><a href="#进阶：跳表节点与层数" class="headerlink" title="进阶：跳表节点与层数"></a>进阶：跳表节点与层数</h2><p>跳表节点（<strong><code>zskiplistNode</code></strong>）含 <strong><code>score</code> &#x2F; member &#x2F; 后退指针 &#x2F; 多层 level</strong>，每层记录 <strong><code>forward</code></strong> 与 <strong><code>span</code>（跨度）</strong>；<strong><code>ZRANK</code></strong> 即沿查找路径累加 span 得名次，故为 <strong>O(logN)</strong>。升层概率约 <strong>1&#x2F;4</strong>、最大 <strong>32 层</strong>——千万级元素下期望层数仍很小，查找路径短。编码阈值：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">redis-cli CONFIG GET zset-max-listpack-entries     <span class="comment"># 默认 128</span></span><br><span class="line">redis-cli CONFIG GET zset-max-listpack-value       <span class="comment"># 默认 64</span></span><br></pre></td></tr></table></figure>
+
+<p>超阈值 listpack → skiplist 单向转换；转后内存上升属预期（跳表指针开销大），排行榜类 key 建议提前按 skiplist 口径估容量。</p>
+<h2 id="Java-客户端示例（Lettuce）"><a href="#Java-客户端示例（Lettuce）" class="headerlink" title="Java 客户端示例（Lettuce）"></a>Java 客户端示例（Lettuce）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">RedisCommands</span>&lt;String, String&gt; <span class="variable">cmd</span> <span class="operator">=</span> lettuceConnection.sync();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 排行榜</span></span><br><span class="line">cmd.zadd(<span class="string">&quot;board:week1&quot;</span>, <span class="number">100</span>, <span class="string">&quot;user:1&quot;</span>);</span><br><span class="line">cmd.zincrby(<span class="string">&quot;board:week1&quot;</span>, <span class="number">50</span>, <span class="string">&quot;user:1&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Top 10（带分数）</span></span><br><span class="line"><span class="type">List</span>&lt;ScoredValue&lt;String&gt;&gt; <span class="variable">top</span> <span class="operator">=</span> cmd.zrevrangeWithScores(<span class="string">&quot;board:week1&quot;</span>, <span class="number">0</span>, <span class="number">9</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 我的名次</span></span><br><span class="line"><span class="type">Long</span> <span class="variable">rank</span> <span class="operator">=</span> cmd.zrevrank(<span class="string">&quot;board:week1&quot;</span>, <span class="string">&quot;user:1&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 延时任务拉取</span></span><br><span class="line"><span class="type">List</span>&lt;String&gt; <span class="variable">due</span> <span class="operator">=</span> cmd.zrangebyscore(<span class="string">&quot;delay:queue&quot;</span>,</span><br><span class="line">        Range.create(Double.NEGATIVE_INFINITY, System.currentTimeMillis() / <span class="number">1000.0</span>));</span><br></pre></td></tr></table></figure>
+
+<h2 id="Python-示例（redis-py）"><a href="#Python-示例（redis-py）" class="headerlink" title="Python 示例（redis-py）"></a>Python 示例（redis-py）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> redis, time</span><br><span class="line"></span><br><span class="line">r = redis.Redis(host=<span class="string">&quot;127.0.0.1&quot;</span>, port=<span class="number">6379</span>, decode_responses=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 排行榜</span></span><br><span class="line">r.zadd(<span class="string">&quot;board:week1&quot;</span>, &#123;<span class="string">&quot;user:1&quot;</span>: <span class="number">100</span>, <span class="string">&quot;user:2&quot;</span>: <span class="number">200</span>&#125;)</span><br><span class="line">r.zincrby(<span class="string">&quot;board:week1&quot;</span>, <span class="number">50</span>, <span class="string">&quot;user:1&quot;</span>)</span><br><span class="line">top10 = r.zrevrange(<span class="string">&quot;board:week1&quot;</span>, <span class="number">0</span>, <span class="number">9</span>, withscores=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 延时任务</span></span><br><span class="line">r.zadd(<span class="string">&quot;delay:queue&quot;</span>, &#123;<span class="string">&quot;send-email:1001&quot;</span>: time.time() + <span class="number">5</span>&#125;)</span><br><span class="line">due = r.zrangebyscore(<span class="string">&quot;delay:queue&quot;</span>, <span class="string">&quot;-inf&quot;</span>, time.time())</span><br></pre></td></tr></table></figure>
+
+<h2 id="与关系型方案对比"><a href="#与关系型方案对比" class="headerlink" title="与关系型方案对比"></a>与关系型方案对比</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Redis ZSet</th>
+<th>MySQL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Top N 查询</td>
+<td><strong>O(logN+M)</strong>，微秒级</td>
+<td><code>ORDER BY score LIMIT</code> 全表&#x2F;索引排序，数据大时秒级</td>
+</tr>
+<tr>
+<td>实时排名</td>
+<td><strong><code>ZREVRANK</code></strong> O(logN)</td>
+<td><code>COUNT(*) WHERE score &gt; x</code>，O(N) 扫描</td>
+</tr>
+<tr>
+<td>并发刷分</td>
+<td><strong><code>ZINCRBY</code></strong> 原子</td>
+<td>UPDATE 行锁竞争</td>
+</tr>
+<tr>
+<td>数据规模</td>
+<td>百万级内存内舒适</td>
+<td>千万级磁盘没问题但排名慢</td>
+</tr>
+</tbody></table>
+<h2 id="常见坑与注意事项"><a href="#常见坑与注意事项" class="headerlink" title="常见坑与注意事项"></a>常见坑与注意事项</h2><ol>
+<li><strong>热 key</strong>：单排行榜 <strong>key</strong> 超高并发时考虑<strong>分片</strong>（如 <code>board:&#123;shard&#125;</code> 再聚合）或<strong>本地缓存 + 合并</strong>。  </li>
+<li><strong>大 ZSet</strong>：避免一次 <strong><code>ZRANGE 0 -1</code></strong>；分页用 <strong><code>ZRANGE</code></strong> 窗口。  </li>
+<li><strong>score 精度</strong>：浮点比较注意<strong>误差</strong>；时间戳建议统一<strong>毫秒或秒</strong>。  </li>
+<li><strong>并列排名</strong>：score 相同按字典序，业务若要「先到先排前」需自行编码（如 score &#x3D; 积分 + (1 - ts&#x2F;1e13)）。  </li>
+<li><strong>滥用 KEYS</strong>：线上排查榜类 key 用 <strong><code>SCAN MATCH board:*</code></strong>，勿 <code>KEYS *</code>。  </li>
+<li><strong>区间符号</strong>：<strong><code>ZRANGEBYSCORE key (100 200</code></strong> 的 <strong><code>(</code></strong> 表开区间，写错开闭导致边界成员多算&#x2F;漏算；<strong><code>-inf</code> &#x2F; <code>+inf</code></strong> 表无穷，延时队列拉全量到期任务时别写成 <code>0 +inf</code> 漏掉历史脏数据。  </li>
+<li><strong>ZINCRBY 浮点累加</strong>：score 是 double，频繁小数加分可能积累浮点误差；金额类积分用「分」为单位的整数，展示时再除。</li>
+</ol>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>本质</td>
+<td><strong>member 唯一 + score 排序</strong>，排名&#x2F;范围 O(logN)</td>
+</tr>
+<tr>
+<td>底层</td>
+<td>listpack → <strong>skiplist + dict 双结构</strong>（范围 vs 查分各司其职），跳表 1&#x2F;4 升层、最大 32 层</td>
+</tr>
+<tr>
+<td>高频命令</td>
+<td><strong>ZADD &#x2F; ZREVRANGE &#x2F; ZRANK &#x2F; ZINCRBY &#x2F; ZRANGEBYSCORE &#x2F; ZPOPMIN</strong></td>
+</tr>
+<tr>
+<td>场景</td>
+<td>排行榜、延时任务、热度权重、滑动窗口限流</td>
+</tr>
+<tr>
+<td>与 Set</td>
+<td>Set 只去重不排序；要排名必须 ZSet</td>
+</tr>
+</tbody></table>
+<p>核心五类型到此学完。后续三章是<strong>进阶&#x2F;特化类型</strong>：<a href="/redis/08-redis-bitmap-type/">第八章：Redis Bitmap 数据类型：概念、命令与案例</a>、<a href="/redis/09-redis-hyperloglog-type/">第九章：Redis HyperLogLog：概念、命令与案例</a>、<a href="/redis/10-redis-geospatial-type/">第十章：Redis Geospatial：概念、命令与案例</a>。</p>
+<p><strong>延伸阅读</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>Set数据类型、应用场景及案例.md</code></strong></td>
+<td>只要去重、不要排序</td>
+</tr>
+<tr>
+<td><strong><code>List数据类型、应用场景及案例.md</code></strong></td>
+<td>简单队列</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Redis/" rel="tag"># Redis</a>
+              <a href="/tags/ZSet/" rel="tag"># ZSet</a>
+              <a href="/tags/%E6%8E%92%E8%A1%8C%E6%A6%9C/" rel="tag"># 排行榜</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/redis/04-redis-hash-type/" rel="prev" title="第四章：Redis Hash 数据类型：概念、命令与案例">
+                  <i class="fa fa-angle-left"></i> 第四章：Redis Hash 数据类型：概念、命令与案例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/redis/09-redis-hyperloglog-type/" rel="next" title="第九章：Redis HyperLogLog：概念、命令与案例">
+                  第九章：Redis HyperLogLog：概念、命令与案例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

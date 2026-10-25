@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：MySQL 高级查询概念基础高级查询是超越单表 SELECT ... WHERE 的多表、分组、窗口类查询，核心是把拆开存的关系拼回来：  为什么数据要拆开存：关系模型按范式把业务拆成多张表（如 emp 员工表与 dept 部门表），避免重复存储；查询的本质就是用 JOIN &#x2F; 子查询按关联字段把数据重新拼装——第一章建的表结构，在这里被「消费」。 JOIN 的语义差异决定丢不丢">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：MySQL 高级查询">
+<meta property="og:url" content="https://my919.github.io/mysql/04-mysql-advanced-query/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：MySQL 高级查询概念基础高级查询是超越单表 SELECT ... WHERE 的多表、分组、窗口类查询，核心是把拆开存的关系拼回来：  为什么数据要拆开存：关系模型按范式把业务拆成多张表（如 emp 员工表与 dept 部门表），避免重复存储；查询的本质就是用 JOIN &#x2F; 子查询按关联字段把数据重新拼装——第一章建的表结构，在这里被「消费」。 JOIN 的语义差异决定丢不丢">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T04:38:39.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.583Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="MySQL">
+<meta property="article:tag" content="SQL">
+<meta property="article:tag" content="高级查询">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/mysql/04-mysql-advanced-query/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/mysql/04-mysql-advanced-query/","path":"mysql/04-mysql-advanced-query/","title":"第四章：MySQL 高级查询"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：MySQL 高级查询 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9AMySQL-%E9%AB%98%E7%BA%A7%E6%9F%A5%E8%AF%A2"><span class="nav-number">1.</span> <span class="nav-text">第四章：MySQL 高级查询</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B%E6%95%B0%E6%8D%AE%EF%BC%88%E4%B8%80%E9%94%AE%E5%BB%BA%E8%A1%A8%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">示例数据（一键建表）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%A4%9A%E8%A1%A8%E8%BF%9E%E6%8E%A5-JOIN"><span class="nav-number">1.3.</span> <span class="nav-text">一、多表连接 JOIN</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%86%85%E8%BF%9E%E6%8E%A5-INNER-JOIN%EF%BC%88%E4%B8%A4%E8%A1%A8%E9%83%BD%E6%9C%89%E5%8C%B9%E9%85%8D%E6%89%8D%E5%87%BA%E7%8E%B0%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 内连接 INNER JOIN（两表都有匹配才出现）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%B7%A6%E5%A4%96%E8%BF%9E%E6%8E%A5-LEFT-JOIN%EF%BC%88%E4%BF%9D%E7%95%99%E5%B7%A6%E8%A1%A8%E5%85%A8%E9%83%A8%E8%A1%8C%EF%BC%8C%E5%8F%B3%E8%A1%A8%E6%97%A0%E5%8C%B9%E9%85%8D%E5%88%99%E5%8F%B3%E5%88%97%E4%B8%BA-NULL%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 左外连接 LEFT JOIN（保留左表全部行，右表无匹配则右列为 NULL）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%8F%B3%E5%A4%96%E8%BF%9E%E6%8E%A5-RIGHT-JOIN"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. 右外连接 RIGHT JOIN</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%A4%9A%E8%A1%A8%E8%BF%9E%E6%8E%A5%EF%BC%88%E5%91%98%E5%B7%A5-%E9%83%A8%E9%97%A8-%E8%AE%A2%E5%8D%95%E6%B1%87%E6%80%BB%EF%BC%89"><span class="nav-number">1.3.4.</span> <span class="nav-text">4. 多表连接（员工 + 部门 + 订单汇总）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%AD%90%E6%9F%A5%E8%AF%A2"><span class="nav-number">1.4.</span> <span class="nav-text">二、子查询</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%A0%87%E9%87%8F%E5%AD%90%E6%9F%A5%E8%AF%A2%EF%BC%88%E8%BF%94%E5%9B%9E%E5%8D%95%E8%A1%8C%E5%8D%95%E5%88%97%EF%BC%8C%E5%8F%AF%E5%BD%93%E8%A1%A8%E8%BE%BE%E5%BC%8F%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. 标量子查询（返回单行单列，可当表达式）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-IN-NOT-IN%EF%BC%88%E9%9B%86%E5%90%88%E6%88%90%E5%91%98%E5%88%A4%E6%96%AD%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. IN &#x2F; NOT IN（集合成员判断）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-EXISTS-NOT-EXISTS%EF%BC%88%E5%85%B3%E5%BF%83%E3%80%8C%E6%98%AF%E5%90%A6%E5%AD%98%E5%9C%A8%E3%80%8D%EF%BC%8C%E5%B8%B8%E6%AF%94%E5%A4%A7-IN-%E6%9B%B4%E7%9C%81%E5%86%85%E5%AD%98%EF%BC%89"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. EXISTS &#x2F; NOT EXISTS（关心「是否存在」，常比大 IN 更省内存）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%B4%BE%E7%94%9F%E8%A1%A8%EF%BC%88FROM-%E5%AD%90%E6%9F%A5%E8%AF%A2%EF%BC%8C%E9%A1%BB%E6%9C%89%E5%88%AB%E5%90%8D%EF%BC%89"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. 派生表（FROM 子查询，须有别名）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81UNION-%E4%B8%8E-UNION-ALL"><span class="nav-number">1.5.</span> <span class="nav-text">三、UNION 与 UNION ALL</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%85%AC%E5%85%B1%E8%A1%A8%E8%A1%A8%E8%BE%BE%E5%BC%8F-WITH%EF%BC%88CTE%EF%BC%89%EF%BC%88MySQL-8-0-%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">四、公共表表达式 WITH（CTE）（MySQL 8.0+）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E7%AA%97%E5%8F%A3%E5%87%BD%E6%95%B0%EF%BC%88MySQL-8-0-%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">五、窗口函数（MySQL 8.0+）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%88%86%E5%8C%BA%E6%8E%92%E5%BA%8F%EF%BC%9AROW-NUMBER-RANK-DENSE-RANK"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. 分区排序：ROW_NUMBER &#x2F; RANK &#x2F; DENSE_RANK</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%B4%AF%E8%AE%A1%E4%B8%8E%E6%BB%91%E5%8A%A8%EF%BC%9ASUM-AVG-OVER"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. 累计与滑动：SUM &#x2F; AVG OVER</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%8F%96%E6%AF%8F%E7%BB%84-Top-N-%E7%9A%84%E5%B8%B8%E8%A7%81%E5%86%99%E6%B3%95%EF%BC%88%E4%BE%8B%E5%A6%82%E6%AF%8F%E9%83%A8%E9%97%A8%E5%B7%A5%E8%B5%84%E5%89%8D%E4%B8%A4%E5%90%8D%EF%BC%89"><span class="nav-number">1.7.3.</span> <span class="nav-text">3. 取每组 Top N 的常见写法（例如每部门工资前两名）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E9%94%99%E4%BD%8D%E5%8F%96%E5%80%BC%EF%BC%9ALAG-LEAD%EF%BC%88%E5%90%8C%E6%AF%94%E7%8E%AF%E6%AF%94%E7%9A%84%E6%A0%87%E9%85%8D%EF%BC%89"><span class="nav-number">1.7.4.</span> <span class="nav-text">4. 错位取值：LAG &#x2F; LEAD（同比环比的标配）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%88%86%E7%BB%84%E4%B8%8E%E6%9D%A1%E4%BB%B6%E8%81%9A%E5%90%88-GROUP-BY-HAVING"><span class="nav-number">1.8.</span> <span class="nav-text">六、分组与条件聚合 GROUP BY &#x2F; HAVING</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81CASE-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E4%B8%8E%E6%9D%A1%E4%BB%B6%E8%AE%A1%E6%95%B0"><span class="nav-number">1.9.</span> <span class="nav-text">七、CASE 表达式与条件计数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E5%88%86%E7%BB%84%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%8B%BC%E6%8E%A5-GROUP-CONCAT"><span class="nav-number">1.10.</span> <span class="nav-text">八、分组字符串拼接 GROUP_CONCAT</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%88%86%E9%A1%B5%E4%B8%8E%E7%A8%B3%E5%AE%9A%E6%8E%92%E5%BA%8F"><span class="nav-number">1.11.</span> <span class="nav-text">九、分页与稳定排序</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%B8%B8%E7%94%A8%E8%A1%A5%E5%85%85%EF%BC%9ADISTINCT%E3%80%81COALESCE%E3%80%81%E6%AD%A3%E5%88%99"><span class="nav-number">1.12.</span> <span class="nav-text">十、常用补充：DISTINCT、COALESCE、正则</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81JSON-%E6%9F%A5%E8%AF%A2%E4%B8%8E-JSON-TABLE%EF%BC%888-0-%EF%BC%89"><span class="nav-number">1.13.</span> <span class="nav-text">十一、JSON 查询与 JSON_TABLE（8.0+）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%B7%AF%E5%BE%84%E6%8F%90%E5%8F%96%E4%B8%89%E4%BB%B6%E5%A5%97"><span class="nav-number">1.13.1.</span> <span class="nav-text">1. 路径提取三件套</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-JSON-TABLE%EF%BC%9A%E6%8A%8A-JSON-%E6%95%B0%E7%BB%84%E3%80%8C%E6%8B%8D%E5%B9%B3%E6%88%90%E8%A1%A8%E3%80%8D%EF%BC%888-0-%EF%BC%89"><span class="nav-number">1.13.2.</span> <span class="nav-text">2. JSON_TABLE：把 JSON 数组「拍平成表」（8.0+）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81%E6%B4%BE%E7%94%9F%E8%A1%A8%E5%90%88%E5%B9%B6%E4%B8%8E%E4%BC%98%E5%8C%96%E5%99%A8%E8%A1%8C%E4%B8%BA%EF%BC%888-0-%E9%A1%BB%E7%9F%A5%EF%BC%89"><span class="nav-number">1.14.</span> <span class="nav-text">十二、派生表合并与优化器行为（8.0+ 须知）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%89%E3%80%81EXPLAIN-%E8%BF%9B%E9%98%B6%EF%BC%9AFORMAT-JSON-%E4%B8%8E-ANALYZE%EF%BC%888-0-18-%EF%BC%89"><span class="nav-number">1.15.</span> <span class="nav-text">十三、EXPLAIN 进阶：FORMAT&#x3D;JSON 与 ANALYZE（8.0.18+）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-FORMAT-JSON%EF%BC%9A%E7%9C%8B%E6%88%90%E6%9C%AC%E6%98%8E%E7%BB%86"><span class="nav-number">1.15.1.</span> <span class="nav-text">1. FORMAT&#x3D;JSON：看成本明细</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-EXPLAIN-ANALYZE%EF%BC%9A%E7%9C%8B%E7%9C%9F%E5%AE%9E%E6%89%A7%E8%A1%8C%EF%BC%88%E4%BC%9A%E7%9C%9F%E7%9A%84%E8%B7%91%E6%9F%A5%E8%AF%A2%EF%BC%81%EF%BC%89"><span class="nav-number">1.15.2.</span> <span class="nav-text">2. EXPLAIN ANALYZE：看真实执行（会真的跑查询！）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E4%BC%98%E5%8C%96%E5%99%A8%E6%8F%90%E7%A4%BA%EF%BC%88Optimizer-Hints%EF%BC%8C%E6%B8%A9%E5%92%8C%E5%B9%B2%E9%A2%84%EF%BC%89"><span class="nav-number">1.15.3.</span> <span class="nav-text">3. 优化器提示（Optimizer Hints，温和干预）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E5%9B%9B%E3%80%81%E9%80%9F%E6%9F%A5%E5%B0%8F%E7%BB%93"><span class="nav-number">1.16.</span> <span class="nav-text">十四、速查小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.17.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/mysql/04-mysql-advanced-query/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：MySQL 高级查询 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：MySQL 高级查询
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 12:38:39" itemprop="dateCreated datePublished" datetime="2026-05-03T12:38:39+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/MySQL-%E6%B7%B1%E5%85%A5/" itemprop="url" rel="index"><span itemprop="name">MySQL 深入</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>13k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>12 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：MySQL-高级查询"><a href="#第四章：MySQL-高级查询" class="headerlink" title="第四章：MySQL 高级查询"></a>第四章：MySQL 高级查询</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>高级查询</strong>是超越单表 <code>SELECT ... WHERE</code> 的多表、分组、窗口类查询，核心是把<strong>拆开存的关系拼回来</strong>：</p>
+<ol>
+<li><strong>为什么数据要拆开存</strong>：关系模型按范式把业务拆成多张表（如 <strong><code>emp</code></strong> 员工表与 <strong><code>dept</code></strong> 部门表），避免重复存储；查询的本质就是用 <strong>JOIN &#x2F; 子查询</strong>按关联字段把数据重新拼装——第一章建的表结构，在这里被「消费」。</li>
+<li><strong>JOIN 的语义差异决定丢不丢数据</strong>：<strong>INNER JOIN</strong> 只保留两表都匹配的行；<strong>LEFT JOIN</strong> 保留左表全量、右表无匹配补 <strong>NULL</strong>。选错连接类型，统计结果会悄悄少行，是报表错乱的头号来源。</li>
+<li><strong>聚合把「多行」压成「一行」</strong>：<strong>GROUP BY</strong> 分组后才能用 <strong>COUNT &#x2F; SUM &#x2F; AVG</strong>；过滤顺序是 <strong>WHERE（分组前滤行）→ GROUP BY → HAVING（分组后滤组）</strong>，颠倒位置直接报错或结果不对。</li>
+<li><strong>MySQL 8.0+ 的两大武器</strong>：<strong>CTE（WITH）</strong> 把复杂查询拆成可读的「临时结果」并支持 <strong>RECURSIVE</strong> 查树；<strong>窗口函数</strong>在<strong>不减少行数</strong>的前提下做组内排名、累计——「每组 Top N」从此有了标准解法。</li>
+<li><strong>性能意识贯穿始终</strong>：判断存在性优先 <strong>EXISTS</strong>，合并结果优先 <strong>UNION ALL</strong>（免去去重排序），深分页 <strong>LIMIT 大 OFFSET</strong> 会越来越慢、生产改用键集分页——写法差异就是性能差异。</li>
+</ol>
+<p>本章全部示例基于同一套示例数据，先建库建表：</p>
+<h2 id="示例数据（一键建表）"><a href="#示例数据（一键建表）" class="headerlink" title="示例数据（一键建表）"></a>示例数据（一键建表）</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> DATABASE IF <span class="keyword">NOT</span> <span class="keyword">EXISTS</span> adv_demo <span class="keyword">DEFAULT</span> <span class="keyword">CHARACTER SET</span> utf8mb4 <span class="keyword">COLLATE</span> utf8mb4_unicode_ci;</span><br><span class="line">USE adv_demo;</span><br><span class="line"></span><br><span class="line"><span class="keyword">DROP</span> <span class="keyword">TABLE</span> IF <span class="keyword">EXISTS</span> emp;</span><br><span class="line"><span class="keyword">DROP</span> <span class="keyword">TABLE</span> IF <span class="keyword">EXISTS</span> dept;</span><br><span class="line"><span class="keyword">DROP</span> <span class="keyword">TABLE</span> IF <span class="keyword">EXISTS</span> orders;</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE TABLE</span> dept (</span><br><span class="line">    id <span class="type">INT</span> <span class="keyword">PRIMARY KEY</span>,</span><br><span class="line">    name <span class="type">VARCHAR</span>(<span class="number">50</span>) <span class="keyword">NOT NULL</span></span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4;</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE TABLE</span> emp (</span><br><span class="line">    id <span class="type">INT</span> <span class="keyword">PRIMARY KEY</span>,</span><br><span class="line">    name <span class="type">VARCHAR</span>(<span class="number">50</span>) <span class="keyword">NOT NULL</span>,</span><br><span class="line">    dept_id <span class="type">INT</span>,</span><br><span class="line">    salary <span class="type">DECIMAL</span>(<span class="number">10</span>,<span class="number">2</span>),</span><br><span class="line">    hire_date <span class="type">DATE</span>,</span><br><span class="line">    <span class="keyword">CONSTRAINT</span> fk_emp_dept <span class="keyword">FOREIGN KEY</span> (dept_id) <span class="keyword">REFERENCES</span> dept(id)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4;</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE TABLE</span> orders (</span><br><span class="line">    id <span class="type">INT</span> <span class="keyword">PRIMARY KEY</span> AUTO_INCREMENT,</span><br><span class="line">    emp_id <span class="type">INT</span> <span class="keyword">NOT NULL</span>,</span><br><span class="line">    amount <span class="type">DECIMAL</span>(<span class="number">10</span>,<span class="number">2</span>) <span class="keyword">NOT NULL</span>,</span><br><span class="line">    order_date <span class="type">DATE</span> <span class="keyword">NOT NULL</span>,</span><br><span class="line">    <span class="keyword">CONSTRAINT</span> fk_ord_emp <span class="keyword">FOREIGN KEY</span> (emp_id) <span class="keyword">REFERENCES</span> emp(id)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4;</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT INTO</span> dept (id, name) <span class="keyword">VALUES</span></span><br><span class="line">(<span class="number">1</span>, <span class="string">&#x27;研发&#x27;</span>), (<span class="number">2</span>, <span class="string">&#x27;市场&#x27;</span>), (<span class="number">3</span>, <span class="string">&#x27;财务&#x27;</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT INTO</span> emp (id, name, dept_id, salary, hire_date) <span class="keyword">VALUES</span></span><br><span class="line">(<span class="number">1</span>, <span class="string">&#x27;张三&#x27;</span>, <span class="number">1</span>, <span class="number">15000.00</span>, <span class="string">&#x27;2020-03-01&#x27;</span>),</span><br><span class="line">(<span class="number">2</span>, <span class="string">&#x27;李四&#x27;</span>, <span class="number">1</span>, <span class="number">18000.00</span>, <span class="string">&#x27;2019-07-15&#x27;</span>),</span><br><span class="line">(<span class="number">3</span>, <span class="string">&#x27;王五&#x27;</span>, <span class="number">2</span>, <span class="number">12000.00</span>, <span class="string">&#x27;2021-01-10&#x27;</span>),</span><br><span class="line">(<span class="number">4</span>, <span class="string">&#x27;赵六&#x27;</span>, <span class="number">2</span>, <span class="keyword">NULL</span>, <span class="string">&#x27;2022-05-20&#x27;</span>),</span><br><span class="line">(<span class="number">5</span>, <span class="string">&#x27;钱七&#x27;</span>, <span class="keyword">NULL</span>, <span class="number">9000.00</span>, <span class="string">&#x27;2023-11-01&#x27;</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT INTO</span> orders (emp_id, amount, order_date) <span class="keyword">VALUES</span></span><br><span class="line">(<span class="number">1</span>, <span class="number">100.00</span>, <span class="string">&#x27;2024-06-01&#x27;</span>),</span><br><span class="line">(<span class="number">1</span>, <span class="number">200.50</span>, <span class="string">&#x27;2024-06-10&#x27;</span>),</span><br><span class="line">(<span class="number">2</span>, <span class="number">300.00</span>, <span class="string">&#x27;2024-06-12&#x27;</span>),</span><br><span class="line">(<span class="number">3</span>, <span class="number">50.00</span>, <span class="string">&#x27;2024-06-15&#x27;</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（仅展示插入后的基表；<strong><code>orders.id</code></strong> 由自增生成，下列 <strong><code>orders</code></strong> 行为常见顺序）：</p>
+<p><strong><code>dept</code></strong></p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>研发</td>
+</tr>
+<tr>
+<td>2</td>
+<td>市场</td>
+</tr>
+<tr>
+<td>3</td>
+<td>财务</td>
+</tr>
+</tbody></table>
+<p><strong><code>emp</code></strong></p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>dept_id</th>
+<th>salary</th>
+<th>hire_date</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>张三</td>
+<td>1</td>
+<td>15000.00</td>
+<td>2020-03-01</td>
+</tr>
+<tr>
+<td>2</td>
+<td>李四</td>
+<td>1</td>
+<td>18000.00</td>
+<td>2019-07-15</td>
+</tr>
+<tr>
+<td>3</td>
+<td>王五</td>
+<td>2</td>
+<td>12000.00</td>
+<td>2021-01-10</td>
+</tr>
+<tr>
+<td>4</td>
+<td>赵六</td>
+<td>2</td>
+<td>NULL</td>
+<td>2022-05-20</td>
+</tr>
+<tr>
+<td>5</td>
+<td>钱七</td>
+<td>NULL</td>
+<td>9000.00</td>
+<td>2023-11-01</td>
+</tr>
+</tbody></table>
+<p><strong><code>orders</code></strong>（<strong><code>id</code></strong> 以实际自增值为准，下表按 <strong><code>id</code> 1～4</strong> 示意）</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>emp_id</th>
+<th>amount</th>
+<th>order_date</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>1</td>
+<td>100.00</td>
+<td>2024-06-01</td>
+</tr>
+<tr>
+<td>2</td>
+<td>1</td>
+<td>200.50</td>
+<td>2024-06-10</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2</td>
+<td>300.00</td>
+<td>2024-06-12</td>
+</tr>
+<tr>
+<td>4</td>
+<td>3</td>
+<td>50.00</td>
+<td>2024-06-15</td>
+</tr>
+</tbody></table>
+<p>下文默认 <strong><code>USE adv_demo;</code></strong>。各小节 <strong>「示例结果」</strong> 均按上述数据推算（与本地执行相比，仅可能出现行顺序差异）。</p>
+<hr>
+<h2 id="一、多表连接-JOIN"><a href="#一、多表连接-JOIN" class="headerlink" title="一、多表连接 JOIN"></a>一、多表连接 JOIN</h2><h3 id="1-内连接-INNER-JOIN（两表都有匹配才出现）"><a href="#1-内连接-INNER-JOIN（两表都有匹配才出现）" class="headerlink" title="1. 内连接 INNER JOIN（两表都有匹配才出现）"></a>1. 内连接 INNER JOIN（两表都有匹配才出现）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> e.id, e.name, d.name <span class="keyword">AS</span> dept_name, e.salary</span><br><span class="line"><span class="keyword">FROM</span> emp e</span><br><span class="line"><span class="keyword">INNER</span> <span class="keyword">JOIN</span> dept d <span class="keyword">ON</span> e.dept_id <span class="operator">=</span> d.id;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（无部门者不出现在内连接中）：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>dept_name</th>
+<th>salary</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>张三</td>
+<td>研发</td>
+<td>15000.00</td>
+</tr>
+<tr>
+<td>2</td>
+<td>李四</td>
+<td>研发</td>
+<td>18000.00</td>
+</tr>
+<tr>
+<td>3</td>
+<td>王五</td>
+<td>市场</td>
+<td>12000.00</td>
+</tr>
+<tr>
+<td>4</td>
+<td>赵六</td>
+<td>市场</td>
+<td>NULL</td>
+</tr>
+</tbody></table>
+<h3 id="2-左外连接-LEFT-JOIN（保留左表全部行，右表无匹配则右列为-NULL）"><a href="#2-左外连接-LEFT-JOIN（保留左表全部行，右表无匹配则右列为-NULL）" class="headerlink" title="2. 左外连接 LEFT JOIN（保留左表全部行，右表无匹配则右列为 NULL）"></a>2. 左外连接 LEFT JOIN（保留左表全部行，右表无匹配则右列为 NULL）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> e.name, d.name <span class="keyword">AS</span> dept_name</span><br><span class="line"><span class="keyword">FROM</span> emp e</span><br><span class="line"><span class="keyword">LEFT</span> <span class="keyword">JOIN</span> dept d <span class="keyword">ON</span> e.dept_id <span class="operator">=</span> d.id;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>dept_name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+<td>研发</td>
+</tr>
+<tr>
+<td>李四</td>
+<td>研发</td>
+</tr>
+<tr>
+<td>王五</td>
+<td>市场</td>
+</tr>
+<tr>
+<td>赵六</td>
+<td>市场</td>
+</tr>
+<tr>
+<td>钱七</td>
+<td>NULL</td>
+</tr>
+</tbody></table>
+<h3 id="3-右外连接-RIGHT-JOIN"><a href="#3-右外连接-RIGHT-JOIN" class="headerlink" title="3. 右外连接 RIGHT JOIN"></a>3. 右外连接 RIGHT JOIN</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> e.name, d.name <span class="keyword">AS</span> dept_name</span><br><span class="line"><span class="keyword">FROM</span> emp e</span><br><span class="line"><span class="keyword">RIGHT</span> <span class="keyword">JOIN</span> dept d <span class="keyword">ON</span> e.dept_id <span class="operator">=</span> d.id;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（右表 <strong><code>dept</code></strong> 全保留；无员工部门左表为 <strong>NULL</strong>；行顺序依优化器可能不同）：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>dept_name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+<td>研发</td>
+</tr>
+<tr>
+<td>李四</td>
+<td>研发</td>
+</tr>
+<tr>
+<td>王五</td>
+<td>市场</td>
+</tr>
+<tr>
+<td>赵六</td>
+<td>市场</td>
+</tr>
+<tr>
+<td>NULL</td>
+<td>财务</td>
+</tr>
+</tbody></table>
+<h3 id="4-多表连接（员工-部门-订单汇总）"><a href="#4-多表连接（员工-部门-订单汇总）" class="headerlink" title="4. 多表连接（员工 + 部门 + 订单汇总）"></a>4. 多表连接（员工 + 部门 + 订单汇总）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> e.name,</span><br><span class="line">       d.name <span class="keyword">AS</span> dept_name,</span><br><span class="line">       <span class="built_in">COUNT</span>(o.id) <span class="keyword">AS</span> order_cnt,</span><br><span class="line">       IFNULL(<span class="built_in">SUM</span>(o.amount), <span class="number">0</span>) <span class="keyword">AS</span> total_amount</span><br><span class="line"><span class="keyword">FROM</span> emp e</span><br><span class="line"><span class="keyword">LEFT</span> <span class="keyword">JOIN</span> dept d <span class="keyword">ON</span> e.dept_id <span class="operator">=</span> d.id</span><br><span class="line"><span class="keyword">LEFT</span> <span class="keyword">JOIN</span> orders o <span class="keyword">ON</span> o.emp_id <span class="operator">=</span> e.id</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> e.id, e.name, d.name;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>order_cnt</code></strong> &#x2F; <strong><code>total_amount</code></strong> 按 <strong><code>orders</code></strong> 示意 <strong><code>id</code></strong> 推算）：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>dept_name</th>
+<th>order_cnt</th>
+<th>total_amount</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+<td>研发</td>
+<td>2</td>
+<td>300.50</td>
+</tr>
+<tr>
+<td>李四</td>
+<td>研发</td>
+<td>1</td>
+<td>300.00</td>
+</tr>
+<tr>
+<td>王五</td>
+<td>市场</td>
+<td>1</td>
+<td>50.00</td>
+</tr>
+<tr>
+<td>赵六</td>
+<td>市场</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>钱七</td>
+<td>NULL</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、子查询"><a href="#二、子查询" class="headerlink" title="二、子查询"></a>二、子查询</h2><h3 id="1-标量子查询（返回单行单列，可当表达式）"><a href="#1-标量子查询（返回单行单列，可当表达式）" class="headerlink" title="1. 标量子查询（返回单行单列，可当表达式）"></a>1. 标量子查询（返回单行单列，可当表达式）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> name, salary,</span><br><span class="line">       (<span class="keyword">SELECT</span> <span class="built_in">AVG</span>(salary) <span class="keyword">FROM</span> emp <span class="keyword">WHERE</span> salary <span class="keyword">IS</span> <span class="keyword">NOT NULL</span>) <span class="keyword">AS</span> company_avg_salary</span><br><span class="line"><span class="keyword">FROM</span> emp;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（全表平均薪 <strong>(15000+18000+12000+9000)&#x2F;4 &#x3D; 13500</strong>；<strong><code>NULL</code></strong> 薪资不参与子查询平均）：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>salary</th>
+<th>company_avg_salary</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+<td>15000.00</td>
+<td>13500.000000</td>
+</tr>
+<tr>
+<td>李四</td>
+<td>18000.00</td>
+<td>13500.000000</td>
+</tr>
+<tr>
+<td>王五</td>
+<td>12000.00</td>
+<td>13500.000000</td>
+</tr>
+<tr>
+<td>赵六</td>
+<td>NULL</td>
+<td>13500.000000</td>
+</tr>
+<tr>
+<td>钱七</td>
+<td>9000.00</td>
+<td>13500.000000</td>
+</tr>
+</tbody></table>
+<h3 id="2-IN-NOT-IN（集合成员判断）"><a href="#2-IN-NOT-IN（集合成员判断）" class="headerlink" title="2. IN &#x2F; NOT IN（集合成员判断）"></a>2. IN &#x2F; NOT IN（集合成员判断）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> name <span class="keyword">FROM</span> emp</span><br><span class="line"><span class="keyword">WHERE</span> dept_id <span class="keyword">IN</span> (<span class="keyword">SELECT</span> id <span class="keyword">FROM</span> dept <span class="keyword">WHERE</span> name <span class="keyword">IN</span> (<span class="string">&#x27;研发&#x27;</span>, <span class="string">&#x27;市场&#x27;</span>));</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+</tr>
+<tr>
+<td>李四</td>
+</tr>
+<tr>
+<td>王五</td>
+</tr>
+<tr>
+<td>赵六</td>
+</tr>
+</tbody></table>
+<h3 id="3-EXISTS-NOT-EXISTS（关心「是否存在」，常比大-IN-更省内存）"><a href="#3-EXISTS-NOT-EXISTS（关心「是否存在」，常比大-IN-更省内存）" class="headerlink" title="3. EXISTS &#x2F; NOT EXISTS（关心「是否存在」，常比大 IN 更省内存）"></a>3. EXISTS &#x2F; NOT EXISTS（关心「是否存在」，常比大 <strong>IN</strong> 更省内存）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> e.name</span><br><span class="line"><span class="keyword">FROM</span> emp e</span><br><span class="line"><span class="keyword">WHERE</span> <span class="keyword">EXISTS</span> (</span><br><span class="line">    <span class="keyword">SELECT</span> <span class="number">1</span> <span class="keyword">FROM</span> orders o <span class="keyword">WHERE</span> o.emp_id <span class="operator">=</span> e.id</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（在 <strong><code>orders</code></strong> 中出现过 <strong><code>emp_id</code></strong> 的员工）：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+</tr>
+<tr>
+<td>李四</td>
+</tr>
+<tr>
+<td>王五</td>
+</tr>
+</tbody></table>
+<h3 id="4-派生表（FROM-子查询，须有别名）"><a href="#4-派生表（FROM-子查询，须有别名）" class="headerlink" title="4. 派生表（FROM 子查询，须有别名）"></a>4. 派生表（FROM 子查询，须有别名）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> t.dept_name, t.cnt</span><br><span class="line"><span class="keyword">FROM</span> (</span><br><span class="line">    <span class="keyword">SELECT</span> d.name <span class="keyword">AS</span> dept_name, <span class="built_in">COUNT</span>(<span class="operator">*</span>) <span class="keyword">AS</span> cnt</span><br><span class="line">    <span class="keyword">FROM</span> emp e</span><br><span class="line">    <span class="keyword">JOIN</span> dept d <span class="keyword">ON</span> e.dept_id <span class="operator">=</span> d.id</span><br><span class="line">    <span class="keyword">GROUP</span> <span class="keyword">BY</span> d.id, d.name</span><br><span class="line">) <span class="keyword">AS</span> t</span><br><span class="line"><span class="keyword">WHERE</span> t.cnt <span class="operator">&gt;=</span> <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>dept_name</th>
+<th>cnt</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>研发</td>
+<td>2</td>
+</tr>
+<tr>
+<td>市场</td>
+<td>2</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="三、UNION-与-UNION-ALL"><a href="#三、UNION-与-UNION-ALL" class="headerlink" title="三、UNION 与 UNION ALL"></a>三、UNION 与 UNION ALL</h2><p><strong><code>UNION</code></strong>：合并结果集并<strong>去重</strong>；<strong><code>UNION ALL</code></strong>：不去重，性能通常更好。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> name, <span class="string">&#x27;emp&#x27;</span> <span class="keyword">AS</span> src <span class="keyword">FROM</span> emp <span class="keyword">WHERE</span> dept_id <span class="operator">=</span> <span class="number">1</span></span><br><span class="line"><span class="keyword">UNION</span> <span class="keyword">ALL</span></span><br><span class="line"><span class="keyword">SELECT</span> name, <span class="string">&#x27;dept&#x27;</span> <span class="keyword">AS</span> src <span class="keyword">FROM</span> dept <span class="keyword">WHERE</span> id <span class="operator">=</span> <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>UNION ALL</code></strong> 保留上下两段所有行）：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>src</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+<td>emp</td>
+</tr>
+<tr>
+<td>李四</td>
+<td>emp</td>
+</tr>
+<tr>
+<td>研发</td>
+<td>dept</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="四、公共表表达式-WITH（CTE）（MySQL-8-0-）"><a href="#四、公共表表达式-WITH（CTE）（MySQL-8-0-）" class="headerlink" title="四、公共表表达式 WITH（CTE）（MySQL 8.0+）"></a>四、公共表表达式 WITH（CTE）（MySQL 8.0+）</h2><p>把复杂查询拆成可读的多段「临时结果」。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">WITH</span> dept_stat <span class="keyword">AS</span> (</span><br><span class="line">    <span class="keyword">SELECT</span> dept_id, <span class="built_in">COUNT</span>(<span class="operator">*</span>) <span class="keyword">AS</span> emp_cnt, <span class="built_in">AVG</span>(salary) <span class="keyword">AS</span> avg_sal</span><br><span class="line">    <span class="keyword">FROM</span> emp</span><br><span class="line">    <span class="keyword">WHERE</span> salary <span class="keyword">IS</span> <span class="keyword">NOT NULL</span></span><br><span class="line">    <span class="keyword">GROUP</span> <span class="keyword">BY</span> dept_id</span><br><span class="line">)</span><br><span class="line"><span class="keyword">SELECT</span> d.name, ds.emp_cnt, ROUND(ds.avg_sal, <span class="number">2</span>) <span class="keyword">AS</span> avg_salary</span><br><span class="line"><span class="keyword">FROM</span> dept_stat ds</span><br><span class="line"><span class="keyword">JOIN</span> dept d <span class="keyword">ON</span> d.id <span class="operator">=</span> ds.dept_id;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>dept_stat</code></strong> 中 <strong><code>dept_id</code></strong> 为 <strong>NULL</strong> 的分组与 <strong><code>dept</code></strong> 内连接时被过滤；<strong><code>AVG(salary)</code></strong> 在部门 <strong>2</strong> 仅统计非 <strong>NULL</strong> 薪资）：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>emp_cnt</th>
+<th>avg_salary</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>研发</td>
+<td>2</td>
+<td>16500.00</td>
+</tr>
+<tr>
+<td>市场</td>
+<td>1</td>
+<td>12000.00</td>
+</tr>
+</tbody></table>
+<p><strong>递归 CTE</strong>（如组织架构、树路径）亦在 <strong>8.0+</strong> 支持，需 <strong><code>WITH RECURSIVE</code></strong>。以下用部门树示例完整走一遍：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 假设 dept 增加 parent_id 列：研发(1) 无上级，后端组(4)/前端组(5) 挂在研发下</span></span><br><span class="line"><span class="keyword">WITH</span> <span class="keyword">RECURSIVE</span> dept_tree <span class="keyword">AS</span> (</span><br><span class="line">    <span class="comment">-- 锚点：顶层部门</span></span><br><span class="line">    <span class="keyword">SELECT</span> id, name, parent_id, <span class="number">0</span> <span class="keyword">AS</span> lvl, <span class="built_in">CAST</span>(id <span class="keyword">AS</span> <span class="type">CHAR</span>(<span class="number">200</span>)) <span class="keyword">AS</span> path</span><br><span class="line">    <span class="keyword">FROM</span> dept <span class="keyword">WHERE</span> parent_id <span class="keyword">IS</span> <span class="keyword">NULL</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">UNION</span> <span class="keyword">ALL</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">-- 递归步：沿 parent_id 向下找子部门</span></span><br><span class="line">    <span class="keyword">SELECT</span> d.id, d.name, d.parent_id, t.lvl <span class="operator">+</span> <span class="number">1</span>,</span><br><span class="line">           CONCAT(t.path, <span class="string">&#x27;&gt;&#x27;</span>, d.id)</span><br><span class="line">    <span class="keyword">FROM</span> dept d</span><br><span class="line">    <span class="keyword">JOIN</span> dept_tree t <span class="keyword">ON</span> d.parent_id <span class="operator">=</span> t.id</span><br><span class="line">)</span><br><span class="line"><span class="keyword">SELECT</span> id, name, lvl, path <span class="keyword">FROM</span> dept_tree <span class="keyword">ORDER</span> <span class="keyword">BY</span> path;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>lvl</code></strong> 为层级深度，<strong><code>path</code></strong> 为从根到当前节点的路径）：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>lvl</th>
+<th>path</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>研发</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>后端组</td>
+<td>1</td>
+<td>1&gt;4</td>
+</tr>
+<tr>
+<td>5</td>
+<td>前端组</td>
+<td>1</td>
+<td>1&gt;5</td>
+</tr>
+</tbody></table>
+<p><strong>要点</strong>：递归 CTE 由<strong>锚点成员 + UNION ALL + 递归成员</strong>三段构成；递归成员必须引用 CTE 自身一次；默认递归上限 <strong>1000</strong> 层（<code>cte_max_recursion_depth</code>），深层树需调大；循环数据会导致打满上限报错，可加 <strong><code>WHERE t.lvl &lt; 10</code></strong> 兜底。</p>
+<hr>
+<h2 id="五、窗口函数（MySQL-8-0-）"><a href="#五、窗口函数（MySQL-8-0-）" class="headerlink" title="五、窗口函数（MySQL 8.0+）"></a>五、窗口函数（MySQL 8.0+）</h2><p>在<strong>不减少结果行数</strong>的前提下，对分区内的行做排序、累计等。</p>
+<h3 id="1-分区排序：ROW-NUMBER-RANK-DENSE-RANK"><a href="#1-分区排序：ROW-NUMBER-RANK-DENSE-RANK" class="headerlink" title="1. 分区排序：ROW_NUMBER &#x2F; RANK &#x2F; DENSE_RANK"></a>1. 分区排序：ROW_NUMBER &#x2F; RANK &#x2F; DENSE_RANK</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> id, name, dept_id, salary,</span><br><span class="line">       <span class="built_in">ROW_NUMBER</span>() <span class="keyword">OVER</span> (<span class="keyword">PARTITION</span> <span class="keyword">BY</span> dept_id <span class="keyword">ORDER</span> <span class="keyword">BY</span> salary <span class="keyword">DESC</span>) <span class="keyword">AS</span> rn_in_dept,</span><br><span class="line">       <span class="built_in">RANK</span>()       <span class="keyword">OVER</span> (<span class="keyword">PARTITION</span> <span class="keyword">BY</span> dept_id <span class="keyword">ORDER</span> <span class="keyword">BY</span> salary <span class="keyword">DESC</span>) <span class="keyword">AS</span> rk,</span><br><span class="line">       <span class="built_in">DENSE_RANK</span>() <span class="keyword">OVER</span> (<span class="keyword">PARTITION</span> <span class="keyword">BY</span> dept_id <span class="keyword">ORDER</span> <span class="keyword">BY</span> salary <span class="keyword">DESC</span>) <span class="keyword">AS</span> drk</span><br><span class="line"><span class="keyword">FROM</span> emp</span><br><span class="line"><span class="keyword">WHERE</span> dept_id <span class="keyword">IS</span> <span class="keyword">NOT NULL</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>dept_id = 1</code></strong>：薪资降序 <strong>李四 → 张三</strong>；<strong><code>dept_id = 2</code></strong>：<strong>王五</strong> 在前、<strong><code>NULL</code></strong> 薪资在后；<strong><code>rk</code> &#x2F; <code>drk</code></strong> 在无并列时与 <strong><code>rn_in_dept</code></strong> 一致）：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>dept_id</th>
+<th>salary</th>
+<th>rn_in_dept</th>
+<th>rk</th>
+<th>drk</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2</td>
+<td>李四</td>
+<td>1</td>
+<td>18000.00</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>1</td>
+<td>张三</td>
+<td>1</td>
+<td>15000.00</td>
+<td>2</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>王五</td>
+<td>2</td>
+<td>12000.00</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>赵六</td>
+<td>2</td>
+<td>NULL</td>
+<td>2</td>
+<td>2</td>
+<td>2</td>
+</tr>
+</tbody></table>
+<h3 id="2-累计与滑动：SUM-AVG-OVER"><a href="#2-累计与滑动：SUM-AVG-OVER" class="headerlink" title="2. 累计与滑动：SUM &#x2F; AVG OVER"></a>2. 累计与滑动：SUM &#x2F; AVG OVER</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> emp_id, order_date, amount,</span><br><span class="line">       <span class="built_in">SUM</span>(amount) <span class="keyword">OVER</span> (<span class="keyword">PARTITION</span> <span class="keyword">BY</span> emp_id <span class="keyword">ORDER</span> <span class="keyword">BY</span> order_date</span><br><span class="line">                           <span class="keyword">ROWS</span> <span class="keyword">BETWEEN</span> UNBOUNDED PRECEDING <span class="keyword">AND</span> <span class="keyword">CURRENT</span> <span class="type">ROW</span>) <span class="keyword">AS</span> running_sum</span><br><span class="line"><span class="keyword">FROM</span> orders;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>running_sum</code></strong> 按 <strong><code>emp_id</code> + <code>order_date</code></strong> 分区累计；行顺序与存储顺序一致时如下）：</p>
+<table>
+<thead>
+<tr>
+<th>emp_id</th>
+<th>order_date</th>
+<th>amount</th>
+<th>running_sum</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>2024-06-01</td>
+<td>100.00</td>
+<td>100.00</td>
+</tr>
+<tr>
+<td>1</td>
+<td>2024-06-10</td>
+<td>200.50</td>
+<td>300.50</td>
+</tr>
+<tr>
+<td>2</td>
+<td>2024-06-12</td>
+<td>300.00</td>
+<td>300.00</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2024-06-15</td>
+<td>50.00</td>
+<td>50.00</td>
+</tr>
+</tbody></table>
+<h3 id="3-取每组-Top-N-的常见写法（例如每部门工资前两名）"><a href="#3-取每组-Top-N-的常见写法（例如每部门工资前两名）" class="headerlink" title="3. 取每组 Top N 的常见写法（例如每部门工资前两名）"></a>3. 取每组 Top N 的常见写法（例如每部门工资前两名）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (</span><br><span class="line">    <span class="keyword">SELECT</span> id, name, dept_id, salary,</span><br><span class="line">           <span class="built_in">ROW_NUMBER</span>() <span class="keyword">OVER</span> (<span class="keyword">PARTITION</span> <span class="keyword">BY</span> dept_id <span class="keyword">ORDER</span> <span class="keyword">BY</span> salary <span class="keyword">DESC</span>) <span class="keyword">AS</span> rn</span><br><span class="line">    <span class="keyword">FROM</span> emp</span><br><span class="line">    <span class="keyword">WHERE</span> dept_id <span class="keyword">IS</span> <span class="keyword">NOT NULL</span></span><br><span class="line">) x</span><br><span class="line"><span class="keyword">WHERE</span> x.rn <span class="operator">&lt;=</span> <span class="number">2</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（每部门 <strong><code>rn &lt;= 2</code></strong>，即薪资前两行；<strong><code>dept_id = 2</code></strong> 含 <strong><code>NULL</code></strong> 薪资）：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>dept_id</th>
+<th>salary</th>
+<th>rn</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2</td>
+<td>李四</td>
+<td>1</td>
+<td>18000.00</td>
+<td>1</td>
+</tr>
+<tr>
+<td>1</td>
+<td>张三</td>
+<td>1</td>
+<td>15000.00</td>
+<td>2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>王五</td>
+<td>2</td>
+<td>12000.00</td>
+<td>1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>赵六</td>
+<td>2</td>
+<td>NULL</td>
+<td>2</td>
+</tr>
+</tbody></table>
+<h3 id="4-错位取值：LAG-LEAD（同比环比的标配）"><a href="#4-错位取值：LAG-LEAD（同比环比的标配）" class="headerlink" title="4. 错位取值：LAG &#x2F; LEAD（同比环比的标配）"></a>4. 错位取值：LAG &#x2F; LEAD（同比环比的标配）</h3><p><strong><code>LAG(col, n)</code></strong> 取当前行<strong>前 n 行</strong>的值，<strong><code>LEAD(col, n)</code></strong> 取<strong>后 n 行</strong>——不用自连接就能算「与上期相比」：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> order_date,</span><br><span class="line">       <span class="built_in">SUM</span>(amount) <span class="keyword">AS</span> day_amount,</span><br><span class="line">       <span class="built_in">LAG</span>(<span class="built_in">SUM</span>(amount))  <span class="keyword">OVER</span> (<span class="keyword">ORDER</span> <span class="keyword">BY</span> order_date) <span class="keyword">AS</span> prev_day,</span><br><span class="line">       <span class="built_in">SUM</span>(amount) <span class="operator">-</span> <span class="built_in">LAG</span>(<span class="built_in">SUM</span>(amount)) <span class="keyword">OVER</span> (<span class="keyword">ORDER</span> <span class="keyword">BY</span> order_date) <span class="keyword">AS</span> diff</span><br><span class="line"><span class="keyword">FROM</span> orders</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> order_date</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> order_date;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（首日无上期，<strong><code>prev_day</code> &#x2F; <code>diff</code></strong> 为 <strong>NULL</strong>，可用 <strong><code>COALESCE</code></strong> 补 0）：</p>
+<table>
+<thead>
+<tr>
+<th>order_date</th>
+<th>day_amount</th>
+<th>prev_day</th>
+<th>diff</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2024-06-01</td>
+<td>100.00</td>
+<td>NULL</td>
+<td>NULL</td>
+</tr>
+<tr>
+<td>2024-06-10</td>
+<td>200.50</td>
+<td>100.00</td>
+<td>100.50</td>
+</tr>
+<tr>
+<td>2024-06-12</td>
+<td>300.00</td>
+<td>200.50</td>
+<td>99.50</td>
+</tr>
+<tr>
+<td>2024-06-15</td>
+<td>50.00</td>
+<td>300.00</td>
+<td>-250.00</td>
+</tr>
+</tbody></table>
+<p>配套常用：</p>
+<ul>
+<li><strong><code>FIRST_VALUE(col) OVER w</code> &#x2F; <code>LAST_VALUE(col) OVER w</code></strong>：取窗口首&#x2F;尾值，如「与部门最高薪的差距」；</li>
+<li><strong><code>NTILE(4) OVER (ORDER BY salary DESC)</code></strong>：把结果<strong>均分成 4 桶</strong>编号，做四分位分析；</li>
+<li><strong><code>CUME_DIST()</code> &#x2F; <code>PERCENT_RANK()</code></strong>：当前行在分区中的相对位置（0~1），「该员工薪资超过部门 80% 的人」这类口径。</li>
+</ul>
+<hr>
+<h2 id="六、分组与条件聚合-GROUP-BY-HAVING"><a href="#六、分组与条件聚合-GROUP-BY-HAVING" class="headerlink" title="六、分组与条件聚合 GROUP BY &#x2F; HAVING"></a>六、分组与条件聚合 GROUP BY &#x2F; HAVING</h2><p><strong><code>WHERE</code></strong> 在分组前过滤行；<strong><code>HAVING</code></strong> 在分组后过滤聚合结果。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> d.name <span class="keyword">AS</span> dept_name,</span><br><span class="line">       <span class="built_in">COUNT</span>(e.id) <span class="keyword">AS</span> emp_cnt,</span><br><span class="line">       <span class="built_in">MAX</span>(e.salary) <span class="keyword">AS</span> max_salary</span><br><span class="line"><span class="keyword">FROM</span> dept d</span><br><span class="line"><span class="keyword">LEFT</span> <span class="keyword">JOIN</span> emp e <span class="keyword">ON</span> e.dept_id <span class="operator">=</span> d.id</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> d.id, d.name</span><br><span class="line"><span class="keyword">HAVING</span> <span class="built_in">COUNT</span>(e.id) <span class="operator">&gt;</span> <span class="number">0</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>HAVING</code></strong> 去掉无员工的 <strong>财务</strong>）：</p>
+<table>
+<thead>
+<tr>
+<th>dept_name</th>
+<th>emp_cnt</th>
+<th>max_salary</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>研发</td>
+<td>2</td>
+<td>18000.00</td>
+</tr>
+<tr>
+<td>市场</td>
+<td>2</td>
+<td>12000.00</td>
+</tr>
+</tbody></table>
+<p><strong><code>COUNT(*)</code></strong> 与 <strong><code>COUNT(列)</code></strong> 区别：对 <strong><code>salary</code></strong> 统计时 <strong><code>NULL</code></strong> 不计入 <strong><code>COUNT(salary)</code></strong>。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> dept_id,</span><br><span class="line">       <span class="built_in">COUNT</span>(<span class="operator">*</span>) <span class="keyword">AS</span> rows_cnt,</span><br><span class="line">       <span class="built_in">COUNT</span>(salary) <span class="keyword">AS</span> non_null_salary_cnt</span><br><span class="line"><span class="keyword">FROM</span> emp</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> dept_id;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>dept_id = 2</code></strong> 两行里 <strong><code>salary</code></strong> 仅一行非 <strong>NULL</strong>，故 <strong><code>COUNT(salary)=1</code></strong>）：</p>
+<table>
+<thead>
+<tr>
+<th>dept_id</th>
+<th>rows_cnt</th>
+<th>non_null_salary_cnt</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>NULL</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>1</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>2</td>
+<td>2</td>
+<td>1</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="七、CASE-表达式与条件计数"><a href="#七、CASE-表达式与条件计数" class="headerlink" title="七、CASE 表达式与条件计数"></a>七、CASE 表达式与条件计数</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> name, salary,</span><br><span class="line">       <span class="keyword">CASE</span></span><br><span class="line">           <span class="keyword">WHEN</span> salary <span class="keyword">IS</span> <span class="keyword">NULL</span> <span class="keyword">THEN</span> <span class="string">&#x27;未填&#x27;</span></span><br><span class="line">           <span class="keyword">WHEN</span> salary <span class="operator">&gt;=</span> <span class="number">15000</span> <span class="keyword">THEN</span> <span class="string">&#x27;高&#x27;</span></span><br><span class="line">           <span class="keyword">WHEN</span> salary <span class="operator">&gt;=</span> <span class="number">10000</span> <span class="keyword">THEN</span> <span class="string">&#x27;中&#x27;</span></span><br><span class="line">           <span class="keyword">ELSE</span> <span class="string">&#x27;低&#x27;</span></span><br><span class="line">       <span class="keyword">END</span> <span class="keyword">AS</span> salary_level</span><br><span class="line"><span class="keyword">FROM</span> emp;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>salary</th>
+<th>salary_level</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+<td>15000.00</td>
+<td>高</td>
+</tr>
+<tr>
+<td>李四</td>
+<td>18000.00</td>
+<td>高</td>
+</tr>
+<tr>
+<td>王五</td>
+<td>12000.00</td>
+<td>中</td>
+</tr>
+<tr>
+<td>赵六</td>
+<td>NULL</td>
+<td>未填</td>
+</tr>
+<tr>
+<td>钱七</td>
+<td>9000.00</td>
+<td>低</td>
+</tr>
+</tbody></table>
+<p><strong>条件聚合</strong>（列转行统计）：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span></span><br><span class="line">    <span class="built_in">SUM</span>(<span class="keyword">CASE</span> <span class="keyword">WHEN</span> dept_id <span class="operator">=</span> <span class="number">1</span> <span class="keyword">THEN</span> <span class="number">1</span> <span class="keyword">ELSE</span> <span class="number">0</span> <span class="keyword">END</span>) <span class="keyword">AS</span> dept1_cnt,</span><br><span class="line">    <span class="built_in">SUM</span>(<span class="keyword">CASE</span> <span class="keyword">WHEN</span> dept_id <span class="operator">=</span> <span class="number">2</span> <span class="keyword">THEN</span> <span class="number">1</span> <span class="keyword">ELSE</span> <span class="number">0</span> <span class="keyword">END</span>) <span class="keyword">AS</span> dept2_cnt</span><br><span class="line"><span class="keyword">FROM</span> emp;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（单行汇总）：</p>
+<table>
+<thead>
+<tr>
+<th>dept1_cnt</th>
+<th>dept2_cnt</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2</td>
+<td>2</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="八、分组字符串拼接-GROUP-CONCAT"><a href="#八、分组字符串拼接-GROUP-CONCAT" class="headerlink" title="八、分组字符串拼接 GROUP_CONCAT"></a>八、分组字符串拼接 GROUP_CONCAT</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> d.name <span class="keyword">AS</span> dept_name,</span><br><span class="line">       GROUP_CONCAT(e.name <span class="keyword">ORDER</span> <span class="keyword">BY</span> e.salary <span class="keyword">DESC</span> SEPARATOR <span class="string">&#x27; | &#x27;</span>) <span class="keyword">AS</span> members</span><br><span class="line"><span class="keyword">FROM</span> dept d</span><br><span class="line"><span class="keyword">LEFT</span> <span class="keyword">JOIN</span> emp e <span class="keyword">ON</span> e.dept_id <span class="operator">=</span> d.id</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> d.id, d.name;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>members</code></strong> 按薪资降序拼接；无员工部门 <strong><code>GROUP_CONCAT</code></strong> 常为 <strong>NULL</strong>；表中用 <strong>→</strong> 表示 <strong><code>SEPARATOR &#39; | &#39;</code></strong> 的实际竖线拼接顺序）：</p>
+<table>
+<thead>
+<tr>
+<th>dept_name</th>
+<th>members</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>研发</td>
+<td>李四 → 张三</td>
+</tr>
+<tr>
+<td>市场</td>
+<td>王五 → 赵六</td>
+</tr>
+<tr>
+<td>财务</td>
+<td>NULL</td>
+</tr>
+</tbody></table>
+<p><strong>注意</strong>：默认 <strong><code>group_concat_max_len</code></strong> 有限，大结果需调大会话或全局参数。</p>
+<hr>
+<h2 id="九、分页与稳定排序"><a href="#九、分页与稳定排序" class="headerlink" title="九、分页与稳定排序"></a>九、分页与稳定排序</h2><p><strong><code>LIMIT offset, row_count</code></strong> 在大 <strong>offset</strong> 时变慢，生产常配合「覆盖索引 + 上一页最大值」做<strong>键集分页</strong>；入门可先掌握 <strong><code>LIMIT</code></strong>。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> id, name, hire_date</span><br><span class="line"><span class="keyword">FROM</span> emp</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> hire_date <span class="keyword">DESC</span>, id <span class="keyword">DESC</span></span><br><span class="line">LIMIT <span class="number">10</span> <span class="keyword">OFFSET</span> <span class="number">0</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>LIMIT 10</code></strong> 在本数据上等于取全表；<strong><code>hire_date</code></strong> 降序）：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>hire_date</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>5</td>
+<td>钱七</td>
+<td>2023-11-01</td>
+</tr>
+<tr>
+<td>4</td>
+<td>赵六</td>
+<td>2022-05-20</td>
+</tr>
+<tr>
+<td>3</td>
+<td>王五</td>
+<td>2021-01-10</td>
+</tr>
+<tr>
+<td>1</td>
+<td>张三</td>
+<td>2020-03-01</td>
+</tr>
+<tr>
+<td>2</td>
+<td>李四</td>
+<td>2019-07-15</td>
+</tr>
+</tbody></table>
+<p><strong>MySQL 8.0+</strong> 可与窗口函数结合做「第 <strong>N</strong> 页」（下例取 <strong><code>rn</code></strong> 在 <strong>2～4</strong> 的行，避免演示数据过少时中间页为空）：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (</span><br><span class="line">    <span class="keyword">SELECT</span> id, name, salary,</span><br><span class="line">           <span class="built_in">ROW_NUMBER</span>() <span class="keyword">OVER</span> (<span class="keyword">ORDER</span> <span class="keyword">BY</span> (salary <span class="keyword">IS</span> <span class="keyword">NULL</span>), salary <span class="keyword">DESC</span>, id) <span class="keyword">AS</span> rn</span><br><span class="line">    <span class="keyword">FROM</span> emp</span><br><span class="line">) t</span><br><span class="line"><span class="keyword">WHERE</span> t.rn <span class="keyword">BETWEEN</span> <span class="number">2</span> <span class="keyword">AND</span> <span class="number">4</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>（<strong><code>rn=1</code></strong> 为 <strong>李四</strong>；本例为 <strong><code>rn</code> 2～4</strong>）：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>name</th>
+<th>salary</th>
+<th>rn</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>张三</td>
+<td>15000.00</td>
+<td>2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>王五</td>
+<td>12000.00</td>
+<td>3</td>
+</tr>
+<tr>
+<td>5</td>
+<td>钱七</td>
+<td>9000.00</td>
+<td>4</td>
+</tr>
+</tbody></table>
+<p><strong><code>ORDER BY (salary IS NULL), salary DESC</code></strong>：先排「非 <strong>NULL</strong> 薪资」在前，<strong><code>NULL</code></strong> 在后，兼容各 <strong>8.0</strong> 小版本。</p>
+<hr>
+<h2 id="十、常用补充：DISTINCT、COALESCE、正则"><a href="#十、常用补充：DISTINCT、COALESCE、正则" class="headerlink" title="十、常用补充：DISTINCT、COALESCE、正则"></a>十、常用补充：DISTINCT、COALESCE、正则</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 去重部门编号</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="keyword">DISTINCT</span> dept_id <span class="keyword">FROM</span> emp <span class="keyword">WHERE</span> dept_id <span class="keyword">IS</span> <span class="keyword">NOT NULL</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- NULL 与默认值</span></span><br><span class="line"><span class="keyword">SELECT</span> name, <span class="built_in">COALESCE</span>(salary, <span class="number">0</span>) <span class="keyword">AS</span> salary_or_zero <span class="keyword">FROM</span> emp;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 正则筛选（简单示例）</span></span><br><span class="line"><span class="keyword">SELECT</span> name <span class="keyword">FROM</span> emp <span class="keyword">WHERE</span> name REGEXP <span class="string">&#x27;^[张李王].*&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong></p>
+<p><strong><code>DISTINCT dept_id</code></strong></p>
+<table>
+<thead>
+<tr>
+<th>dept_id</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+</tr>
+<tr>
+<td>2</td>
+</tr>
+</tbody></table>
+<p><strong><code>COALESCE(salary, 0)</code></strong></p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>salary_or_zero</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+<td>15000.00</td>
+</tr>
+<tr>
+<td>李四</td>
+<td>18000.00</td>
+</tr>
+<tr>
+<td>王五</td>
+<td>12000.00</td>
+</tr>
+<tr>
+<td>赵六</td>
+<td>0</td>
+</tr>
+<tr>
+<td>钱七</td>
+<td>9000.00</td>
+</tr>
+</tbody></table>
+<p><strong><code>REGEXP &#39;^[张李王].*&#39;</code></strong>（姓为 <strong>张 &#x2F; 李 &#x2F; 王</strong> 之一开头）</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>张三</td>
+</tr>
+<tr>
+<td>李四</td>
+</tr>
+<tr>
+<td>王五</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="十一、JSON-查询与-JSON-TABLE（8-0-）"><a href="#十一、JSON-查询与-JSON-TABLE（8-0-）" class="headerlink" title="十一、JSON 查询与 JSON_TABLE（8.0+）"></a>十一、JSON 查询与 JSON_TABLE（8.0+）</h2><p>MySQL 原生 <strong>JSON</strong> 类型支持部分更新与路径查询，适合<strong>半结构化字段</strong>（配置、扩展属性）。</p>
+<h3 id="1-路径提取三件套"><a href="#1-路径提取三件套" class="headerlink" title="1. 路径提取三件套"></a>1. 路径提取三件套</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> goods_ext (</span><br><span class="line">    id <span class="type">INT</span> <span class="keyword">PRIMARY KEY</span> AUTO_INCREMENT,</span><br><span class="line">    attrs JSON</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB;</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT INTO</span> goods_ext (attrs) <span class="keyword">VALUES</span></span><br><span class="line">(<span class="string">&#x27;&#123;&quot;brand&quot;: &quot;华为&quot;, &quot;color&quot;: &quot;黑&quot;, &quot;tags&quot;: [&quot;5G&quot;, &quot;旗舰&quot;], &quot;spec&quot;: &#123;&quot;ram&quot;: 16, &quot;storage&quot;: 512&#125;&#125;&#x27;</span>),</span><br><span class="line">(<span class="string">&#x27;&#123;&quot;brand&quot;: &quot;小米&quot;, &quot;color&quot;: &quot;白&quot;, &quot;tags&quot;: [&quot;性价比&quot;], &quot;spec&quot;: &#123;&quot;ram&quot;: 12, &quot;storage&quot;: 256&#125;&#125;&#x27;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 提取（-&gt; 带引号与类型，-&gt;&gt; 纯文本/数值）</span></span><br><span class="line"><span class="keyword">SELECT</span> id,</span><br><span class="line">       attrs <span class="operator">-</span><span class="operator">&gt;</span> <span class="string">&#x27;$.brand&#x27;</span>        <span class="keyword">AS</span> raw_brand,     <span class="comment">-- &quot;华为&quot;（含引号）</span></span><br><span class="line">       attrs <span class="operator">-</span><span class="operator">&gt;&gt;</span> <span class="string">&#x27;$.brand&#x27;</span>       <span class="keyword">AS</span> brand,         <span class="comment">-- 华为</span></span><br><span class="line">       attrs <span class="operator">-</span><span class="operator">&gt;&gt;</span> <span class="string">&#x27;$.spec.ram&#x27;</span>    <span class="keyword">AS</span> ram,           <span class="comment">-- 嵌套路径</span></span><br><span class="line">       attrs <span class="operator">-</span><span class="operator">&gt;&gt;</span> <span class="string">&#x27;$.tags[0]&#x27;</span>     <span class="keyword">AS</span> first_tag      <span class="comment">-- 数组下标</span></span><br><span class="line"><span class="keyword">FROM</span> goods_ext;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 路径条件过滤</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> goods_ext <span class="keyword">WHERE</span> attrs <span class="operator">-</span><span class="operator">&gt;&gt;</span> <span class="string">&#x27;$.brand&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;华为&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 数组包含</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> goods_ext <span class="keyword">WHERE</span> JSON_CONTAINS(attrs <span class="operator">-</span><span class="operator">&gt;</span> <span class="string">&#x27;$.tags&#x27;</span>, <span class="string">&#x27;&quot;5G&quot;&#x27;</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>性能提示</strong>：JSON 路径条件默认<strong>全表扫</strong>；高频查询的 JSON 键应建<strong>虚拟列 + 索引</strong>：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ALTER TABLE</span> goods_ext</span><br><span class="line">  <span class="keyword">ADD</span> <span class="keyword">COLUMN</span> brand <span class="type">VARCHAR</span>(<span class="number">50</span>) GENERATED ALWAYS <span class="keyword">AS</span> (attrs <span class="operator">-</span><span class="operator">&gt;&gt;</span> <span class="string">&#x27;$.brand&#x27;</span>) VIRTUAL,</span><br><span class="line">  <span class="keyword">ADD</span> INDEX idx_brand (brand);</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-JSON-TABLE：把-JSON-数组「拍平成表」（8-0-）"><a href="#2-JSON-TABLE：把-JSON-数组「拍平成表」（8-0-）" class="headerlink" title="2. JSON_TABLE：把 JSON 数组「拍平成表」（8.0+）"></a>2. JSON_TABLE：把 JSON 数组「拍平成表」（8.0+）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 把 tags 数组展开成多行，可直接 JOIN / WHERE</span></span><br><span class="line"><span class="keyword">SELECT</span> g.id, jt.tag</span><br><span class="line"><span class="keyword">FROM</span> goods_ext g</span><br><span class="line"><span class="keyword">JOIN</span> <span class="built_in">JSON_TABLE</span>(</span><br><span class="line">    g.attrs, <span class="string">&#x27;$.tags[*]&#x27;</span></span><br><span class="line">    COLUMNS (</span><br><span class="line">        tag <span class="type">VARCHAR</span>(<span class="number">50</span>) PATH <span class="string">&#x27;$&#x27;</span></span><br><span class="line">    )</span><br><span class="line">) jt;</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例结果</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>tag</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>5G</td>
+</tr>
+<tr>
+<td>1</td>
+<td>旗舰</td>
+</tr>
+<tr>
+<td>2</td>
+<td>性价比</td>
+</tr>
+</tbody></table>
+<p><strong>典型场景</strong>：JSON 数组明细行化后聚合统计、与其他关系表关联；<strong><code>NESTED PATH</code></strong> 可处理多层嵌套，<strong><code>DEFAULT ... ON EMPTY</code> &#x2F; <code>... ON ERROR</code></strong> 处理脏数据。</p>
+<hr>
+<h2 id="十二、派生表合并与优化器行为（8-0-须知）"><a href="#十二、派生表合并与优化器行为（8-0-须知）" class="headerlink" title="十二、派生表合并与优化器行为（8.0+ 须知）"></a>十二、派生表合并与优化器行为（8.0+ 须知）</h2><p>派生表（<strong>FROM 里的子查询</strong>）在 5.7 与 8.0 的默认处理不同，升级后慢查询常源于此：</p>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>默认行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>5.7</strong></td>
+<td>派生表先<strong>物化</strong>成临时表，外层再查——大结果集代价高</td>
+</tr>
+<tr>
+<td><strong>8.0+</strong></td>
+<td>优化器优先<strong>合并（derived merge）</strong>：把子查询<strong>展开进外层</strong>一起优化，能用上外层索引条件</td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 8.0 下通常被合并：dept_id 条件能下推进子查询</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (</span><br><span class="line">    <span class="keyword">SELECT</span> dept_id, <span class="built_in">AVG</span>(salary) <span class="keyword">AS</span> avg_sal <span class="keyword">FROM</span> emp <span class="keyword">GROUP</span> <span class="keyword">BY</span> dept_id</span><br><span class="line">) t</span><br><span class="line"><span class="keyword">WHERE</span> t.dept_id <span class="operator">=</span> <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 含聚合 / LIMIT / DISTINCT 时无法合并，只能物化</span></span><br><span class="line"><span class="comment">-- 可观察优化器选择了什么：</span></span><br><span class="line">EXPLAIN FORMAT<span class="operator">=</span>TREE</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> emp <span class="keyword">WHERE</span> salary <span class="operator">&gt;</span> <span class="number">10000</span>) t <span class="keyword">WHERE</span> t.dept_id <span class="operator">=</span> <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>结论</strong>：8.0 的派生表大多<strong>不再是性能毒药</strong>；但<strong>聚合类子查询</strong>仍会物化，数据量大时考虑 <strong>CTE + 预过滤</strong> 或拆两步查。</p>
+<hr>
+<h2 id="十三、EXPLAIN-进阶：FORMAT-JSON-与-ANALYZE（8-0-18-）"><a href="#十三、EXPLAIN-进阶：FORMAT-JSON-与-ANALYZE（8-0-18-）" class="headerlink" title="十三、EXPLAIN 进阶：FORMAT&#x3D;JSON 与 ANALYZE（8.0.18+）"></a>十三、EXPLAIN 进阶：FORMAT&#x3D;JSON 与 ANALYZE（8.0.18+）</h2><h3 id="1-FORMAT-JSON：看成本明细"><a href="#1-FORMAT-JSON：看成本明细" class="headerlink" title="1. FORMAT&#x3D;JSON：看成本明细"></a>1. FORMAT&#x3D;JSON：看成本明细</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN FORMAT<span class="operator">=</span>JSON</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> emp <span class="keyword">WHERE</span> dept_id <span class="operator">=</span> <span class="number">1</span> <span class="keyword">AND</span> salary <span class="operator">&gt;</span> <span class="number">10000</span>;</span><br></pre></td></tr></table></figure>
+
+<p>JSON 输出中重点看：</p>
+<ul>
+<li><strong><code>query_cost</code></strong>：优化器估算的总成本（<strong>选计划的直接依据</strong>，越小越好）；</li>
+<li><strong><code>rows_examined_per_scan</code> &#x2F; <code>rows_produced_per_join</code></strong>：扫描与产出估算行数；</li>
+<li><strong><code>used_key_parts</code> &#x2F; <code>attached_condition</code></strong>：索引实际用到的列、下推的过滤条件。</li>
+</ul>
+<h3 id="2-EXPLAIN-ANALYZE：看真实执行（会真的跑查询！）"><a href="#2-EXPLAIN-ANALYZE：看真实执行（会真的跑查询！）" class="headerlink" title="2. EXPLAIN ANALYZE：看真实执行（会真的跑查询！）"></a>2. EXPLAIN ANALYZE：看<strong>真实执行</strong>（会真的跑查询！）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN ANALYZE</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> emp <span class="keyword">WHERE</span> dept_id <span class="operator">=</span> <span class="number">1</span> <span class="keyword">AND</span> salary <span class="operator">&gt;</span> <span class="number">10000</span>;</span><br></pre></td></tr></table></figure>
+
+<p>输出为 <strong>FORMAT&#x3D;TREE</strong> 并附加<strong>每步真实数据</strong>：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-&gt; Filter: (emp.salary &gt; 10000)  (cost=0.75 rows=1) (actual time=0.031..0.033 rows=1, loops=1)</span><br><span class="line">    -&gt; Index lookup on emp using idx_dept (dept_id=1)  (actual time=0.020..0.024 rows=2, loops=1)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>actual time=首行耗时..全部行耗时</code></strong>、<strong><code>rows=</code>实际行数</strong>、<strong><code>loops=</code>执行次数</strong>；</li>
+<li><strong>估算 rows vs 实际 rows 差距大</strong>（如估 1000 实扫 10）→ 统计信息过期 → <strong><code>ANALYZE TABLE emp;</code></strong> 刷新；</li>
+<li><strong>注意</strong>：<code>EXPLAIN ANALYZE</code> <strong>真实执行</strong>语句，DML 会改数据，只读环境外慎用。</li>
+</ul>
+<h3 id="3-优化器提示（Optimizer-Hints，温和干预）"><a href="#3-优化器提示（Optimizer-Hints，温和干预）" class="headerlink" title="3. 优化器提示（Optimizer Hints，温和干预）"></a>3. 优化器提示（Optimizer Hints，温和干预）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 强制/禁用某索引（优先用 INDEX 级语法，FORCE INDEX 是老写法）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="comment">/*+ INDEX(emp idx_dept) */</span> <span class="operator">*</span> <span class="keyword">FROM</span> emp <span class="keyword">WHERE</span> dept_id <span class="operator">=</span> <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 强制表连接顺序（小表驱动大表不生效时排查用）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="comment">/*+ JOIN_ORDER(dept, emp) */</span> <span class="operator">*</span></span><br><span class="line"><span class="keyword">FROM</span> dept d <span class="keyword">JOIN</span> emp e <span class="keyword">ON</span> e.dept_id <span class="operator">=</span> d.id;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 单条语句级调参（不改全局）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="comment">/*+ SET_VAR(optimizer_switch=&#x27;mrr_cost_based=off&#x27;) */</span> ...</span><br></pre></td></tr></table></figure>
+
+<p><strong>使用原则</strong>：<strong>Hint 是最后手段</strong>，先用索引设计、统计信息、改写 SQL 解决；Hint 一旦写入代码，数据分布变化后可能<strong>从解药变毒药</strong>，必须配注释与复审。</p>
+<hr>
+<h2 id="十四、速查小结"><a href="#十四、速查小结" class="headerlink" title="十四、速查小结"></a>十四、速查小结</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>典型写法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>多表关联</td>
+<td><strong><code>INNER JOIN</code> &#x2F; <code>LEFT JOIN</code></strong> + <strong><code>ON</code></strong></td>
+</tr>
+<tr>
+<td>是否存在</td>
+<td><strong><code>EXISTS (SELECT 1 …)</code></strong></td>
+</tr>
+<tr>
+<td>合并结果</td>
+<td><strong><code>UNION ALL</code></strong>（优先）&#x2F; <strong><code>UNION</code></strong></td>
+</tr>
+<tr>
+<td>可读拆分（8.0+）</td>
+<td><strong><code>WITH cte AS (...)</code></strong></td>
+</tr>
+<tr>
+<td>组内排名、累计（8.0+）</td>
+<td><strong><code>ROW_NUMBER()</code>、<code>SUM() OVER (...)</code></strong></td>
+</tr>
+<tr>
+<td>聚合后过滤</td>
+<td><strong><code>GROUP BY</code> + <code>HAVING</code></strong></td>
+</tr>
+<tr>
+<td>分支与透视列</td>
+<td><strong><code>CASE WHEN</code></strong></td>
+</tr>
+<tr>
+<td>组内拼字符串</td>
+<td><strong><code>GROUP_CONCAT</code></strong></td>
+</tr>
+<tr>
+<td>分页</td>
+<td><strong><code>ORDER BY</code> + <code>LIMIT</code></strong>；大表慎用深 <strong><code>OFFSET</code></strong></td>
+</tr>
+</tbody></table>
+<p>练习时可在测试库执行<strong>文首「示例数据」建表脚本</strong>，再逐段复制运行，对照各小节 <strong>「示例结果」</strong> 表格验算。</p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>连接语义</td>
+<td><strong>INNER JOIN</strong> 只留匹配行，<strong>LEFT JOIN</strong> 保留左表全量、缺侧补 <strong>NULL</strong></td>
+</tr>
+<tr>
+<td>存在性判断</td>
+<td><strong>EXISTS (SELECT 1 …)</strong> 常比大 <strong>IN</strong> 更省内存</td>
+</tr>
+<tr>
+<td>聚合过滤</td>
+<td><strong>WHERE 滤行在前，GROUP BY 分组，HAVING 滤组在后</strong>；<strong>COUNT(列)</strong> 不计 NULL</td>
+</tr>
+<tr>
+<td>8.0+ 新特性</td>
+<td><strong>CTE&#x2F;递归 WITH</strong> 拆复杂逻辑；<strong>窗口函数</strong>做组内排名、累计与 Top N；<strong>LAG&#x2F;LEAD</strong> 免自连接算同环比</td>
+</tr>
+<tr>
+<td>JSON</td>
+<td><strong><code>-&gt;&gt;</code> 提取、JSON_CONTAINS 判包含、JSON_TABLE 把数组拍平成表</strong>；高频键建虚拟列+索引</td>
+</tr>
+<tr>
+<td>优化器</td>
+<td>8.0 派生表优先<strong>合并而非物化</strong>；<strong>EXPLAIN ANALYZE</strong> 看真实行数&#x2F;耗时（会真跑，慎用于 DML）</td>
+</tr>
+<tr>
+<td>Hint</td>
+<td><strong><code>/*+ INDEX() / JOIN_ORDER() */</code></strong> 是最后手段，数据分布变化后需复审</td>
+</tr>
+<tr>
+<td>性能习惯</td>
+<td><strong>UNION ALL</strong> 优先于 <strong>UNION</strong>；深分页用键集分页代替大 <strong>OFFSET</strong></td>
+</tr>
+</tbody></table>
+<p>查询写法已经熟练，但要写得快、跑得快，还差最关键的一块拼图——索引。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/SQL/" rel="tag"># SQL</a>
+              <a href="/tags/%E9%AB%98%E7%BA%A7%E6%9F%A5%E8%AF%A2/" rel="tag"># 高级查询</a>
+              <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/mysql/03-mysql-locks-explained/" rel="prev" title="第三章：MySQL 锁详解">
+                  <i class="fa fa-angle-left"></i> 第三章：MySQL 锁详解
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/mysql/05-mysql-index-optimization/" rel="next" title="第五章：MySQL 索引与性能优化">
+                  第五章：MySQL 索引与性能优化 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

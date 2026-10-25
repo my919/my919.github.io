@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：数仓分层与数据管道调度概念基础 数仓分层的目的是治理复杂度：ODS 贴源、DWD 明细、DIM 维度、DWS 汇总、ADS 应用——每层职责单一，下游依赖上游，坏数据能定位到层。 批流一体靠统一模型：Spark（第一章：Spark 大数据批处理入门）跑离线重算，Flink（第二章：Flink 流式计算入门）跑实时增量，两边共用口径才能「T+1 准确、实时大致对」互为校验。 Kafka 是管">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：数仓分层与数据管道调度">
+<meta property="og:url" content="https://my919.github.io/datascience/04-data-warehouse-layering-scheduling/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：数仓分层与数据管道调度概念基础 数仓分层的目的是治理复杂度：ODS 贴源、DWD 明细、DIM 维度、DWS 汇总、ADS 应用——每层职责单一，下游依赖上游，坏数据能定位到层。 批流一体靠统一模型：Spark（第一章：Spark 大数据批处理入门）跑离线重算，Flink（第二章：Flink 流式计算入门）跑实时增量，两边共用口径才能「T+1 准确、实时大致对」互为校验。 Kafka 是管">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:00:01.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.572Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Airflow">
+<meta property="article:tag" content="数仓">
+<meta property="article:tag" content="数据管道">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/datascience/04-data-warehouse-layering-scheduling/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/datascience/04-data-warehouse-layering-scheduling/","path":"datascience/04-data-warehouse-layering-scheduling/","title":"第四章：数仓分层与数据管道调度"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：数仓分层与数据管道调度 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9A%E6%95%B0%E4%BB%93%E5%88%86%E5%B1%82%E4%B8%8E%E6%95%B0%E6%8D%AE%E7%AE%A1%E9%81%93%E8%B0%83%E5%BA%A6"><span class="nav-number">1.</span> <span class="nav-text">第四章：数仓分层与数据管道调度</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%88%86%E5%B1%82%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.2.</span> <span class="nav-text">一、分层模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%84%E5%B1%82%E5%BB%BA%E6%A8%A1%E6%A1%88%E4%BE%8B"><span class="nav-number">1.2.1.</span> <span class="nav-text">各层建模案例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E7%BB%B4%E5%BA%A6%E5%BB%BA%E6%A8%A1%EF%BC%9A%E6%98%9F%E5%9E%8B%E4%B8%8E%E9%9B%AA%E8%8A%B1"><span class="nav-number">1.3.</span> <span class="nav-text">二、维度建模：星型与雪花</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%93%E6%85%A2%E5%8F%98%E5%8C%96%E7%BB%B4%EF%BC%88SCD%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">缓慢变化维（SCD）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81CDC-%E9%87%87%E9%9B%86%EF%BC%9A%E4%B8%9A%E5%8A%A1%E5%BA%93%E5%8F%98%E6%9B%B4%E5%85%A5%E4%BB%93"><span class="nav-number">1.4.</span> <span class="nav-text">三、CDC 采集：业务库变更入仓</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81Airflow%EF%BC%9A%E6%8A%8A%E6%89%B9%E5%A4%84%E7%90%86%E7%BC%96%E6%8E%92%E6%88%90-DAG"><span class="nav-number">1.5.</span> <span class="nav-text">四、Airflow：把批处理编排成 DAG</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E5%BA%A6%E7%B3%BB%E7%BB%9F%E9%80%89%E5%9E%8B%EF%BC%9AAirflow-vs-DolphinScheduler"><span class="nav-number">1.5.1.</span> <span class="nav-text">调度系统选型：Airflow vs DolphinScheduler</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E6%89%B9%E6%B5%81%E5%8F%8C%E8%B7%91%E4%B8%8E%E4%B8%80%E8%87%B4%E6%80%A7"><span class="nav-number">1.6.</span> <span class="nav-text">五、批流双跑与一致性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E6%95%B0%E6%8D%AE%E8%B4%A8%E9%87%8F%E9%97%A8%E7%A6%81"><span class="nav-number">1.7.</span> <span class="nav-text">六、数据质量门禁</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B4%A8%E9%87%8F%E8%A7%84%E5%88%99%E4%BD%93%E7%B3%BB%E5%8C%96"><span class="nav-number">1.7.1.</span> <span class="nav-text">质量规则体系化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%88%86%E5%B1%82%E5%8F%8D%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.8.</span> <span class="nav-text">七、分层反模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.9.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/datascience/04-data-warehouse-layering-scheduling/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：数仓分层与数据管道调度 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：数仓分层与数据管道调度
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:00:01" itemprop="dateCreated datePublished" datetime="2026-05-01T13:00:01+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%95%B0%E6%8D%AE%E5%B7%A5%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">数据工程</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：数仓分层与数据管道调度"><a href="#第四章：数仓分层与数据管道调度" class="headerlink" title="第四章：数仓分层与数据管道调度"></a>第四章：数仓分层与数据管道调度</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>数仓分层的目的是治理复杂度</strong>：ODS 贴源、DWD 明细、DIM 维度、DWS 汇总、ADS 应用——每层职责单一，下游依赖上游，坏数据能定位到层。</li>
+<li><strong>批流一体靠统一模型</strong>：Spark（<a href="/datascience/01-spark-guide/">第一章：Spark 大数据批处理入门</a>）跑离线重算，Flink（<a href="/datascience/02-flink-guide/">第二章：Flink 流式计算入门</a>）跑实时增量，两边共用口径才能「T+1 准确、实时大致对」互为校验。</li>
+<li><strong>Kafka 是管道骨架</strong>：CDC 与日志先进 Kafka（<a href="/mq/kafka-guide/">第三章：Kafka 大数据数据总线</a>）缓冲解耦，再分流到批&#x2F;流&#x2F;OLAP 各消费者。</li>
+<li><strong>调度是数据可靠性核心</strong>：Airflow&#x2F;DolphinScheduler 把「每天 2 点跑批」变成<strong>有依赖、可重试、有告警</strong>的 DAG，而不是一堆 crontab。</li>
+<li><strong>ClickHouse 承接分析层</strong>：DWS&#x2F;ADS 汇总结果落到列存引擎供 BI 查询，见 <a href="/database/03-clickhouse-query-tuning/">第三章：ClickHouse 查询与性能调优</a>。</li>
+</ol>
+<blockquote>
+<p>本章聚焦管道编排与分层建模方法论；沙箱无 Airflow&#x2F;Spark 集群，代码按 <strong>Airflow 2.x 官方语法</strong>书写未逐条运行验证。</p>
+</blockquote>
+<hr>
+<h2 id="一、分层模型"><a href="#一、分层模型" class="headerlink" title="一、分层模型"></a>一、分层模型</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  S[(业务库&#x2F;日志)] --&gt;|CDC&#x2F;采集| O[ODS 贴源层]
+  O --&gt; W[DWD 明细层]
+  DIM[(维度表)] --&gt; W
+  W --&gt; S2[DWS 汇总层]
+  S2 --&gt; A[ADS 应用层]
+  A --&gt; BI[BI&#x2F;报表&#x2F;API]
+</code>
+</pre>
+
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>职责</th>
+<th>关键约束</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>ODS</strong></td>
+<td>原样落地，不做加工</td>
+<td>保留原始格式；按天分区快照</td>
+</tr>
+<tr>
+<td><strong>DWD</strong></td>
+<td>清洗、去重、脱敏、拆平明细</td>
+<td>一行一件事务&#x2F;事件；只依赖 ODS</td>
+</tr>
+<tr>
+<td><strong>DIM</strong></td>
+<td>维度表（用户、商品、地区）</td>
+<td>缓慢变化维（SCD2）记录历史</td>
+</tr>
+<tr>
+<td><strong>DWS</strong></td>
+<td>按主题预聚合（日&#x2F;用户粒度）</td>
+<td>口径唯一，重算成本可控</td>
+</tr>
+<tr>
+<td><strong>ADS</strong></td>
+<td>面向报表&#x2F;大屏&#x2F;接口的最终宽表</td>
+<td>只依赖 DWS+DIM，不碰 ODS</td>
+</tr>
+</tbody></table>
+<p><strong>分层价值</strong>：重复计算下沉、口径收敛（改一处全局生效）、问题定位快（ADS 错 → 查 DWS → 查 DWD）。</p>
+<h3 id="各层建模案例"><a href="#各层建模案例" class="headerlink" title="各层建模案例"></a>各层建模案例</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- DWD：订单明细，一行一笔订单，字段拆平 + 清洗</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> dwd_orders (</span><br><span class="line">    order_id <span class="type">BIGINT</span>, user_id <span class="type">BIGINT</span>, sku_id <span class="type">BIGINT</span>,</span><br><span class="line">    amount <span class="type">DECIMAL</span>(<span class="number">18</span>,<span class="number">2</span>), status STRING,</span><br><span class="line">    created_at <span class="type">TIMESTAMP</span>, dt STRING</span><br><span class="line">) PARTITIONED <span class="keyword">BY</span> (dt);</span><br><span class="line"></span><br><span class="line"><span class="comment">-- DWS：用户 × 天 粒度汇总，口径在此层唯一收敛</span></span><br><span class="line"><span class="keyword">INSERT</span> OVERWRITE <span class="keyword">TABLE</span> dws_user_trade_1d <span class="keyword">PARTITION</span> (dt <span class="operator">=</span> <span class="string">&#x27;$&#123;dt&#125;&#x27;</span>)</span><br><span class="line"><span class="keyword">SELECT</span> user_id,</span><br><span class="line">       <span class="built_in">COUNT</span>(<span class="keyword">DISTINCT</span> order_id)          <span class="keyword">AS</span> order_cnt,</span><br><span class="line">       <span class="built_in">SUM</span>(IF(status <span class="operator">=</span> <span class="string">&#x27;PAID&#x27;</span>, amount, <span class="number">0</span>)) <span class="keyword">AS</span> pay_amt,</span><br><span class="line">       <span class="built_in">MAX</span>(created_at)                   <span class="keyword">AS</span> last_order_at</span><br><span class="line"><span class="keyword">FROM</span> dwd_orders <span class="keyword">WHERE</span> dt <span class="operator">=</span> <span class="string">&#x27;$&#123;dt&#125;&#x27;</span> <span class="keyword">GROUP</span> <span class="keyword">BY</span> user_id;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- ADS：面向大屏的最终宽表，直接供 ClickHouse/报表消费</span></span><br><span class="line"><span class="keyword">SELECT</span> d.dt, u.city, <span class="built_in">SUM</span>(d.pay_amt) <span class="keyword">AS</span> gmv, <span class="built_in">COUNT</span>(<span class="keyword">DISTINCT</span> d.user_id) <span class="keyword">AS</span> pay_users</span><br><span class="line"><span class="keyword">FROM</span> dws_user_trade_1d d <span class="keyword">JOIN</span> dim_user u <span class="keyword">ON</span> d.user_id <span class="operator">=</span> u.user_id</span><br><span class="line"><span class="keyword">WHERE</span> d.dt <span class="operator">=</span> <span class="string">&#x27;$&#123;dt&#125;&#x27;</span> <span class="keyword">GROUP</span> <span class="keyword">BY</span> d.dt, u.city;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、维度建模：星型与雪花"><a href="#二、维度建模：星型与雪花" class="headerlink" title="二、维度建模：星型与雪花"></a>二、维度建模：星型与雪花</h2><p><strong>维度建模三件套</strong>：事实表（度量 + 外键）、维度表（描述性属性）、粒度声明（一行代表什么）。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>结构</th>
+<th>取舍</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>星型</strong></td>
+<td>事实表直连各维表，维表反范式冗余</td>
+<td>查询 Join 少、速度快，<strong>数仓主流</strong></td>
+</tr>
+<tr>
+<td><strong>雪花</strong></td>
+<td>维表再拆子维表（商品→类目→行业）</td>
+<td>省存储但 Join 链长，仅高基数层级用</td>
+</tr>
+</tbody></table>
+<p><strong>事实表三种类型</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>语义</th>
+<th>案例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>事务事实表</td>
+<td>一行一事件，可加</td>
+<td>订单流水、支付流水</td>
+</tr>
+<tr>
+<td>周期快照事实表</td>
+<td>定时快照状态，半可加</td>
+<td>每日库存、每日账户余额</td>
+</tr>
+<tr>
+<td>累积快照事实表</td>
+<td>一行跟踪流程全生命周期，可更新</td>
+<td>订单从下单→支付→发货→签收各时点</td>
+</tr>
+</tbody></table>
+<p><strong>粒度声明是建模第一问</strong>：先回答「一行代表什么」（一行 &#x3D; 一笔订单的一个商品行），再定维度与度量；粒度混乱是数仓后期所有口径打架的根源。</p>
+<h3 id="缓慢变化维（SCD）"><a href="#缓慢变化维（SCD）" class="headerlink" title="缓慢变化维（SCD）"></a>缓慢变化维（SCD）</h3><p>维度属性会随时间变化（用户换城市、商品改类目），历史报表要不要跟着变？</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>做法</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SCD1</strong></td>
+<td>直接覆盖，不留历史</td>
+<td>不关心历史的属性（错别字修正）</td>
+</tr>
+<tr>
+<td><strong>SCD2</strong></td>
+<td>加版本行：生效&#x2F;失效时间 + 当前标记</td>
+<td>需要回溯历史（主流选择）</td>
+</tr>
+<tr>
+<td><strong>SCD3</strong></td>
+<td>加「前值」列，只记上一次</td>
+<td>只需对比新旧两个值的场景</td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- SCD2 用户维表结构</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> dim_user (</span><br><span class="line">    user_id <span class="type">BIGINT</span>, city STRING, level STRING,</span><br><span class="line">    start_date <span class="type">DATE</span>, end_date <span class="type">DATE</span>, is_current <span class="type">BOOLEAN</span></span><br><span class="line">);</span><br><span class="line"><span class="comment">-- 查询历史某天口径：WHERE user_id = ? AND d BETWEEN start_date AND end_date</span></span><br><span class="line"><span class="comment">-- 拉链表是 SCD2 的存储优化形态：只记变化区间，省空间但查询稍复杂</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="三、CDC-采集：业务库变更入仓"><a href="#三、CDC-采集：业务库变更入仓" class="headerlink" title="三、CDC 采集：业务库变更入仓"></a>三、CDC 采集：业务库变更入仓</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Debezium 把 MySQL binlog 变更流入 Kafka（详见第三章 Connect 部分）</span></span><br><span class="line"><span class="comment"># Topic: dbz.shop.orders —— 每条消息是一行变更（before/after/op）</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- Flink SQL：消费 CDC，upsert 到 ODS 明细表</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> ods_orders (</span><br><span class="line">    id          <span class="type">BIGINT</span>,</span><br><span class="line">    user_id     <span class="type">BIGINT</span>,</span><br><span class="line">    amount      <span class="type">DECIMAL</span>(<span class="number">18</span>, <span class="number">2</span>),</span><br><span class="line">    status      STRING,</span><br><span class="line">    updated_at  <span class="type">TIMESTAMP</span>(<span class="number">3</span>),</span><br><span class="line">    <span class="keyword">PRIMARY KEY</span> (id) <span class="keyword">NOT</span> ENFORCED</span><br><span class="line">) <span class="keyword">WITH</span> (</span><br><span class="line">    <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;kafka&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;topic&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;dbz.shop.orders&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;properties.bootstrap.servers&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;kafka:9092&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;scan.startup.mode&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;latest-offset&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;value.format&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;debezium-json&#x27;</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p><strong>ODS 两种落地形态</strong>：每天全量快照（简单、可回溯）与增量 upsert（省存储、需主键合并）——中小规模优先全量快照 + 关键表才做增量。</p>
+<hr>
+<h2 id="四、Airflow：把批处理编排成-DAG"><a href="#四、Airflow：把批处理编排成-DAG" class="headerlink" title="四、Airflow：把批处理编排成 DAG"></a>四、Airflow：把批处理编排成 DAG</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># dags/daily_warehouse.py</span></span><br><span class="line"><span class="keyword">from</span> airflow <span class="keyword">import</span> DAG</span><br><span class="line"><span class="keyword">from</span> airflow.providers.apache.spark.operators.spark_submit <span class="keyword">import</span> SparkSubmitOperator</span><br><span class="line"><span class="keyword">from</span> airflow.operators.empty <span class="keyword">import</span> EmptyOperator</span><br><span class="line"><span class="keyword">from</span> airflow.utils.trigger_rule <span class="keyword">import</span> TriggerRule</span><br><span class="line"><span class="keyword">from</span> datetime <span class="keyword">import</span> datetime, timedelta</span><br><span class="line"></span><br><span class="line">default_args = &#123;</span><br><span class="line">    <span class="string">&quot;owner&quot;</span>: <span class="string">&quot;data&quot;</span>,</span><br><span class="line">    <span class="string">&quot;retries&quot;</span>: <span class="number">2</span>,                       <span class="comment"># 失败自动重试</span></span><br><span class="line">    <span class="string">&quot;retry_delay&quot;</span>: timedelta(minutes=<span class="number">5</span>),</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> DAG(</span><br><span class="line">    dag_id=<span class="string">&quot;daily_warehouse&quot;</span>,</span><br><span class="line">    schedule=<span class="string">&quot;0 2 * * *&quot;</span>,               <span class="comment"># 每天 02:00</span></span><br><span class="line">    start_date=datetime(<span class="number">2026</span>, <span class="number">1</span>, <span class="number">1</span>),</span><br><span class="line">    catchup=<span class="literal">False</span>,                      <span class="comment"># 不补历史（如需回刷再手动触发）</span></span><br><span class="line">    default_args=default_args,</span><br><span class="line">    tags=[<span class="string">&quot;warehouse&quot;</span>],</span><br><span class="line">) <span class="keyword">as</span> dag:</span><br><span class="line">    done = EmptyOperator(task_id=<span class="string">&quot;wait_source_data&quot;</span>)</span><br><span class="line">    dwd = SparkSubmitOperator(</span><br><span class="line">        task_id=<span class="string">&quot;dwd_orders&quot;</span>,</span><br><span class="line">        application=<span class="string">&quot;/opt/jobs/dwd_orders.py&quot;</span>,   <span class="comment"># 洗 ODS → DWD</span></span><br><span class="line">        conf=&#123;<span class="string">&quot;spark.executor.memory&quot;</span>: <span class="string">&quot;4g&quot;</span>&#125;,</span><br><span class="line">    )</span><br><span class="line">    dws = SparkSubmitOperator(</span><br><span class="line">        task_id=<span class="string">&quot;dws_user_daily&quot;</span>,</span><br><span class="line">        application=<span class="string">&quot;/opt/jobs/dws_user_daily.py&quot;</span>,  <span class="comment"># DWD → DWS</span></span><br><span class="line">    )</span><br><span class="line">    ads = SparkSubmitOperator(</span><br><span class="line">        task_id=<span class="string">&quot;ads_dashboard&quot;</span>,</span><br><span class="line">        application=<span class="string">&quot;/opt/jobs/ads_dashboard.py&quot;</span>,   <span class="comment"># DWS → ADS → ClickHouse</span></span><br><span class="line">    )</span><br><span class="line">    alert = EmptyOperator(task_id=<span class="string">&quot;on_failure&quot;</span>, trigger_rule=TriggerRule.ONE_FAILED)</span><br><span class="line"></span><br><span class="line">    done &gt;&gt; dwd &gt;&gt; dws &gt;&gt; ads           <span class="comment"># 依赖链：上游成功才跑下游</span></span><br><span class="line">    [dwd, dws, ads] &gt;&gt; alert            <span class="comment"># 任一失败触发告警分支</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>调度实践要点</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>实践</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数据就绪探测</td>
+<td>用 Sensor 等「源表分区就绪」（<code>/data/ods/dt=2026-05-01/_SUCCESS</code>）再开跑</td>
+</tr>
+<tr>
+<td>幂等设计</td>
+<td>所有任务以 <code>dt=日期分区</code> 覆盖写，重跑不产生重复</td>
+</tr>
+<tr>
+<td>回刷</td>
+<td>补数 &#x3D; 对历史日期重放 DAG；幂等是回刷安全的前提</td>
+</tr>
+<tr>
+<td>分区约定</td>
+<td>全公司统一 <code>dt/hh</code> 分区字段，下游依赖检查分区存在性</td>
+</tr>
+<tr>
+<td>SLA 与告警</td>
+<td>任务超过预期时长告警；失败走 IM webhook（见 <a href="/linux/05-linux-ops-advanced/">第五章：系统运维进阶</a> 的日志与监控）</td>
+</tr>
+</tbody></table>
+<h3 id="调度系统选型：Airflow-vs-DolphinScheduler"><a href="#调度系统选型：Airflow-vs-DolphinScheduler" class="headerlink" title="调度系统选型：Airflow vs DolphinScheduler"></a>调度系统选型：Airflow vs DolphinScheduler</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Airflow 2.x</th>
+<th>DolphinScheduler 3.x</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DAG 定义</td>
+<td>Python 代码，灵活可编程</td>
+<td>Web UI 拖拽 + JSON，上手快</td>
+</tr>
+<tr>
+<td>扩展性</td>
+<td>Operator&#x2F;Hook 生态极丰富</td>
+<td>内置任务类型多（Shell&#x2F;SQL&#x2F;Spark&#x2F;Flink）</td>
+</tr>
+<tr>
+<td>多租户&#x2F;权限</td>
+<td>较弱（靠 RBAC 自定义）</td>
+<td>原生多租户，适合数据中台</td>
+</tr>
+<tr>
+<td>运维</td>
+<td>需管 Scheduler&#x2F;Webserver&#x2F;Worker</td>
+<td>分布式去中心化，国产文档友好</td>
+</tr>
+<tr>
+<td>选型倾向</td>
+<td>工程团队、代码化偏好</td>
+<td>数据分析团队、可视化偏好</td>
+</tr>
+</tbody></table>
+<p>共同点：<strong>幂等任务 + 分区依赖 + 失败重试 + SLA 告警</strong>四件套是任何调度系统落地的底线。</p>
+<hr>
+<h2 id="五、批流双跑与一致性"><a href="#五、批流双跑与一致性" class="headerlink" title="五、批流双跑与一致性"></a>五、批流双跑与一致性</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">实时链路：Kafka(CDC) → Flink → ClickHouse(实时大屏，分钟级误差)</span><br><span class="line">离线链路：ODS 快照 → Spark 重算 → 覆盖当天结果(准确口径)</span><br><span class="line">一致性：  以离线为准；对账任务每天比对实时/离线差额，超阈值告警并触发重算</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>实时与离线口径不一致</td>
+<td>统一 DWS 层 SQL 口径，代码同源（或用 Flink 批模式跑离线）</td>
+</tr>
+<tr>
+<td>迟到数据</td>
+<td>Flink 水位线 + allowed lateness；离线重算兜底</td>
+</tr>
+<tr>
+<td>重复写入</td>
+<td>Kafka 事务 + 幂等 sink（主键去重），见第三章「精确一次」</td>
+</tr>
+<tr>
+<td>大宽表爆炸</td>
+<td>ADS 只建高频查询宽表，长尾需求走即席查询</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="六、数据质量门禁"><a href="#六、数据质量门禁" class="headerlink" title="六、数据质量门禁"></a>六、数据质量门禁</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 每日跑批前先做体检，不过检就阻断下游（Airflow 里做成前置任务）</span></span><br><span class="line"><span class="comment">-- 1. 主键唯一</span></span><br><span class="line"><span class="keyword">SELECT</span> id, <span class="built_in">count</span>(<span class="number">1</span>) <span class="keyword">FROM</span> dwd_orders <span class="keyword">WHERE</span> dt <span class="operator">=</span> <span class="string">&#x27;&#123;&#123; ds &#125;&#125;&#x27;</span> <span class="keyword">GROUP</span> <span class="keyword">BY</span> id <span class="keyword">HAVING</span> <span class="built_in">count</span>(<span class="number">1</span>) <span class="operator">&gt;</span> <span class="number">1</span>;</span><br><span class="line"><span class="comment">-- 2. 关键字段非空率</span></span><br><span class="line"><span class="keyword">SELECT</span> countIf(user_id <span class="keyword">IS</span> <span class="keyword">NULL</span>) <span class="operator">/</span> <span class="built_in">count</span>(<span class="number">1</span>) <span class="keyword">AS</span> null_ratio</span><br><span class="line"><span class="keyword">FROM</span> dwd_orders <span class="keyword">WHERE</span> dt <span class="operator">=</span> <span class="string">&#x27;&#123;&#123; ds &#125;&#125;&#x27;</span>;</span><br><span class="line"><span class="comment">-- 3. 波动率：今日行数与上周环比超 ±30% 告警</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>检查</th>
+<th>时机</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>表行数&#x2F;波动率</td>
+<td>ODS 就绪后</td>
+</tr>
+<tr>
+<td>主键唯一、非空</td>
+<td>DWD 产出后</td>
+</tr>
+<tr>
+<td>口径对账（批 vs 流）</td>
+<td>ADS 产出后</td>
+</tr>
+<tr>
+<td>下游新鲜度</td>
+<td>报表侧每天首次访问校验数据日期</td>
+</tr>
+</tbody></table>
+<h3 id="质量规则体系化"><a href="#质量规则体系化" class="headerlink" title="质量规则体系化"></a>质量规则体系化</h3><p>零散 SQL 检查多了以后难维护，用规则表或框架托管：</p>
+<table>
+<thead>
+<tr>
+<th>规则类别</th>
+<th>示例</th>
+<th>处置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>完整性</strong></td>
+<td>非空率 ≥ 99.5%</td>
+<td>超阈值阻断下游</td>
+</tr>
+<tr>
+<td><strong>唯一性</strong></td>
+<td>主键重复数 &#x3D; 0</td>
+<td>阻断</td>
+</tr>
+<tr>
+<td><strong>一致性</strong></td>
+<td>订单金额 &#x3D; 明细求和</td>
+<td>告警 + 对账任务</td>
+</tr>
+<tr>
+<td><strong>时效性</strong></td>
+<td>分区在 08:00 前就绪</td>
+<td>延迟告警</td>
+</tr>
+<tr>
+<td><strong>有效性</strong></td>
+<td>枚举值在字典范围内</td>
+<td>脏数据进隔离区</td>
+</tr>
+</tbody></table>
+<p><strong>工具</strong>：自研规则引擎（规则表 + SQL 模板 + Airflow 任务生成）最贴合分层体系；开源侧 <strong>Great Expectations</strong>（声明式 expectation 套件，可挂进 Airflow）与 <strong>Deequ</strong>（Spark 原生）是常见选型。质量结果本身也建一张 <code>dqc_result</code> 表，按天趋势监控——坏规则会被时间看出来。</p>
+<hr>
+<h2 id="七、分层反模式"><a href="#七、分层反模式" class="headerlink" title="七、分层反模式"></a>七、分层反模式</h2><table>
+<thead>
+<tr>
+<th>反模式</th>
+<th>症状</th>
+<th>解法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>烟囱式直通</td>
+<td>报表 SQL 直查 ODS，口径遍地开花</td>
+<td>强制 ADS 只依赖 DWS+DIM</td>
+</tr>
+<tr>
+<td>层级过多</td>
+<td>ODS→DWD→DWS 又插两层中间表，链路一周改不动</td>
+<td>层数服务于定位效率，不为分层而分层</td>
+</tr>
+<tr>
+<td>维度穿透</td>
+<td>DWD 里冗余几十列维度属性</td>
+<td>维度归 DIM，Join 在 DWS&#x2F;ADS 做</td>
+</tr>
+<tr>
+<td>口径漂移</td>
+<td>同一指标三张表三个数</td>
+<td>指标字典 + DWS 层口径唯一收敛</td>
+</tr>
+<tr>
+<td>回刷无门禁</td>
+<td>补数直接覆盖生产分区</td>
+<td>影子分区验证 + 质量门禁通过后切换</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>分层</td>
+<td>ODS 贴源 → DWD 明细 → DIM 维度 → DWS 汇总 → ADS 应用；坏数据逐层定位</td>
+</tr>
+<tr>
+<td>建模</td>
+<td>星型为主、粒度先行；事实表分事务&#x2F;周期快照&#x2F;累积快照；维表用 <strong>SCD2&#x2F;拉链</strong> 留历史</td>
+</tr>
+<tr>
+<td>采集</td>
+<td>CDC 入 Kafka；ODS 用「全量快照 + 关键表增量」起步</td>
+</tr>
+<tr>
+<td>调度</td>
+<td>Airflow DAG + 数据就绪 Sensor + 幂等分区写，重跑回刷才安全；可视化偏好选 DolphinScheduler</td>
+</tr>
+<tr>
+<td>批流</td>
+<td>实时求快、离线求准；每日对账，超阈值重算</td>
+</tr>
+<tr>
+<td>质量</td>
+<td>完整性&#x2F;唯一性&#x2F;一致性&#x2F;时效性&#x2F;有效性五类规则做成门禁，不过检不放行下游</td>
+</tr>
+</tbody></table>
+<hr>
+<p>至此 BigData 系列四章完结：<a href="/datascience/01-spark-guide/">第一章：Spark 大数据批处理入门</a> 负责离线、<a href="/datascience/02-flink-guide/">第二章：Flink 流式计算入门</a> 负责实时、<a href="/mq/kafka-guide/">第三章：Kafka 大数据数据总线</a> 串管道，本章给管道加上分层与调度。分析层落地见 <a href="/database/03-clickhouse-query-tuning/">第三章：ClickHouse 查询与性能调优</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E4%BB%93/" rel="tag"># 数仓</a>
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E7%AE%A1%E9%81%93/" rel="tag"># 数据管道</a>
+              <a href="/tags/Airflow/" rel="tag"># Airflow</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/ai-engineering/04-rag-vector-retrieval-practice/" rel="prev" title="第四章：RAG 与向量检索实战">
+                  <i class="fa fa-angle-left"></i> 第四章：RAG 与向量检索实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/embedded/01-modbus-rtu/" rel="next" title="第一章：Modbus RTU">
+                  第一章：Modbus RTU <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

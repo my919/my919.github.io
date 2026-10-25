@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第九章：Redis HyperLogLog：概念、命令与案例概念基础HyperLogLog（HLL） 是一种基数（去重计数）估算算法的数据结构——用极小的固定内存回答「这批元素大约有多少个不同的」：  不是存明细，只支持 PFADD 添加元素、PFCOUNT 估算基数、PFMERGE 合并多个 HLL。   内存奇迹：无论存 1 万还是 1 亿个元素，每个 HLL 固定约 12 KB——对比 Se">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第九章：Redis HyperLogLog：概念、命令与案例">
+<meta property="og:url" content="https://my919.github.io/redis/09-redis-hyperloglog-type/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第九章：Redis HyperLogLog：概念、命令与案例概念基础HyperLogLog（HLL） 是一种基数（去重计数）估算算法的数据结构——用极小的固定内存回答「这批元素大约有多少个不同的」：  不是存明细，只支持 PFADD 添加元素、PFCOUNT 估算基数、PFMERGE 合并多个 HLL。   内存奇迹：无论存 1 万还是 1 亿个元素，每个 HLL 固定约 12 KB——对比 Se">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T09:31:20.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.593Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="HyperLogLog">
+<meta property="article:tag" content="Redis">
+<meta property="article:tag" content="基数统计">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/redis/09-redis-hyperloglog-type/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/redis/09-redis-hyperloglog-type/","path":"redis/09-redis-hyperloglog-type/","title":"第九章：Redis HyperLogLog：概念、命令与案例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第九章：Redis HyperLogLog：概念、命令与案例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B9%9D%E7%AB%A0%EF%BC%9ARedis-HyperLogLog%EF%BC%9A%E6%A6%82%E5%BF%B5%E3%80%81%E5%91%BD%E4%BB%A4%E4%B8%8E%E6%A1%88%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第九章：Redis HyperLogLog：概念、命令与案例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86%EF%BC%9A%E7%9B%B4%E8%A7%89%E7%90%86%E8%A7%A3"><span class="nav-number">1.2.</span> <span class="nav-text">核心原理：直觉理解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%BC%AF%E5%8A%AA%E5%88%A9%E8%AF%95%E9%AA%8C%E7%9B%B4%E8%A7%89"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 伯努利试验直觉</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%88%86%E6%A1%B6%E9%99%8D%E6%96%B9%E5%B7%AE"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 分桶降方差</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%86%85%E5%AD%98%E5%8E%BB%E5%90%91"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. 内存去向</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E4%B8%A4%E7%A7%8D%E5%86%85%E9%83%A8%E8%A1%A8%E7%A4%BA"><span class="nav-number">1.2.4.</span> <span class="nav-text">4. 两种内部表示</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%90%88%E5%B9%B6%E5%8D%B3%E5%B9%B6%E9%9B%86"><span class="nav-number">1.2.5.</span> <span class="nav-text">5. 合并即并集</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E8%BE%B9%E7%95%8C"><span class="nav-number">1.2.6.</span> <span class="nav-text">6. 边界</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.3.</span> <span class="nav-text">常用命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">1.4.</span> <span class="nav-text">典型应用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%BC%E5%90%88%E6%A1%88%E4%BE%8B%EF%BC%88redis-cli%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">综合案例（redis-cli）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%8D%95%E6%97%A5-UV"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 单日 UV</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%8C%89%E5%A4%A9%E5%88%86-key%E3%80%81%E5%91%A8%E7%BA%A7%E5%90%88%E5%B9%B6"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 按天分 key、周级合并</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%89%B9%E9%87%8F%E6%B7%BB%E5%8A%A0%EF%BC%88%E7%9C%81%E5%BE%80%E8%BF%94%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 批量添加（省往返）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%AF%AF%E5%B7%AE%E5%AE%9E%E6%B5%8B%EF%BC%9A%E7%81%8C-10-%E4%B8%87%E5%85%83%E7%B4%A0%E7%9C%8B%E4%BC%B0%E7%AE%97%E5%81%8F%E5%B7%AE"><span class="nav-number">1.5.4.</span> <span class="nav-text">4. 误差实测：灌 10 万元素看估算偏差</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%A4%9A%E7%BB%B4%E5%BA%A6-key-%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E7%AE%A1%E7%90%86"><span class="nav-number">1.5.5.</span> <span class="nav-text">5. 多维度 key 的生命周期管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E9%A3%8E%E6%8E%A7%EF%BC%9A%E6%8E%A5%E5%8F%A3%E7%8B%AC%E7%AB%8B-IP-%E7%B2%97%E4%BC%B0"><span class="nav-number">1.5.6.</span> <span class="nav-text">6. 风控：接口独立 IP 粗估</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-%E5%90%88%E5%B9%B6%E8%AF%AD%E4%B9%89-%E2%89%A0-%E6%AC%A1%E6%95%B0%E7%9B%B8%E5%8A%A0"><span class="nav-number">1.5.7.</span> <span class="nav-text">7. 合并语义 ≠ 次数相加</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-A-B-%E5%AE%9E%E9%AA%8C%E8%A7%A6%E8%BE%BE%E4%BA%BA%E6%95%B0"><span class="nav-number">1.5.8.</span> <span class="nav-text">8. A&#x2F;B 实验触达人数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E9%98%B6%EF%BC%9A%E8%AF%AF%E5%B7%AE%E4%B8%BA%E4%BB%80%E4%B9%88%E6%98%AF-0-81"><span class="nav-number">1.6.</span> <span class="nav-text">进阶：误差为什么是 0.81%</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%A4%BA%E4%BE%8B%EF%BC%88Lettuce%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">Java 客户端示例（Lettuce）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Python-%E7%A4%BA%E4%BE%8B%EF%BC%88redis-py%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">Python 示例（redis-py）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E%E7%B2%BE%E7%A1%AE%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-number">1.9.</span> <span class="nav-text">与精确方案对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91%E4%B8%8E%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">1.10.</span> <span class="nav-text">常见坑与注意事项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/redis/09-redis-hyperloglog-type/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第九章：Redis HyperLogLog：概念、命令与案例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第九章：Redis HyperLogLog：概念、命令与案例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 17:31:20" itemprop="dateCreated datePublished" datetime="2026-05-03T17:31:20+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Redis-%E7%BC%93%E5%AD%98/" itemprop="url" rel="index"><span itemprop="name">Redis 缓存</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.9k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第九章：Redis-HyperLogLog：概念、命令与案例"><a href="#第九章：Redis-HyperLogLog：概念、命令与案例" class="headerlink" title="第九章：Redis HyperLogLog：概念、命令与案例"></a>第九章：Redis HyperLogLog：概念、命令与案例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>HyperLogLog（HLL）</strong> 是一种<strong>基数（去重计数）估算</strong>算法的数据结构——用<strong>极小的固定内存</strong>回答「这批元素<strong>大约</strong>有多少个不同的」：</p>
+<ol>
+<li>不是存明细，只支持 <strong><code>PFADD</code> 添加元素</strong>、<strong><code>PFCOUNT</code> 估算基数</strong>、<strong><code>PFMERGE</code> 合并多个 HLL</strong>。  </li>
+<li><strong>内存奇迹</strong>：无论存 1 万还是 1 亿个元素，每个 HLL <strong>固定约 12 KB</strong>——对比 Set 存 1 亿个 ID 要数 GB，差距是数量级的。  </li>
+<li><strong>代价是近似</strong>：标准误差约 <strong>0.81%</strong>（1 亿 UV 估出 99.2M±80 万属正常）。  </li>
+<li><strong>适合</strong>：海量 <strong>UV</strong>、<strong>IP 去重计数</strong>等<strong>允许近似</strong>的报表。  </li>
+<li><strong>不适合</strong>：必须<strong>精确</strong>计数、需要<strong>枚举</strong>曾出现过的元素。  </li>
+<li><strong>命令前缀 <code>PF</code></strong>：纪念算法作者 Philippe Flajolet，与结构名 HyperLogLog 不同是历史习惯，别疑惑。</li>
+</ol>
+<h2 id="核心原理：直觉理解"><a href="#核心原理：直觉理解" class="headerlink" title="核心原理：直觉理解"></a>核心原理：直觉理解</h2><h3 id="1-伯努利试验直觉"><a href="#1-伯努利试验直觉" class="headerlink" title="1. 伯努利试验直觉"></a>1. 伯努利试验直觉</h3><p>把每个元素哈希成比特串，观察<strong>末尾连续 0 的个数</strong>。连续 0 越长越罕见；记录见过的<strong>最大连续 0 数 k</strong>，就用 <strong>2^k 粗估基数</strong>——「见过 5 个连续 0」说明大约掷过 2^5 量级的硬币。</p>
+<h3 id="2-分桶降方差"><a href="#2-分桶降方差" class="headerlink" title="2. 分桶降方差"></a>2. 分桶降方差</h3><p>单一估计抖动太大，HLL 把哈希值<strong>前若干位作桶号</strong>，分成 <strong>2^14 &#x3D; 16384 个桶</strong>，每桶各自记录最大连续 0 数，最后对全部桶取<strong>调和平均</strong>再修正——误差稳定在 <strong>0.81%</strong> 左右。</p>
+<h3 id="3-内存去向"><a href="#3-内存去向" class="headerlink" title="3. 内存去向"></a>3. 内存去向</h3><p>16384 桶 × 每桶 6 bit ≈ <strong>12 KB</strong>，与数据量无关；这就是「固定内存估算海量基数」的全部秘密。</p>
+<h3 id="4-两种内部表示"><a href="#4-两种内部表示" class="headerlink" title="4. 两种内部表示"></a>4. 两种内部表示</h3><ul>
+<li><strong>dense</strong>：12 KB 定长数组，每个桶 6 bit，始终占满 12 KB；  </li>
+<li><strong>sparse</strong>：基数很小时用更省内存的稀疏列表表示，元素增多后自动转 dense（<strong><code>hll-sparse-max-bytes</code></strong> 默认 3000 字节控制转换阈值）。</li>
+</ul>
+<p>对使用者透明，但解释了「新 HLL 实际占用远小于 12 KB」的现象。</p>
+<h3 id="5-合并即并集"><a href="#5-合并即并集" class="headerlink" title="5. 合并即并集"></a>5. 合并即并集</h3><p>两桶对应位置取<strong>最大值</strong>就是 PFMERGE——所以「按天分 key、周报 PFMERGE」天然正确，且合并结果仍是近似误差，不会叠加放大。</p>
+<h3 id="6-边界"><a href="#6-边界" class="headerlink" title="6. 边界"></a>6. 边界</h3><p><strong>拿不回成员</strong>（哈希不可逆）；<strong><code>PFCOUNT key1 key2</code></strong> 的多 key 形式需要临时合并，开销随 key 数上升（高版本有缓存优化），多 key 高频查询建议先 <strong><code>PFMERGE</code></strong> 落地再查。</p>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>PFADD key element [element ...]</code></strong></td>
+<td>向 <strong>HLL</strong> 增加元素（可批量），返回 1 表示内部状态有变化（<strong>不等于</strong>「新增了一个不同元素」的精确判定）</td>
+</tr>
+<tr>
+<td><strong><code>PFCOUNT key [key ...]</code></strong></td>
+<td>单个或合并估算基数</td>
+</tr>
+<tr>
+<td><strong><code>PFMERGE destkey sourcekey [sourcekey ...]</code></strong></td>
+<td>合并到 <strong>dest</strong></td>
+</tr>
+<tr>
+<td><strong><code>PFDEBUG</code></strong></td>
+<td>调试内部表示（运维向，排查 sparse&#x2F;dense 状态用）</td>
+</tr>
+</tbody></table>
+<p>三个业务命令之外无需其他操作——HLL 不支持删除单个元素（哈希不可逆，无法「撤回」某个 ID），要重来只能 <strong><code>DEL</code></strong> 整个 key 重建。</p>
+<h2 id="典型应用场景"><a href="#典型应用场景" class="headerlink" title="典型应用场景"></a>典型应用场景</h2><ol>
+<li><strong>页面 &#x2F; 活动 UV</strong>：<strong><code>PFADD uv:2026-05-03:page1 &lt;userId 或 sessionId&gt;</code></strong>，定时 <strong><code>PFCOUNT</code></strong>。  </li>
+<li><strong>多维度合并</strong>：按天分 <strong>key</strong>，日报用 <strong><code>PFMERGE</code></strong> 聚合成周 <strong>UV</strong>。  </li>
+<li><strong>搜索引擎独立查询词统计</strong>：每天搜索词基数，无需存词本身。  </li>
+<li><strong>接口独立 IP 粗估</strong>：风控「该接口今天被多少不同 IP 打过」的低成本近似答案。  </li>
+<li><strong>A&#x2F;B 实验触达人数</strong>：实验组&#x2F;对照组各一个 HLL，合并即总体触达。  </li>
+<li><strong>跨端去重触达</strong>：App &#x2F; Web &#x2F; 小程序三端各记一个 HLL，总触达 <strong><code>PFMERGE</code></strong> 三端，天然去掉「同人多端」重复。  </li>
+<li><strong>爬虫&#x2F;日志去重粗估</strong>：抓取管线按小时 <code>PFADD crawl:{hour} &lt;url指纹&gt;</code>，<code>PFCOUNT</code> 粗估「本小时新 URL 量级」，替代昂贵的全量布隆判重——只要趋势不要精确值时足够。</li>
+</ol>
+<h2 id="综合案例（redis-cli）"><a href="#综合案例（redis-cli）" class="headerlink" title="综合案例（redis-cli）"></a>综合案例（redis-cli）</h2><h3 id="1-单日-UV"><a href="#1-单日-UV" class="headerlink" title="1. 单日 UV"></a>1. 单日 UV</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">redis-cli PFADD uv:demo u1 u2 u3 u2 u1     <span class="comment"># 故意重复，验证去重</span></span><br><span class="line">redis-cli PFCOUNT uv:demo                  <span class="comment"># -&gt; 3（估算，元素少时通常恰好准确）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-按天分-key、周级合并"><a href="#2-按天分-key、周级合并" class="headerlink" title="2. 按天分 key、周级合并"></a>2. 按天分 key、周级合并</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">redis-cli PFADD uv:day1 a b c</span><br><span class="line">redis-cli PFADD uv:day2 c d e</span><br><span class="line">redis-cli PFMERGE uv:week uv:day1 uv:day2</span><br><span class="line">redis-cli PFCOUNT uv:week                  <span class="comment"># -&gt; 5（c 只算一次）</span></span><br><span class="line">redis-cli EXPIRE uv:week 604800            <span class="comment"># 合并结果记得设过期</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-批量添加（省往返）"><a href="#3-批量添加（省往返）" class="headerlink" title="3. 批量添加（省往返）"></a>3. 批量添加（省往返）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">redis-cli PFADD uv:2026-05-03 u1001 u1002 u1003 u1004 u1005</span><br><span class="line">redis-cli PFCOUNT uv:2026-05-03</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-误差实测：灌-10-万元素看估算偏差"><a href="#4-误差实测：灌-10-万元素看估算偏差" class="headerlink" title="4. 误差实测：灌 10 万元素看估算偏差"></a>4. 误差实测：灌 10 万元素看估算偏差</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 批量灌入 100000 个不同元素（bash 循环拆批，避免单条命令过长）</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> $(<span class="built_in">seq</span> 0 999); <span class="keyword">do</span></span><br><span class="line">  redis-cli PFADD hll:<span class="built_in">test</span> $(<span class="built_in">seq</span> $((i*<span class="number">100</span>)) $((i*<span class="number">100</span>+<span class="number">99</span>)) | <span class="built_in">tr</span> <span class="string">&#x27;\n&#x27;</span> <span class="string">&#x27; &#x27;</span>)</span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"></span><br><span class="line">redis-cli PFCOUNT hll:<span class="built_in">test</span>          <span class="comment"># 约 100000 ± 810（0.81% 标准误差）</span></span><br><span class="line">redis-cli MEMORY USAGE hll:<span class="built_in">test</span>     <span class="comment"># dense 后稳定在 12 KB 出头</span></span><br></pre></td></tr></table></figure>
+
+<p>真实值 100000，估算落在 <strong>[99190, 100810]</strong> 区间即符合预期；若偏差远超，先检查是否混入了不同语义的 ID。小基数（几百以内）时 HLL 通常<strong>恰好准确</strong>——稀疏区间走专门的小基数修正（LinearCounting），别把「小规模算得准」当作「它其实是精确的」的证据。</p>
+<h3 id="5-多维度-key-的生命周期管理"><a href="#5-多维度-key-的生命周期管理" class="headerlink" title="5. 多维度 key 的生命周期管理"></a>5. 多维度 key 的生命周期管理</h3><p>「天 × 页面 × 渠道」三维拆分下 key 会快速繁殖，必须配套 TTL 与合并策略：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 明细 key：按天+页面，TTL 8 天（保留一周明细可查）</span></span><br><span class="line">redis-cli PFADD uv:2026-05-03:page1:app u1001 u1002</span><br><span class="line">redis-cli EXPIRE uv:2026-05-03:page1:app 691200</span><br><span class="line"></span><br><span class="line"><span class="comment"># 周期任务：每日凌晨把昨天各渠道合并成「昨日全站」</span></span><br><span class="line">redis-cli PFMERGE uv:2026-05-03:page1 uv:2026-05-03:page1:app uv:2026-05-03:page1:web</span><br><span class="line">redis-cli EXPIRE uv:2026-05-03:page1 2592000       <span class="comment"># 日级聚合留 30 天</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 周报：7 个日聚合再合并</span></span><br><span class="line">redis-cli PFMERGE uv:2026-W18:page1 uv:2026-04-27:page1 uv:2026-04-28:page1 uv:2026-04-29:page1 uv:2026-04-30:page1 uv:2026-05-01:page1 uv:2026-05-02:page1 uv:2026-05-03:page1</span><br></pre></td></tr></table></figure>
+
+<p>原则：<strong>明细短留、聚合长留</strong>——明细只为排查，聚合才进报表。</p>
+<h3 id="6-风控：接口独立-IP-粗估"><a href="#6-风控：接口独立-IP-粗估" class="headerlink" title="6. 风控：接口独立 IP 粗估"></a>6. 风控：接口独立 IP 粗估</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 每次请求记录来源 IP</span></span><br><span class="line">redis-cli PFADD ip:api:login:2026-05-03 203.0.113.5 198.51.100.7</span><br><span class="line">redis-cli PFCOUNT ip:api:login:2026-05-03</span><br><span class="line">redis-cli EXPIRE ip:api:login:2026-05-03 172800</span><br></pre></td></tr></table></figure>
+
+<p>「登录接口今天被多少不同 IP 打过」用于撞库&#x2F;爬虫初判：平时 1 万、突然 50 万即触发告警。此处<strong>只要量级不要精确值</strong>，HLL 正好；注意同一 IP 反复出现会被去重，「请求次数」请另用 <code>INCR</code> 计数，两者口径不同勿混用。</p>
+<h3 id="7-合并语义-≠-次数相加"><a href="#7-合并语义-≠-次数相加" class="headerlink" title="7. 合并语义 ≠ 次数相加"></a>7. 合并语义 ≠ 次数相加</h3><p><strong><code>PFMERGE</code> 求的是并集基数，不是各 key 计数之和</strong>：day1 有 {a,b,c}、day2 有 {c,d,e}，合并基数 5 而不是 3+3&#x3D;6。做周报时若产品要的是「七天人次的总和」（访问人次），HLL 给不了——那是对每天 <code>PFCOUNT</code> 结果求和的应用层算术，与去重口径是两回事。上报口径（去重人数 vs 人次）务必与数据需求方对齐，这是 HLL 项目最常见的返工原因。</p>
+<h3 id="8-A-B-实验触达人数"><a href="#8-A-B-实验触达人数" class="headerlink" title="8. A&#x2F;B 实验触达人数"></a>8. A&#x2F;B 实验触达人数</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 实验组/对照组各一个 HLL，曝光时写入</span></span><br><span class="line">redis-cli PFADD exp:btn-red:grpA u1001 u1002 u1003</span><br><span class="line">redis-cli PFADD exp:btn-red:grpB u1003 u1004</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分别估算触达</span></span><br><span class="line">redis-cli PFCOUNT exp:btn-red:grpA               <span class="comment"># -&gt; 3</span></span><br><span class="line">redis-cli PFCOUNT exp:btn-red:grpB               <span class="comment"># -&gt; 2</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 注意：两组可能有重叠用户，「总体触达」要用合并而不是相加</span></span><br><span class="line">redis-cli PFMERGE exp:btn-red:all exp:btn-red:grpA exp:btn-red:grpB</span><br><span class="line">redis-cli PFCOUNT exp:btn-red:all                <span class="comment"># -&gt; 4（u1003 只算一次）</span></span><br></pre></td></tr></table></figure>
+
+<p>灰度发布、推送触达、广告曝光等「按桶分组估算人数」的场景同一套路：<strong>分桶各存 HLL，汇总用 PFMERGE，绝不直接相加</strong>。</p>
+<h2 id="进阶：误差为什么是-0-81"><a href="#进阶：误差为什么是-0-81" class="headerlink" title="进阶：误差为什么是 0.81%"></a>进阶：误差为什么是 0.81%</h2><p>HLL 的相对标准误差公式为 <strong>1.04 &#x2F; √m</strong>，m 为桶数。Redis 固定 <strong>m &#x3D; 2^14 &#x3D; 16384</strong>，代入得 <strong>1.04 &#x2F; 128 ≈ 0.81%</strong>——误差只由桶数决定，与数据量无关，这就是「10 个元素和 10 亿个元素误差率相同」的数学原因。桶数在实现里写死，用户不可调；要更小误差只能换算法（如 Datasketches 的 Theta），或接受它。</p>
+<p>观察 sparse → dense 转换：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">redis-cli PFADD hll:obs u1</span><br><span class="line">redis-cli MEMORY USAGE hll:obs      <span class="comment"># 稀疏表示，远小于 12KB</span></span><br><span class="line"><span class="comment"># 持续灌入数千元素后</span></span><br><span class="line">redis-cli MEMORY USAGE hll:obs      <span class="comment"># 转为 dense，≈ 12KB 封顶</span></span><br></pre></td></tr></table></figure>
+
+<p><strong><code>hll-sparse-max-bytes</code></strong>（默认 3000）控制稀疏表示的字节上限，超过即转 dense；绝大多数业务无需调整。</p>
+<h2 id="Java-客户端示例（Lettuce）"><a href="#Java-客户端示例（Lettuce）" class="headerlink" title="Java 客户端示例（Lettuce）"></a>Java 客户端示例（Lettuce）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">RedisCommands</span>&lt;String, String&gt; <span class="variable">cmd</span> <span class="operator">=</span> lettuceConnection.sync();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 上报 UV（批量）</span></span><br><span class="line">cmd.pfadd(<span class="string">&quot;uv:2026-05-03:page1&quot;</span>, <span class="string">&quot;u1001&quot;</span>, <span class="string">&quot;u1002&quot;</span>, <span class="string">&quot;u1003&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 当天 UV</span></span><br><span class="line"><span class="type">Long</span> <span class="variable">uv</span> <span class="operator">=</span> cmd.pfcount(<span class="string">&quot;uv:2026-05-03:page1&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 周报：合并 7 天</span></span><br><span class="line">cmd.pfmerge(<span class="string">&quot;uv:2026-W18:page1&quot;</span>,</span><br><span class="line">        <span class="string">&quot;uv:2026-05-01:page1&quot;</span>, <span class="string">&quot;uv:2026-05-02:page1&quot;</span>, <span class="string">&quot;uv:2026-05-03:page1&quot;</span>);</span><br><span class="line"><span class="type">Long</span> <span class="variable">weekUv</span> <span class="operator">=</span> cmd.pfcount(<span class="string">&quot;uv:2026-W18:page1&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<h2 id="Python-示例（redis-py）"><a href="#Python-示例（redis-py）" class="headerlink" title="Python 示例（redis-py）"></a>Python 示例（redis-py）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> redis</span><br><span class="line"></span><br><span class="line">r = redis.Redis(host=<span class="string">&quot;127.0.0.1&quot;</span>, port=<span class="number">6379</span>, decode_responses=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 页面 UV</span></span><br><span class="line">r.pfadd(<span class="string">&quot;uv:2026-05-03:page1&quot;</span>, <span class="string">&quot;u1001&quot;</span>, <span class="string">&quot;u1002&quot;</span>, <span class="string">&quot;u1001&quot;</span>)</span><br><span class="line">uv = r.pfcount(<span class="string">&quot;uv:2026-05-03:page1&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 周合并</span></span><br><span class="line">r.pfmerge(<span class="string">&quot;uv:week:page1&quot;</span>, <span class="string">&quot;uv:2026-05-02:page1&quot;</span>, <span class="string">&quot;uv:2026-05-03:page1&quot;</span>)</span><br><span class="line">week_uv = r.pfcount(<span class="string">&quot;uv:week:page1&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h2 id="与精确方案对比"><a href="#与精确方案对比" class="headerlink" title="与精确方案对比"></a>与精确方案对比</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>HyperLogLog</th>
+<th>Set 精确去重</th>
+<th>MySQL <code>COUNT(DISTINCT)</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内存&#x2F;存储（1 亿元素）</td>
+<td><strong>12 KB</strong></td>
+<td>数 GB</td>
+<td>磁盘表数 GB</td>
+</tr>
+<tr>
+<td>误差</td>
+<td><strong>~0.81%</strong></td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>能否枚举成员</td>
+<td>不能</td>
+<td>能</td>
+<td>能</td>
+</tr>
+<tr>
+<td>合并（日→周）</td>
+<td><strong><code>PFMERGE</code></strong> 天然并集</td>
+<td>需重放全量</td>
+<td><code>UNION</code> 后重算，慢</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>报表大盘、粗估</td>
+<td>需要明细、精确计费</td>
+<td>离线精确报表</td>
+</tr>
+</tbody></table>
+<h2 id="常见坑与注意事项"><a href="#常见坑与注意事项" class="headerlink" title="常见坑与注意事项"></a>常见坑与注意事项</h2><ol>
+<li><strong>误差</strong>：报表若要求<strong>精确 UV</strong>，需 <strong>Set</strong>（内存大）或<strong>离线数仓</strong>；把 HLL 结果写进计费系统是典型误用。  </li>
+<li><strong>元素语义</strong>：<strong><code>PFADD</code></strong> 把参数当<strong>字节串</strong>；业务上应用<strong>统一 ID</strong>（如用户 <strong>ID</strong>），勿混多种粒度（一会 userId 一会 sessionId，基数立刻失真）。  </li>
+<li><strong>无法查询成员</strong>：不能问「谁访问过」，只能问「大约多少人」。  </li>
+<li><strong><code>PFADD</code> 返回值</strong>：1 只表示「桶状态变了」，不能当「这是新用户」用——新元素落入已记录过的桶位时不返回 1，旧元素也可能偶然触发状态变化。  </li>
+<li><strong>key 数量膨胀</strong>：按「天 × 页面」分 key 时记得给明细 key 设 TTL，否则 12 KB × 天 × 页面 也会积少成多。  </li>
+<li><strong>多 key PFCOUNT 的开销</strong>：<strong><code>PFCOUNT k1 k2 … kN</code></strong> 需临时把 N 个 HLL 合并再估，key 多时单次调用变慢；高频多维查询应先 <strong><code>PFMERGE</code></strong> 落物化 key 再单查。  </li>
+<li><strong>稀疏 key 内存幻觉</strong>：元素少时 sparse 表示只有几百字节，别据此断言「HLL 很省所以随便建」——基数涨上来每个 key 都会爬到 12 KB，亿级 key 总量依然要规划。  </li>
+<li><strong>HLL 不是普通 String</strong>：虽然 <strong><code>TYPE</code></strong> 显示 string，但别对它 <strong><code>GET</code> &#x2F; <code>APPEND</code></strong>——内容是二进制桶数据，读出无意义，写入会直接毁结构；运维脚本要按类型白名单跳过。</li>
+</ol>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>定位</td>
+<td><strong>固定 ~12 KB 估算基数</strong>，误差 ~0.81%（16384 桶 × 6bit）</td>
+</tr>
+<tr>
+<td>三个命令</td>
+<td><strong>PFADD &#x2F; PFCOUNT &#x2F; PFMERGE</strong>，无成员查询</td>
+</tr>
+<tr>
+<td>原理直觉</td>
+<td>哈希尾 0 长度 + <strong>16384 桶调和平均</strong>；sparse→dense 自动转换</td>
+</tr>
+<tr>
+<td>与 Set</td>
+<td>精确去重 → Set（内存换准确）；近似报表 → HLL</td>
+</tr>
+<tr>
+<td>与 Bitmap</td>
+<td>位图答「<strong>谁</strong>来过」；HLL 答「<strong>多少人</strong>」</td>
+</tr>
+<tr>
+<td>合并语义</td>
+<td><strong>PFMERGE &#x3D; 并集基数</strong>，不等于各 key 计数相加</td>
+</tr>
+</tbody></table>
+<p><strong>延伸阅读</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>Set数据类型、应用场景及案例.md</code></strong></td>
+<td>精确去重（内存换准确）</td>
+</tr>
+<tr>
+<td><strong><code>Bitmap数据类型、应用场景及案例.md</code></strong></td>
+<td>按位统计另一种思路</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Redis/" rel="tag"># Redis</a>
+              <a href="/tags/HyperLogLog/" rel="tag"># HyperLogLog</a>
+              <a href="/tags/%E5%9F%BA%E6%95%B0%E7%BB%9F%E8%AE%A1/" rel="tag"># 基数统计</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/redis/07-redis-zset-type/" rel="prev" title="第七章：Redis ZSet 数据类型：概念、命令与案例">
+                  <i class="fa fa-angle-left"></i> 第七章：Redis ZSet 数据类型：概念、命令与案例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/redis/08-redis-bitmap-type/" rel="next" title="第八章：Redis Bitmap 数据类型：概念、命令与案例">
+                  第八章：Redis Bitmap 数据类型：概念、命令与案例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

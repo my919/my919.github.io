@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：滤波与几何变换概念基础 滤波 &#x3D; 用邻域算出新值：每个像素根据周围邻域（核）重新计算——模糊、锐化、边缘、形态学都是滤波的不同形式。 频域直觉：低通滤波（模糊）去噪但模糊边缘，高通滤波（锐化&#x2F;边缘）增强细节但放大噪声，二者是图像处理的阴阳。 几何变换改位置不改值：缩放、旋转、仿射、透视改变像素「在哪」，需插值填补新格点的值。 阈值二值化是分割起点：把灰度图按阈值切成前景">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：滤波与几何变换">
+<meta property="og:url" content="https://my919.github.io/opencv/03-opencv-filter-transform/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：滤波与几何变换概念基础 滤波 &#x3D; 用邻域算出新值：每个像素根据周围邻域（核）重新计算——模糊、锐化、边缘、形态学都是滤波的不同形式。 频域直觉：低通滤波（模糊）去噪但模糊边缘，高通滤波（锐化&#x2F;边缘）增强细节但放大噪声，二者是图像处理的阴阳。 几何变换改位置不改值：缩放、旋转、仿射、透视改变像素「在哪」，需插值填补新格点的值。 阈值二值化是分割起点：把灰度图按阈值切成前景">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:42:38.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.589Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="OpenCV">
+<meta property="article:tag" content="Python">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/opencv/03-opencv-filter-transform/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/opencv/03-opencv-filter-transform/","path":"opencv/03-opencv-filter-transform/","title":"第三章：滤波与几何变换"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：滤波与几何变换 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9A%E6%BB%A4%E6%B3%A2%E4%B8%8E%E5%87%A0%E4%BD%95%E5%8F%98%E6%8D%A2"><span class="nav-number">1.</span> <span class="nav-text">第三章：滤波与几何变换</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E6%A8%A1%E7%B3%8A%EF%BC%88%E4%BD%8E%E9%80%9A%E6%BB%A4%E6%B3%A2%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">一、模糊（低通滤波）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BE%B9%E7%95%8C%E5%A1%AB%E5%85%85%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.2.1.</span> <span class="nav-text">边界填充模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#C-%E5%AF%B9%E7%85%A7%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.2.2.</span> <span class="nav-text">C++ 对照示例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E9%94%90%E5%8C%96%E4%B8%8E%E8%BE%B9%E7%BC%98%EF%BC%88%E9%AB%98%E9%80%9A%E6%BB%A4%E6%B3%A2%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">二、锐化与边缘（高通滤波）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E5%8D%B7%E7%A7%AF%E6%A0%B8%E9%80%9F%E6%9F%A5"><span class="nav-number">1.3.1.</span> <span class="nav-text">自定义卷积核速查</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%BD%A2%E6%80%81%E5%AD%A6%E8%BF%90%E7%AE%97"><span class="nav-number">1.4.</span> <span class="nav-text">三、形态学运算</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A4%BC%E5%B8%BD%E4%B8%8E%E9%BB%91%E5%B8%BD%EF%BC%88%E7%81%B0%E5%BA%A6%E5%BD%A2%E6%80%81%E5%AD%A6%E9%AB%98%E9%A2%91%E4%BB%B6%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">礼帽与黑帽（灰度形态学高频件）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84%E5%85%83%E7%B4%A0%E7%9A%84%E5%BD%A2%E7%8A%B6"><span class="nav-number">1.4.2.</span> <span class="nav-text">结构元素的形状</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%87%A0%E4%BD%95%E5%8F%98%E6%8D%A2"><span class="nav-number">1.5.</span> <span class="nav-text">四、几何变换</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%BC%A9%E6%94%BE%E4%B8%8E%E7%BF%BB%E8%BD%AC"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 缩放与翻转</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E4%BB%BF%E5%B0%84%E5%8F%98%E6%8D%A2%EF%BC%88%E6%97%8B%E8%BD%AC-%E5%B9%B3%E7%A7%BB-%E5%89%AA%E5%88%87%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 仿射变换（旋转&#x2F;平移&#x2F;剪切）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E9%80%8F%E8%A7%86%E5%8F%98%E6%8D%A2%EF%BC%883%C3%973-%E7%9F%A9%E9%98%B5%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 透视变换（3×3 矩阵）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E9%98%88%E5%80%BC%E5%8C%96"><span class="nav-number">1.6.</span> <span class="nav-text">五、阈值化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E9%98%88%E5%80%BC%E7%B1%BB%E5%9E%8B%E9%80%9F%E6%9F%A5"><span class="nav-number">1.6.1.</span> <span class="nav-text">其他阈值类型速查</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%B8%B8%E7%94%A8%E7%BB%84%E5%90%88%EF%BC%9A%E5%8E%BB%E5%99%AA%E2%86%92%E8%BE%B9%E7%BC%98%E2%86%92%E8%BD%AE%E5%BB%93"><span class="nav-number">1.7.</span> <span class="nav-text">六、常用组合：去噪→边缘→轮廓</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%84%E5%90%88%E8%8C%83%E5%BC%8F%E4%BA%8C%EF%BC%9A%E6%96%87%E6%A1%A3%E6%89%AB%E6%8F%8F%E9%A2%84%E5%A4%84%E7%90%86"><span class="nav-number">1.7.1.</span> <span class="nav-text">组合范式二：文档扫描预处理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1"><span class="nav-number">1.8.</span> <span class="nav-text">七、常见陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.9.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/opencv/03-opencv-filter-transform/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：滤波与几何变换 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：滤波与几何变换
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:42:38" itemprop="dateCreated datePublished" datetime="2026-05-01T13:42:38+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/OpenCV/" itemprop="url" rel="index"><span itemprop="name">OpenCV</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：滤波与几何变换"><a href="#第三章：滤波与几何变换" class="headerlink" title="第三章：滤波与几何变换"></a>第三章：滤波与几何变换</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>滤波 &#x3D; 用邻域算出新值</strong>：每个像素根据周围邻域（核）重新计算——模糊、锐化、边缘、形态学都是滤波的不同形式。</li>
+<li><strong>频域直觉</strong>：低通滤波（模糊）去噪但模糊边缘，高通滤波（锐化&#x2F;边缘）增强细节但放大噪声，二者是图像处理的阴阳。</li>
+<li><strong>几何变换改位置不改值</strong>：缩放、旋转、仿射、透视改变像素「在哪」，需<strong>插值</strong>填补新格点的值。</li>
+<li><strong>阈值二值化是分割起点</strong>：把灰度图按阈值切成前景&#x2F;背景，是许多检测流水线的第一步。</li>
+<li><strong>本章目标</strong>：掌握常用滤波（高斯&#x2F;中值&#x2F;双边）、形态学（腐蚀&#x2F;膨胀&#x2F;开闭运算）、几何变换（缩放&#x2F;旋转&#x2F;仿射&#x2F;透视）、阈值化，能组合去噪与分割。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/opencv/02-opencv-image-basics/">第二章：图像基础操作</a> 的数组与色彩基础。</p>
+</blockquote>
+<hr>
+<h2 id="一、模糊（低通滤波）"><a href="#一、模糊（低通滤波）" class="headerlink" title="一、模糊（低通滤波）"></a>一、模糊（低通滤波）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> cv2</span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 均值模糊：核内取平均</span></span><br><span class="line">blur = cv2.blur(img, (<span class="number">5</span>, <span class="number">5</span>))</span><br><span class="line"></span><br><span class="line"><span class="comment"># 高斯模糊：加权平均，权重高斯分布，最常用</span></span><br><span class="line">gauss = cv2.GaussianBlur(img, (<span class="number">5</span>, <span class="number">5</span>), <span class="number">0</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 中值模糊：核内取中位数，去椒盐噪声特效</span></span><br><span class="line">median = cv2.medianBlur(img, <span class="number">5</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 双边滤波：保边去噪，保留边缘但计算慢</span></span><br><span class="line">bilat = cv2.bilateralFilter(img, <span class="number">9</span>, <span class="number">75</span>, <span class="number">75</span>)</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>模糊</th>
+<th>特点</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>均值</strong></td>
+<td>简单均匀</td>
+<td>轻度降噪</td>
+</tr>
+<tr>
+<td><strong>高斯</strong></td>
+<td>中心权重高，自然</td>
+<td>通用降噪、预处理</td>
+</tr>
+<tr>
+<td><strong>中值</strong></td>
+<td>去孤立噪点</td>
+<td>椒盐噪声</td>
+</tr>
+<tr>
+<td><strong>双边</strong></td>
+<td>同时考虑空间与灰度差，保边</td>
+<td>保边去噪（美颜）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>核大小必须为正奇数</strong>（5×5、7×7），偶数报错。</p>
+</blockquote>
+<h3 id="边界填充模式"><a href="#边界填充模式" class="headerlink" title="边界填充模式"></a>边界填充模式</h3><p>所有卷积类算子都会问「图像边缘外是什么」，<code>borderType</code> 控制：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>行为</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>BORDER_DEFAULT</code>（反射 101）</td>
+<td>&#96;fedcba</td>
+<td>abcdefgh</td>
+</tr>
+<tr>
+<td><code>BORDER_REPLICATE</code></td>
+<td>&#96;aaaaaa</td>
+<td>abcdefgh</td>
+</tr>
+<tr>
+<td><code>BORDER_CONSTANT</code></td>
+<td>填充定值（默认 0）</td>
+<td>需要明确背景时</td>
+</tr>
+</tbody></table>
+<p>多数情况下默认值够用；做卷积数学验证时用 <code>BORDER_CONSTANT</code> 配 0 最好推算。</p>
+<h3 id="C-对照示例"><a href="#C-对照示例" class="headerlink" title="C++ 对照示例"></a>C++ 对照示例</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cv::Mat gray, blur, edges;</span><br><span class="line">cv::<span class="built_in">cvtColor</span>(img, gray, cv::COLOR_BGR2GRAY);</span><br><span class="line">cv::<span class="built_in">GaussianBlur</span>(gray, blur, &#123;<span class="number">5</span>, <span class="number">5</span>&#125;, <span class="number">0</span>);</span><br><span class="line">cv::<span class="built_in">Canny</span>(blur, edges, <span class="number">50</span>, <span class="number">150</span>);</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、锐化与边缘（高通滤波）"><a href="#二、锐化与边缘（高通滤波）" class="headerlink" title="二、锐化与边缘（高通滤波）"></a>二、锐化与边缘（高通滤波）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 拉普拉斯锐化：用拉普拉斯算子增强边缘</span></span><br><span class="line">lap = cv2.Laplacian(gray, cv2.CV_64F)</span><br><span class="line">sharp = cv2.convertScaleAbs(gray, alpha=<span class="number">1</span>)  <span class="comment"># 示意，实际常用 gray - lap</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 自定义卷积核锐化</span></span><br><span class="line">kernel = np.array([[<span class="number">0</span>, -<span class="number">1</span>, <span class="number">0</span>],</span><br><span class="line">                   [-<span class="number">1</span>, <span class="number">5</span>, -<span class="number">1</span>],</span><br><span class="line">                   [<span class="number">0</span>, -<span class="number">1</span>, <span class="number">0</span>]])</span><br><span class="line">sharp = cv2.filter2D(img, -<span class="number">1</span>, kernel)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Sobel 边缘：x/y 方向梯度</span></span><br><span class="line">sobelx = cv2.Sobel(gray, cv2.CV_64F, <span class="number">1</span>, <span class="number">0</span>, ksize=<span class="number">3</span>)</span><br><span class="line">sobely = cv2.Sobel(gray, cv2.CV_64F, <span class="number">0</span>, <span class="number">1</span>, ksize=<span class="number">3</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Canny 边缘：内置完整流程（高斯→Sobel→非极大→双阈值），最常用</span></span><br><span class="line">edges = cv2.Canny(gray, <span class="number">50</span>, <span class="number">150</span>)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>filter2D</code></strong>：任意卷积核，<code>-1</code> 表示输出与输入同深度。</li>
+<li><strong>Canny 双阈值</strong>：低阈值 50 连边、高阈值 150 确认为强边，中间的靠连接保留。</li>
+<li><strong><code>CV_64F</code></strong>：梯度有负值，需用浮点防截断，显示前 <code>convertScaleAbs</code> 转回 uint8。</li>
+</ul>
+<h3 id="自定义卷积核速查"><a href="#自定义卷积核速查" class="headerlink" title="自定义卷积核速查"></a>自定义卷积核速查</h3><p><code>filter2D</code> 配几个经典核即可覆盖大部分需求（核和为 1 保持亮度不变是惯例）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">identity = np.array([[<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>],[<span class="number">0</span>,<span class="number">1</span>,<span class="number">0</span>],[<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>]])                    <span class="comment"># 恒等</span></span><br><span class="line">sharpen  = np.array([[<span class="number">0</span>,-<span class="number">1</span>,<span class="number">0</span>],[-<span class="number">1</span>,<span class="number">5</span>,-<span class="number">1</span>],[<span class="number">0</span>,-<span class="number">1</span>,<span class="number">0</span>]])                <span class="comment"># 锐化</span></span><br><span class="line">emboss   = np.array([[-<span class="number">2</span>,-<span class="number">1</span>,<span class="number">0</span>],[-<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>],[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>]])                 <span class="comment"># 浮雕</span></span><br><span class="line">edge     = np.array([[-<span class="number">1</span>,-<span class="number">1</span>,-<span class="number">1</span>],[-<span class="number">1</span>,<span class="number">8</span>,-<span class="number">1</span>],[-<span class="number">1</span>,-<span class="number">1</span>,-<span class="number">1</span>]])            <span class="comment"># 边缘检测</span></span><br><span class="line">box5     = np.ones((<span class="number">5</span>,<span class="number">5</span>), np.float32) / <span class="number">25</span>                        <span class="comment"># 均值模糊</span></span><br><span class="line">out = cv2.filter2D(img, -<span class="number">1</span>, sharpen)</span><br></pre></td></tr></table></figure>
+
+<p>理解「核滑窗做点积」这一本质后，Gabor 纹理核、Sobel 等都只是特定的核设计。</p>
+<hr>
+<h2 id="三、形态学运算"><a href="#三、形态学运算" class="headerlink" title="三、形态学运算"></a>三、形态学运算</h2><p>形态学作用于<strong>二值图</strong>，用结构元素（kernel）做邻域极值：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)</span><br><span class="line">_, binary = cv2.threshold(gray, <span class="number">127</span>, <span class="number">255</span>, cv2.THRESH_BINARY)</span><br><span class="line">kernel = np.ones((<span class="number">5</span>, <span class="number">5</span>), np.uint8)</span><br><span class="line"></span><br><span class="line">erosion  = cv2.erode(binary, kernel, iterations=<span class="number">1</span>)   <span class="comment"># 腐蚀：缩小白区</span></span><br><span class="line">dilation = cv2.dilate(binary, kernel, iterations=<span class="number">1</span>)  <span class="comment"># 膨胀：扩大白区</span></span><br><span class="line"></span><br><span class="line">opening = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)   <span class="comment"># 开=腐蚀后膨胀：去小白点噪声</span></span><br><span class="line">closing = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)  <span class="comment"># 闭=膨胀后腐蚀：填小黑洞</span></span><br><span class="line">gradient = cv2.morphologyEx(binary, cv2.MORPH_GRADIENT, kernel) <span class="comment"># 梯度=膨胀-腐蚀：得边缘</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>运算</th>
+<th>等价</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>腐蚀</td>
+<td>min</td>
+<td>去除小白点、细化</td>
+</tr>
+<tr>
+<td>膨胀</td>
+<td>max</td>
+<td>连接断裂、加粗</td>
+</tr>
+<tr>
+<td>开运算</td>
+<td>腐蚀→膨胀</td>
+<td>去小白点（噪声）</td>
+</tr>
+<tr>
+<td>闭运算</td>
+<td>膨胀→腐蚀</td>
+<td>填小黑洞</td>
+</tr>
+<tr>
+<td>梯度</td>
+<td>膨胀−腐蚀</td>
+<td>提取边缘</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>形态学也可用于灰度图（取邻域 max&#x2F;min），但最常见于二值图后处理。</p>
+</blockquote>
+<h3 id="礼帽与黑帽（灰度形态学高频件）"><a href="#礼帽与黑帽（灰度形态学高频件）" class="headerlink" title="礼帽与黑帽（灰度形态学高频件）"></a>礼帽与黑帽（灰度形态学高频件）</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 礼帽 = 原图 - 开运算：亮背景中提取小亮斑/细节（如药片上的文字）</span></span><br><span class="line">tophat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, kernel)</span><br><span class="line"><span class="comment"># 黑帽 = 闭运算 - 原图：亮背景中提取小暗斑（如白板上的污点）</span></span><br><span class="line">blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, kernel)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>礼帽（Top-hat）</strong>：提出比周围亮的细小结构——工业检测划痕、车牌字符增强常用。</li>
+<li><strong>黑帽（Black-hat）</strong>：提出比周围暗的细小结构——提取亮底暗纹。</li>
+</ul>
+<h3 id="结构元素的形状"><a href="#结构元素的形状" class="headerlink" title="结构元素的形状"></a>结构元素的形状</h3><p><code>np.ones</code> 只是矩形核，正式用法是 <code>getStructuringElement</code>：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">k_rect = cv2.getStructuringElement(cv2.MORPH_RECT, (<span class="number">5</span>, <span class="number">5</span>))     <span class="comment"># 矩形：各向同性</span></span><br><span class="line">k_ell  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (<span class="number">5</span>, <span class="number">5</span>))  <span class="comment"># 椭圆：更接近圆</span></span><br><span class="line">k_cross= cv2.getStructuringElement(cv2.MORPH_CROSS, (<span class="number">5</span>, <span class="number">5</span>))    <span class="comment"># 十字：保斜线弱</span></span><br></pre></td></tr></table></figure>
+
+<p>形状影响结果的几何倾向：矩形核处理文字行、椭圆核处理自然物体更圆滑。</p>
+<hr>
+<h2 id="四、几何变换"><a href="#四、几何变换" class="headerlink" title="四、几何变换"></a>四、几何变换</h2><h3 id="1-缩放与翻转"><a href="#1-缩放与翻转" class="headerlink" title="1. 缩放与翻转"></a>1. 缩放与翻转</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">h, w = img.shape[:<span class="number">2</span>]</span><br><span class="line">resized = cv2.resize(img, (w // <span class="number">2</span>, h // <span class="number">2</span>))            <span class="comment"># 指定目标尺寸 (W, H)</span></span><br><span class="line">resized = cv2.resize(img, <span class="literal">None</span>, fx=<span class="number">0.5</span>, fy=<span class="number">0.5</span>)        <span class="comment"># 按比例</span></span><br><span class="line"></span><br><span class="line">flip_h = cv2.flip(img, <span class="number">1</span>)   <span class="comment"># 水平翻转</span></span><br><span class="line">flip_v = cv2.flip(img, <span class="number">0</span>)   <span class="comment"># 垂直翻转</span></span><br><span class="line">flip_b = cv2.flip(img, -<span class="number">1</span>)  <span class="comment"># 水平+垂直</span></span><br></pre></td></tr></table></figure>
+
+<p><code>resize</code> 传 <code>(W, H)</code>（先宽后高），与 <code>shape=(H,W)</code> 相反，注意别混。</p>
+<p><strong>插值方法选型</strong>（<code>interpolation</code> 参数）：</p>
+<table>
+<thead>
+<tr>
+<th>插值</th>
+<th>特点</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>INTER_NEAREST</code></td>
+<td>最近邻，快但有锯齿</td>
+<td>掩膜&#x2F;标签图（不能引入新值）</td>
+</tr>
+<tr>
+<td><code>INTER_LINEAR</code></td>
+<td>双线性，默认</td>
+<td>通用缩放</td>
+</tr>
+<tr>
+<td><code>INTER_CUBIC</code></td>
+<td>双三次，更平滑更慢</td>
+<td>放大图像</td>
+</tr>
+<tr>
+<td><code>INTER_AREA</code></td>
+<td>区域平均</td>
+<td><strong>缩小图像首选</strong>，抗摩尔纹</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>掩膜&#x2F;分割标签图只能 <code>INTER_NEAREST</code></strong>——线性插值会产生 0&#x2F;255 之外的中间值，破坏类别语义。</p>
+</blockquote>
+<h3 id="2-仿射变换（旋转-平移-剪切）"><a href="#2-仿射变换（旋转-平移-剪切）" class="headerlink" title="2. 仿射变换（旋转&#x2F;平移&#x2F;剪切）"></a>2. 仿射变换（旋转&#x2F;平移&#x2F;剪切）</h3><p>仿射保持平行性与比例，用 2×3 变换矩阵：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 围绕中心旋转 45 度，缩放 1.0</span></span><br><span class="line">M = cv2.getRotationMatrix2D((w//<span class="number">2</span>, h//<span class="number">2</span>), <span class="number">45</span>, <span class="number">1.0</span>)</span><br><span class="line">rotated = cv2.warpAffine(img, M, (w, h))</span><br><span class="line"></span><br><span class="line"><span class="comment"># 仿射（由 3 对点定矩阵）</span></span><br><span class="line">pts1 = np.float32([[<span class="number">50</span>,<span class="number">50</span>],[<span class="number">200</span>,<span class="number">50</span>],[<span class="number">50</span>,<span class="number">200</span>]])</span><br><span class="line">pts2 = np.float32([[<span class="number">60</span>,<span class="number">70</span>],[<span class="number">210</span>,<span class="number">60</span>],[<span class="number">55</span>,<span class="number">210</span>]])</span><br><span class="line">M = cv2.getAffineTransform(pts1, pts2)</span><br><span class="line">affine = cv2.warpAffine(img, M, (w, h))</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-透视变换（3×3-矩阵）"><a href="#3-透视变换（3×3-矩阵）" class="headerlink" title="3. 透视变换（3×3 矩阵）"></a>3. 透视变换（3×3 矩阵）</h3><p>透视可改非平行线，常用于文档矫正&#x2F;俯视转换，由 4 对点定：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">pts1 = np.float32([[<span class="number">56</span>,<span class="number">65</span>],[<span class="number">368</span>,<span class="number">52</span>],[<span class="number">28</span>,<span class="number">387</span>],[<span class="number">389</span>,<span class="number">390</span>]])  <span class="comment"># 原四角</span></span><br><span class="line">pts2 = np.float32([[<span class="number">0</span>,<span class="number">0</span>],[<span class="number">300</span>,<span class="number">0</span>],[<span class="number">0</span>,<span class="number">400</span>],[<span class="number">300</span>,<span class="number">400</span>]])      <span class="comment"># 目标矩形</span></span><br><span class="line">M = cv2.getPerspectiveTransform(pts1, pts2)</span><br><span class="line">warped = cv2.warpPerspective(img, M, (<span class="number">300</span>, <span class="number">400</span>))</span><br></pre></td></tr></table></figure>
+
+<p>文档扫描、车牌校正的典型套路：检测四角 → 透视变换拉直。</p>
+<hr>
+<h2 id="五、阈值化"><a href="#五、阈值化" class="headerlink" title="五、阈值化"></a>五、阈值化</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 全局阈值</span></span><br><span class="line">_, th1 = cv2.threshold(gray, <span class="number">127</span>, <span class="number">255</span>, cv2.THRESH_BINARY)</span><br><span class="line"><span class="comment"># 反二值</span></span><br><span class="line">_, th2 = cv2.threshold(gray, <span class="number">127</span>, <span class="number">255</span>, cv2.THRESH_BINARY_INV)</span><br><span class="line"><span class="comment"># 自适应阈值（光照不均时用）：按邻域均值/高斯加权</span></span><br><span class="line">th3 = cv2.adaptiveThreshold(gray, <span class="number">255</span>, cv2.ADAPTIVE_THRESH_MEAN_C,</span><br><span class="line">                            cv2.THRESH_BINARY, <span class="number">11</span>, <span class="number">2</span>)</span><br><span class="line"><span class="comment"># Otsu 自动选阈值（双峰直方图最优）</span></span><br><span class="line">_, th4 = cv2.threshold(gray, <span class="number">0</span>, <span class="number">255</span>, cv2.THRESH_BINARY + cv2.THRESH_OTSU)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>全局阈值</strong>：光照均匀时够用。</li>
+<li><strong>自适应阈值</strong>：光照不均（如文档阴影）按局部邻域二值化，<code>11</code> 是块大小（奇数），<code>2</code> 是减常数。</li>
+<li><strong>Otsu</strong>：自动找最佳阈值，配合 <code>THRESH_OTSU</code> 标志，阈值参数传 0。</li>
+</ul>
+<h3 id="其他阈值类型速查"><a href="#其他阈值类型速查" class="headerlink" title="其他阈值类型速查"></a>其他阈值类型速查</h3><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>THRESH_TRUNC</code></td>
+<td>超阈值截到阈值（封顶）</td>
+</tr>
+<tr>
+<td><code>THRESH_TOZERO</code></td>
+<td>低于阈值置零，其余保留</td>
+</tr>
+<tr>
+<td><code>THRESH_TOZERO_INV</code></td>
+<td>高于阈值置零</td>
+</tr>
+</tbody></table>
+<p><strong>选阈值的经验</strong>：先 <code>matplotlib</code> 画灰度直方图看是否双峰——双峰用 Otsu；缓坡&#x2F;光照不均用自适应；已知物理意义（如灰度&gt;200 即过曝）用全局固定值。<code>triangle</code> 阈值（<code>THRESH_TRIANGLE</code>）适合单峰长尾分布（如细胞图像）。</p>
+<hr>
+<h2 id="六、常用组合：去噪→边缘→轮廓"><a href="#六、常用组合：去噪→边缘→轮廓" class="headerlink" title="六、常用组合：去噪→边缘→轮廓"></a>六、常用组合：去噪→边缘→轮廓</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 典型预处理流水线：灰度→高斯去噪→Canny 边缘</span></span><br><span class="line">gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)</span><br><span class="line">blur = cv2.GaussianBlur(gray, (<span class="number">5</span>, <span class="number">5</span>), <span class="number">0</span>)</span><br><span class="line">edges = cv2.Canny(blur, <span class="number">50</span>, <span class="number">150</span>)</span><br><span class="line"><span class="comment"># 后续接轮廓检测（第四章）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="组合范式二：文档扫描预处理"><a href="#组合范式二：文档扫描预处理" class="headerlink" title="组合范式二：文档扫描预处理"></a>组合范式二：文档扫描预处理</h3><p>扫描件&#x2F;拍照文档的 OCR 前处理（光照不均 + 倾斜）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">gray  = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)</span><br><span class="line"><span class="comment"># 1. 大核闭运算估背景，除法归一（抗光照不均的另一条路）</span></span><br><span class="line">bg    = cv2.morphologyEx(gray, cv2.MORPH_CLOSE,</span><br><span class="line">                         cv2.getStructuringElement(cv2.MORPH_RECT, (<span class="number">25</span>, <span class="number">25</span>)))</span><br><span class="line">norm  = cv2.divide(gray, bg, scale=<span class="number">255</span>)</span><br><span class="line"><span class="comment"># 2. 自适应阈值二值化</span></span><br><span class="line">binary = cv2.adaptiveThreshold(norm, <span class="number">255</span>, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,</span><br><span class="line">                               cv2.THRESH_BINARY, <span class="number">25</span>, <span class="number">15</span>)</span><br><span class="line"><span class="comment"># 3. 开运算去碎噪点</span></span><br><span class="line">clean = cv2.morphologyEx(binary, cv2.MORPH_OPEN,</span><br><span class="line">                         cv2.getStructuringElement(cv2.MORPH_RECT, (<span class="number">2</span>, <span class="number">2</span>)))</span><br></pre></td></tr></table></figure>
+
+<p><code>divide</code> 背景归一 + 自适应阈值是应对阴影&#x2F;渐变的组合拳，效果常优于单自适应阈值。</p>
+<hr>
+<h2 id="七、常见陷阱"><a href="#七、常见陷阱" class="headerlink" title="七、常见陷阱"></a>七、常见陷阱</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>核用偶数</strong></td>
+<td>高斯&#x2F;中值核须正奇数，偶数报错</td>
+</tr>
+<tr>
+<td><strong>resize 传 (H,W)</strong></td>
+<td><code>resize</code> 要 (W,H)，与 shape 相反</td>
+</tr>
+<tr>
+<td><strong>Sobel 截断负梯度</strong></td>
+<td>不用 <code>CV_64F</code> 会丢负值边缘</td>
+</tr>
+<tr>
+<td><strong>形态学忘二值化</strong></td>
+<td>形态学最适用二值图，灰度图效果不同</td>
+</tr>
+<tr>
+<td><strong>自适应阈值块用偶数</strong></td>
+<td><code>adaptiveThreshold</code> 块大小须奇数且 &gt;1</td>
+</tr>
+<tr>
+<td><strong>透视点顺序错</strong></td>
+<td>4 对点须一一对应，顺序错导致拉歪</td>
+</tr>
+<tr>
+<td><strong>边缘阈值全靠猜</strong></td>
+<td>用 Otsu 自动选，或先 <code>pyplot.hist</code> 看直方图</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>高斯模糊</td>
+<td>通用降噪首选；中值去椒盐；双边保边</td>
+</tr>
+<tr>
+<td>边缘</td>
+<td>Canny 最常用（双阈值完整流程）；Sobel 取方向梯度</td>
+</tr>
+<tr>
+<td>形态学</td>
+<td>腐蚀&#x2F;膨胀为基础，开运算去噪、闭运算填洞、梯度取边</td>
+</tr>
+<tr>
+<td>礼帽黑帽</td>
+<td>礼帽提亮斑、黑帽提暗斑，工业检测常用</td>
+</tr>
+<tr>
+<td>结构元素</td>
+<td><code>getStructuringElement</code> 选矩形&#x2F;椭圆&#x2F;十字，影响几何倾向</td>
+</tr>
+<tr>
+<td>缩放</td>
+<td><code>resize(img,(W,H))</code> 先宽后高；缩小用 <code>INTER_AREA</code>、掩膜用 <code>INTER_NEAREST</code></td>
+</tr>
+<tr>
+<td>仿射</td>
+<td>2×3 矩阵，保平行；<code>getRotationMatrix2D</code> 旋转</td>
+</tr>
+<tr>
+<td>透视</td>
+<td>3×3 矩阵，4 对点定；文档&#x2F;车牌矫正</td>
+</tr>
+<tr>
+<td>阈值</td>
+<td>全局简单、自适应抗光照不均、Otsu 自动选阈值</td>
+</tr>
+<tr>
+<td>流水线</td>
+<td>灰度→高斯→Canny 是预处理黄金组合；文档流加 <code>divide</code> 背景归一</td>
+</tr>
+</tbody></table>
+<p>进入 <a href="/opencv/04-opencv-features-geometry/">第四章：特征与几何</a>，学习角点检测、特征匹配与轮廓分析。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Python/" rel="tag"># Python</a>
+              <a href="/tags/OpenCV/" rel="tag"># OpenCV</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/opencv/04-opencv-features-geometry/" rel="prev" title="第四章：特征与几何">
+                  <i class="fa fa-angle-left"></i> 第四章：特征与几何
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/opencv/02-opencv-image-basics/" rel="next" title="第二章：图像基础操作">
+                  第二章：图像基础操作 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

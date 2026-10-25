@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第二章：集成测试与 E2E 测试概念基础 集成测试定义：验证模块间协作是否正确——服务与数据库、服务与服务、模块与模块的接线点，单元测试替不了，E2E 又太贵，集成测试填补中间地带。 E2E：用户视角：从真实入口（浏览器 &#x2F; App &#x2F; CLI）走完整业务流，验证「用户真能完成这件事」；它不关心内部实现，只关心端到端结果。 契约测试：消费者驱动：消费方先写「我期望 Provid">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第二章：集成测试与 E2E 测试">
+<meta property="og:url" content="https://my919.github.io/test/02-integration-e2e-testing/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第二章：集成测试与 E2E 测试概念基础 集成测试定义：验证模块间协作是否正确——服务与数据库、服务与服务、模块与模块的接线点，单元测试替不了，E2E 又太贵，集成测试填补中间地带。 E2E：用户视角：从真实入口（浏览器 &#x2F; App &#x2F; CLI）走完整业务流，验证「用户真能完成这件事」；它不关心内部实现，只关心端到端结果。 契约测试：消费者驱动：消费方先写「我期望 Provid">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-02T04:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.599Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="E2E">
+<meta property="article:tag" content="Testcontainers">
+<meta property="article:tag" content="Testing">
+<meta property="article:tag" content="集成测试">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/test/02-integration-e2e-testing/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/test/02-integration-e2e-testing/","path":"test/02-integration-e2e-testing/","title":"第二章：集成测试与 E2E 测试"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第二章：集成测试与 E2E 测试 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E7%AB%A0%EF%BC%9A%E9%9B%86%E6%88%90%E6%B5%8B%E8%AF%95%E4%B8%8E-E2E-%E6%B5%8B%E8%AF%95"><span class="nav-number">1.</span> <span class="nav-text">第二章：集成测试与 E2E 测试</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E9%9B%86%E6%88%90%E6%B5%8B%E8%AF%95%E7%AD%96%E7%95%A5"><span class="nav-number">1.2.</span> <span class="nav-text">一、集成测试策略</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81Testcontainers-%E5%AE%9E%E6%88%98"><span class="nav-number">1.3.</span> <span class="nav-text">二、Testcontainers 实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Java%EF%BC%9APostgreSQL-Redis"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. Java：PostgreSQL + Redis</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Go%EF%BC%9Atestcontainers-go"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. Go：testcontainers-go</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Python%EF%BC%9Atestcontainers-python"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. Python：testcontainers-python</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%B6%88%E6%81%AF%E4%B8%AD%E9%97%B4%E4%BB%B6%E4%B8%8E%E7%BB%84%E5%90%88%E7%8E%AF%E5%A2%83"><span class="nav-number">1.3.4.</span> <span class="nav-text">4. 消息中间件与组合环境</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81API-%E5%A5%91%E7%BA%A6%E6%B5%8B%E8%AF%95"><span class="nav-number">1.4.</span> <span class="nav-text">三、API 契约测试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81E2E-%E6%B5%8B%E8%AF%95%E6%A1%86%E6%9E%B6"><span class="nav-number">1.5.</span> <span class="nav-text">四、E2E 测试框架</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Page-Object-%E6%95%B0%E6%8D%AE%E9%A9%B1%E5%8A%A8%EF%BC%9A%E7%99%BB%E5%BD%95%E5%B9%B6%E4%B8%8B%E5%8D%95"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. Page Object + 数据驱动：登录并下单</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Playwright-%E9%A1%B9%E7%9B%AE%E7%BB%84%E7%BB%87%E4%B8%8E%E5%B9%B6%E8%A1%8C%EF%BC%88TypeScript%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. Playwright 项目组织与并行（TypeScript）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Cypress-%E5%AF%B9%E6%AF%94"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. Cypress 对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95%E4%B8%8E%E5%8E%8B%E6%B5%8B"><span class="nav-number">1.6.</span> <span class="nav-text">五、性能测试与压测</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-k6-%E8%84%9A%E6%9C%AC%E5%AE%9E%E6%88%98"><span class="nav-number">1.6.1.</span> <span class="nav-text">1. k6 脚本实战</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-wrk-%E5%BF%AB%E9%80%9F%E5%9F%BA%E5%87%86"><span class="nav-number">1.6.2.</span> <span class="nav-text">2. wrk 快速基准</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E6%B5%8B%E8%AF%95%E6%B5%81%E6%B0%B4%E7%BA%BF%E4%B8%8E-CI-%E9%9B%86%E6%88%90"><span class="nav-number">1.7.</span> <span class="nav-text">六、测试流水线与 CI 集成</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%81%BF%E5%9D%91"><span class="nav-number">1.8.</span> <span class="nav-text">常见避坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.9.</span> <span class="nav-text">本章小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"><span class="nav-number">1.10.</span> <span class="nav-text">延伸阅读</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/test/02-integration-e2e-testing/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第二章：集成测试与 E2E 测试 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第二章：集成测试与 E2E 测试
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-09-02 12:00:00" itemprop="dateCreated datePublished" datetime="2026-09-02T12:00:00+08:00">2026-09-02</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95/" itemprop="url" rel="index"><span itemprop="name">自动化测试</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>12k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>11 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第二章：集成测试与-E2E-测试"><a href="#第二章：集成测试与-E2E-测试" class="headerlink" title="第二章：集成测试与 E2E 测试"></a>第二章：集成测试与 E2E 测试</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>集成测试定义</strong>：验证<strong>模块间协作</strong>是否正确——服务与数据库、服务与服务、模块与模块的接线点，单元测试替不了，E2E 又太贵，集成测试填补中间地带。</li>
+<li><strong>E2E：用户视角</strong>：从<strong>真实入口</strong>（浏览器 &#x2F; App &#x2F; CLI）走完整业务流，验证「用户真能完成这件事」；它不关心内部实现，只关心端到端结果。</li>
+<li><strong>契约测试：消费者驱动</strong>：消费方先写「我期望 Provider 返回什么」的契约，Provider 验证自己满足契约，避免双方联调时的<strong>集成地狱</strong>。</li>
+<li><strong>Testcontainers 革命</strong>：用一次性 Docker 容器跑真实依赖（Postgres &#x2F; Redis &#x2F; Kafka），让集成测试<strong>接近单元测试的速度与隔离性</strong>，又不丢真实度。</li>
+<li><strong>测试环境一致性</strong>：本地、CI、预发跑的依赖版本必须<strong>对齐</strong>，否则「我这能过」频发；镜像化依赖是消除环境漂移的根本手段。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/test/01-testing-methodology-unit-test/">第一章：测试方法论与单元测试</a> 的单元层，把验证范围抬升到跨模块、真实依赖与浏览器全链路。</p>
+</blockquote>
+<hr>
+<h2 id="一、集成测试策略"><a href="#一、集成测试策略" class="headerlink" title="一、集成测试策略"></a>一、集成测试策略</h2><p><strong>模块间集成 vs 外部依赖集成</strong>：前者验证<strong>自家代码</strong>之间的接线（订单服务调用库存服务的客户端）；后者验证<strong>自家代码与外部系统</strong>（数据库、消息队列、三方 API）的接线。前者偏快、偏纯；后者需要环境，是 Testcontainers 的主战场。</p>
+<p><strong>三种反模式自检</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>反模式</th>
+<th>形态</th>
+<th>病灶</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>冰淇淋筒</td>
+<td>E2E 占大头，单元寥寥</td>
+<td>反馈慢、脆性高，CI 没人敢跑</td>
+</tr>
+<tr>
+<td>纸杯蛋糕</td>
+<td>各层重复测同一逻辑，无职责分工</td>
+<td>改一处三层全改，维护成本爆炸</td>
+</tr>
+<tr>
+<td>沙漏&#x2F;哑铃</td>
+<td>单元与 E2E 多、集成层断档</td>
+<td>模块接线缺陷无人接，全漏到 E2E</td>
+</tr>
+</tbody></table>
+<p><strong>测试奖杯（Testing Trophy）</strong>：Kent C. Dodds 提出的现代变体——<strong>集成测试占最大比重</strong>（Static &lt; Unit &lt; Integration &gt; E2E），适合前端与微服务：单元测纯函数，集成测组件协作，E2E 只留登录&#x2F;支付等关键路径。</p>
+<p><strong>测试双金字塔</strong>：金字塔之外再叠一座「契约金字塔」——服务间用契约测试替代大量重型集成测试，E2E 只保留少量关键路径，整体成本骤降。</p>
+<p><strong>数据准备：Builder &#x2F; Fixture &#x2F; Factory</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Builder：可读地构造复杂对象</span></span><br><span class="line"><span class="type">Order</span> <span class="variable">order</span> <span class="operator">=</span> OrderBuilder.anOrder()</span><br><span class="line">    .withCustomer(<span class="string">&quot;alice&quot;</span>).withLine(<span class="string">&quot;SKU-1&quot;</span>, <span class="number">2</span>)</span><br><span class="line">    .withStatus(OrderStatus.PAID).build();</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>Fixture</strong>：固定数据集（如 <code>users.yml</code>），适合不变的场景底座。</li>
+<li><strong>Factory</strong>：按需造数据（如 <code>OrderFactory.paid()</code>、<code>OrderFactory.pending()</code>），适合多变组合。</li>
+<li>原则：<strong>测试数据自给自足</strong>，不依赖其他测试留下的状态。</li>
+</ul>
+<p><strong>事务回滚 vs 清理策略</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>做法</th>
+<th>优缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>事务回滚</td>
+<td>每个用例开事务，结束回滚</td>
+<td>快、干净；不适用于跨连接场景</td>
+</tr>
+<tr>
+<td>清理脚本</td>
+<td>用例后 <code>TRUNCATE</code> &#x2F; <code>DELETE</code></td>
+<td>通用；需注意外键顺序</td>
+</tr>
+<tr>
+<td>一次性容器</td>
+<td>每用例新容器</td>
+<td>最隔离；启动开销需用单例缓存优化</td>
+</tr>
+</tbody></table>
+<p><strong>HTTP 依赖拦截：WireMock</strong>。三方 API（支付、短信）不值得起容器——用 WireMock 起本地 HTTP 桩，返回录好的响应并验证请求格式：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RegisterExtension</span></span><br><span class="line"><span class="keyword">static</span> <span class="type">WireMockExtension</span> <span class="variable">wm</span> <span class="operator">=</span> WireMockExtension.newInstance()</span><br><span class="line">    .options(wireMockConfig().dynamicPort()).build();</span><br><span class="line"></span><br><span class="line"><span class="meta">@Test</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">paysViaGateway</span><span class="params">()</span> &#123;</span><br><span class="line">    wm.stubFor(post(<span class="string">&quot;/v1/charges&quot;</span>).willReturn(okJson(<span class="string">&quot;&#123;\&quot;status\&quot;:\&quot;OK\&quot;&#125;&quot;</span>)));</span><br><span class="line">    assertThat(service.pay(order)).isTrue();</span><br><span class="line">    wm.verify(postRequestedFor(urlEqualTo(<span class="string">&quot;/v1/charges&quot;</span>))</span><br><span class="line">        .withHeader(<span class="string">&quot;Idempotency-Key&quot;</span>, matching(<span class="string">&quot;.+&quot;</span>)));   <span class="comment">// 顺便验证幂等头</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Python 对应 <strong>responses</strong> 库，Go 用 <strong>httptest.Server</strong>——原则一致：拦截在 HTTP 边界，不 mock 客户端 SDK 内部。</p>
+<hr>
+<h2 id="二、Testcontainers-实战"><a href="#二、Testcontainers-实战" class="headerlink" title="二、Testcontainers 实战"></a>二、Testcontainers 实战</h2><p><strong>真实依赖 vs Mock 取舍</strong>：涉及 SQL 方言、事务隔离、连接池行为的逻辑<strong>必须用真库</strong>；纯协议解析、错误码映射可 Mock。Testcontainers 把「用真库」的成本压到可接受区间。</p>
+<h3 id="1-Java：PostgreSQL-Redis"><a href="#1-Java：PostgreSQL-Redis" class="headerlink" title="1. Java：PostgreSQL + Redis"></a>1. Java：PostgreSQL + Redis</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Testcontainers</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">CustomerRepositoryIT</span> &#123;</span><br><span class="line">    <span class="meta">@Container</span> <span class="keyword">static</span> <span class="type">PostgreSQLContainer</span>&lt;?&gt; <span class="variable">postgres</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">PostgreSQLContainer</span>&lt;&gt;(<span class="string">&quot;postgres:16&quot;</span>);</span><br><span class="line">    <span class="meta">@Container</span> <span class="keyword">static</span> <span class="type">GenericContainer</span>&lt;?&gt; <span class="variable">redis</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">GenericContainer</span>&lt;&gt;(<span class="string">&quot;redis:7&quot;</span>).withExposedPorts(<span class="number">6379</span>);</span><br><span class="line"></span><br><span class="line">    <span class="meta">@DynamicPropertySource</span></span><br><span class="line">    <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">props</span><span class="params">(DynamicPropertyRegistry r)</span> &#123;</span><br><span class="line">        r.add(<span class="string">&quot;spring.datasource.url&quot;</span>, postgres::getJdbcUrl);</span><br><span class="line">        r.add(<span class="string">&quot;spring.datasource.username&quot;</span>, postgres::getUsername);</span><br><span class="line">        r.add(<span class="string">&quot;spring.datasource.password&quot;</span>, postgres::getPassword);</span><br><span class="line">        r.add(<span class="string">&quot;spring.data.redis.port&quot;</span>, () -&gt; redis.getMappedPort(<span class="number">6379</span>));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Autowired</span> CustomerRepository repo;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="type">void</span> <span class="title function_">persistsAndFindsCustomer</span><span class="params">()</span> &#123;</span><br><span class="line">        repo.save(<span class="keyword">new</span> <span class="title class_">Customer</span>(<span class="string">&quot;Alice&quot;</span>));</span><br><span class="line">        assertThat(repo.findByName(<span class="string">&quot;Alice&quot;</span>)).isPresent();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-Go：testcontainers-go"><a href="#2-Go：testcontainers-go" class="headerlink" title="2. Go：testcontainers-go"></a>2. Go：testcontainers-go</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">TestWithPostgres</span><span class="params">(t *testing.T)</span></span> &#123;</span><br><span class="line">    ctx := context.Background()</span><br><span class="line">    pg, err := postgres.Run(ctx, <span class="string">&quot;postgres:16&quot;</span>,</span><br><span class="line">        postgres.WithDatabase(<span class="string">&quot;test&quot;</span>), postgres.WithUsername(<span class="string">&quot;test&quot;</span>), postgres.WithPassword(<span class="string">&quot;test&quot;</span>),</span><br><span class="line">        testcontainers.WithWaitStrategy(wait.ForLog(<span class="string">&quot;database system is ready to accept connections&quot;</span>).WithOccurrence(<span class="number">2</span>).WithStartupTimeout(<span class="number">30</span>*time.Second)),</span><br><span class="line">    )</span><br><span class="line">    require.NoError(t, err)</span><br><span class="line">    t.Cleanup(<span class="function"><span class="keyword">func</span><span class="params">()</span></span> &#123; _ = pg.Terminate(ctx) &#125;)</span><br><span class="line">    db, err := sql.Open(<span class="string">&quot;pgx&quot;</span>, pg.MustConnectionString(ctx))</span><br><span class="line">    require.NoError(t, err)</span><br><span class="line">    <span class="comment">// 跑迁移 + 断言</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-Python：testcontainers-python"><a href="#3-Python：testcontainers-python" class="headerlink" title="3. Python：testcontainers-python"></a>3. Python：testcontainers-python</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> testcontainers.postgres <span class="keyword">import</span> PostgresContainer</span><br><span class="line"><span class="keyword">from</span> sqlalchemy <span class="keyword">import</span> create_engine</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">test_with_postgres</span>():</span><br><span class="line">    <span class="keyword">with</span> PostgresContainer(<span class="string">&quot;postgres:16&quot;</span>) <span class="keyword">as</span> pg:</span><br><span class="line">        engine = create_engine(pg.get_connection_url())</span><br><span class="line">        <span class="keyword">with</span> engine.begin() <span class="keyword">as</span> conn:</span><br><span class="line">            conn.exec_driver_sql(<span class="string">&quot;CREATE TABLE t(id int)&quot;</span>); conn.exec_driver_sql(<span class="string">&quot;INSERT INTO t VALUES (1)&quot;</span>)</span><br><span class="line">        rows = engine.connect().exec_driver_sql(<span class="string">&quot;SELECT count(*) FROM t&quot;</span>).fetchone()</span><br><span class="line">        <span class="keyword">assert</span> rows[<span class="number">0</span>] == <span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>性能要点</strong>：用 <code>@Container static</code> 或单例缓存容器，跨用例复用，避免每个用例都拉镜像；用 <code>Reuse</code> 模式让本地反复跑更快。</p>
+<h3 id="4-消息中间件与组合环境"><a href="#4-消息中间件与组合环境" class="headerlink" title="4. 消息中间件与组合环境"></a>4. 消息中间件与组合环境</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Kafka：验证生产者真正写进了 Topic、消费者能按 key 聚合</span></span><br><span class="line"><span class="meta">@Container</span> <span class="keyword">static</span> <span class="type">KafkaContainer</span> <span class="variable">kafka</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">KafkaContainer</span>(</span><br><span class="line">    DockerImageName.parse(<span class="string">&quot;confluentinc/cp-kafka:7.6.1&quot;</span>));</span><br><span class="line"></span><br><span class="line"><span class="meta">@Test</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">producesOrderEvent</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> (<span class="type">var</span> <span class="variable">consumer</span> <span class="operator">=</span> KafkaTestUtils.consumer(kafka.getBootstrapServers())) &#123;</span><br><span class="line">        producer.sendOrderCreated(<span class="keyword">new</span> <span class="title class_">OrderEvent</span>(<span class="string">&quot;o-1&quot;</span>, Money.of(<span class="string">&quot;9.90&quot;</span>)));</span><br><span class="line">        <span class="type">var</span> <span class="variable">records</span> <span class="operator">=</span> KafkaTestUtils.poll(consumer, <span class="string">&quot;order-created&quot;</span>, Duration.ofSeconds(<span class="number">5</span>));</span><br><span class="line">        assertThat(records).singleElement().extracting(ConsumerRecord::key).isEqualTo(<span class="string">&quot;o-1&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>多容器编排</strong>：DB + Redis + Kafka 多个 <code>@Container</code> 共存即可；超过 3 个依赖考虑 <strong>Testcontainers Cloud</strong> 或预置 compose 环境。</li>
+<li><strong><code>withReuse(true)</code></strong>：本地开发容器跨 JVM 复用（需 <code>.testcontainers.properties</code> 开启），CI 上别开——干净环境才是 CI 的价值。</li>
+<li><strong>等待策略</strong>：<code>Wait.forListeningPort()</code> 不够时用 <code>Wait.forLog(...)</code> 等服务真正 ready，否则前几个用例偶发失败。</li>
+</ul>
+<hr>
+<h2 id="三、API-契约测试"><a href="#三、API-契约测试" class="headerlink" title="三、API 契约测试"></a>三、API 契约测试</h2><p><strong>消费者驱动契约测试（CDC）</strong>：消费方写「我对 Provider 的期望」→ 生成契约文件 → Provider 在 CI 里拿契约验证自己不破坏消费方。双方无需联调即可发现不兼容。</p>
+<p><strong>Pact 框架：Consumer &#x2F; Provider 流程</strong>。Consumer 侧写期望并产出契约 JSON：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> pytest, requests</span><br><span class="line"><span class="keyword">from</span> pact <span class="keyword">import</span> Consumer, Provider</span><br><span class="line"></span><br><span class="line"><span class="meta">@pytest.fixture(<span class="params">scope=<span class="string">&quot;module&quot;</span></span>)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">pact</span>():</span><br><span class="line">    pact = Consumer(<span class="string">&quot;order-service&quot;</span>).has_pact_with(Provider(<span class="string">&quot;payment-service&quot;</span>), port=<span class="number">1234</span>)</span><br><span class="line">    pact.start_service()</span><br><span class="line">    <span class="keyword">yield</span> pact</span><br><span class="line">    pact.stop_service()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">test_query_order_status</span>(<span class="params">pact</span>):</span><br><span class="line">    expected = &#123;<span class="string">&quot;status&quot;</span>: <span class="string">&quot;PAID&quot;</span>&#125;</span><br><span class="line">    (pact.given(<span class="string">&quot;order o-1 is paid&quot;</span>)</span><br><span class="line">         .upon_receiving(<span class="string">&quot;a status request for o-1&quot;</span>)</span><br><span class="line">         .with_request(<span class="string">&quot;get&quot;</span>, <span class="string">&quot;/orders/o-1&quot;</span>)</span><br><span class="line">         .will_respond_with(<span class="number">200</span>, body=expected))</span><br><span class="line">    resp = requests.get(<span class="string">f&quot;<span class="subst">&#123;pact.uri&#125;</span>/orders/o-1&quot;</span>)</span><br><span class="line">    <span class="keyword">assert</span> resp.status_code == <span class="number">200</span></span><br><span class="line">    <span class="keyword">assert</span> resp.json() == expected</span><br></pre></td></tr></table></figure>
+
+<p>Provider 侧在 CI 跑 <code>pact-verifier</code>，把契约重放到本地启动的服务上：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">pact-verifier --provider-base-url=http://localhost:8080 \</span><br><span class="line">  --pact-url=pacts/order-service-payment-service.json \</span><br><span class="line">  --provider-states-setup-url=http://localhost:8080/__pact-setup</span><br></pre></td></tr></table></figure>
+
+<p><strong>Provider States 是契约的灵魂</strong>：<code>given(&quot;order o-1 is paid&quot;)</code> 这类前置状态，Provider 侧必须有对应的 <code>/__pact-setup</code> 端点把数据造出来——状态准备不了的契约等于废约。</p>
+<p><strong>Pact Broker</strong>：契约文件不该走 Git 传来传去。Broker 是契约仓库：Consumer CI 发布契约、Provider CI 拉取验证、<strong><code>can-i-deploy</code></strong> 查询「我这个版本和所有已知消费方兼容吗」，把契约检查变成部署门禁：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pact-broker can-i-deploy --pacticipant order-service --version <span class="variable">$GIT_SHA</span> --to-environment production</span><br></pre></td></tr></table></figure>
+
+<p><strong>Spring Cloud Contract</strong>：Spring 生态下用 Groovy DSL 定义契约，自动生成 Consumer 桩与 Provider 验证测试，契约随仓库版本管理。</p>
+<p><strong>契约 vs Mock vs 集成测试对比</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Mock</th>
+<th>契约测试</th>
+<th>集成测试</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>验证对象</td>
+<td>消费方单测</td>
+<td>双方接口兼容</td>
+<td>真实联调</td>
+</tr>
+<tr>
+<td>Provider 参与</td>
+<td>否</td>
+<td>是（CI 验证）</td>
+<td>是</td>
+</tr>
+<tr>
+<td>脆性</td>
+<td>高（自造响应）</td>
+<td>低（契约为准）</td>
+<td>中</td>
+</tr>
+<tr>
+<td>速度</td>
+<td>极快</td>
+<td>快</td>
+<td>慢</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="四、E2E-测试框架"><a href="#四、E2E-测试框架" class="headerlink" title="四、E2E 测试框架"></a>四、E2E 测试框架</h2><p><strong>Playwright 三大优势</strong>：<strong>跨浏览器</strong>（Chromium &#x2F; Firefox &#x2F; WebKit 一套 API）、<strong>自动等待</strong>（元素可操作前自动重试，告别 <code>sleep</code>）、<strong>录制</strong>（<code>npx playwright codegen</code> 录操作生成脚本）。</p>
+<p><strong>定位器最佳实践</strong>：优先 <code>get_by_role(&quot;button&quot;, name=&quot;登录&quot;)</code>（语义优先）&#x2F; <code>get_by_label(&quot;用户名&quot;)</code>（表单友好），次选 <code>get_by_test_id(&quot;order-id&quot;)</code>（显式测试锚点），避免脆弱的 CSS &#x2F; XPath。</p>
+<h3 id="1-Page-Object-数据驱动：登录并下单"><a href="#1-Page-Object-数据驱动：登录并下单" class="headerlink" title="1. Page Object + 数据驱动：登录并下单"></a>1. Page Object + 数据驱动：登录并下单</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> playwright.sync_api <span class="keyword">import</span> Page, expect</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">LoginPage</span>:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, page: Page</span>): <span class="variable language_">self</span>.page = page</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">goto</span>(<span class="params">self</span>): <span class="variable language_">self</span>.page.goto(<span class="string">&quot;/login&quot;</span>); <span class="keyword">return</span> <span class="variable language_">self</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">login</span>(<span class="params">self, user: <span class="built_in">str</span>, pwd: <span class="built_in">str</span></span>):</span><br><span class="line">        <span class="variable language_">self</span>.page.get_by_label(<span class="string">&quot;用户名&quot;</span>).fill(user)</span><br><span class="line">        <span class="variable language_">self</span>.page.get_by_label(<span class="string">&quot;密码&quot;</span>).fill(pwd)</span><br><span class="line">        <span class="variable language_">self</span>.page.get_by_role(<span class="string">&quot;button&quot;</span>, name=<span class="string">&quot;登录&quot;</span>).click()</span><br><span class="line">        expect(<span class="variable language_">self</span>.page.get_by_text(<span class="string">&quot;欢迎&quot;</span>)).to_be_visible()</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">OrderPage</span>:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, page: Page</span>): <span class="variable language_">self</span>.page = page</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">place_order</span>(<span class="params">self, sku: <span class="built_in">str</span>, qty: <span class="built_in">int</span></span>):</span><br><span class="line">        <span class="variable language_">self</span>.page.get_by_test_id(<span class="string">&quot;sku&quot;</span>).fill(sku)</span><br><span class="line">        <span class="variable language_">self</span>.page.get_by_test_id(<span class="string">&quot;qty&quot;</span>).fill(<span class="built_in">str</span>(qty))</span><br><span class="line">        <span class="variable language_">self</span>.page.get_by_role(<span class="string">&quot;button&quot;</span>, name=<span class="string">&quot;下单&quot;</span>).click()</span><br><span class="line">        expect(<span class="variable language_">self</span>.page.get_by_test_id(<span class="string">&quot;order-id&quot;</span>)).to_be_visible()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">test_login_and_place_order</span>(<span class="params">page: Page</span>):</span><br><span class="line">    LoginPage(page).goto().login(<span class="string">&quot;alice&quot;</span>, <span class="string">&quot;secret&quot;</span>)</span><br><span class="line">    OrderPage(page).place_order(<span class="string">&quot;SKU-1&quot;</span>, <span class="number">2</span>)</span><br><span class="line">    expect(page.get_by_text(<span class="string">&quot;下单成功&quot;</span>)).to_be_visible()</span><br></pre></td></tr></table></figure>
+
+<p>数据驱动只需把入参抽到参数化夹具，循环跑多组 <code>(用户, SKU, 数量)</code>。</p>
+<h3 id="2-Playwright-项目组织与并行（TypeScript）"><a href="#2-Playwright-项目组织与并行（TypeScript）" class="headerlink" title="2. Playwright 项目组织与并行（TypeScript）"></a>2. Playwright 项目组织与并行（TypeScript）</h3><p>中大型项目的目录与配置骨架：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">tests/</span><br><span class="line">  e2e/</span><br><span class="line">    auth/login.spec.ts</span><br><span class="line">    order/place-order.spec.ts</span><br><span class="line">  pages/            # Page Object 层</span><br><span class="line">  fixtures/         # 自定义夹具（登录态、种子数据）</span><br><span class="line">playwright.config.ts</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// playwright.config.ts：多浏览器 project + CI 分片并行</span></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="title function_">defineConfig</span>(&#123;</span><br><span class="line">  <span class="attr">testDir</span>: <span class="string">&#x27;./tests/e2e&#x27;</span>,</span><br><span class="line">  <span class="attr">fullyParallel</span>: <span class="literal">true</span>,                    <span class="comment">// 文件内用例也并行</span></span><br><span class="line">  <span class="attr">retries</span>: process.<span class="property">env</span>.<span class="property">CI</span> ? <span class="number">1</span> : <span class="number">0</span>,        <span class="comment">// CI 有界重试</span></span><br><span class="line">  <span class="attr">workers</span>: process.<span class="property">env</span>.<span class="property">CI</span> ? <span class="number">4</span> : <span class="literal">undefined</span>,</span><br><span class="line">  <span class="attr">use</span>: &#123;</span><br><span class="line">    <span class="attr">baseURL</span>: <span class="string">&#x27;https://staging.example.com&#x27;</span>,</span><br><span class="line">    <span class="attr">trace</span>: <span class="string">&#x27;retain-on-failure&#x27;</span>,           <span class="comment">// 失败保留 trace 可回放</span></span><br><span class="line">    <span class="attr">screenshot</span>: <span class="string">&#x27;only-on-failure&#x27;</span>,</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">projects</span>: [</span><br><span class="line">    &#123; <span class="attr">name</span>: <span class="string">&#x27;chromium&#x27;</span>, <span class="attr">use</span>: devices[<span class="string">&#x27;Desktop Chrome&#x27;</span>] &#125;,</span><br><span class="line">    &#123; <span class="attr">name</span>: <span class="string">&#x27;firefox&#x27;</span>, <span class="attr">use</span>: devices[<span class="string">&#x27;Desktop Firefox&#x27;</span>] &#125;,</span><br><span class="line">  ],</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># CI 分片：4 机各跑 1/4，合并报告</span></span><br><span class="line">npx playwright <span class="built_in">test</span> --shard=1/4</span><br><span class="line">npx playwright merge-reports ./blob-reports</span><br></pre></td></tr></table></figure>
+
+<p><strong>稳定性三件套</strong>：① 定位器只用 role&#x2F;label&#x2F;test-id；② 登录态用 <code>storageState</code> 预置而非每个用例走 UI 登录；③ 显式断言 <code>expect(locator).toBeVisible()</code> 触发自动等待，永不写 <code>waitForTimeout</code>。</p>
+<h3 id="3-Cypress-对比"><a href="#3-Cypress-对比" class="headerlink" title="3. Cypress 对比"></a>3. Cypress 对比</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Playwright</th>
+<th>Cypress</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>架构</td>
+<td>进程外控制浏览器</td>
+<td>浏览器内同源执行</td>
+</tr>
+<tr>
+<td>跨域</td>
+<td>支持</td>
+<td>历史受限</td>
+</tr>
+<tr>
+<td>多标签</td>
+<td>支持</td>
+<td>不支持</td>
+</tr>
+<tr>
+<td>语言</td>
+<td>多语言 SDK</td>
+<td>JS &#x2F; TS 为主</td>
+</tr>
+<tr>
+<td>并行</td>
+<td>内置分片</td>
+<td>需 Dashboard</td>
+</tr>
+</tbody></table>
+<p>Cypress 上手快、调试体验好；Playwright 更适合复杂跨域多标签场景与多语言团队。</p>
+<hr>
+<h2 id="五、性能测试与压测"><a href="#五、性能测试与压测" class="headerlink" title="五、性能测试与压测"></a>五、性能测试与压测</h2><p><strong>四类压测</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>目的</th>
+<th>典型形态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>负载测试</td>
+<td>验证预期流量下表现</td>
+<td>阶梯升至目标 QPS</td>
+</tr>
+<tr>
+<td>压力测试</td>
+<td>找崩溃临界点</td>
+<td>持续加压至出错</td>
+</tr>
+<tr>
+<td>浸泡测试</td>
+<td>发现内存泄漏 &#x2F; 老化</td>
+<td>高负载跑数小时</td>
+</tr>
+<tr>
+<td>峰值测试</td>
+<td>应对突发流量</td>
+<td>瞬间尖峰后回落</td>
+</tr>
+</tbody></table>
+<h3 id="1-k6-脚本实战"><a href="#1-k6-脚本实战" class="headerlink" title="1. k6 脚本实战"></a>1. k6 脚本实战</h3><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> http <span class="keyword">from</span> <span class="string">&quot;k6/http&quot;</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; check, sleep &#125; <span class="keyword">from</span> <span class="string">&quot;k6&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> options = &#123;</span><br><span class="line">  <span class="attr">stages</span>: [</span><br><span class="line">    &#123; <span class="attr">duration</span>: <span class="string">&quot;30s&quot;</span>, <span class="attr">target</span>: <span class="number">50</span> &#125;,</span><br><span class="line">    &#123; <span class="attr">duration</span>: <span class="string">&quot;1m&quot;</span>, <span class="attr">target</span>: <span class="number">50</span> &#125;,</span><br><span class="line">    &#123; <span class="attr">duration</span>: <span class="string">&quot;30s&quot;</span>, <span class="attr">target</span>: <span class="number">0</span> &#125;,</span><br><span class="line">  ],</span><br><span class="line">  <span class="attr">thresholds</span>: &#123;</span><br><span class="line">    <span class="attr">http_req_duration</span>: [<span class="string">&quot;p(95)&lt;500&quot;</span>],</span><br><span class="line">    <span class="attr">http_req_failed</span>: [<span class="string">&quot;rate&lt;0.01&quot;</span>],</span><br><span class="line">  &#125;,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="keyword">function</span> (<span class="params"></span>) &#123;</span><br><span class="line">  <span class="keyword">const</span> res = http.<span class="title function_">post</span>(<span class="string">&quot;https://api.example.com/orders&quot;</span>, <span class="title class_">JSON</span>.<span class="title function_">stringify</span>(&#123; <span class="attr">sku</span>: <span class="string">&quot;SKU-1&quot;</span> &#125;),</span><br><span class="line">    &#123; <span class="attr">headers</span>: &#123; <span class="string">&quot;Content-Type&quot;</span>: <span class="string">&quot;application/json&quot;</span> &#125; &#125;);</span><br><span class="line">  <span class="title function_">check</span>(res, &#123; <span class="string">&quot;status 201&quot;</span>: <span class="function">(<span class="params">r</span>) =&gt;</span> r.<span class="property">status</span> === <span class="number">201</span> &#125;);</span><br><span class="line">  <span class="title function_">sleep</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>thresholds</code> 是质量门禁：跑完任一阈值未达，k6 以非零码退出，CI 即可拦截。注意用 <code>sleep</code> 模拟思考时间，避免脚本变成无意义的洪水请求。</p>
+<h3 id="2-wrk-快速基准"><a href="#2-wrk-快速基准" class="headerlink" title="2. wrk 快速基准"></a>2. wrk 快速基准</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 4 线程 100 连接压 30 秒，带延迟统计</span></span><br><span class="line">wrk -t4 -c100 -d30s --latency https://api.example.com/health</span><br><span class="line"><span class="comment"># POST 请求用 lua 脚本</span></span><br><span class="line">wrk -t4 -c100 -d30s -s post.lua https://api.example.com/orders</span><br></pre></td></tr></table></figure>
+
+<p><code>post.lua</code>：<code>wrk.method = &quot;POST&quot;; wrk.body = &#39;{&quot;sku&quot;:&quot;SKU-1&quot;}&#39;; wrk.headers[&quot;Content-Type&quot;] = &quot;application/json&quot;</code>。</p>
+<p><strong>结果判读</strong>：只看 Requests&#x2F;sec 没意义——必须结合 <strong>p95&#x2F;p99 延迟与错误率</strong>；机器网卡&#x2F;CPU 先打满时，压测结果反映的是压测机瓶颈而非服务端瓶颈。</p>
+<p><strong>JMeter 分布式压测</strong>：单机打不出足够流量时，用一台 master 调度多台 slave 同时发压，结果聚合；适合企业级大流量场景，配置图形化但脚本不如 k6 可版本化。</p>
+<hr>
+<h2 id="六、测试流水线与-CI-集成"><a href="#六、测试流水线与-CI-集成" class="headerlink" title="六、测试流水线与 CI 集成"></a>六、测试流水线与 CI 集成</h2><p><strong>测试阶段划分</strong>：<code>commit → integration → E2E → performance</code>，越往后越慢越贵，触发条件越严：</p>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>触发</th>
+<th>内容</th>
+<th>时限</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>commit</td>
+<td>每次提交</td>
+<td>单元 + 静态检查</td>
+<td>&lt; 2 分钟</td>
+</tr>
+<tr>
+<td>integration</td>
+<td>PR &#x2F; 夜间</td>
+<td>集成 + 契约</td>
+<td>&lt; 10 分钟</td>
+</tr>
+<tr>
+<td>E2E</td>
+<td>合并前 &#x2F; 定时</td>
+<td>关键路径 E2E</td>
+<td>&lt; 30 分钟</td>
+</tr>
+<tr>
+<td>performance</td>
+<td>夜间 &#x2F; 发布前</td>
+<td>k6 &#x2F; JMeter 压测</td>
+<td>按需</td>
+</tr>
+</tbody></table>
+<p><strong>并行执行</strong>：把用例切成 shard 并行跑，缩墙钟时间：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">test:</span></span><br><span class="line">  <span class="attr">strategy:</span></span><br><span class="line">    <span class="attr">matrix:</span> &#123; <span class="attr">shard:</span> [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>] &#125;</span><br><span class="line">  <span class="attr">steps:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">pytest</span> <span class="string">--shard-index</span> <span class="string">$&#123;&#123;</span> <span class="string">matrix.shard</span> <span class="string">&#125;&#125;</span> <span class="string">--shard-total</span> <span class="number">4</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>测试报告 Allure</strong>：聚合多语言 &#x2F; 多 shard 结果，附截图、附件、步骤树：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">pytest --alluredir=allure-results</span><br><span class="line">allure serve allure-results        <span class="comment"># 本地预览</span></span><br><span class="line">allure generate --clean allure-results -o allure-report  <span class="comment"># CI 产物</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>失败重试策略</strong>：E2E 偶发 flakes 用<strong>有界重试</strong>缓解，但必须<strong>记录 flaky 标记</strong>并限期修复，不能让重试掩盖真问题：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="bullet">-</span> <span class="attr">run:</span> <span class="string">pytest</span> <span class="string">--retries</span> <span class="number">2</span> <span class="string">--retry-delay</span> <span class="number">5</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Flaky 治理闭环</strong>（把「偶发」当缺陷管理，而非当运气）：</p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>动作</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>发现</td>
+<td>CI 自动统计「重试后通过」的用例，产出 flaky 榜单</td>
+</tr>
+<tr>
+<td>隔离</td>
+<td>上榜用例打 <code>@flaky</code> 标记移出主干门禁（quarantine），但持续运行采集数据</td>
+</tr>
+<tr>
+<td>定位</td>
+<td>常见根因排序：等待方式（sleep）&gt; 测试间共享状态 &gt; 依赖外部服务 &gt; 时间&#x2F;时区</td>
+</tr>
+<tr>
+<td>修复</td>
+<td>限期修复并摘除标记；超期未修的用例<strong>降级或删除</strong>——留着的坏测试比没有更糟</td>
+</tr>
+<tr>
+<td>度量</td>
+<td>团队级 flaky rate（如 &lt; 2%）纳入质量看板，趋势恶化即冻结新 E2E 用例</td>
+</tr>
+</tbody></table>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># GitHub Actions：flaky 榜单独定时跑，不阻塞 PR</span></span><br><span class="line"><span class="attr">flaky-watch:</span></span><br><span class="line">  <span class="attr">schedule:</span> [<span class="attr">cron:</span> <span class="string">&quot;0 3 * * *&quot;</span>]</span><br><span class="line">  <span class="attr">steps:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">npx</span> <span class="string">playwright</span> <span class="string">test</span> <span class="string">--grep</span> <span class="string">@flaky</span> <span class="string">--reporter=json</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">uses:</span> <span class="string">actions/upload-artifact@v4</span></span><br><span class="line">      <span class="attr">with:</span> &#123; <span class="attr">name:</span> <span class="string">flaky-report</span>, <span class="attr">path:</span> <span class="string">report.json</span> &#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>金丝雀测试</strong>：发布后先放小比例流量，对关键指标（错误率、延迟）断言一段时间再全量；本质是把 E2E 延伸到生产观测。</p>
+<hr>
+<h2 id="常见避坑"><a href="#常见避坑" class="headerlink" title="常见避坑"></a>常见避坑</h2><table>
+<thead>
+<tr>
+<th>坑</th>
+<th>现象</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>集成测试共享库</td>
+<td>用例互相污染、偶发失败</td>
+<td>每用例独立容器或事务回滚</td>
+</tr>
+<tr>
+<td>Testcontainers 每用例拉镜像</td>
+<td>套件慢到没人跑</td>
+<td>用静态 &#x2F; 单例容器跨用例复用</td>
+</tr>
+<tr>
+<td>契约与实现漂移</td>
+<td>Consumer 过了 Provider 挂</td>
+<td>契约纳入双方 CI，变更先改契约</td>
+</tr>
+<tr>
+<td>E2E 依赖固定顺序</td>
+<td>改一个步骤全红</td>
+<td>每个用例自备数据、幂等可重入</td>
+</tr>
+<tr>
+<td>用 CSS &#x2F; XPath 定位</td>
+<td>UI 一改测试崩</td>
+<td>用 <code>role</code> &#x2F; <code>label</code> &#x2F; <code>test_id</code></td>
+</tr>
+<tr>
+<td>E2E 跑生产数据库</td>
+<td>脏数据、误操作</td>
+<td>用预发 + 隔离租户 + 自动清理</td>
+</tr>
+<tr>
+<td>压测没设阈值</td>
+<td>出报告却没人决策</td>
+<td><code>thresholds</code> 当门禁，未达即失败</td>
+</tr>
+<tr>
+<td>重试掩盖 flaky</td>
+<td>重试几次就绿、问题潜伏</td>
+<td>重试打 flaky 标记并限期治理</td>
+</tr>
+<tr>
+<td>性能测试只跑一次</td>
+<td>数据无意义</td>
+<td>多轮取分布，关注 p95&#x2F;p99 而非均值</td>
+</tr>
+<tr>
+<td>流水线全串行</td>
+<td>反馈链太长</td>
+<td>按 shard 并行，按阶段分层触发</td>
+</tr>
+<tr>
+<td>每个用例走 UI 登录</td>
+<td>套件 80% 时间耗在登录页</td>
+<td><code>storageState</code> 预置登录态，登录只测一次</td>
+</tr>
+<tr>
+<td>flaky 用例无限期挂着</td>
+<td>榜单只增不减，报警疲劳</td>
+<td>quarantine 限期修复，超期降级或删除</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模型</td>
+<td>警惕冰淇淋&#x2F;纸杯蛋糕反模式；前端与微服务可参考测试奖杯</td>
+</tr>
+<tr>
+<td>集成层</td>
+<td>填补单元与 E2E 之间，Testcontainers 是主力</td>
+</tr>
+<tr>
+<td>契约</td>
+<td>消费者驱动 + Pact Broker，can-i-deploy 成部署门禁</td>
+</tr>
+<tr>
+<td>E2E</td>
+<td>Playwright + Page Object + storageState 登录态，少而精的关键路径</td>
+</tr>
+<tr>
+<td>压测</td>
+<td>k6 脚本化、阈值即门禁，关注尾部分位</td>
+</tr>
+<tr>
+<td>流水线</td>
+<td>分层触发 + 分片并行 + Allure + 有界重试 + flaky 治理闭环</td>
+</tr>
+<tr>
+<td>一致性</td>
+<td>镜像化依赖消除环境漂移</td>
+</tr>
+</tbody></table>
+<p>集成与 E2E 是<strong>质量护城河的下半段</strong>：单元测试保证零件合格，本章保证组装后的系统在真实依赖与用户路径下仍可靠。把这两层与流水线打通，团队的「敢发版」才有了底气。</p>
+<hr>
+<h2 id="延伸阅读"><a href="#延伸阅读" class="headerlink" title="延伸阅读"></a>延伸阅读</h2><ul>
+<li><a href="/test/01-testing-methodology-unit-test/">第一章：测试方法论与单元测试</a>：单元测试方法论、Mock 隔离、TDD 与覆盖率，是本章集成层的基础。</li>
+<li><a href="/cicd/01-cicd-github-actions-guide/">第一章：CI&#x2F;CD 入门与 GitHub Actions</a>：把分层测试接到 GitHub Actions 流水线，用矩阵并行跑 shard。</li>
+<li><a href="/cicd/02-jenkins-release-strategies/">第二章：Jenkins 与发布策略</a>：Jenkins 编排多阶段测试与金丝雀发布，配合压测做发布前门禁。</li>
+<li><a href="/python/06-uv-add-pytest/">第六章：UV 项目开发添加 Pytest：单元测试</a>：在 <strong>uv</strong> 项目里用 pytest 跑单元与集成测试，与本章 Testcontainers &#x2F; Allure 衔接。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/E2E/" rel="tag"># E2E</a>
+              <a href="/tags/Testing/" rel="tag"># Testing</a>
+              <a href="/tags/%E9%9B%86%E6%88%90%E6%B5%8B%E8%AF%95/" rel="tag"># 集成测试</a>
+              <a href="/tags/Testcontainers/" rel="tag"># Testcontainers</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/vue/04-pinia-state-management/" rel="prev" title="第四章：Pinia 状态管理实战">
+                  <i class="fa fa-angle-left"></i> 第四章：Pinia 状态管理实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/test/01-testing-methodology-unit-test/" rel="next" title="第一章：测试方法论与单元测试">
+                  第一章：测试方法论与单元测试 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第五章：Docker 部署 RocketMQ 实践概念基础 没有「单容器一体」形态：NameServer 与 Broker 是两个独立进程（5.x 还有一个可选的 Proxy），最小栈就是两个容器——这与 Kafka 的 KRaft 单进程不同，下文用「网络 → NameServer → Broker」三步完成最小栈。 brokerIP1 是第一坑：Broker 启动时把自己注册到 NameSer">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第五章：Docker 部署 RocketMQ 实践">
+<meta property="og:url" content="https://my919.github.io/mq/05-rocketmq-docker/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第五章：Docker 部署 RocketMQ 实践概念基础 没有「单容器一体」形态：NameServer 与 Broker 是两个独立进程（5.x 还有一个可选的 Proxy），最小栈就是两个容器——这与 Kafka 的 KRaft 单进程不同，下文用「网络 → NameServer → Broker」三步完成最小栈。 brokerIP1 是第一坑：Broker 启动时把自己注册到 NameSer">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T14:06:51.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.582Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="Docker Compose">
+<meta property="article:tag" content="Kubernetes">
+<meta property="article:tag" content="RocketMQ">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/mq/05-rocketmq-docker/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/mq/05-rocketmq-docker/","path":"mq/05-rocketmq-docker/","title":"第五章：Docker 部署 RocketMQ 实践"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第五章：Docker 部署 RocketMQ 实践 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%94%E7%AB%A0%EF%BC%9ADocker-%E9%83%A8%E7%BD%B2-RocketMQ-%E5%AE%9E%E8%B7%B5"><span class="nav-number">1.</span> <span class="nav-text">第五章：Docker 部署 RocketMQ 实践</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9E%B6%E6%9E%84%E9%80%9F%E8%A7%88%EF%BC%9ANameServer-%E4%B8%8E-Broker-%E5%A6%82%E4%BD%95%E5%8D%8F%E4%BD%9C"><span class="nav-number">1.2.</span> <span class="nav-text">架构速览：NameServer 与 Broker 如何协作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.3.</span> <span class="nav-text">前置条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RocketMQ-%E9%95%9C%E5%83%8F%E9%80%89%E6%8B%A9"><span class="nav-number">1.4.</span> <span class="nav-text">RocketMQ 镜像选择</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%AE%98%E6%96%B9%E9%95%9C%E5%83%8F%EF%BC%88%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. 官方镜像（推荐）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%A7%92%E8%89%B2%E4%B8%8E%E7%AB%AF%E5%8F%A3%EF%BC%88%E5%BC%80%E5%8F%91%E5%B8%B8%E7%94%A8%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 角色与端口（开发常用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E4%B8%8E%E5%AE%98%E6%96%B9%E3%80%8CBroker-Proxy%E3%80%8D%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 与官方「Broker + Proxy」快速入门的关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%B5%84%E6%BA%90%E4%B8%8E%E6%8C%81%E4%B9%85%E5%8C%96"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. 资源与持久化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%80%E5%B0%91%E5%91%BD%E4%BB%A4%E5%90%AF%E5%8A%A8%EF%BC%88NameServer-Broker%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">最少命令启动（NameServer + Broker）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%87%86%E5%A4%87%E7%BD%91%E7%BB%9C%E4%B8%8E-broker-conf%EF%BC%88%E5%BD%93%E5%89%8D%E7%9B%AE%E5%BD%95%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 准备网络与 broker.conf（当前目录）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%90%AF%E5%8A%A8-NameServer"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 启动 NameServer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%90%AF%E5%8A%A8-Broker%EF%BC%88%E5%90%AB-Proxy%EF%BC%8C%E6%8C%82%E8%BD%BD-broker-conf%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 启动 Broker（含 Proxy，挂载 broker.conf）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker-Compose-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2"><span class="nav-number">1.6.</span> <span class="nav-text">Docker Compose 一键部署</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kubernetes-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2%EF%BC%88%E5%8D%95%E6%96%87%E4%BB%B6%E5%AE%8C%E6%95%B4%E6%B8%85%E5%8D%95%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">Kubernetes 一键部署（单文件完整清单）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%83%A8%E7%BD%B2%E5%90%8E%E9%AA%8C%E8%AF%81%EF%BC%9Amqadmin-%E4%B8%8E%E6%94%B6%E5%8F%91%E6%B5%8B%E8%AF%95"><span class="nav-number">1.8.</span> <span class="nav-text">部署后验证：mqadmin 与收发测试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E6%8B%93%E6%89%91%EF%BC%9A%E4%BB%8E%E5%8D%95-Master-%E5%88%B0-DLedger"><span class="nav-number">1.9.</span> <span class="nav-text">生产拓扑：从单 Master 到 DLedger</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%AF%E9%80%89%EF%BC%9ARocketMQ-Dashboard-%E6%8E%A7%E5%88%B6%E5%8F%B0"><span class="nav-number">1.10.</span> <span class="nav-text">可选：RocketMQ Dashboard 控制台</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/mq/05-rocketmq-docker/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第五章：Docker 部署 RocketMQ 实践 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第五章：Docker 部署 RocketMQ 实践
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 22:06:51" itemprop="dateCreated datePublished" datetime="2026-05-01T22:06:51+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" itemprop="url" rel="index"><span itemprop="name">消息队列</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>11k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>10 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第五章：Docker-部署-RocketMQ-实践"><a href="#第五章：Docker-部署-RocketMQ-实践" class="headerlink" title="第五章：Docker 部署 RocketMQ 实践"></a>第五章：Docker 部署 RocketMQ 实践</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>没有「单容器一体」形态</strong>：<strong>NameServer</strong> 与 <strong>Broker</strong> 是两个独立进程（<strong>5.x</strong> 还有一个可选的 <strong>Proxy</strong>），最小栈就是<strong>两个容器</strong>——这与 Kafka 的 KRaft 单进程不同，下文用「网络 → NameServer → Broker」三步完成最小栈。</li>
+<li><strong><code>brokerIP1</code> 是第一坑</strong>：Broker 启动时把自己注册到 NameServer 的地址就是 <strong><code>brokerIP1</code></strong>，客户端拿这个地址<strong>直连 Broker</strong>——容器内不显式指定时往往是内网容器 IP，宿主机客户端会「能拿到路由却连不上」。<strong>本机访问写 <code>127.0.0.1</code>、跨机写宿主机可达 IP</strong>（对照 Kafka 的 <code>advertised.listeners</code>）。</li>
+<li><strong>端口按角色记忆</strong>：<strong><code>9876</code></strong> NameServer；<strong><code>10909 / 10911 / 10912</code></strong> 分别是 Broker 的 VIP &#x2F; 主 &#x2F; HA 端口；<strong><code>8080 / 8081</code></strong> 是 <strong>5.x Proxy</strong> 的 gRPC 端口——只用经典 Remoting 客户端时，Proxy 端口可以不映射。</li>
+<li><strong>数据目录与边界</strong>：Broker 数据在 <strong><code>/home/rocketmq/store</code></strong>（日志在 <strong><code>logs</code></strong>），必须挂卷；单机部署面向<strong>开发验证</strong>，生产多 Master&#x2F;Slave 或 <strong>DLedger</strong> 自动切换请用 <strong>RocketMQ Operator</strong> 或官方推荐拓扑。</li>
+</ol>
+<h2 id="架构速览：NameServer-与-Broker-如何协作"><a href="#架构速览：NameServer-与-Broker-如何协作" class="headerlink" title="架构速览：NameServer 与 Broker 如何协作"></a>架构速览：NameServer 与 Broker 如何协作</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  P[Producer] --&gt;|① 拉路由| NS[NameServer]
+  C[Consumer] --&gt;|① 拉路由| NS
+  B[Broker] --&gt;|② 每30s注册路由| NS
+  P --&gt;|③ 直连发送| B
+  C --&gt;|③ 长轮询拉取| B
+</code>
+</pre>
+
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>状态</th>
+<th>关键点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>NameServer</strong></td>
+<td><strong>无状态</strong>，互相之间<strong>不通信</strong></td>
+<td>Broker 向<strong>每一个</strong> NameServer 注册；客户端可配多个地址任取其一；挂了不影响已拿到路由的收发，只影响「新路由发现」</td>
+</tr>
+<tr>
+<td><strong>Broker</strong></td>
+<td>有状态（CommitLog + ConsumeQueue + IndexFile）</td>
+<td>按 <code>brokerName + brokerId</code> 区分：<code>brokerId=0</code> 是 Master，<code>&gt;0</code> 是 Slave；周期向 NameServer 上报路由</td>
+</tr>
+<tr>
+<td><strong>Proxy（5.x）</strong></td>
+<td>无状态接入层</td>
+<td>面向 gRPC 新客户端；经典 Remoting 客户端可不开</td>
+</tr>
+</tbody></table>
+<p>存储模型一句话：<strong>所有消息顺序追加到 CommitLog</strong>，再异步分发到按 Topic&#x2F;Queue 组织的 <strong>ConsumeQueue</strong> 索引——顺序写盘是 RocketMQ 高吞吐的根基，也是 <code>store</code> 目录必须挂好盘的原因。</p>
+<h2 id="前置条件"><a href="#前置条件" class="headerlink" title="前置条件"></a>前置条件</h2><p>本机已安装 <strong><code>docker</code></strong>，并能使用 <strong><code>docker compose</code></strong>（<strong>Compose V2</strong> 插件，命令为 <strong><code>docker compose</code></strong>；若仍使用旧版独立程序，则将下文中的 <strong><code>docker compose</code></strong> 换成 <strong><code>docker-compose</code></strong>）。</p>
+<p>验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker version</span><br><span class="line">docker compose version</span><br></pre></td></tr></table></figure>
+
+<p>满足即可，与宿主机操作系统无关。</p>
+<h2 id="RocketMQ-镜像选择"><a href="#RocketMQ-镜像选择" class="headerlink" title="RocketMQ 镜像选择"></a>RocketMQ 镜像选择</h2><h3 id="1-官方镜像（推荐）"><a href="#1-官方镜像（推荐）" class="headerlink" title="1. 官方镜像（推荐）"></a>1. 官方镜像（推荐）</h3><ul>
+<li><strong>仓库</strong>：<strong><code>apache/rocketmq</code></strong>（Docker Hub：<a target="_blank" rel="noopener" href="https://hub.docker.com/r/apache/rocketmq/tags">https://hub.docker.com/r/apache/rocketmq/tags</a>），与 <strong>Apache RocketMQ</strong> 发行版本对应。  </li>
+<li><strong>常用标签</strong>：如 <strong><code>apache/rocketmq:5.3.2</code></strong>（下文以此为例；升级时请同时核对容器内 <strong><code>ROCKETMQ_HOME</code></strong> 下 <strong><code>conf</code></strong> 路径是否随版本变化）。  </li>
+<li><strong>生产建议</strong>：固定补丁级标签或记录 <strong>digest</strong>，避免 <strong><code>latest</code></strong> 漂移。</li>
+</ul>
+<h3 id="2-角色与端口（开发常用）"><a href="#2-角色与端口（开发常用）" class="headerlink" title="2. 角色与端口（开发常用）"></a>2. 角色与端口（开发常用）</h3><table>
+<thead>
+<tr>
+<th>组件</th>
+<th>说明</th>
+<th>常见映射端口（示例）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>NameServer</strong></td>
+<td>路由注册与发现</td>
+<td><strong>9876</strong></td>
+</tr>
+<tr>
+<td><strong>Broker</strong></td>
+<td>消息存储与转发</td>
+<td><strong>10909</strong>、<strong>10911</strong>、<strong>10912</strong> 等（与 <strong><code>broker.conf</code></strong> &#x2F; 启动参数有关）</td>
+</tr>
+<tr>
+<td><strong>Proxy</strong>（<strong>5.x</strong> 可选）</td>
+<td><strong>gRPC</strong> 接入等（官方 <strong>Docker</strong> 快速入门常与 <strong><code>--enable-proxy</code></strong> 一并启用）</td>
+<td><strong>8080</strong>、<strong>8081</strong> 等</td>
+</tr>
+</tbody></table>
+<h3 id="3-与官方「Broker-Proxy」快速入门的关系"><a href="#3-与官方「Broker-Proxy」快速入门的关系" class="headerlink" title="3. 与官方「Broker + Proxy」快速入门的关系"></a>3. 与官方「Broker + Proxy」快速入门的关系</h3><p><strong>Apache</strong> 文档推荐挂载 <strong><code>broker.conf</code></strong> 并执行 <strong><code>mqbroker --enable-proxy</code></strong>（见 <a target="_blank" rel="noopener" href="https://rocketmq.apache.org/docs/quickStart/02quickstartWithDocker/">Run RocketMQ in Docker</a>）。下文 <strong>Compose</strong> 提供<strong>带 Proxy</strong> 的完整示例；若仅需经典 <strong>Remoting</strong> 客户端，可将 <strong>Broker</strong> 的 <strong><code>command</code></strong> 改为 <strong><code>sh mqbroker -n &lt;namesrv&gt;:9876</code></strong> 并去掉 <strong>Proxy</strong> 相关端口（需自行验证与客户端版本匹配）。</p>
+<h3 id="4-资源与持久化"><a href="#4-资源与持久化" class="headerlink" title="4. 资源与持久化"></a>4. 资源与持久化</h3><p><strong>Broker</strong> 磁盘与堆内存占用随主题、队列与流量增长较快；<strong>Compose</strong> 与 <strong>K8s</strong> 中为 <strong>Broker</strong> 数据目录挂载卷，并酌情提高 <strong><code>limits</code></strong>。</p>
+<p>堆内存通过环境变量调整（镜像 entrypoint 会读取）：</p>
+<ul>
+<li><strong>NameServer &#x2F; Broker</strong>：<code>JAVA_OPT_EXT=&quot;-server -Xms1g -Xmx1g&quot;</code>（开发机可降到 512m，生产按消息堆积量加到 4~8g）；</li>
+<li>Broker 还依赖 <strong>page cache</strong> 加速 CommitLog 读，容器 limit 之外的宿主机内存同样是性能预算的一部分。</li>
+</ul>
+<p><strong>1Panel（推荐）</strong>：在 <strong>Linux</strong> 宿主机上若希望少手写命令、仍以容器方式跑 <strong>Apache RocketMQ</strong>，可先安装 <a target="_blank" rel="noopener" href="https://1panel.cn/"><strong>1Panel</strong></a>（开源 <strong>Linux</strong> 运维面板），在 <strong>「应用商店」</strong> 中选择 <strong>RocketMQ</strong> 一键部署：由面板编排 <strong>NameServer</strong>、<strong>Broker</strong>（及上架版本若含的 <strong>Proxy</strong>）与数据卷、端口。与下文 <strong><code>docker</code> &#x2F; Compose &#x2F; K8s<code>** 中的 **</code>broker.conf<code>**、**</code>NAMESRV_ADDR<code>**、**</code>brokerIP1&#96;</strong> 与端口映射对齐或排障时，自「最少命令启动」起各节仍可作对照。适合单台 <strong>VPS</strong>、家庭服务器等场景。</p>
+<h2 id="最少命令启动（NameServer-Broker）"><a href="#最少命令启动（NameServer-Broker）" class="headerlink" title="最少命令启动（NameServer + Broker）"></a>最少命令启动（NameServer + Broker）</h2><p><strong>RocketMQ</strong> 无单容器一体运行官方形态，下面用<strong>三条命令</strong>完成最小栈（与 <a target="_blank" rel="noopener" href="https://rocketmq.apache.org/docs/quickStart/02quickstartWithDocker/">官方 Docker 快速入门</a> 思路一致：<strong>网络 → NameServer → Broker+Proxy</strong>）。</p>
+<h3 id="1-准备网络与-broker-conf（当前目录）"><a href="#1-准备网络与-broker-conf（当前目录）" class="headerlink" title="1. 准备网络与 broker.conf（当前目录）"></a>1. 准备网络与 <code>broker.conf</code>（当前目录）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker network create rocketmq</span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;%s\n&#x27;</span> <span class="string">&#x27;brokerClusterName=DefaultCluster&#x27;</span> <span class="string">&#x27;brokerName=broker-a&#x27;</span> <span class="string">&#x27;brokerId=0&#x27;</span> <span class="string">&#x27;deleteWhen=04&#x27;</span> <span class="string">&#x27;fileReservedTime=48&#x27;</span> <span class="string">&#x27;brokerRole=ASYNC_MASTER&#x27;</span> <span class="string">&#x27;flushDiskType=ASYNC_FLUSH&#x27;</span> <span class="string">&#x27;brokerIP1=127.0.0.1&#x27;</span> &gt; broker.conf</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>brokerIP1</code></strong>：仅从<strong>本机</strong>客户端访问映射端口时，常用 <strong><code>127.0.0.1</code></strong>；若客户端在其它机器或 <strong>K8s Pod</strong> 内，需改为可达的宿主机 <strong>IP</strong> 或 <strong>Service</strong> 地址，并同步 <strong>Broker</strong> 监听与防火墙策略。</p>
+<p><strong><code>broker.conf</code> 逐项解读</strong>（上面的单行配置展开）：</p>
+<figure class="highlight properties"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">brokerClusterName</span>=<span class="string">DefaultCluster   # 集群名，一个集群可含多个 brokerName</span></span><br><span class="line"><span class="attr">brokerName</span>=<span class="string">broker-a                # 同一主从对共享同一个 brokerName</span></span><br><span class="line"><span class="attr">brokerId</span>=<span class="string">0                         # 0=Master；&gt;0 为 Slave</span></span><br><span class="line"><span class="attr">deleteWhen</span>=<span class="string">04                      # 凌晨 4 点触发过期文件删除</span></span><br><span class="line"><span class="attr">fileReservedTime</span>=<span class="string">48                # CommitLog 保留 48 小时（磁盘兜底）</span></span><br><span class="line"><span class="attr">brokerRole</span>=<span class="string">ASYNC_MASTER            # 复制方式：ASYNC_MASTER / SYNC_MASTER / SLAVE</span></span><br><span class="line"><span class="attr">flushDiskType</span>=<span class="string">ASYNC_FLUSH          # 刷盘：ASYNC_FLUSH 高性能 / SYNC_FLUSH 不丢</span></span><br><span class="line"><span class="attr">brokerIP1</span>=<span class="string">127.0.0.1                # 注册到 NameServer 的地址（客户端直连它！）</span></span><br></pre></td></tr></table></figure>
+
+<p>两个最影响可靠性的取舍：</p>
+<table>
+<thead>
+<tr>
+<th>组合</th>
+<th>丢消息风险</th>
+<th>吞吐</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ASYNC_MASTER + ASYNC_FLUSH</code></td>
+<td>宕机丢少量</td>
+<td>最高</td>
+<td>日志、埋点</td>
+</tr>
+<tr>
+<td><code>SYNC_MASTER + SYNC_FLUSH</code></td>
+<td>基本不丢</td>
+<td>最低</td>
+<td>支付、账务</td>
+</tr>
+<tr>
+<td><code>ASYNC_MASTER + SYNC_FLUSH</code></td>
+<td>主从切换瞬间可能丢</td>
+<td>中</td>
+<td>多数业务的折中</td>
+</tr>
+</tbody></table>
+<h3 id="2-启动-NameServer"><a href="#2-启动-NameServer" class="headerlink" title="2. 启动 NameServer"></a>2. 启动 NameServer</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name rmqnamesrv -p 9876:9876 --network rocketmq apache/rocketmq:5.3.2 sh mqnamesrv</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-启动-Broker（含-Proxy，挂载-broker-conf）"><a href="#3-启动-Broker（含-Proxy，挂载-broker-conf）" class="headerlink" title="3. 启动 Broker（含 Proxy，挂载 broker.conf）"></a>3. 启动 Broker（含 Proxy，挂载 <code>broker.conf</code>）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name rmqbroker --network rocketmq -p 10912:10912 -p 10911:10911 -p 10909:10909 -p 8080:8080 -p 8081:8081 -e NAMESRV_ADDR=rmqnamesrv:9876 -v <span class="string">&quot;<span class="subst">$(pwd)</span>/broker.conf:/home/rocketmq/rocketmq-5.3.2/conf/broker.conf&quot;</span> apache/rocketmq:5.3.2 sh mqbroker --enable-proxy -c /home/rocketmq/rocketmq-5.3.2/conf/broker.conf</span><br></pre></td></tr></table></figure>
+
+<p>常用运维：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker logs -f rmqnamesrv</span><br><span class="line">docker logs -f rmqbroker</span><br><span class="line">docker stop rmqbroker rmqnamesrv &amp;&amp; docker <span class="built_in">rm</span> rmqbroker rmqnamesrv &amp;&amp; docker network <span class="built_in">rm</span> rocketmq</span><br></pre></td></tr></table></figure>
+
+<h2 id="Docker-Compose-一键部署"><a href="#Docker-Compose-一键部署" class="headerlink" title="Docker Compose 一键部署"></a>Docker Compose 一键部署</h2><p>将下面 <strong><code>broker.conf</code></strong> 内容保存为当前目录 <strong><code>broker.conf</code></strong>（与上节 <strong><code>printf</code></strong> 示例等价即可），再将 <strong>Compose</strong> 文件保存为 <strong><code>docker-compose.rocketmq.yml</code></strong>。</p>
+<p><strong>一条命令</strong>启动：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.rocketmq.yml up -d</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>docker-compose.rocketmq.yml</code></strong> 全文：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">&quot;3.8&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">name:</span> <span class="string">rocketmq-stack</span></span><br><span class="line"></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">rmqnamesrv:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">apache/rocketmq:5.3.2</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">rmqnamesrv</span></span><br><span class="line">    <span class="attr">command:</span> <span class="string">sh</span> <span class="string">mqnamesrv</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;9876:9876&quot;</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">rocketmq</span>]</span><br><span class="line"></span><br><span class="line">  <span class="attr">broker:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">apache/rocketmq:5.3.2</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">rmqbroker</span></span><br><span class="line">    <span class="attr">depends_on:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">rmqnamesrv</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">NAMESRV_ADDR:</span> <span class="string">rmqnamesrv:9876</span></span><br><span class="line">    <span class="attr">command:</span> <span class="string">sh</span> <span class="string">mqbroker</span> <span class="string">--enable-proxy</span> <span class="string">-c</span> <span class="string">/home/rocketmq/rocketmq-5.3.2/conf/broker.conf</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;10912:10912&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;10911:10911&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;10909:10909&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;8080:8080&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;8081:8081&quot;</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">./broker.conf:/home/rocketmq/rocketmq-5.3.2/conf/broker.conf:ro</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">broker_store:/home/rocketmq/store</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">broker_logs:/home/rocketmq/logs</span></span><br><span class="line">    <span class="attr">networks:</span> [<span class="string">rocketmq</span>]</span><br><span class="line">    <span class="attr">healthcheck:</span></span><br><span class="line">      <span class="attr">test:</span> [<span class="string">&quot;CMD-SHELL&quot;</span>, <span class="string">&quot;bash -c &#x27;&lt;/dev/tcp/127.0.0.1/10911&#x27; || exit 1&quot;</span>]</span><br><span class="line">      <span class="attr">interval:</span> <span class="string">15s</span></span><br><span class="line">      <span class="attr">timeout:</span> <span class="string">5s</span></span><br><span class="line">      <span class="attr">retries:</span> <span class="number">20</span></span><br><span class="line">      <span class="attr">start_period:</span> <span class="string">90s</span></span><br><span class="line"></span><br><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="attr">broker_store:</span></span><br><span class="line">    <span class="attr">driver:</span> <span class="string">local</span></span><br><span class="line">  <span class="attr">broker_logs:</span></span><br><span class="line">    <span class="attr">driver:</span> <span class="string">local</span></span><br><span class="line"></span><br><span class="line"><span class="attr">networks:</span></span><br><span class="line">  <span class="attr">rocketmq:</span></span><br><span class="line">    <span class="attr">driver:</span> <span class="string">bridge</span></span><br></pre></td></tr></table></figure>
+
+<p>查看状态、日志、停止（保留命名卷）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.rocketmq.yml ps</span><br><span class="line">docker compose -f docker-compose.rocketmq.yml logs -f broker</span><br><span class="line">docker compose -f docker-compose.rocketmq.yml down</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>down -v</code></strong> 会删除 <strong><code>broker_store</code></strong> 等卷上的消息数据。</p>
+<h2 id="Kubernetes-一键部署（单文件完整清单）"><a href="#Kubernetes-一键部署（单文件完整清单）" class="headerlink" title="Kubernetes 一键部署（单文件完整清单）"></a>Kubernetes 一键部署（单文件完整清单）</h2><p>将 <strong><code>broker.conf</code></strong> 以 <strong><code>ConfigMap</code></strong> 挂载；<strong>NameServer</strong> 与 <strong>Broker</strong> 分 <strong>Deployment</strong>，<strong>Broker</strong> 使用 <strong>PVC</strong> 持久化 <strong><code>/home/rocketmq/store</code></strong>。将下面保存为 <strong><code>rocketmq-k8s.yaml</code></strong> 后执行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl apply -f rocketmq-k8s.yaml</span><br></pre></td></tr></table></figure>
+
+<p><strong>说明</strong>：为简化依赖，<strong>Broker</strong> 使用 <strong><code>mqbroker -n rocketmq-namesrv.default.svc.cluster.local:9876</code></strong>（<strong>未启用 Proxy</strong>）；若需与官方文档一致的 <strong>Proxy</strong>，请在镜像内 <strong><code>ROCKETMQ_HOME</code></strong> 下增加 <strong><code>broker.conf</code></strong> 与 <strong><code>--enable-proxy</code></strong> 等参数并开放对应端口。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ConfigMap</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">rocketmq-broker-conf</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">data:</span></span><br><span class="line">  <span class="attr">broker.conf:</span> <span class="string">|</span></span><br><span class="line"><span class="string">    brokerClusterName=DefaultCluster</span></span><br><span class="line"><span class="string">    brokerName=broker-a</span></span><br><span class="line"><span class="string">    brokerId=0</span></span><br><span class="line"><span class="string">    deleteWhen=04</span></span><br><span class="line"><span class="string">    fileReservedTime=48</span></span><br><span class="line"><span class="string">    brokerRole=ASYNC_MASTER</span></span><br><span class="line"><span class="string">    flushDiskType=ASYNC_FLUSH</span></span><br><span class="line"><span class="string">    brokerIP1=0.0.0.0</span></span><br><span class="line"><span class="string"></span><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">PersistentVolumeClaim</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">rocketmq-broker-store</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">accessModes:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ReadWriteOnce</span></span><br><span class="line">  <span class="attr">resources:</span></span><br><span class="line">    <span class="attr">requests:</span></span><br><span class="line">      <span class="attr">storage:</span> <span class="string">20Gi</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">rocketmq-namesrv</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">rocketmq-namesrv</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">replicas:</span> <span class="number">1</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">rocketmq-namesrv</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">metadata:</span></span><br><span class="line">      <span class="attr">labels:</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">rocketmq-namesrv</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">namesrv</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">apache/rocketmq:5.3.2</span></span><br><span class="line">          <span class="attr">command:</span> [<span class="string">&quot;sh&quot;</span>, <span class="string">&quot;mqnamesrv&quot;</span>]</span><br><span class="line">          <span class="attr">ports:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">9876</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">namesrv</span></span><br><span class="line">          <span class="attr">readinessProbe:</span></span><br><span class="line">            <span class="attr">tcpSocket:</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">9876</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">10</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">5</span></span><br><span class="line">          <span class="attr">livenessProbe:</span></span><br><span class="line">            <span class="attr">tcpSocket:</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">9876</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">30</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">15</span></span><br><span class="line">          <span class="attr">resources:</span></span><br><span class="line">            <span class="attr">requests:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;256Mi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;100m&quot;</span></span><br><span class="line">            <span class="attr">limits:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;512Mi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;500m&quot;</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Service</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">rocketmq-namesrv</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">rocketmq-namesrv</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">ClusterIP</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">rocketmq-namesrv</span></span><br><span class="line">  <span class="attr">ports:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">namesrv</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">9876</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">9876</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">rocketmq-broker</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">rocketmq-broker</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">replicas:</span> <span class="number">1</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">rocketmq-broker</span></span><br><span class="line">  <span class="attr">strategy:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">Recreate</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">metadata:</span></span><br><span class="line">      <span class="attr">labels:</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">rocketmq-broker</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">initContainers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">wait-namesrv</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">busybox:1.36</span></span><br><span class="line">          <span class="attr">command:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">sh</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">-c</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">&quot;until nc -z rocketmq-namesrv 9876; do echo waiting namesrv; sleep 2; done&quot;</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">broker</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">apache/rocketmq:5.3.2</span></span><br><span class="line">          <span class="attr">command:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">sh</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">mqbroker</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">-n</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">rocketmq-namesrv.default.svc.cluster.local:9876</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">-c</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">/home/rocketmq/rocketmq-5.3.2/conf/broker.conf</span></span><br><span class="line">          <span class="attr">ports:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">10909</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">vip</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">10911</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">main</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">10912</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">ha</span></span><br><span class="line">          <span class="attr">env:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">NAMESRV_ADDR</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">rocketmq-namesrv.default.svc.cluster.local:9876</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">broker-conf</span></span><br><span class="line">              <span class="attr">mountPath:</span> <span class="string">/home/rocketmq/rocketmq-5.3.2/conf/broker.conf</span></span><br><span class="line">              <span class="attr">subPath:</span> <span class="string">broker.conf</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">broker-store</span></span><br><span class="line">              <span class="attr">mountPath:</span> <span class="string">/home/rocketmq/store</span></span><br><span class="line">          <span class="attr">readinessProbe:</span></span><br><span class="line">            <span class="attr">tcpSocket:</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">10911</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">40</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">10</span></span><br><span class="line">            <span class="attr">timeoutSeconds:</span> <span class="number">5</span></span><br><span class="line">            <span class="attr">failureThreshold:</span> <span class="number">30</span></span><br><span class="line">          <span class="attr">livenessProbe:</span></span><br><span class="line">            <span class="attr">tcpSocket:</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">10911</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">120</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">20</span></span><br><span class="line">            <span class="attr">timeoutSeconds:</span> <span class="number">5</span></span><br><span class="line">            <span class="attr">failureThreshold:</span> <span class="number">6</span></span><br><span class="line">          <span class="attr">resources:</span></span><br><span class="line">            <span class="attr">requests:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;1Gi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;500m&quot;</span></span><br><span class="line">            <span class="attr">limits:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;2Gi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;2000m&quot;</span></span><br><span class="line">      <span class="attr">volumes:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">broker-conf</span></span><br><span class="line">          <span class="attr">configMap:</span></span><br><span class="line">            <span class="attr">name:</span> <span class="string">rocketmq-broker-conf</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">broker-store</span></span><br><span class="line">          <span class="attr">persistentVolumeClaim:</span></span><br><span class="line">            <span class="attr">claimName:</span> <span class="string">rocketmq-broker-store</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Service</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">rocketmq-broker</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">rocketmq-broker</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">ClusterIP</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">rocketmq-broker</span></span><br><span class="line">  <span class="attr">ports:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">vip</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">10909</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">10909</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">main</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">10911</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">10911</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">ha</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">10912</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">10912</span></span><br></pre></td></tr></table></figure>
+
+<p>查看资源：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get deploy,svc,pvc</span><br></pre></td></tr></table></figure>
+
+<p>集群内 <strong>NameServer</strong> 地址：<strong><code>rocketmq-namesrv.default.svc.cluster.local:9876</code></strong>；<strong>Broker</strong> 主端口：<strong><code>rocketmq-broker.default.svc.cluster.local:10911</code></strong>（按 <strong>namespace</strong> 调整）。</p>
+<p><strong>说明</strong>：<strong><code>strategy: Recreate</code></strong> 避免 <strong>RWO</strong> 卷被多副本同时挂载；多 <strong>Master</strong>、<strong>DLedger</strong>、<strong>Controller</strong> 与运维自动化请使用 <strong>RocketMQ Operator</strong> 或官方推荐拓扑，勿直接水平扩展上述 <strong>Deployment</strong>。</p>
+<h2 id="部署后验证：mqadmin-与收发测试"><a href="#部署后验证：mqadmin-与收发测试" class="headerlink" title="部署后验证：mqadmin 与收发测试"></a>部署后验证：mqadmin 与收发测试</h2><p>容器自带 <code>mqadmin</code> 与 quickstart 工具类（Compose 示例容器名 <code>rmqbroker</code>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 看集群注册情况：Broker 是否上线、是 Master 还是 Slave</span></span><br><span class="line">docker <span class="built_in">exec</span> rmqbroker sh mqadmin clusterList -n rmqnamesrv:9876</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建测试 Topic（-c 指定集群）</span></span><br><span class="line">docker <span class="built_in">exec</span> rmqbroker sh mqadmin updateTopic -n rmqnamesrv:9876 -c DefaultCluster -t smoke-test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 看 Topic 路由落在哪个 Broker</span></span><br><span class="line">docker <span class="built_in">exec</span> rmqbroker sh mqadmin topicRoute -n rmqnamesrv:9876 -t smoke-test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 用内置工具类发 / 收消息（Ctrl+C 退出 Consumer）</span></span><br><span class="line">docker <span class="built_in">exec</span> -e NAMESRV_ADDR=rmqnamesrv:9876 rmqbroker \</span><br><span class="line">  sh tools.sh org.apache.rocketmq.example.quickstart.Producer</span><br><span class="line">docker <span class="built_in">exec</span> -e NAMESRV_ADDR=rmqnamesrv:9876 rmqbroker \</span><br><span class="line">  sh tools.sh org.apache.rocketmq.example.quickstart.Consumer</span><br></pre></td></tr></table></figure>
+
+<p><code>clusterList</code> 输出里 <strong>BID&#x3D;0 且能看到 InTPS&#x2F;OutTPS</strong> 即 Master 正常服务；若 <code>broker-a</code> 行不存在，九成是 <code>broker.conf</code> 没被加载（路径随版本变化，进容器 <code>ls /home/rocketmq/</code> 核对）或 <code>brokerIP1</code> 不可达。</p>
+<h2 id="生产拓扑：从单-Master-到-DLedger"><a href="#生产拓扑：从单-Master-到-DLedger" class="headerlink" title="生产拓扑：从单 Master 到 DLedger"></a>生产拓扑：从单 Master 到 DLedger</h2><table>
+<thead>
+<tr>
+<th>拓扑</th>
+<th>构成</th>
+<th>可用性</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单 Master</td>
+<td>1 个 Broker</td>
+<td>宕机即停写</td>
+<td>仅开发测试（本章形态）</td>
+</tr>
+<tr>
+<td>多 Master</td>
+<td>2+ 个不同 brokerName，全 Master</td>
+<td>单点宕机只影响该节点上的 Queue</td>
+<td>无 Slave，宕机期间其消息不可读</td>
+</tr>
+<tr>
+<td>多 Master 多 Slave</td>
+<td>每个 Master 配 1+ Slave</td>
+<td>读可切 Slave，<strong>主从切换需人工</strong></td>
+<td>主流生产形态之一</td>
+</tr>
+<tr>
+<td><strong>DLedger（Raft）</strong></td>
+<td>3 节点一组，自动选主</td>
+<td><strong>自动故障转移</strong>，秒级切主</td>
+<td>5.x 推荐；<code>enableDLedgerCommitLog=true</code></td>
+</tr>
+</tbody></table>
+<p>把上面的单 Broker Compose 扩成「1 主 1 从」：再加一个 service，<code>brokerName</code> 相同、<code>brokerId=1</code>、<code>brokerRole=SLAVE</code>、数据卷与端口错开即可；需要自动切换或更多节点时，直接上 <strong>RocketMQ Operator</strong>。</p>
+<h2 id="可选：RocketMQ-Dashboard-控制台"><a href="#可选：RocketMQ-Dashboard-控制台" class="headerlink" title="可选：RocketMQ Dashboard 控制台"></a>可选：RocketMQ Dashboard 控制台</h2><p>排查「Topic 有没有、消费进度卡在哪」时，图形化控制台比 <code>mqadmin</code> 顺手。在 <strong><code>docker-compose.rocketmq.yml</code></strong> 里追加一个服务即可：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">dashboard:</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">apacherocketmq/rocketmq-dashboard:2.0.0</span></span><br><span class="line">  <span class="attr">container_name:</span> <span class="string">rmq-dashboard</span></span><br><span class="line">  <span class="attr">depends_on:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">rmqnamesrv</span></span><br><span class="line">  <span class="attr">environment:</span></span><br><span class="line">    <span class="attr">NAMESRV_ADDR:</span> <span class="string">rmqnamesrv:9876</span></span><br><span class="line">    <span class="attr">JAVA_OPTS:</span> <span class="string">&quot;-Xmx512M&quot;</span></span><br><span class="line">  <span class="attr">ports:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&quot;18080:8080&quot;</span></span><br><span class="line">  <span class="attr">networks:</span> [<span class="string">rocketmq</span>]</span><br></pre></td></tr></table></figure>
+
+<p>启动后访问 <strong><code>http://localhost:18080</code></strong>：「集群」页核对 Broker 主从状态，「主题」页建&#x2F;查 Topic 与路由，「消息」页按 msgId &#x2F; keys 检索，「消费者」页看消费进度与重试堆积——第六章的 Java 示例跑起来后，建议对照这里的消费进度确认收发自如。</p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>前置</strong></td>
+<td>已安装 <strong><code>docker</code></strong> 与 <strong><code>docker compose</code></strong>（或 <strong><code>docker-compose</code></strong>）</td>
+</tr>
+<tr>
+<td><strong>镜像</strong></td>
+<td><strong><code>apache/rocketmq:5.3.2</code></strong>；升级时核对 <strong><code>conf</code></strong> 路径与 <strong>Proxy</strong> 需求</td>
+</tr>
+<tr>
+<td><strong>最小编排</strong></td>
+<td><strong><code>docker network create</code></strong> → <strong><code>rmqnamesrv</code></strong> → <strong><code>rmqbroker</code></strong>（三条命令）</td>
+</tr>
+<tr>
+<td><strong>Compose</strong></td>
+<td><strong><code>broker.conf</code></strong> + <strong><code>docker-compose.rocketmq.yml</code></strong> → <strong><code>docker compose -f ... up -d</code></strong></td>
+</tr>
+<tr>
+<td><strong>Kubernetes</strong></td>
+<td><strong><code>rocketmq-k8s.yaml</code></strong>：<strong>ConfigMap + PVC + 两套 Deploy&#x2F;Service&#96;</strong></td>
+</tr>
+<tr>
+<td><strong>第一坑</strong></td>
+<td><strong><code>brokerIP1</code></strong> 决定客户端拿到的 Broker 地址，跨机访问必须改</td>
+</tr>
+<tr>
+<td><strong>验证</strong></td>
+<td><code>mqadmin clusterList</code> 看 BID&#x3D;0 在线；<code>tools.sh</code> quickstart 收发冒烟</td>
+</tr>
+<tr>
+<td><strong>可靠性</strong></td>
+<td>刷盘&#x2F;复制组合按业务选；生产上 <strong>DLedger</strong> 或主从 + Operator</td>
+</tr>
+</tbody></table>
+<p>生产环境请启用 <strong>ACL</strong>、<strong>TLS</strong>、监控与容量规划；<strong>5.x</strong> 新客户端与 <strong>Proxy</strong> 接入请参考 <strong>Apache RocketMQ</strong> 官方文档。</p>
+<p>集群就绪后，用 Java 客户端收发第一条消息 → <a href="/mq/06-rocketmq-java-producer-consumer/">第六章：RocketMQ Java 发布与消费实战</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Docker/" rel="tag"># Docker</a>
+              <a href="/tags/Docker-Compose/" rel="tag"># Docker Compose</a>
+              <a href="/tags/Kubernetes/" rel="tag"># Kubernetes</a>
+              <a href="/tags/RocketMQ/" rel="tag"># RocketMQ</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/database/03-clickhouse-query-tuning/" rel="prev" title="第三章：ClickHouse 查询与性能调优">
+                  <i class="fa fa-angle-left"></i> 第三章：ClickHouse 查询与性能调优
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/python/13-python-selenium-automation/" rel="next" title="第十三章：网页自动化：Python + Selenium 入门与实战">
+                  第十三章：网页自动化：Python + Selenium 入门与实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：Redis Hash 数据类型：概念、命令与案例概念基础Hash 是「key → 若干 field&#x2F;value 对」的映射，类似一张微型数据行或一个对象文档：  一个 key 下挂多对 field &#x2F; value，field 与 value 均为字符串（二进制安全）。   TYPE key 显示 hash。   与 String 存 JSON 的区别：String 改一">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：Redis Hash 数据类型：概念、命令与案例">
+<meta property="og:url" content="https://my919.github.io/redis/04-redis-hash-type/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：Redis Hash 数据类型：概念、命令与案例概念基础Hash 是「key → 若干 field&#x2F;value 对」的映射，类似一张微型数据行或一个对象文档：  一个 key 下挂多对 field &#x2F; value，field 与 value 均为字符串（二进制安全）。   TYPE key 显示 hash。   与 String 存 JSON 的区别：String 改一">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T09:30:39.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.592Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Hash">
+<meta property="article:tag" content="Redis">
+<meta property="article:tag" content="缓存">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/redis/04-redis-hash-type/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/redis/04-redis-hash-type/","path":"redis/04-redis-hash-type/","title":"第四章：Redis Hash 数据类型：概念、命令与案例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：Redis Hash 数据类型：概念、命令与案例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9ARedis-Hash-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%EF%BC%9A%E6%A6%82%E5%BF%B5%E3%80%81%E5%91%BD%E4%BB%A4%E4%B8%8E%E6%A1%88%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第四章：Redis Hash 数据类型：概念、命令与案例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86%EF%BC%9A%E7%BC%96%E7%A0%81%E4%B8%8E%E5%BA%95%E5%B1%82%E7%BB%93%E6%9E%84"><span class="nav-number">1.2.</span> <span class="nav-text">核心原理：编码与底层结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%B8%A4%E7%A7%8D%E7%BC%96%E7%A0%81%EF%BC%88OBJECT-ENCODING-key-%E5%8F%AF%E8%A7%82%E5%AF%9F%EF%BC%89"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 两种编码（OBJECT ENCODING key 可观察）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%BC%96%E7%A0%81%E8%BD%AC%E6%8D%A2%E9%98%88%E5%80%BC"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 编码转换阈值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%B8%90%E8%BF%9B%E5%BC%8F-rehash"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. 渐进式 rehash</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%97%B6%E9%97%B4%E5%A4%8D%E6%9D%82%E5%BA%A6%E8%A1%A8"><span class="nav-number">1.2.4.</span> <span class="nav-text">4. 时间复杂度表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%86%85%E5%AD%98%E5%8D%A0%E7%94%A8%E5%AF%B9%E6%AF%94%EF%BC%9A%E4%B8%80%E4%B8%AA-Hash-vs-%E6%8B%86%E6%88%90%E5%A4%9A%E4%B8%AA-String-key"><span class="nav-number">1.2.5.</span> <span class="nav-text">5. 内存占用对比：一个 Hash vs 拆成多个 String key</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%EF%BC%88%E5%BF%85%E4%BC%9A%E5%AD%90%E9%9B%86%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">常用命令（必会子集）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">1.4.</span> <span class="nav-text">典型应用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%BC%E5%90%88%E6%A1%88%E4%BE%8B%EF%BC%88redis-cli%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">综合案例（redis-cli）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%94%A8%E6%88%B7%E8%B5%84%E6%96%99%EF%BC%9A%E5%B1%80%E9%83%A8%E6%9B%B4%E6%96%B0%E4%B8%8E%E6%89%B9%E9%87%8F%E8%AF%BB"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 用户资料：局部更新与批量读</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%B4%AD%E7%89%A9%E8%BD%A6%EF%BC%9A%E5%8A%A0%E8%B4%AD%E3%80%81%E6%94%B9%E6%95%B0%E9%87%8F%E3%80%81%E5%88%A0-SKU"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 购物车：加购、改数量、删 SKU</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%96%87%E7%AB%A0%E5%A4%9A%E7%BB%B4%E8%AE%A1%E6%95%B0"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 文章多维计数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%AD%97%E6%AE%B5%E7%BA%A7%E8%BF%87%E6%9C%9F%EF%BC%88Redis-7-4-8-x%EF%BC%89"><span class="nav-number">1.5.4.</span> <span class="nav-text">4. 字段级过期（Redis 7.4+&#x2F;8.x）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%AF%B9%E8%B1%A1%E7%BC%93%E5%AD%98%EF%BC%9ACache-Aside-%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B"><span class="nav-number">1.5.5.</span> <span class="nav-text">5. 对象缓存：Cache Aside 读写流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E5%86%85%E5%AD%98%E5%AE%9E%E6%B5%8B%EF%BC%9AHash-vs-%E5%A4%9A-String-key"><span class="nav-number">1.5.6.</span> <span class="nav-text">6. 内存实测：Hash vs 多 String key</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-%E8%AF%BB%E5%85%A8%E8%A1%A8%E8%BF%98%E6%98%AF%E8%AF%BB%E9%83%A8%E5%88%86%EF%BC%9AHGETALL-%E4%B8%8E-HMGET-%E7%9A%84%E7%BD%91%E7%BB%9C%E6%88%90%E6%9C%AC"><span class="nav-number">1.5.7.</span> <span class="nav-text">7. 读全表还是读部分：HGETALL 与 HMGET 的网络成本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-%E5%AD%97%E6%AE%B5%E7%BA%A7%E5%8D%A0%E4%BD%8D%EF%BC%9AHSETNX-%E6%8A%A2%E5%8D%A0%E5%94%AF%E4%B8%80%E8%B5%84%E6%BA%90"><span class="nav-number">1.5.8.</span> <span class="nav-text">8. 字段级占位：HSETNX 抢占唯一资源</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%A4%BA%E4%BE%8B%EF%BC%88Lettuce%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">Java 客户端示例（Lettuce）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Python-%E7%A4%BA%E4%BE%8B%EF%BC%88redis-py%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">Python 示例（redis-py）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-number">1.8.</span> <span class="nav-text">与关系型方案对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91%E4%B8%8E%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">1.9.</span> <span class="nav-text">常见坑与注意事项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/redis/04-redis-hash-type/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：Redis Hash 数据类型：概念、命令与案例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：Redis Hash 数据类型：概念、命令与案例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 17:30:39" itemprop="dateCreated datePublished" datetime="2026-05-03T17:30:39+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Redis-%E7%BC%93%E5%AD%98/" itemprop="url" rel="index"><span itemprop="name">Redis 缓存</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：Redis-Hash-数据类型：概念、命令与案例"><a href="#第四章：Redis-Hash-数据类型：概念、命令与案例" class="headerlink" title="第四章：Redis Hash 数据类型：概念、命令与案例"></a>第四章：Redis Hash 数据类型：概念、命令与案例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>Hash</strong> 是「<strong>key → 若干 field&#x2F;value 对</strong>」的映射，类似一张<strong>微型数据行</strong>或一个<strong>对象文档</strong>：</p>
+<ol>
+<li>一个 <strong>key</strong> 下挂多对 <strong>field &#x2F; value</strong>，<strong>field</strong> 与 <strong>value</strong> 均为字符串（二进制安全）。  </li>
+<li><strong><code>TYPE key</code></strong> 显示 <strong><code>hash</code></strong>。  </li>
+<li><strong>与 String 存 JSON 的区别</strong>：String 改一个字段要「读出 → 反序列化 → 改 → 序列化 → 写回」四步，Hash 只需 <strong><code>HSET</code> 一个 field</strong>——这就是「<strong>局部更新</strong>」的价值。  </li>
+<li>适合「用户资料、购物车行、配置项分组」等<strong>属性较多且常单独更新</strong>的场景。  </li>
+<li><strong>字段级过期</strong>：<strong>Redis 7.4 起</strong>（含 8.x）Hash 支持<strong>字段级 TTL</strong>（<strong><code>HEXPIRE</code> &#x2F; <code>HPEXPIRE</code> &#x2F; <code>HTTL</code></strong>），可让同一 Hash 内不同字段有不同生命周期；旧版本只能对整个 key 设 <strong><code>EXPIRE</code></strong>，这是选型时容易忽略的版本差异点。</li>
+</ol>
+<h2 id="核心原理：编码与底层结构"><a href="#核心原理：编码与底层结构" class="headerlink" title="核心原理：编码与底层结构"></a>核心原理：编码与底层结构</h2><h3 id="1-两种编码（OBJECT-ENCODING-key-可观察）"><a href="#1-两种编码（OBJECT-ENCODING-key-可观察）" class="headerlink" title="1. 两种编码（OBJECT ENCODING key 可观察）"></a>1. 两种编码（<strong><code>OBJECT ENCODING key</code></strong> 可观察）</h3><ul>
+<li><strong><code>listpack</code></strong>（<strong>Redis 7.0</strong> 前为 <strong>ziplist</strong>）：字段少且值短的紧凑编码，所有 field&#x2F;value 连续存放，<strong>省内存</strong>但对中间元素的访问是 O(N)——靠「元素少」保证不慢。listpack 是一段连续字节数组，每个 entry 记录自身长度与编码类型，<strong>无指针开销</strong>，这正是它比 hashtable 省内存的原因。  </li>
+<li><strong><code>hashtable</code></strong>：字典结构，field → value 的 O(1) 哈希访问。</li>
+</ul>
+<h3 id="2-编码转换阈值"><a href="#2-编码转换阈值" class="headerlink" title="2. 编码转换阈值"></a>2. 编码转换阈值</h3><p>任一条件超出即从 listpack 转 hashtable（默认如下，以 <strong><code>CONFIG GET hash-max-listpack-*</code></strong> 为准）；<strong>转换是单向的</strong>，转回不再发生：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>默认值</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>hash-max-listpack-entries</code></strong></td>
+<td><strong>128</strong></td>
+<td>字段数超过该值即转换</td>
+</tr>
+<tr>
+<td><strong><code>hash-max-listpack-value</code></strong></td>
+<td><strong>64</strong>（字节）</td>
+<td>任一 field 或 value 超过该长度即转换</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">redis-cli HSET u:1 name Alice</span><br><span class="line">redis-cli OBJECT ENCODING u:1          <span class="comment"># -&gt; &quot;listpack&quot;</span></span><br><span class="line">redis-cli HSET u:1 bio <span class="string">&quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;</span></span><br><span class="line">redis-cli OBJECT ENCODING u:1          <span class="comment"># -&gt; &quot;hashtable&quot;（value 超 64 字节触发）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-渐进式-rehash"><a href="#3-渐进式-rehash" class="headerlink" title="3. 渐进式 rehash"></a>3. 渐进式 rehash</h3><p>hashtable 扩容时 Redis 同时持有<strong>两张哈希表</strong>，把数据<strong>分批</strong>从旧表搬到新表（每次命令顺带迁一小批 + 定时任务），避免一次搬家阻塞服务——这是单线程 Redis 能平滑扩容的关键设计。</p>
+<h3 id="4-时间复杂度表"><a href="#4-时间复杂度表" class="headerlink" title="4. 时间复杂度表"></a>4. 时间复杂度表</h3><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>复杂度</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>HSET</code> &#x2F; <code>HGET</code> &#x2F; <code>HDEL</code></strong>（单字段）</td>
+<td><strong>O(1)</strong></td>
+<td>多字段形式为 O(N)，N 为本次字段数</td>
+</tr>
+<tr>
+<td><strong><code>HINCRBY</code> &#x2F; <code>HINCRBYFLOAT</code></strong></td>
+<td><strong>O(1)</strong></td>
+<td><strong>原子</strong>字段加减</td>
+</tr>
+<tr>
+<td><strong><code>HEXISTS</code> &#x2F; <code>HLEN</code> &#x2F; <code>HSTRLEN</code></strong></td>
+<td><strong>O(1)</strong></td>
+<td>判存在 &#x2F; 字段数 &#x2F; 值长度</td>
+</tr>
+<tr>
+<td><strong><code>HMGET</code> &#x2F; <code>HMSET</code></strong></td>
+<td>O(N)</td>
+<td>N 为本次字段数</td>
+</tr>
+<tr>
+<td><strong><code>HGETALL</code> &#x2F; <code>HKEYS</code> &#x2F; <code>HVALS</code></strong></td>
+<td><strong>O(N)</strong></td>
+<td>N 为总字段数，大 Hash 慎用</td>
+</tr>
+<tr>
+<td><strong><code>HSCAN</code></strong></td>
+<td>单次 O(1) 级别</td>
+<td>分批游标遍历，生产遍历大 Hash 的唯一正确姿势</td>
+</tr>
+</tbody></table>
+<h3 id="5-内存占用对比：一个-Hash-vs-拆成多个-String-key"><a href="#5-内存占用对比：一个-Hash-vs-拆成多个-String-key" class="headerlink" title="5. 内存占用对比：一个 Hash vs 拆成多个 String key"></a>5. 内存占用对比：一个 Hash vs 拆成多个 String key</h3><p>「100 个字段放一个 Hash」与「100 个 String key」的内存差距主要来自 <strong>key 头开销</strong>：每个 String key 都有 redisObject、SDS、dictEntry 等固定成本（约 50~90 字节&#x2F;key），而 Hash 在 listpack 编码下 field&#x2F;value 是纯数据连续存放。<strong>字段多而值短的对象，Hash 明显更省</strong>；反之字段少、值大时两者差距不大，按语义选。</p>
+<h2 id="常用命令（必会子集）"><a href="#常用命令（必会子集）" class="headerlink" title="常用命令（必会子集）"></a>常用命令（必会子集）</h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>HSET key field value [field value …]</code></strong></td>
+<td>设置一个或多个字段（<strong>Redis 4.0+</strong> 推荐 <strong><code>HSET</code></strong> 多字段；旧 <strong><code>HMSET</code></strong> 已废弃）</td>
+</tr>
+<tr>
+<td><strong><code>HGET</code> &#x2F; <code>HMGET</code> &#x2F; <code>HGETALL</code></strong></td>
+<td>读单字段 &#x2F; 多字段 &#x2F; 全表</td>
+</tr>
+<tr>
+<td><strong><code>HDEL</code></strong></td>
+<td>删字段</td>
+</tr>
+<tr>
+<td><strong><code>HEXISTS</code> &#x2F; <code>HLEN</code></strong></td>
+<td>字段是否存在 &#x2F; 字段个数</td>
+</tr>
+<tr>
+<td><strong><code>HINCRBY</code> &#x2F; <code>HINCRBYFLOAT</code></strong></td>
+<td>字段数值原子增减</td>
+</tr>
+<tr>
+<td><strong><code>HSETNX</code></strong></td>
+<td>字段不存在才写入（字段级「占位」）</td>
+</tr>
+<tr>
+<td><strong><code>HSCAN</code></strong></td>
+<td>大 <strong>Hash</strong> 迭代遍历（生产避免 <strong><code>HGETALL</code></strong> 撑爆网络）</td>
+</tr>
+<tr>
+<td><strong><code>HEXPIRE</code> &#x2F; <code>HTTL</code></strong></td>
+<td><strong>Redis 7.4+&#x2F;8.x</strong>：字段级过期与剩余 TTL 查询</td>
+</tr>
+</tbody></table>
+<h2 id="典型应用场景"><a href="#典型应用场景" class="headerlink" title="典型应用场景"></a>典型应用场景</h2><ol>
+<li><strong>用户资料</strong>：<strong><code>user:1001</code></strong> 下 <strong><code>name</code> &#x2F; <code>vip</code> &#x2F; <code>city</code></strong> 等，改一项只动一个 <strong>field</strong>。  </li>
+<li><strong>购物车行</strong>：<strong><code>cart:uid:1001</code></strong> 下 <strong><code>sku:2001</code> → 数量</strong>，加购 <strong><code>HINCRBY</code></strong>、删 SKU <strong><code>HDEL</code></strong>、清空 <strong><code>DEL</code></strong>。  </li>
+<li><strong>对象缓存</strong>：比整串 <strong>String</strong> 更易做<strong>局部更新</strong>；仍要注意<strong>过期策略</strong>与<strong>缓存一致性</strong>。  </li>
+<li><strong>多维计数器</strong>：<strong><code>article:42</code></strong> 下 <strong><code>views</code> &#x2F; <code>likes</code> &#x2F; <code>comments</code></strong> 三个字段分别 <strong><code>HINCRBY</code></strong>，比三个独立 String key 省内存、好管理。  </li>
+<li><strong>分布式会话属性</strong>：会话主键 + 若干部件（角色、权限快照），配合 <strong>Redis 8</strong> 的字段级 TTL 做「部分字段先过期」。  </li>
+<li><strong>SKU 库存与销量双记</strong>：<strong><code>sku:2001</code></strong> 下 <strong><code>stock</code> &#x2F; <code>sold</code></strong> 两字段，下单 <strong><code>HINCRBY stock -1</code></strong> 后判负回滚——简单场景的轻量库存方案（高并发超卖控制仍需 Lua 或队列）。  </li>
+<li><strong>配置分组</strong>：<strong><code>config:pay</code></strong> 下挂 <code>timeout</code> &#x2F; <code>retry</code> &#x2F; <code>channel</code> 等开关，改一项 <strong><code>HSET</code></strong> 即刻生效，比重载配置文件轻得多。</li>
+</ol>
+<h2 id="综合案例（redis-cli）"><a href="#综合案例（redis-cli）" class="headerlink" title="综合案例（redis-cli）"></a>综合案例（redis-cli）</h2><h3 id="1-用户资料：局部更新与批量读"><a href="#1-用户资料：局部更新与批量读" class="headerlink" title="1. 用户资料：局部更新与批量读"></a>1. 用户资料：局部更新与批量读</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">redis-cli HSET user:1001 name Alice vip 1 city Shanghai</span><br><span class="line">redis-cli HGET user:1001 name</span><br><span class="line">redis-cli HMGET user:1001 name city</span><br><span class="line">redis-cli HINCRBY user:1001 vip 1</span><br><span class="line">redis-cli HGETALL user:1001</span><br><span class="line">redis-cli HDEL user:1001 city</span><br><span class="line">redis-cli EXPIRE user:1001 3600</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-购物车：加购、改数量、删-SKU"><a href="#2-购物车：加购、改数量、删-SKU" class="headerlink" title="2. 购物车：加购、改数量、删 SKU"></a>2. 购物车：加购、改数量、删 SKU</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">redis-cli HINCRBY cart:1001 sku:2001 2        <span class="comment"># 加购 2 件</span></span><br><span class="line">redis-cli HINCRBY cart:1001 sku:2002 1</span><br><span class="line">redis-cli HINCRBY cart:1001 sku:2001 -1       <span class="comment"># 减 1 件</span></span><br><span class="line">redis-cli HGETALL cart:1001                   <span class="comment"># 结算时读全表（字段少时可用）</span></span><br><span class="line">redis-cli HDEL cart:1001 sku:2002             <span class="comment"># 删除 SKU</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-文章多维计数"><a href="#3-文章多维计数" class="headerlink" title="3. 文章多维计数"></a>3. 文章多维计数</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">redis-cli HINCRBY article:42 views 1</span><br><span class="line">redis-cli HINCRBY article:42 likes 1</span><br><span class="line">redis-cli HMGET article:42 views likes comments</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-字段级过期（Redis-7-4-8-x）"><a href="#4-字段级过期（Redis-7-4-8-x）" class="headerlink" title="4. 字段级过期（Redis 7.4+&#x2F;8.x）"></a>4. 字段级过期（Redis 7.4+&#x2F;8.x）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">redis-cli HSET sess:abc uid 1001 role admin tmp_token xyz</span><br><span class="line">redis-cli HEXPIRE sess:abc 60 FIELDS 1 tmp_token   <span class="comment"># tmp_token 60 秒后自动消失</span></span><br><span class="line">redis-cli HTTL sess:abc FIELDS 1 tmp_token</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-对象缓存：Cache-Aside-读写流程"><a href="#5-对象缓存：Cache-Aside-读写流程" class="headerlink" title="5. 对象缓存：Cache Aside 读写流程"></a>5. 对象缓存：Cache Aside 读写流程</h3><p>Hash 做对象缓存时的标准姿势是 <strong>Cache Aside（旁路缓存）</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 读路径：先查缓存</span></span><br><span class="line">redis-cli HGETALL user:1001</span><br><span class="line"><span class="comment"># 缓存 miss 时回库，再回填并设 TTL（回填用 HSET 整行写入）</span></span><br><span class="line">redis-cli HSET user:1001 name Alice vip 1 city Shanghai</span><br><span class="line">redis-cli EXPIRE user:1001 300</span><br><span class="line"></span><br><span class="line"><span class="comment"># 写路径：先写数据库，再让缓存失效（删 key 或 HSET 覆盖对应字段）</span></span><br><span class="line">redis-cli DEL user:1001</span><br></pre></td></tr></table></figure>
+
+<p>为什么「先写库、后删缓存」而不是反过来：反过来在并发下存在「缓存已删、旧值被另一读请求回填」的脏读窗口；先写库后删，窗口只剩「删之前的一小段读旧值」，工程上可接受。要求更高时再上<strong>延迟双删</strong>或订阅 binlog 失效。</p>
+<h3 id="6-内存实测：Hash-vs-多-String-key"><a href="#6-内存实测：Hash-vs-多-String-key" class="headerlink" title="6. 内存实测：Hash vs 多 String key"></a>6. 内存实测：Hash vs 多 String key</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 一个 Hash 存 10 个字段</span></span><br><span class="line">redis-cli HSET obj:<span class="built_in">hash</span> f1 v1 f2 v2 f3 v3 f4 v4 f5 v5 f6 v6 f7 v7 f8 v8 f9 v9 f10 v10</span><br><span class="line">redis-cli MEMORY USAGE obj:<span class="built_in">hash</span>            <span class="comment"># 约一两百字节（listpack）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 拆成 10 个 String key</span></span><br><span class="line">redis-cli MSET obj:s:f1 v1 obj:s:f2 v2 obj:s:f3 v3 obj:s:f4 v4 obj:s:f5 v5 obj:s:f6 v6 obj:s:f7 v7 obj:s:f8 v8 obj:s:f9 v9 obj:s:f10 v10</span><br><span class="line">redis-cli MEMORY USAGE obj:s:f1            <span class="comment"># 每个 key 约 60~80 字节</span></span><br></pre></td></tr></table></figure>
+
+<p>字段越多、值越短，Hash（listpack 编码）的内存优势越大；这就是「海量小对象缓存」优先 Hash 的量化依据。</p>
+<h3 id="7-读全表还是读部分：HGETALL-与-HMGET-的网络成本"><a href="#7-读全表还是读部分：HGETALL-与-HMGET-的网络成本" class="headerlink" title="7. 读全表还是读部分：HGETALL 与 HMGET 的网络成本"></a>7. 读全表还是读部分：HGETALL 与 HMGET 的网络成本</h3><p><strong><code>HGETALL</code></strong> 把全部字段一次性扛回客户端，字段多、值大时网络与反序列化开销不小；列表页只展示 3 个字段时应 <strong><code>HMGET key f1 f2 f3</code></strong> 按需取。运维排查看大 Hash 时用 <strong><code>HSCAN</code></strong> 分批，勿在高峰期 <code>HGETALL</code>。</p>
+<h3 id="8-字段级占位：HSETNX-抢占唯一资源"><a href="#8-字段级占位：HSETNX-抢占唯一资源" class="headerlink" title="8. 字段级占位：HSETNX 抢占唯一资源"></a>8. 字段级占位：HSETNX 抢占唯一资源</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 用户名注册：name 为 field，uid 为 value；返回 1 抢注成功，0 已被占用</span></span><br><span class="line">redis-cli HSETNX used:names alice 1001</span><br><span class="line">redis-cli HSETNX used:names alice 1002        <span class="comment"># -&gt; 0，alice 已注册</span></span><br><span class="line">redis-cli HGET used:names alice               <span class="comment"># -&gt; &quot;1001&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>相比「每用户名一个 String key + SET NX」，所有用户名收进一个 Hash 内存更省、管理更集中；注意该 Hash 会随注册量增长，超大时按首字母拆 key。</p>
+<h2 id="Java-客户端示例（Lettuce）"><a href="#Java-客户端示例（Lettuce）" class="headerlink" title="Java 客户端示例（Lettuce）"></a>Java 客户端示例（Lettuce）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">RedisCommands</span>&lt;String, String&gt; <span class="variable">cmd</span> <span class="operator">=</span> lettuceConnection.sync();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 写入与局部更新</span></span><br><span class="line">cmd.hset(<span class="string">&quot;user:1001&quot;</span>, Map.of(<span class="string">&quot;name&quot;</span>, <span class="string">&quot;Alice&quot;</span>, <span class="string">&quot;vip&quot;</span>, <span class="string">&quot;1&quot;</span>, <span class="string">&quot;city&quot;</span>, <span class="string">&quot;Shanghai&quot;</span>));</span><br><span class="line">cmd.hincrby(<span class="string">&quot;user:1001&quot;</span>, <span class="string">&quot;vip&quot;</span>, <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 批量读取</span></span><br><span class="line"><span class="type">Map</span>&lt;String, String&gt; <span class="variable">profile</span> <span class="operator">=</span> cmd.hgetall(<span class="string">&quot;user:1001&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 大 Hash 遍历：用 HSCAN 而不是 hgetall</span></span><br><span class="line"><span class="type">ScanCursor</span> <span class="variable">cursor</span> <span class="operator">=</span> ScanCursor.INITIAL;</span><br><span class="line"><span class="keyword">while</span> (!cursor.isFinished()) &#123;</span><br><span class="line">    <span class="type">MapScanCursor</span>&lt;String, String&gt; <span class="variable">cur</span> <span class="operator">=</span> cmd.hscan(<span class="string">&quot;big:hash&quot;</span>, cursor, ScanArgs.Builder.limit(<span class="number">100</span>));</span><br><span class="line">    cur.getMap().forEach((f, v) -&gt; &#123; <span class="comment">/* 处理 */</span> &#125;);</span><br><span class="line">    cursor = cur;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Python-示例（redis-py）"><a href="#Python-示例（redis-py）" class="headerlink" title="Python 示例（redis-py）"></a>Python 示例（redis-py）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> redis</span><br><span class="line"></span><br><span class="line">r = redis.Redis(host=<span class="string">&quot;127.0.0.1&quot;</span>, port=<span class="number">6379</span>, decode_responses=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 购物车</span></span><br><span class="line">r.hincrby(<span class="string">&quot;cart:1001&quot;</span>, <span class="string">&quot;sku:2001&quot;</span>, <span class="number">2</span>)</span><br><span class="line">r.hincrby(<span class="string">&quot;cart:1001&quot;</span>, <span class="string">&quot;sku:2001&quot;</span>, -<span class="number">1</span>)</span><br><span class="line">cart = r.hgetall(<span class="string">&quot;cart:1001&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 大 Hash 迭代</span></span><br><span class="line"><span class="keyword">for</span> field, value <span class="keyword">in</span> r.hscan_iter(<span class="string">&quot;big:hash&quot;</span>, count=<span class="number">100</span>):</span><br><span class="line">    <span class="built_in">print</span>(field, value)</span><br></pre></td></tr></table></figure>
+
+<h2 id="与关系型方案对比"><a href="#与关系型方案对比" class="headerlink" title="与关系型方案对比"></a>与关系型方案对比</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Redis Hash</th>
+<th>MySQL 行</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>局部更新</td>
+<td><strong><code>HSET</code></strong> O(1)，无锁竞争</td>
+<td>UPDATE 行锁，热行有竞争</td>
+</tr>
+<tr>
+<td>读取延迟</td>
+<td>微秒级，内存</td>
+<td>毫秒级，磁盘 + 缓冲池</td>
+</tr>
+<tr>
+<td>Schema 约束</td>
+<td>无，字段随意增删</td>
+<td>表结构固定，改列成本高</td>
+</tr>
+<tr>
+<td>持久性与事务</td>
+<td>依赖 RDB&#x2F;AOF，可能丢</td>
+<td>InnoDB 事务 + binlog，强持久</td>
+</tr>
+<tr>
+<td>典型用法</td>
+<td>热数据缓存、购物车、计数器</td>
+<td>系统记录（source of truth）</td>
+</tr>
+</tbody></table>
+<p>实践中常见组合：<strong>MySQL 为准，Redis Hash 为缓存镜像</strong>，写库后删&#x2F;改缓存字段。</p>
+<h2 id="常见坑与注意事项"><a href="#常见坑与注意事项" class="headerlink" title="常见坑与注意事项"></a>常见坑与注意事项</h2><ol>
+<li><strong>大 Hash</strong>：字段极多时 <strong><code>HGETALL</code></strong> 成本高（O(N) 且一次扛回全量字节），列表页用 <strong><code>HSCAN</code></strong> 或只取需要的 <strong><code>HMGET</code></strong>；字段数上十万时应拆 key。  </li>
+<li><strong>热 key</strong>：单个大 Hash 被全站高频读写会成为单点瓶颈，按业务维度拆分（如 <strong><code>user:{id}</code></strong> 天然分片）。  </li>
+<li><strong>滥用 <code>KEYS</code></strong>：排查 Hash key 时勿在生产 <strong><code>KEYS user:*</code></strong>，用 <strong><code>SCAN MATCH user:* COUNT 100</code></strong>。  </li>
+<li><strong>错误选型</strong>：对象总是整体读写、从不久局部更新 → 用 <strong>String JSON</strong> 更简单；字段需要独立过期（&lt; 7.4）→ Hash 做不到，只能拆 String key。  </li>
+<li><strong>小 Hash 编码</strong>：字段少且短时可能 <strong>listpack</strong> 等紧凑编码，内存更省（<strong><code>OBJECT ENCODING</code></strong> 可观察）；超阈值转 hashtable 后内存上升属预期，不是泄漏。  </li>
+<li><strong>与 String JSON 选型</strong>：读多写少、整体替换频繁 → <strong>String</strong>；字段独立更新多 → <strong>Hash</strong>。  </li>
+<li><strong>缓存三兄弟</strong>：Hash 缓存同样要面对<strong>穿透</strong>（查不存在的数据，缓存空值或布隆过滤）、<strong>击穿</strong>（热 key 过期瞬间被打爆，加互斥重建）、<strong>雪崩</strong>（大量 key 同刻过期，TTL 加随机抖动）——结构选型救不了这三件事，要在读写流程里处理。  </li>
+<li><strong>TTL 只挂在 key 上（&lt;7.4）</strong>：旧版本给单个 field 设过期是做不到的，误信「HSET 带 EX」会留下永不过期的脏字段；7.4+ 用 <strong><code>HEXPIRE</code></strong>，旧版本只能拆 String key。</li>
+</ol>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>本质</td>
+<td>key → 多对 <strong>field&#x2F;value</strong>，像「数据行」</td>
+</tr>
+<tr>
+<td>编码</td>
+<td><strong>listpack（小而省）→ hashtable（O(1) + 渐进式 rehash）</strong>，阈值 <code>hash-max-listpack-entries 128</code> &#x2F; <code>-value 64</code></td>
+</tr>
+<tr>
+<td>复杂度</td>
+<td>单字段 O(1)；<strong>HGETALL O(N)</strong>，大 Hash 用 <strong>HSCAN</strong></td>
+</tr>
+<tr>
+<td>高频命令</td>
+<td><strong>HSET &#x2F; HGET &#x2F; HGETALL &#x2F; HINCRBY &#x2F; HDEL &#x2F; HEXPIRE（7.4+）</strong></td>
+</tr>
+<tr>
+<td>选型</td>
+<td>字段常单独更新 → Hash；整体读写 → String JSON</td>
+</tr>
+</tbody></table>
+<p><strong>延伸阅读</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>String数据类型、应用场景及案例.md</code></strong></td>
+<td>整串缓存、计数、<strong><code>SET</code> 选项</strong></td>
+</tr>
+<tr>
+<td><strong><code>Redis-Docker.md</code></strong></td>
+<td><strong><code>requirepass</code></strong>、持久化卷</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%BC%93%E5%AD%98/" rel="tag"># 缓存</a>
+              <a href="/tags/Redis/" rel="tag"># Redis</a>
+              <a href="/tags/Hash/" rel="tag"># Hash</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/redis/06-redis-set-type/" rel="prev" title="第六章：Redis Set 数据类型：概念、命令与案例">
+                  <i class="fa fa-angle-left"></i> 第六章：Redis Set 数据类型：概念、命令与案例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/redis/07-redis-zset-type/" rel="next" title="第七章：Redis ZSet 数据类型：概念、命令与案例">
+                  第七章：Redis ZSet 数据类型：概念、命令与案例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十一章：Java本地持久化队列方案与实战概念基础 是什么：任务先写入磁盘再消费的本地队列——进程重启、宕机后任务不丢失，重启自动恢复继续消费。 为什么需要：内存队列（如 LinkedBlockingQueue）重启即丢；引入 Redis&#x2F;MQ 又增加部署与运维成本——本地持久化队列在轻量与可靠之间取得平衡。 三大成熟方案：Chronicle Queue（MMAP 磁盘映射、零依赖、超高">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十一章：Java本地持久化队列方案与实战">
+<meta property="og:url" content="https://my919.github.io/dal/11-java-local-persistent-queue/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十一章：Java本地持久化队列方案与实战概念基础 是什么：任务先写入磁盘再消费的本地队列——进程重启、宕机后任务不丢失，重启自动恢复继续消费。 为什么需要：内存队列（如 LinkedBlockingQueue）重启即丢；引入 Redis&#x2F;MQ 又增加部署与运维成本——本地持久化队列在轻量与可靠之间取得平衡。 三大成熟方案：Chronicle Queue（MMAP 磁盘映射、零依赖、超高">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-08T13:03:28.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.569Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Java">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/dal/11-java-local-persistent-queue/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/dal/11-java-local-persistent-queue/","path":"dal/11-java-local-persistent-queue/","title":"第十一章：Java本地持久化队列方案与实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十一章：Java本地持久化队列方案与实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E4%B8%80%E7%AB%A0%EF%BC%9AJava%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E9%98%9F%E5%88%97%E6%96%B9%E6%A1%88%E4%B8%8E%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">第十一章：Java本地持久化队列方案与实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%A5-%E6%9C%80%E4%BD%B3%E6%8E%A8%E8%8D%90%EF%BC%883-%E4%B8%AA%E7%9C%9F%E6%AD%A3%E7%9A%84%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E9%98%9F%E5%88%97%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">🔥 最佳推荐（3 个真正的本地持久化队列）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Chronicle-Queue%EF%BC%88%E4%BC%81%E4%B8%9A%E7%BA%A7%E9%A6%96%E9%80%89%EF%BC%8C%E9%9B%B6%E4%BE%9D%E8%B5%96%E3%80%81%E9%AB%98%E6%80%A7%E8%83%BD%EF%BC%89"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. Chronicle Queue（企业级首选，零依赖、高性能）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-LMDBQueue%EF%BC%88%E6%9E%81%E8%BD%BB%E9%87%8F%E3%80%81%E5%B5%8C%E5%85%A5%E5%BC%8F%E3%80%81%E8%B6%85%E5%BF%AB%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. LMDBQueue（极轻量、嵌入式、超快）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-MapDB%EF%BC%88%E5%B5%8C%E5%85%A5%E5%BC%8F-Java-%E6%95%B0%E6%8D%AE%E5%BA%93%EF%BC%8C%E8%87%AA%E5%B8%A6%E6%8C%81%E4%B9%85%E5%8C%96%E9%98%9F%E5%88%97%EF%BC%89"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. MapDB（嵌入式 Java 数据库，自带持久化队列）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-H2-MVStore%EF%BC%88%E9%9A%8F-H2-%E9%A1%BA%E5%B8%A6%E5%BC%95%E5%85%A5%E7%9A%84%E4%BA%8B%E5%8A%A1%E5%9E%8B%E9%80%89%E6%8B%A9%EF%BC%89"><span class="nav-number">1.2.4.</span> <span class="nav-text">4. H2 MVStore（随 H2 顺带引入的事务型选择）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%89%E5%9E%8B%E5%AF%B9%E6%AF%94"><span class="nav-number">1.3.</span> <span class="nav-text">选型对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">1.4.</span> <span class="nav-text">生产注意事项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java-%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E9%98%9F%E5%88%97%E5%B7%A5%E5%85%B7%E7%B1%BB%EF%BC%88%E5%9F%BA%E4%BA%8E-MapDB%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">Java 本地持久化队列工具类（基于 MapDB）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E3%80%81Gradle-%E4%BE%9D%E8%B5%96"><span class="nav-number">1.5.1.</span> <span class="nav-text">一、Gradle 依赖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%8F%AF%E5%BA%8F%E5%88%97%E5%8C%96%E4%BB%BB%E5%8A%A1%E5%9F%BA%E7%B1%BB"><span class="nav-number">1.5.2.</span> <span class="nav-text">二、可序列化任务基类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E9%98%9F%E5%88%97%E5%B7%A5%E5%85%B7%E7%B1%BB"><span class="nav-number">1.5.3.</span> <span class="nav-text">三、本地持久化队列工具类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.5.4.</span> <span class="nav-text">四、使用示例</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E8%87%AA%E5%AE%9A%E4%B9%89%E4%B8%9A%E5%8A%A1%E4%BB%BB%E5%8A%A1"><span class="nav-number">1.5.4.1.</span> <span class="nav-text">1. 自定义业务任务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E7%94%9F%E4%BA%A7-%E6%B6%88%E8%B4%B9%E6%B5%8B%E8%AF%95"><span class="nav-number">1.5.4.2.</span> <span class="nav-text">2. 生产 &amp; 消费测试</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7"><span class="nav-number">1.5.5.</span> <span class="nav-text">五、核心特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E4%BD%BF%E7%94%A8%E6%B3%A8%E6%84%8F"><span class="nav-number">1.5.6.</span> <span class="nav-text">六、使用注意</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E6%B6%88%E8%B4%B9%E5%BE%AA%E7%8E%AF%E6%A8%A1%E6%9D%BF%EF%BC%88%E5%B8%A6%E5%A4%B1%E8%B4%A5%E9%87%8D%E8%AF%95%EF%BC%89"><span class="nav-number">1.5.7.</span> <span class="nav-text">七、消费循环模板（带失败重试）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">1.6.</span> <span class="nav-text">总结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9C%9F%E6%AD%A3%E7%9A%84-Java-%E6%9C%AC%E5%9C%B0%E6%8C%81%E4%B9%85%E5%8C%96%E9%98%9F%E5%88%97-%E7%A3%81%E7%9B%98%E5%AD%98%E5%82%A8-%E9%87%8D%E5%90%AF%E4%B8%8D%E4%B8%A2%E5%A4%B1-%E5%8F%AF%E5%BA%8F%E5%88%97%E5%8C%96"><span class="nav-number">1.6.1.</span> <span class="nav-text">真正的 Java 本地持久化队列 &#x3D; 磁盘存储 + 重启不丢失 + 可序列化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.7.</span> <span class="nav-text">本章小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E6%9D%9F%E8%AF%AD"><span class="nav-number">1.8.</span> <span class="nav-text">结束语</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/dal/11-java-local-persistent-queue/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十一章：Java本地持久化队列方案与实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十一章：Java本地持久化队列方案与实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-08 21:03:28" itemprop="dateCreated datePublished" datetime="2026-05-08T21:03:28+08:00">2026-05-08</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%95%B0%E6%8D%AE%E8%AE%BF%E9%97%AE%E5%B1%82/" itemprop="url" rel="index"><span itemprop="name">数据访问层</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>8.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十一章：Java本地持久化队列方案与实战"><a href="#第十一章：Java本地持久化队列方案与实战" class="headerlink" title="第十一章：Java本地持久化队列方案与实战"></a>第十一章：Java本地持久化队列方案与实战</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>是什么</strong>：任务先<strong>写入磁盘</strong>再消费的本地队列——进程重启、宕机后任务<strong>不丢失</strong>，重启自动恢复继续消费。</li>
+<li><strong>为什么需要</strong>：内存队列（如 <code>LinkedBlockingQueue</code>）重启即丢；引入 Redis&#x2F;MQ 又增加部署与运维成本——本地持久化队列在<strong>轻量</strong>与<strong>可靠</strong>之间取得平衡。</li>
+<li><strong>三大成熟方案</strong>：<strong>Chronicle Queue</strong>（MMAP 磁盘映射、零依赖、超高吞吐、金融级）、<strong>LMDBQueue</strong>（嵌入式 KV、极轻量）、<strong>MapDB</strong>（纯 Java、一行代码建队列）。</li>
+<li><strong>核心能力</strong>：<strong>磁盘存储 + 重启恢复 + 自动序列化</strong>——任务对象只要实现 <code>Serializable</code> 即可入队出队。</li>
+<li><strong>选型记忆</strong>：<strong>最强成熟方案选 Chronicle Queue，最简单上手选 MapDB</strong>。</li>
+</ol>
+<h2 id="🔥-最佳推荐（3-个真正的本地持久化队列）"><a href="#🔥-最佳推荐（3-个真正的本地持久化队列）" class="headerlink" title="🔥 最佳推荐（3 个真正的本地持久化队列）"></a>🔥 最佳推荐（3 个真正的本地持久化队列）</h2><p>按<strong>易用性、性能、成熟度</strong>排序：</p>
+<h3 id="1-Chronicle-Queue（企业级首选，零依赖、高性能）"><a href="#1-Chronicle-Queue（企业级首选，零依赖、高性能）" class="headerlink" title="1. Chronicle Queue（企业级首选，零依赖、高性能）"></a>1. Chronicle Queue（企业级首选，零依赖、高性能）</h3><p><strong>最适合你：本地持久化 + 可序列化 + 超高吞吐 + 重启不丢</strong></p>
+<ul>
+<li>纯 Java 本地队列</li>
+<li><strong>磁盘持久化（MMAP）</strong></li>
+<li>支持任意对象序列化</li>
+<li>无锁、低延迟、生产级稳定</li>
+<li>支持多线程读写</li>
+<li>重启自动恢复数据</li>
+</ul>
+<p><strong>Maven 依赖</strong></p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">dependencies &#123;</span><br><span class="line">    implementation <span class="string">&#x27;net.openhft:chronicle-queue:5.25ea13&#x27;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>最简 Demo（入队 + 出队 + 持久化）</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> net.openhft.chronicle.queue.ChronicleQueue;</span><br><span class="line"><span class="keyword">import</span> net.openhft.chronicle.queue.ExcerptAppender;</span><br><span class="line"><span class="keyword">import</span> net.openhft.chronicle.queue.ExcerptTailer;</span><br><span class="line"><span class="keyword">import</span> net.openhft.chronicle.wire.DocumentContext;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 本地持久化队列</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ChronicleQueueDemo</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="comment">// 数据会持久化到 ./queue-data 目录</span></span><br><span class="line">        <span class="keyword">try</span> (<span class="type">ChronicleQueue</span> <span class="variable">queue</span> <span class="operator">=</span> ChronicleQueue.single(<span class="string">&quot;./queue-data&quot;</span>)) &#123;</span><br><span class="line">            </span><br><span class="line">            <span class="comment">// ========== 1. 入队（持久化到磁盘） ==========</span></span><br><span class="line">            <span class="type">ExcerptAppender</span> <span class="variable">appender</span> <span class="operator">=</span> queue.acquireAppender();</span><br><span class="line">            <span class="keyword">try</span> (<span class="type">DocumentContext</span> <span class="variable">ctx</span> <span class="operator">=</span> appender.writingDocument()) &#123;</span><br><span class="line">                ctx.wire().write(<span class="string">&quot;task&quot;</span>).text(<span class="string">&quot;我的本地持久化任务&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// ========== 2. 出队（读取磁盘数据） ==========</span></span><br><span class="line">            <span class="type">ExcerptTailer</span> <span class="variable">tailer</span> <span class="operator">=</span> queue.createTailer();</span><br><span class="line">            <span class="keyword">try</span> (<span class="type">DocumentContext</span> <span class="variable">ctx</span> <span class="operator">=</span> tailer.readingDocument()) &#123;</span><br><span class="line">                <span class="type">String</span> <span class="variable">task</span> <span class="operator">=</span> ctx.wire().read(<span class="string">&quot;task&quot;</span>).text();</span><br><span class="line">                System.out.println(<span class="string">&quot;出队任务：&quot;</span> + task);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>特点：</strong></p>
+<ul>
+<li>关机、重启、kill 进程 <strong>都不丢数据</strong></li>
+<li>支持超大队列（GB 级）</li>
+<li>序列化自动完成</li>
+<li>金融系统广泛使用</li>
+</ul>
+<hr>
+<h3 id="2-LMDBQueue（极轻量、嵌入式、超快）"><a href="#2-LMDBQueue（极轻量、嵌入式、超快）" class="headerlink" title="2. LMDBQueue（极轻量、嵌入式、超快）"></a>2. LMDBQueue（极轻量、嵌入式、超快）</h3><p><strong>极简本地持久化队列</strong></p>
+<ul>
+<li>基于 LMDB 嵌入式数据库</li>
+<li>极快、极小、稳定</li>
+<li>支持 key&#x2F;value 持久化</li>
+<li>天然支持序列化</li>
+</ul>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">dependencies &#123;</span><br><span class="line">    implementation <span class="string">&#x27;org.lmdbjava:lmdbjava:0.8.3&#x27;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="3-MapDB（嵌入式-Java-数据库，自带持久化队列）"><a href="#3-MapDB（嵌入式-Java-数据库，自带持久化队列）" class="headerlink" title="3. MapDB（嵌入式 Java 数据库，自带持久化队列）"></a>3. MapDB（嵌入式 Java 数据库，自带持久化队列）</h3><p><strong>最简单、最容易上手</strong></p>
+<ul>
+<li>一行代码创建持久化队列</li>
+<li>支持序列化</li>
+<li>纯 Java</li>
+<li>适合小项目、后台任务</li>
+</ul>
+<p><strong>Maven</strong></p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">dependencies &#123;</span><br><span class="line">    implementation <span class="string">&#x27;org.mapdb:mapdb:3.0.8&#x27;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>Demo（超级简单）</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.mapdb.DB;</span><br><span class="line"><span class="keyword">import</span> org.mapdb.DBMaker;</span><br><span class="line"><span class="keyword">import</span> java.util.Queue;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 本地持久化队列</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MapDBQueueDemo</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="comment">// 持久化到文件 queue.db</span></span><br><span class="line">        <span class="type">DB</span> <span class="variable">db</span> <span class="operator">=</span> DBMaker.fileDB(<span class="string">&quot;queue.db&quot;</span>).make();</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 获取持久化队列</span></span><br><span class="line">        <span class="type">Queue</span>&lt;String&gt; <span class="variable">queue</span> <span class="operator">=</span> db.stack(<span class="string">&quot;taskQueue&quot;</span>).createOrOpen();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 入队（会落盘）</span></span><br><span class="line">        queue.add(<span class="string">&quot;用户注册任务&quot;</span>);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 出队</span></span><br><span class="line">        <span class="type">String</span> <span class="variable">task</span> <span class="operator">=</span> queue.poll();</span><br><span class="line">        System.out.println(task);</span><br><span class="line"></span><br><span class="line">        db.close();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>优点：5 分钟集成</strong></p>
+<hr>
+<h3 id="4-H2-MVStore（随-H2-顺带引入的事务型选择）"><a href="#4-H2-MVStore（随-H2-顺带引入的事务型选择）" class="headerlink" title="4. H2 MVStore（随 H2 顺带引入的事务型选择）"></a>4. H2 MVStore（随 H2 顺带引入的事务型选择）</h3><p>H2 数据库内置的 <strong>MVStore</strong>（Multi-Version Store）也能当持久化队列用，<strong>纯 Java、单 jar</strong>，项目已用 H2 嵌入式库时顺手复用：</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">dependencies &#123;</span><br><span class="line">    implementation <span class="string">&#x27;com.h2database:h2:2.3.232&#x27;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.h2.mvstore.MVStore;</span><br><span class="line"><span class="keyword">import</span> org.h2.mvstore.MVMap;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MvStoreQueueDemo</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> (<span class="type">MVStore</span> <span class="variable">store</span> <span class="operator">=</span> MVStore.open(<span class="string">&quot;./queue.mv&quot;</span>)) &#123;</span><br><span class="line">            <span class="comment">// 用 MVMap 模拟 FIFO：自增 key 当队尾，firstKey 当队首</span></span><br><span class="line">            <span class="type">MVMap</span>&lt;Long, String&gt; <span class="variable">map</span> <span class="operator">=</span> store.openMap(<span class="string">&quot;taskQueue&quot;</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 入队</span></span><br><span class="line">            <span class="type">long</span> <span class="variable">tail</span> <span class="operator">=</span> map.lastKey() == <span class="literal">null</span> ? <span class="number">0</span> : map.lastKey() + <span class="number">1</span>;</span><br><span class="line">            map.put(tail, <span class="string">&quot;订单超时取消任务&quot;</span>);</span><br><span class="line">            store.commit();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 出队</span></span><br><span class="line">            <span class="type">Long</span> <span class="variable">head</span> <span class="operator">=</span> map.firstKey();</span><br><span class="line">            <span class="keyword">if</span> (head != <span class="literal">null</span>) &#123;</span><br><span class="line">                <span class="type">String</span> <span class="variable">task</span> <span class="operator">=</span> map.remove(head);</span><br><span class="line">                store.commit();</span><br><span class="line">                System.out.println(<span class="string">&quot;出队：&quot;</span> + task);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>特点：<strong>MVCC 存储、事务支持、单文件</strong>；性能低于 Chronicle Queue，但 API 友好且能复用 H2 生态（备份、工具链）。出队即 <code>remove</code>，天然无「位点管理」负担。</p>
+<hr>
+<h2 id="选型对比"><a href="#选型对比" class="headerlink" title="选型对比"></a>选型对比</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Chronicle Queue</th>
+<th>MapDB</th>
+<th>H2 MVStore</th>
+<th>LMDBQueue</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>存储引擎</td>
+<td>MMAP 追加日志</td>
+<td>文件 &#x2F; MMAP</td>
+<td>MVCC B-Tree</td>
+<td>LMDB（C 绑定）</td>
+</tr>
+<tr>
+<td>吞吐量</td>
+<td><strong>百万级&#x2F;s</strong></td>
+<td>万级&#x2F;s</td>
+<td>万~十万级&#x2F;s</td>
+<td>十万级&#x2F;s</td>
+</tr>
+<tr>
+<td>延迟</td>
+<td>微秒级</td>
+<td>毫秒级</td>
+<td>毫秒级</td>
+<td>亚毫秒级</td>
+</tr>
+<tr>
+<td>事务</td>
+<td>不支持（追加语义）</td>
+<td>可选</td>
+<td><strong>MVCC 事务</strong></td>
+<td>支持</td>
+</tr>
+<tr>
+<td>API 风格</td>
+<td>Appender &#x2F; Tailer</td>
+<td><code>java.util.Queue</code></td>
+<td>MVMap 自实现</td>
+<td>KV 自实现</td>
+</tr>
+<tr>
+<td>序列化</td>
+<td>内置 Marshallable</td>
+<td>Java 序列化</td>
+<td>自行编码</td>
+<td>自行编码</td>
+</tr>
+<tr>
+<td>纯 Java</td>
+<td>是</td>
+<td>是</td>
+<td>是</td>
+<td>否（JNI 依赖）</td>
+</tr>
+<tr>
+<td>维护状态</td>
+<td>活跃，金融级</td>
+<td>3.x 后更新放缓</td>
+<td>随 H2 维护</td>
+<td>社区维护</td>
+</tr>
+</tbody></table>
+<p><strong>一句话选型</strong>：</p>
+<ul>
+<li>极致吞吐&#x2F;低延迟、可投入学习成本 → <strong>Chronicle Queue</strong></li>
+<li>5 分钟集成、中小流量后台任务 → <strong>MapDB</strong></li>
+<li>已依赖 H2、需要事务语义 → <strong>MVStore</strong></li>
+<li>极致读性能、可接受 JNI → <strong>LMDB</strong></li>
+</ul>
+<h2 id="生产注意事项"><a href="#生产注意事项" class="headerlink" title="生产注意事项"></a>生产注意事项</h2><ol>
+<li><strong>容量与滚动</strong>：Chronicle Queue 按天滚动 <code>.cq4</code> 文件，需配置保留策略防磁盘写满；MapDB &#x2F; MVStore 单文件持续增长，要定期 compact 或归档清理。</li>
+<li><strong>消费位点</strong>：Chronicle 的 Tailer 位点需<strong>自行持久化</strong>，否则重启后从头或从尾重复消费；MapDB &#x2F; MVStore「出队即删」，天然无位点问题。</li>
+<li><strong>崩溃一致性</strong>：MVStore &#x2F; MapDB 入队后记得 <code>commit()</code>；Chronicle 依赖 MMAP flush 语义。<code>kill -9</code> 场景下的丢失窗口以实际压测为准，不要凭文档承诺设计。</li>
+<li><strong>多实例边界</strong>：本地队列<strong>不能跨进程共享</strong>——集群部署时每个实例只消费自己的队列文件；需要全局可见的任务请升级 Redis &#x2F; RocketMQ。</li>
+<li><strong>监控</strong>：把 <code>size()</code> 暴露到 Micrometer 指标，队列积压时告警；消费线程挂掉时队列会静默堆积，务必加消费线程存活探针。</li>
+</ol>
+<h2 id="Java-本地持久化队列工具类（基于-MapDB）"><a href="#Java-本地持久化队列工具类（基于-MapDB）" class="headerlink" title="Java 本地持久化队列工具类（基于 MapDB）"></a>Java 本地持久化队列工具类（基于 MapDB）</h2><p>特点：</p>
+<ul>
+<li><strong>纯本地磁盘持久化</strong>，重启不丢任务</li>
+<li><strong>自动序列化任意对象</strong></li>
+<li>线程安全、开箱即用</li>
+<li>Gradle 依赖、工具类封装好，直接复制就能用</li>
+<li>支持入队、出队、清空、获取队列大小</li>
+</ul>
+<h3 id="一、Gradle-依赖"><a href="#一、Gradle-依赖" class="headerlink" title="一、Gradle 依赖"></a>一、Gradle 依赖</h3><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// build.gradle</span></span><br><span class="line">dependencies &#123;</span><br><span class="line">    implementation <span class="string">&#x27;org.mapdb:mapdb:3.0.8&#x27;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="二、可序列化任务基类"><a href="#二、可序列化任务基类" class="headerlink" title="二、可序列化任务基类"></a>二、可序列化任务基类</h3><p>所有自定义任务<strong>直接继承</strong>即可，不用额外配置：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> java.io.Serializable;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 本地队列可序列化任务基类</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">abstract</span> <span class="keyword">class</span> <span class="title class_">BaseTask</span> <span class="keyword">implements</span> <span class="title class_">Serializable</span> &#123;</span><br><span class="line">    <span class="comment">// 任务唯一标识</span></span><br><span class="line">    <span class="keyword">public</span> String taskId;</span><br><span class="line">    <span class="comment">// 任务创建时间</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">long</span> createTime;</span><br><span class="line"></span><br><span class="line">    <span class="type">public</span> <span class="title function_">BaseTask</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.taskId = java.util.UUID.randomUUID().toString();</span><br><span class="line">        <span class="built_in">this</span>.createTime = System.currentTimeMillis();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="三、本地持久化队列工具类"><a href="#三、本地持久化队列工具类" class="headerlink" title="三、本地持久化队列工具类"></a>三、本地持久化队列工具类</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.mapdb.DB;</span><br><span class="line"><span class="keyword">import</span> org.mapdb.DBMaker;</span><br><span class="line"><span class="keyword">import</span> java.util.Queue;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 本地磁盘持久化队列工具类</span></span><br><span class="line"><span class="comment"> * 支持任意序列化对象、重启恢复、线程安全</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> &lt;T&gt; 任务类型（继承 BaseTask 实现 Serializable）</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LocalPersistentQueue</span>&lt;T <span class="keyword">extends</span> <span class="title class_">BaseTask</span>&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> DB db;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Queue&lt;T&gt; queue;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 创建/打开持久化队列</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> dbFilePath 队列存储文件路径</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> queueName  队列名称</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="type">public</span> <span class="title function_">LocalPersistentQueue</span><span class="params">(String dbFilePath, String queueName)</span> &#123;</span><br><span class="line">        <span class="comment">// 打开/创建本地数据库文件</span></span><br><span class="line">        <span class="built_in">this</span>.db = DBMaker</span><br><span class="line">                .fileDB(dbFilePath)</span><br><span class="line">                .fileMmapEnable()      <span class="comment">// 内存映射，高性能</span></span><br><span class="line">                .transactionDisable()  <span class="comment">// 关闭事务，提升性能</span></span><br><span class="line">                .make();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取或创建持久化队列</span></span><br><span class="line">        <span class="built_in">this</span>.queue = db</span><br><span class="line">                .queue(queueName)</span><br><span class="line">                .createOrOpen();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 入队</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="type">boolean</span> <span class="title function_">enqueue</span><span class="params">(T task)</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (task == <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> queue.offer(task);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 出队，队列为空返回 null</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="type">T</span> <span class="title function_">dequeue</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> queue.poll();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 查看队首元素，不出队</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="type">T</span> <span class="title function_">peek</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> queue.peek();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取队列任务数量</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="type">int</span> <span class="title function_">size</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> queue.size();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 队列是否为空</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="type">boolean</span> <span class="title function_">isEmpty</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> queue.isEmpty();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 清空队列</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="type">void</span> <span class="title function_">clear</span><span class="params">()</span> &#123;</span><br><span class="line">        queue.clear();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 关闭资源（程序退出时调用）</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">close</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (!db.isClosed()) &#123;</span><br><span class="line">            db.close();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="四、使用示例"><a href="#四、使用示例" class="headerlink" title="四、使用示例"></a>四、使用示例</h3><h4 id="1-自定义业务任务"><a href="#1-自定义业务任务" class="headerlink" title="1. 自定义业务任务"></a>1. 自定义业务任务</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 自定义业务任务</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">OrderTask</span> <span class="keyword">extends</span> <span class="title class_">BaseTask</span> &#123;</span><br><span class="line">    <span class="comment">// 自定义业务字段</span></span><br><span class="line">    <span class="keyword">public</span> String orderNo;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">long</span> userId;</span><br><span class="line">    <span class="keyword">public</span> String content;</span><br><span class="line"></span><br><span class="line">    <span class="type">public</span> <span class="title function_">OrderTask</span><span class="params">(String orderNo, <span class="type">long</span> userId, String content)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.orderNo = orderNo;</span><br><span class="line">        <span class="built_in">this</span>.userId = userId;</span><br><span class="line">        <span class="built_in">this</span>.content = content;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-生产-消费测试"><a href="#2-生产-消费测试" class="headerlink" title="2. 生产 &amp; 消费测试"></a>2. 生产 &amp; 消费测试</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">QueueTest</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="comment">// 初始化持久化队列，数据存在 ./task-queue.db 文件</span></span><br><span class="line">        <span class="type">LocalPersistentQueue</span>&lt;OrderTask&gt; <span class="variable">taskQueue</span> <span class="operator">=</span></span><br><span class="line">                <span class="keyword">new</span> <span class="title class_">LocalPersistentQueue</span>&lt;&gt;(<span class="string">&quot;./task-queue.db&quot;</span>, <span class="string">&quot;orderQueue&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1. 生产任务入队</span></span><br><span class="line">        taskQueue.enqueue(<span class="keyword">new</span> <span class="title class_">OrderTask</span>(<span class="string">&quot;ORD_001&quot;</span>, <span class="number">10001L</span>, <span class="string">&quot;订单超时取消&quot;</span>));</span><br><span class="line">        taskQueue.enqueue(<span class="keyword">new</span> <span class="title class_">OrderTask</span>(<span class="string">&quot;ORD_002&quot;</span>, <span class="number">10002L</span>, <span class="string">&quot;订单发货通知&quot;</span>));</span><br><span class="line"></span><br><span class="line">        System.out.println(<span class="string">&quot;当前队列任务数：&quot;</span> + taskQueue.size());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2. 消费任务出队</span></span><br><span class="line">        <span class="keyword">while</span> (!taskQueue.isEmpty()) &#123;</span><br><span class="line">            <span class="type">OrderTask</span> <span class="variable">task</span> <span class="operator">=</span> taskQueue.dequeue();</span><br><span class="line">            System.out.printf(<span class="string">&quot;执行任务：taskId=%s, orderNo=%s, content=%s%n&quot;</span>,</span><br><span class="line">                    task.taskId, task.orderNo, task.content);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3. 关闭资源</span></span><br><span class="line">        taskQueue.close();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="五、核心特性"><a href="#五、核心特性" class="headerlink" title="五、核心特性"></a>五、核心特性</h3><ol>
+<li><strong>重启不丢数据</strong><br>程序停止、重启后，重新 new 相同路径和队列名，自动加载历史任务。</li>
+<li><strong>自动序列化</strong><br>只要继承 <code>BaseTask</code>（实现 <code>Serializable</code>），任意业务对象直接入队。</li>
+<li><strong>线程安全</strong><br>方法加 <code>synchronized</code>，支持多线程生产、多线程消费。</li>
+<li><strong>轻量无中间件</strong><br>纯本地文件存储，不需要 Redis&#x2F;MQ。</li>
+</ol>
+<h3 id="六、使用注意"><a href="#六、使用注意" class="headerlink" title="六、使用注意"></a>六、使用注意</h3><ol>
+<li>任务类<strong>所有字段必须可序列化</strong>，不要包含非序列化对象；</li>
+<li>程序优雅退出时务必调用 <code>close()</code>；</li>
+<li>不要多个进程同时打开同一个 db 文件，会锁文件报错。</li>
+</ol>
+<h3 id="七、消费循环模板（带失败重试）"><a href="#七、消费循环模板（带失败重试）" class="headerlink" title="七、消费循环模板（带失败重试）"></a>七、消费循环模板（带失败重试）</h3><p>生产消费通常是「常驻线程 + 失败重投」，参考模板：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">QueueConsumer</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> LocalPersistentQueue&lt;OrderTask&gt; queue;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="type">boolean</span> <span class="variable">running</span> <span class="operator">=</span> <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">start</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Thread</span> <span class="variable">t</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">while</span> (running) &#123;</span><br><span class="line">                <span class="type">OrderTask</span> <span class="variable">task</span> <span class="operator">=</span> queue.dequeue();</span><br><span class="line">                <span class="keyword">if</span> (task == <span class="literal">null</span>) &#123;</span><br><span class="line">                    sleep(<span class="number">200</span>);            <span class="comment">// 空队列退让，避免空转</span></span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    handle(task);          <span class="comment">// 业务处理</span></span><br><span class="line">                &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                    <span class="comment">// 失败重投：简单起见直接放回队尾；严谨做法带重试次数，超限进死信文件</span></span><br><span class="line">                    queue.enqueue(task);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, <span class="string">&quot;queue-consumer&quot;</span>);</span><br><span class="line">        t.setDaemon(<span class="literal">false</span>);</span><br><span class="line">        t.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>两个设计要点：</p>
+<ol>
+<li><strong>失败重投要有上限</strong>：任务对象里加 <code>retryCount</code> 字段，超限后写入「死信」文件或告警，避免毒丸消息把队列卡死。</li>
+<li><strong>出队即丢风险</strong>：<code>dequeue()</code> 成功但 <code>handle()</code> 前宕机，任务就丢了。需要更强保证时改用 Chronicle Queue 的 <strong>Tailer 位点</strong>模式（处理成功后再推进位点），或在 MapDB 上实现「处理中队列」二次搬移。</li>
+</ol>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><h3 id="真正的-Java-本地持久化队列-磁盘存储-重启不丢失-可序列化"><a href="#真正的-Java-本地持久化队列-磁盘存储-重启不丢失-可序列化" class="headerlink" title="真正的 Java 本地持久化队列 &#x3D; 磁盘存储 + 重启不丢失 + 可序列化"></a>真正的 Java 本地持久化队列 &#x3D; 磁盘存储 + 重启不丢失 + 可序列化</h3><p><strong>最强成熟方案：Chronicle Queue</strong><br><strong>最简单方案：MapDB</strong></p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>方案选择</td>
+<td>Chronicle Queue 金融级首选；MapDB 5 分钟集成最简单；LMDB 极轻量</td>
+</tr>
+<tr>
+<td>核心能力</td>
+<td>磁盘持久化 + 重启不丢 + 自动序列化任意对象</td>
+</tr>
+<tr>
+<td>工具类</td>
+<td>BaseTask 基类 + LocalPersistentQueue 封装，入队&#x2F;出队&#x2F;清空&#x2F;大小开箱即用</td>
+</tr>
+<tr>
+<td>注意事项</td>
+<td>字段须可序列化、退出前调用 close()、勿多进程打开同一 db 文件</td>
+</tr>
+</tbody></table>
+<h2 id="结束语"><a href="#结束语" class="headerlink" title="结束语"></a>结束语</h2><p>至此，本 Java 系列课程全部 <strong>11 章</strong>完结：从 <strong>Maven &#x2F; Gradle</strong> 构建工具起步，经 <strong>MyBatis</strong> 持久层与 <strong>泛型符号、全局异常处理、动态数据源、MyBatis-Flex</strong> 的工程化进阶，再到 <strong>并发锁、分布式锁与 Redisson 红锁</strong> 的并发体系，最终以 <strong>本地持久化队列</strong> 收尾。各章示例均可独立运行，建议回到对应章节动手复现，把「看过」变成「写过」；更多工程实战落地见站内 SpringBoot 系列文章。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/distributed/10-redisson-red-lock/" rel="prev" title="第十章：Redisson 红锁 RedLock 原理与生产实践">
+                  <i class="fa fa-angle-left"></i> 第十章：Redisson 红锁 RedLock 原理与生产实践
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/springboot/02-springboot-multi-profile-config/" rel="next" title="第二章：SpringBoot 多环境配置：Profile 激活与优先级">
+                  第二章：SpringBoot 多环境配置：Profile 激活与优先级 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

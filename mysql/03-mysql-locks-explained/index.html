@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：MySQL 锁详解概念基础锁是数据库的并发控制机制，让多个事务在共享同一份数据时「不打架」：  没有锁会发生什么：多个会话同时读写同一行，会出现脏读、不可重复读、幻读与更新丢失；锁的本质是给「当前读」排队，保证数据一致性。 核心权衡是一致性 vs 并发：锁粒度越粗（全局锁、表锁）越安全但并发差，粒度越细（行锁）并发越高但开销越大——InnoDB 的答案是以行锁为主 + MVCC 快照读，普">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：MySQL 锁详解">
+<meta property="og:url" content="https://my919.github.io/mysql/03-mysql-locks-explained/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：MySQL 锁详解概念基础锁是数据库的并发控制机制，让多个事务在共享同一份数据时「不打架」：  没有锁会发生什么：多个会话同时读写同一行，会出现脏读、不可重复读、幻读与更新丢失；锁的本质是给「当前读」排队，保证数据一致性。 核心权衡是一致性 vs 并发：锁粒度越粗（全局锁、表锁）越安全但并发差，粒度越细（行锁）并发越高但开销越大——InnoDB 的答案是以行锁为主 + MVCC 快照读，普">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T03:27:07.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.582Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="MySQL">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/mysql/03-mysql-locks-explained/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/mysql/03-mysql-locks-explained/","path":"mysql/03-mysql-locks-explained/","title":"第三章：MySQL 锁详解"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：MySQL 锁详解 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9AMySQL-%E9%94%81%E8%AF%A6%E8%A7%A3"><span class="nav-number">1.</span> <span class="nav-text">第三章：MySQL 锁详解</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#InnoDB-%E9%94%81%E5%B1%82%E6%AC%A1"><span class="nav-number">1.2.</span> <span class="nav-text">InnoDB 锁层次</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%AE%E7%9A%84"><span class="nav-number">1.3.</span> <span class="nav-text">一、锁的核心目的</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%8C%89%E7%B2%92%E5%BA%A6%E5%88%86%E7%B1%BB%EF%BC%88%E6%9C%80%E6%A0%B8%E5%BF%83%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">二、按粒度分类（最核心）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1%EF%BC%89%E5%85%A8%E5%B1%80%E9%94%81%EF%BC%88Global-Lock%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">1）全局锁（Global Lock）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2%EF%BC%89%E8%A1%A8%E7%BA%A7%E9%94%81%EF%BC%88Table-level-Lock%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">2）表级锁（Table-level Lock）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3%EF%BC%89%E8%A1%8C%E7%BA%A7%E9%94%81%EF%BC%88Row-level-Lock%EF%BC%8CInnoDB-%E6%A0%B8%E5%BF%83%EF%BC%89"><span class="nav-number">1.4.3.</span> <span class="nav-text">3）行级锁（Row-level Lock，InnoDB 核心）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%8C%89%E8%AF%BB%E5%86%99%E7%B1%BB%E5%9E%8B%E5%88%86%E7%B1%BB%EF%BC%88S-X-%E9%94%81%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">三、按读写类型分类（S&#x2F;X 锁）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1%EF%BC%89%E5%85%B1%E4%BA%AB%E9%94%81%EF%BC%88S-%E9%94%81-%E8%AF%BB%E9%94%81%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">1）共享锁（S 锁 &#x2F; 读锁）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2%EF%BC%89%E6%8E%92%E4%BB%96%E9%94%81%EF%BC%88X-%E9%94%81-%E5%86%99%E9%94%81%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">2）排他锁（X 锁 &#x2F; 写锁）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%BC%E5%AE%B9%E6%80%A7%E7%9F%A9%E9%98%B5%EF%BC%88%E5%BF%85%E8%83%8C%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">兼容性矩阵（必背）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%84%8F%E5%90%91%E9%94%81%EF%BC%88IS-IX%EF%BC%8C%E8%A1%A8%E7%BA%A7%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">四、意向锁（IS &#x2F; IX，表级）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81InnoDB-%E8%A1%8C%E9%94%81%E4%B8%89%E5%A4%A7%E7%AE%97%E6%B3%95%EF%BC%88RR-%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB%E9%BB%98%E8%AE%A4%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">五、InnoDB 行锁三大算法（RR 隔离级别默认）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1%EF%BC%89%E8%AE%B0%E5%BD%95%E9%94%81%EF%BC%88Record-Lock%EF%BC%89"><span class="nav-number">1.7.1.</span> <span class="nav-text">1）记录锁（Record Lock）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2%EF%BC%89%E9%97%B4%E9%9A%99%E9%94%81%EF%BC%88Gap-Lock%EF%BC%89"><span class="nav-number">1.7.2.</span> <span class="nav-text">2）间隙锁（Gap Lock）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3%EF%BC%89%E4%B8%B4%E9%94%AE%E9%94%81%EF%BC%88Next-Key-Lock%EF%BC%89-%E8%AE%B0%E5%BD%95%E9%94%81-%E9%97%B4%E9%9A%99%E9%94%81"><span class="nav-number">1.7.3.</span> <span class="nav-text">3）临键锁（Next-Key Lock）&#x3D; 记录锁 + 间隙锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E6%AD%BB%E9%94%81%EF%BC%88Deadlock%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">六、死锁（Deadlock）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1%EF%BC%89%E5%BF%85%E8%A6%81%E6%9D%A1%E4%BB%B6%EF%BC%88%E5%9B%9B%E4%B8%AA%E5%90%8C%E6%97%B6%E6%BB%A1%E8%B6%B3%EF%BC%89"><span class="nav-number">1.8.1.</span> <span class="nav-text">1）必要条件（四个同时满足）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2%EF%BC%89%E5%85%B8%E5%9E%8B%E6%AD%BB%E9%94%81%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.8.2.</span> <span class="nav-text">2）典型死锁示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3%EF%BC%89%E5%A6%82%E4%BD%95%E9%81%BF%E5%85%8D"><span class="nav-number">1.8.3.</span> <span class="nav-text">3）如何避免</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4%EF%BC%89%E9%9A%90%E8%94%BD%E5%8F%98%E7%A7%8D%EF%BC%9A%E9%97%B4%E9%9A%99%E9%94%81%E9%80%A0%E6%88%90%E7%9A%84-INSERT-%E6%AD%BB%E9%94%81"><span class="nav-number">1.8.4.</span> <span class="nav-text">4）隐蔽变种：间隙锁造成的 INSERT 死锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%AE%9E%E6%88%98%E9%AB%98%E9%A2%91%E5%9D%91%EF%BC%88%E5%BF%85%E9%81%BF%EF%BC%89"><span class="nav-number">1.9.</span> <span class="nav-text">七、实战高频坑（必避）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93%EF%BC%88%E4%B8%80%E5%8F%A5%E8%AF%9D%E8%AE%B0%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">八、总结（一句话记）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%88%86%E6%AD%A5-SQL-%E8%84%9A%E6%9C%AC%EF%BC%88%E5%8F%8C%E4%BC%9A%E8%AF%9D%E5%A4%8D%E7%8E%B0%EF%BC%89"><span class="nav-number">1.11.</span> <span class="nav-text">九、分步 SQL 脚本（双会话复现）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-%E5%89%8D%E7%BD%AE%E5%87%86%E5%A4%87%EF%BC%9A%E5%BB%BA%E5%BA%93%E5%BB%BA%E8%A1%A8%E4%B8%8E%E6%B5%8B%E8%AF%95%E6%95%B0%E6%8D%AE"><span class="nav-number">1.11.1.</span> <span class="nav-text">9.1 前置准备：建库建表与测试数据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-%E8%A1%8C%E6%8E%92%E4%BB%96%E9%94%81-FOR-UPDATE-%E9%98%BB%E5%A1%9E%E6%BC%94%E7%A4%BA"><span class="nav-number">1.11.2.</span> <span class="nav-text">9.2 行排他锁 FOR UPDATE 阻塞演示</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-%E6%97%A0%E7%B4%A2%E5%BC%95%E5%AF%BC%E8%87%B4%E8%A1%8C%E9%94%81%E9%80%80%E5%8C%96%E4%B8%BA%E8%A1%A8%E9%94%81"><span class="nav-number">1.11.3.</span> <span class="nav-text">9.3 无索引导致行锁退化为表锁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-%E5%85%B1%E4%BA%AB%E9%94%81%E4%B8%8E%E8%AF%BB%E5%86%99%E4%BA%92%E6%96%A5%E6%BC%94%E7%A4%BA"><span class="nav-number">1.11.4.</span> <span class="nav-text">9.4 共享锁与读写互斥演示</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-5-%E9%97%B4%E9%9A%99%E9%94%81%E4%B8%8E%E4%B8%B4%E9%94%AE%E9%94%81%E9%98%BB%E5%A1%9E%E6%8F%92%E5%85%A5%EF%BC%88RR%EF%BC%89"><span class="nav-number">1.11.5.</span> <span class="nav-text">9.5 间隙锁与临键锁阻塞插入（RR）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-6-%E7%BB%8F%E5%85%B8%E6%AD%BB%E9%94%81%E5%AE%8C%E6%95%B4%E5%A4%8D%E7%8E%B0"><span class="nav-number">1.11.6.</span> <span class="nav-text">9.6 经典死锁完整复现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-7-%E6%9F%A5%E7%9C%8B%E9%94%81%E7%8A%B6%E6%80%81%E4%B8%8E%E6%AD%BB%E9%94%81%E6%97%A5%E5%BF%97"><span class="nav-number">1.11.7.</span> <span class="nav-text">9.7 查看锁状态与死锁日志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-8-%E8%84%9A%E6%9C%AC%E5%AE%9E%E9%AA%8C%E5%B0%8F%E7%BB%93%EF%BC%88%E7%9C%8B%E5%AE%8C%E4%B9%9D%E5%BF%85%E8%AE%B0%EF%BC%89"><span class="nav-number">1.11.8.</span> <span class="nav-text">9.8 脚本实验小结（看完九必记）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E4%BA%94%E5%A4%A7%E5%AE%9E%E9%AA%8C%EF%BC%9A%E7%8E%B0%E8%B1%A1%E3%80%81%E5%8E%9F%E7%90%86%E4%B8%8E%E9%9D%A2%E8%AF%95%E6%A0%87%E5%87%86%E7%AD%94"><span class="nav-number">1.12.</span> <span class="nav-text">十、五大实验：现象、原理与面试标准答</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E9%AA%8C%E4%B8%80%EF%BC%9A%E8%A1%8C%E6%8E%92%E4%BB%96%E9%94%81-FOR-UPDATE-%E9%98%BB%E5%A1%9E%E6%BC%94%E7%A4%BA"><span class="nav-number">1.12.1.</span> <span class="nav-text">实验一：行排他锁 FOR UPDATE 阻塞演示</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="nav-number">1.12.1.1.</span> <span class="nav-text">执行流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%8E%B0%E8%B1%A1"><span class="nav-number">1.12.1.2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86"><span class="nav-number">1.12.1.3.</span> <span class="nav-text">底层原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%9D%A2%E8%AF%95%E6%A0%87%E5%87%86%E7%AD%94%E6%A1%88"><span class="nav-number">1.12.1.4.</span> <span class="nav-text">面试标准答案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E9%AA%8C%E4%BA%8C%EF%BC%9A%E6%97%A0%E7%B4%A2%E5%BC%95%E5%AF%BC%E8%87%B4%E8%A1%8C%E9%94%81%E9%80%80%E5%8C%96%E4%B8%BA%E8%A1%A8%E9%94%81"><span class="nav-number">1.12.2.</span> <span class="nav-text">实验二：无索引导致行锁退化为表锁</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B-1"><span class="nav-number">1.12.2.1.</span> <span class="nav-text">执行流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%8E%B0%E8%B1%A1-1"><span class="nav-number">1.12.2.2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86-1"><span class="nav-number">1.12.2.3.</span> <span class="nav-text">底层原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%9D%A2%E8%AF%95%E6%A0%87%E5%87%86%E7%AD%94%E6%A1%88-1"><span class="nav-number">1.12.2.4.</span> <span class="nav-text">面试标准答案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E9%AA%8C%E4%B8%89%EF%BC%9A%E5%85%B1%E4%BA%AB%E9%94%81%E4%B8%8E%E8%AF%BB%E5%86%99%E4%BA%92%E6%96%A5%E6%BC%94%E7%A4%BA"><span class="nav-number">1.12.3.</span> <span class="nav-text">实验三：共享锁与读写互斥演示</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B-2"><span class="nav-number">1.12.3.1.</span> <span class="nav-text">执行流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%8E%B0%E8%B1%A1-2"><span class="nav-number">1.12.3.2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86-2"><span class="nav-number">1.12.3.3.</span> <span class="nav-text">底层原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%9D%A2%E8%AF%95%E6%A0%87%E5%87%86%E7%AD%94%E6%A1%88-2"><span class="nav-number">1.12.3.4.</span> <span class="nav-text">面试标准答案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E9%AA%8C%E5%9B%9B%EF%BC%9A%E9%97%B4%E9%9A%99%E9%94%81%E4%B8%8E%E4%B8%B4%E9%94%AE%E9%94%81%E9%98%BB%E5%A1%9E%E6%8F%92%E5%85%A5%EF%BC%88RR-%E4%B8%8E%E5%B9%BB%E8%AF%BB%EF%BC%89"><span class="nav-number">1.12.4.</span> <span class="nav-text">实验四：间隙锁与临键锁阻塞插入（RR 与幻读）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B-3"><span class="nav-number">1.12.4.1.</span> <span class="nav-text">执行流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%8E%B0%E8%B1%A1-3"><span class="nav-number">1.12.4.2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86-3"><span class="nav-number">1.12.4.3.</span> <span class="nav-text">底层原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%9D%A2%E8%AF%95%E6%A0%87%E5%87%86%E7%AD%94%E6%A1%88-3"><span class="nav-number">1.12.4.4.</span> <span class="nav-text">面试标准答案</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E9%AA%8C%E4%BA%94%EF%BC%9A%E7%BB%8F%E5%85%B8%E6%AD%BB%E9%94%81%E5%A4%8D%E7%8E%B0"><span class="nav-number">1.12.5.</span> <span class="nav-text">实验五：经典死锁复现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B-4"><span class="nav-number">1.12.5.1.</span> <span class="nav-text">执行流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%8E%B0%E8%B1%A1-4"><span class="nav-number">1.12.5.2.</span> <span class="nav-text">现象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86-4"><span class="nav-number">1.12.5.3.</span> <span class="nav-text">底层原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%9D%A2%E8%AF%95%E6%A0%87%E5%87%86%E7%AD%94%E6%A1%88%EF%BC%88%E5%BF%85%E8%83%8C%EF%BC%89"><span class="nav-number">1.12.5.4.</span> <span class="nav-text">面试标准答案（必背）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E4%B8%80%E5%8F%A5%E8%AF%9D%E9%80%9F%E8%AE%B0"><span class="nav-number">1.13.</span> <span class="nav-text">十一、面试高频一句话速记</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81%E4%BA%8C%E5%8D%81%E9%81%93%E9%AB%98%E9%A2%91%E9%9D%A2%E8%AF%95%E9%A2%98%E4%B8%8E%E6%A0%87%E5%87%86%E7%AD%94"><span class="nav-number">1.14.</span> <span class="nav-text">十二、二十道高频面试题与标准答</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-MySQL-%E6%9C%89%E5%93%AA%E4%BA%9B%E9%94%81%E5%88%86%E7%B1%BB%EF%BC%9F"><span class="nav-number">1.14.1.</span> <span class="nav-text">1. MySQL 有哪些锁分类？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%85%A8%E5%B1%80%E9%94%81%E4%BD%9C%E7%94%A8%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F%E6%80%8E%E4%B9%88%E5%8A%A0%EF%BC%9F"><span class="nav-number">1.14.2.</span> <span class="nav-text">2. 全局锁作用是什么？怎么加？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E4%BB%80%E4%B9%88%E6%98%AF-MDL-%E5%85%83%E6%95%B0%E6%8D%AE%E9%94%81%EF%BC%9F"><span class="nav-number">1.14.3.</span> <span class="nav-text">3. 什么是 MDL 元数据锁？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%A1%A8%E9%94%81%E5%92%8C%E8%A1%8C%E9%94%81%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">1.14.4.</span> <span class="nav-text">4. 表锁和行锁区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%85%B1%E4%BA%AB%E9%94%81S%E3%80%81%E6%8E%92%E4%BB%96%E9%94%81X-%E7%89%B9%E6%80%A7%EF%BC%9F"><span class="nav-number">1.14.5.</span> <span class="nav-text">5. 共享锁S、排他锁X 特性？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E6%84%8F%E5%90%91%E9%94%81-IS-IX-%E4%BD%9C%E7%94%A8%EF%BC%9F"><span class="nav-number">1.14.6.</span> <span class="nav-text">6. 意向锁 IS&#x2F;IX 作用？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-InnoDB-%E8%A1%8C%E9%94%81%E6%9C%AC%E8%B4%A8%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.14.7.</span> <span class="nav-text">7. InnoDB 行锁本质是什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%B8%8B%E8%A1%8C%E9%94%81%E4%BC%9A%E9%99%8D%E7%BA%A7%E4%B8%BA%E8%A1%A8%E9%94%81%EF%BC%9F"><span class="nav-number">1.14.8.</span> <span class="nav-text">8. 什么情况下行锁会降级为表锁？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-InnoDB-%E4%B8%89%E7%A7%8D%E8%A1%8C%E9%94%81%E7%AE%97%E6%B3%95%EF%BC%9F"><span class="nav-number">1.14.9.</span> <span class="nav-text">9. InnoDB 三种行锁算法？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-%E9%97%B4%E9%9A%99%E9%94%81%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E7%94%9F%E6%95%88%EF%BC%9F%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E5%85%B3%E9%97%AD%EF%BC%9F"><span class="nav-number">1.14.10.</span> <span class="nav-text">10. 间隙锁什么时候生效？什么时候关闭？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11-%E4%B8%B4%E9%94%AE%E9%94%81%E8%A7%A3%E5%86%B3%E4%BA%86%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98%EF%BC%9F"><span class="nav-number">1.14.11.</span> <span class="nav-text">11. 临键锁解决了什么问题？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#12-%E4%BB%80%E4%B9%88%E6%98%AF%E5%B9%BB%E8%AF%BB%EF%BC%9F%E6%80%8E%E4%B9%88%E8%A7%A3%E5%86%B3%EF%BC%9F"><span class="nav-number">1.14.12.</span> <span class="nav-text">12. 什么是幻读？怎么解决？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#13-%E6%AD%BB%E9%94%81%E4%BA%A7%E7%94%9F%E7%9A%84%E5%9B%9B%E4%B8%AA%E5%BF%85%E8%A6%81%E6%9D%A1%E4%BB%B6%EF%BC%9F"><span class="nav-number">1.14.13.</span> <span class="nav-text">13. 死锁产生的四个必要条件？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#14-MySQL-%E6%80%8E%E4%B9%88%E5%A4%84%E7%90%86%E6%AD%BB%E9%94%81%EF%BC%9F"><span class="nav-number">1.14.14.</span> <span class="nav-text">14. MySQL 怎么处理死锁？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#15-%E5%A6%82%E4%BD%95%E9%81%BF%E5%85%8D-MySQL-%E6%AD%BB%E9%94%81%EF%BC%9F"><span class="nav-number">1.14.15.</span> <span class="nav-text">15. 如何避免 MySQL 死锁？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#16-for-update-%E5%92%8C-lock-in-share-mode-%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">1.14.16.</span> <span class="nav-text">16. for update 和 lock in share mode 区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#17-RR-%E5%92%8C-RC-%E5%9C%A8%E9%94%81%E5%B1%82%E9%9D%A2%E6%9C%80%E5%A4%A7%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">1.14.17.</span> <span class="nav-text">17. RR 和 RC 在锁层面最大区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#18-%E9%95%BF%E4%BA%8B%E5%8A%A1%E6%9C%89%E4%BB%80%E4%B9%88%E9%94%81%E9%A3%8E%E9%99%A9%EF%BC%9F"><span class="nav-number">1.14.18.</span> <span class="nav-text">18. 长事务有什么锁风险？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#19-%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B-MySQL-%E5%BD%93%E5%89%8D%E9%94%81%E5%92%8C%E6%AD%BB%E9%94%81%EF%BC%9F"><span class="nav-number">1.14.19.</span> <span class="nav-text">19. 如何查看 MySQL 当前锁和死锁？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#20-%E7%BA%BF%E4%B8%8A%E5%BC%80%E5%8F%91%E5%86%99-UPDATE-%E9%98%B2%E9%94%81%E5%9D%91%E8%A6%81%E6%B3%A8%E6%84%8F%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.14.20.</span> <span class="nav-text">20. 线上开发写 UPDATE 防锁坑要注意什么？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%89%E3%80%81%E8%BF%9B%E9%98%B6%E5%AE%9E%E6%88%98%E4%B8%93%E9%A2%98%EF%BC%9AMDL%E3%80%81Online-DDL-%E4%B8%8E%E9%94%81%E7%9B%91%E6%8E%A7"><span class="nav-number">1.15.</span> <span class="nav-text">十三、进阶实战专题：MDL、Online DDL 与锁监控</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-MDL-%E5%85%83%E6%95%B0%E6%8D%AE%E9%94%81%E5%AE%9E%E6%88%98%E6%A1%88%E4%BE%8B%EF%BC%88%E7%BA%BF%E4%B8%8A%E6%9C%80%E9%AB%98%E5%8F%91%E7%9A%84%E9%94%81%E4%BA%8B%E6%95%85%EF%BC%89"><span class="nav-number">1.15.1.</span> <span class="nav-text">1. MDL 元数据锁实战案例（线上最高发的锁事故）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9C%BA%E6%99%AF%E5%A4%8D%E7%8E%B0"><span class="nav-number">1.15.1.1.</span> <span class="nav-text">场景复现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8E%9F%E7%90%86"><span class="nav-number">1.15.1.2.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%8E%92%E6%9F%A5%E4%B8%8E%E6%AD%A2%E8%A1%80%EF%BC%88MySQL-8-0%EF%BC%89"><span class="nav-number">1.15.1.3.</span> <span class="nav-text">排查与止血（MySQL 8.0）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Online-DDL-%E4%B8%8E%E9%94%81%EF%BC%888-0-8-4-%E7%9A%84%E4%B8%89%E7%A7%8D%E7%AE%97%E6%B3%95%EF%BC%89"><span class="nav-number">1.15.2.</span> <span class="nav-text">2. Online DDL 与锁（8.0&#x2F;8.4 的三种算法）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%AD%BB%E9%94%81%E6%97%A5%E5%BF%97%E5%AE%8C%E6%95%B4%E8%A7%A3%E8%AF%BB%EF%BC%88SHOW-ENGINE-INNODB-STATUS%EF%BC%89"><span class="nav-number">1.15.3.</span> <span class="nav-text">3. 死锁日志完整解读（SHOW ENGINE INNODB STATUS）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E9%94%81%E7%AD%89%E5%BE%85%E7%9B%91%E6%8E%A7-SQL%EF%BC%88performance-schema%EF%BC%8C8-0-8-4-%E6%A0%87%E5%87%86%E5%A7%BF%E5%8A%BF%EF%BC%89"><span class="nav-number">1.15.4.</span> <span class="nav-text">4. 锁等待监控 SQL（performance_schema，8.0&#x2F;8.4 标准姿势）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.16.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/mysql/03-mysql-locks-explained/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：MySQL 锁详解 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：MySQL 锁详解
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 11:27:07" itemprop="dateCreated datePublished" datetime="2026-05-03T11:27:07+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/MySQL-%E6%B7%B1%E5%85%A5/" itemprop="url" rel="index"><span itemprop="name">MySQL 深入</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>13k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>12 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：MySQL-锁详解"><a href="#第三章：MySQL-锁详解" class="headerlink" title="第三章：MySQL 锁详解"></a>第三章：MySQL 锁详解</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>锁</strong>是数据库的<strong>并发控制</strong>机制，让多个事务在共享同一份数据时「不打架」：</p>
+<ol>
+<li><strong>没有锁会发生什么</strong>：多个会话同时读写同一行，会出现<strong>脏读、不可重复读、幻读</strong>与更新丢失；锁的本质是给「当前读」排队，保证<strong>数据一致性</strong>。</li>
+<li><strong>核心权衡是一致性 vs 并发</strong>：锁粒度越粗（<strong>全局锁、表锁</strong>）越安全但并发差，粒度越细（<strong>行锁</strong>）并发越高但开销越大——InnoDB 的答案是<strong>以行锁为主 + MVCC 快照读</strong>，普通 <strong>SELECT</strong> 不加锁，读写大部分场景互不阻塞。</li>
+<li><strong>InnoDB 行锁的本质是锁索引</strong>：锁加在<strong>索引记录</strong>上而不是物理数据行上；查询条件<strong>无索引或索引失效</strong>时，行锁会<strong>退化为表锁</strong>，并发直接崩塌，这是本章最重要的一条结论。</li>
+<li><strong>隔离级别决定加锁行为</strong>：**RR（可重复读）<strong>默认用</strong>临键锁（记录锁 + 间隙锁）**抑制幻读，代价是范围锁会阻塞插入；**RC（读已提交）**没有间隙锁，并发更高但存在幻读。</li>
+<li><strong>锁是双刃剑</strong>：用好了高并发不冲突，用坏了就是<strong>锁等待、死锁、业务雪崩</strong>——长事务、无索引更新、交叉加锁是线上三大事故来源，本章实验与面试题全部围绕这些展开。</li>
+</ol>
+<p>先从全局看 InnoDB 的锁层次：</p>
+<h2 id="InnoDB-锁层次"><a href="#InnoDB-锁层次" class="headerlink" title="InnoDB 锁层次"></a>InnoDB 锁层次</h2><pre>
+<code class="mermaid">
+
+flowchart TD
+  TX[事务] --&gt; Row[行锁 Record Lock]
+  TX --&gt; Gap[间隙锁 Gap Lock]
+  TX --&gt; Next[Next-Key Lock]
+  Row --&gt; IX[意向锁 IX&#x2F;IS 表级]
+</code>
+</pre>
+
+<hr>
+<h2 id="一、锁的核心目的"><a href="#一、锁的核心目的" class="headerlink" title="一、锁的核心目的"></a>一、锁的核心目的</h2><p>锁 &#x3D; <strong>并发控制</strong>，解决：</p>
+<ul>
+<li>脏读、不可重复读、幻读</li>
+<li>防止多个事务同时修改同一数据导致不一致</li>
+<li>平衡 <strong>数据一致性 vs 并发性能</strong></li>
+</ul>
+<hr>
+<h2 id="二、按粒度分类（最核心）"><a href="#二、按粒度分类（最核心）" class="headerlink" title="二、按粒度分类（最核心）"></a>二、按粒度分类（最核心）</h2><h3 id="1）全局锁（Global-Lock）"><a href="#1）全局锁（Global-Lock）" class="headerlink" title="1）全局锁（Global Lock）"></a>1）全局锁（Global Lock）</h3><ul>
+<li>粒度：<strong>整个数据库实例</strong></li>
+<li>命令：</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">FLUSH TABLES <span class="keyword">WITH</span> READ LOCK; <span class="comment">-- 全库只读</span></span><br><span class="line">UNLOCK TABLES;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>特点：<ul>
+<li>所有库所有表<strong>只能读、不能写</strong></li>
+<li>阻塞 DML、DDL</li>
+</ul>
+</li>
+<li>用途：<strong>全库逻辑备份</strong></li>
+<li>替代方案（InnoDB）：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysqldump --single-transaction  <span class="comment"># 利用 MVCC 快照，不加锁</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2）表级锁（Table-level-Lock）"><a href="#2）表级锁（Table-level-Lock）" class="headerlink" title="2）表级锁（Table-level Lock）"></a>2）表级锁（Table-level Lock）</h3><ul>
+<li>粒度：<strong>整张表</strong></li>
+<li>MyISAM 只支持表锁；InnoDB 也有表锁（如 MDL）</li>
+<li>常用：</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">LOCK <span class="keyword">TABLE</span> t1 READ;   <span class="comment">-- 读锁：别人可读不可写</span></span><br><span class="line">LOCK <span class="keyword">TABLE</span> t1 WRITE;  <span class="comment">-- 写锁：别人读写都阻塞</span></span><br><span class="line">UNLOCK TABLES;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>元数据锁（MDL）：<ul>
+<li>访问表时自动加，防止“查询中表被删&#x2F;改结构”</li>
+<li>长事务 + DDL 极易导致 MDL 锁等待</li>
+</ul>
+</li>
+</ul>
+<h3 id="3）行级锁（Row-level-Lock，InnoDB-核心）"><a href="#3）行级锁（Row-level-Lock，InnoDB-核心）" class="headerlink" title="3）行级锁（Row-level Lock，InnoDB 核心）"></a>3）行级锁（Row-level Lock，InnoDB 核心）</h3><ul>
+<li>粒度：<strong>单行或多行索引记录</strong></li>
+<li>优点：<strong>并发高、冲突小</strong></li>
+<li>缺点：开销大、依赖索引</li>
+<li>重点：<strong>行锁是锁索引，不是锁数据行</strong><br>无索引&#x2F;索引失效 → <strong>行锁退化为表锁</strong>（灾难）</li>
+</ul>
+<hr>
+<h2 id="三、按读写类型分类（S-X-锁）"><a href="#三、按读写类型分类（S-X-锁）" class="headerlink" title="三、按读写类型分类（S&#x2F;X 锁）"></a>三、按读写类型分类（S&#x2F;X 锁）</h2><h3 id="1）共享锁（S-锁-读锁）"><a href="#1）共享锁（S-锁-读锁）" class="headerlink" title="1）共享锁（S 锁 &#x2F; 读锁）"></a>1）共享锁（S 锁 &#x2F; 读锁）</h3><ul>
+<li>特点：<strong>读读兼容、读写互斥</strong></li>
+<li>加锁：</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> t <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">1</span> LOCK <span class="keyword">IN</span> SHARE MODE;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>场景：要保证数据不被修改，同时允许别人读</li>
+</ul>
+<h3 id="2）排他锁（X-锁-写锁）"><a href="#2）排他锁（X-锁-写锁）" class="headerlink" title="2）排他锁（X 锁 &#x2F; 写锁）"></a>2）排他锁（X 锁 &#x2F; 写锁）</h3><ul>
+<li>特点：<strong>写写互斥、读写互斥</strong>（独占）</li>
+<li>自动加：<code>UPDATE / DELETE / INSERT</code></li>
+<li>手动加：</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> t <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">1</span> <span class="keyword">FOR</span> <span class="keyword">UPDATE</span>;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>场景：修改数据，禁止别人读或写</li>
+</ul>
+<h3 id="兼容性矩阵（必背）"><a href="#兼容性矩阵（必背）" class="headerlink" title="兼容性矩阵（必背）"></a>兼容性矩阵（必背）</h3><table>
+<thead>
+<tr>
+<th>当前锁</th>
+<th>加 S 锁</th>
+<th>加 X 锁</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>无锁</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>S 锁</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>X 锁</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="四、意向锁（IS-IX，表级）"><a href="#四、意向锁（IS-IX，表级）" class="headerlink" title="四、意向锁（IS &#x2F; IX，表级）"></a>四、意向锁（IS &#x2F; IX，表级）</h2><p>作用：<strong>快速判断表内有没有行锁，避免全表扫行锁</strong></p>
+<ul>
+<li>IS：意向共享锁（要加 S 行锁）</li>
+<li>IX：意向排他锁（要加 X 行锁）</li>
+</ul>
+<p>规则：</p>
+<ol>
+<li>事务加行锁前，必须先加对应意向锁</li>
+<li>意向锁之间<strong>完全兼容</strong></li>
+<li>意向锁只和<strong>表级 S&#x2F;X 锁</strong>互斥</li>
+</ol>
+<hr>
+<h2 id="五、InnoDB-行锁三大算法（RR-隔离级别默认）"><a href="#五、InnoDB-行锁三大算法（RR-隔离级别默认）" class="headerlink" title="五、InnoDB 行锁三大算法（RR 隔离级别默认）"></a>五、InnoDB 行锁三大算法（RR 隔离级别默认）</h2><h3 id="1）记录锁（Record-Lock）"><a href="#1）记录锁（Record-Lock）" class="headerlink" title="1）记录锁（Record Lock）"></a>1）记录锁（Record Lock）</h3><ul>
+<li>锁：<strong>单个索引记录</strong></li>
+<li>触发：<strong>唯一索引 + 精准等值查询（命中）</strong></li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">10</span> <span class="keyword">FOR</span> <span class="keyword">UPDATE</span>; <span class="comment">-- 只锁 id=10</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2）间隙锁（Gap-Lock）"><a href="#2）间隙锁（Gap-Lock）" class="headerlink" title="2）间隙锁（Gap Lock）"></a>2）间隙锁（Gap Lock）</h3><ul>
+<li>锁：<strong>索引之间的间隙（不包含记录）</strong></li>
+<li>目的：<strong>防止幻读</strong>（禁止区间插入）</li>
+<li>示例：表有 id&#x3D;1,3,5</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> id <span class="keyword">BETWEEN</span> <span class="number">1</span> <span class="keyword">AND</span> <span class="number">5</span> <span class="keyword">FOR</span> <span class="keyword">UPDATE</span>;</span><br><span class="line"><span class="comment">-- 锁间隙：(1,3)、(3,5)</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>特点：间隙锁之间<strong>兼容</strong>，只与<strong>插入意向锁</strong>互斥</li>
+</ul>
+<h3 id="3）临键锁（Next-Key-Lock）-记录锁-间隙锁"><a href="#3）临键锁（Next-Key-Lock）-记录锁-间隙锁" class="headerlink" title="3）临键锁（Next-Key Lock）&#x3D; 记录锁 + 间隙锁"></a>3）临键锁（Next-Key Lock）&#x3D; 记录锁 + 间隙锁</h3><ul>
+<li>锁：<strong>左开右闭区间 (min, max]</strong></li>
+<li>InnoDB <strong>RR 默认</strong>，解决幻读</li>
+<li>示例：id&#x3D;1,3,5<ul>
+<li>查 id&#x3D;3 → 锁 (1,3]</li>
+<li>查 id&#x3D;4 → 锁 (3,5]</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="六、死锁（Deadlock）"><a href="#六、死锁（Deadlock）" class="headerlink" title="六、死锁（Deadlock）"></a>六、死锁（Deadlock）</h2><h3 id="1）必要条件（四个同时满足）"><a href="#1）必要条件（四个同时满足）" class="headerlink" title="1）必要条件（四个同时满足）"></a>1）必要条件（四个同时满足）</h3><ul>
+<li>互斥：资源独占</li>
+<li>持有并等待：拿着锁等别人的锁</li>
+<li>不可剥夺：不能强行抢锁</li>
+<li>循环等待：A 等 B，B 等 A</li>
+</ul>
+<h3 id="2）典型死锁示例"><a href="#2）典型死锁示例" class="headerlink" title="2）典型死锁示例"></a>2）典型死锁示例</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">事务1：BEGIN; UPDATE t SET a=1 WHERE id=1;</span><br><span class="line">事务2：BEGIN; UPDATE t SET a=1 WHERE id=2;</span><br><span class="line">事务1：UPDATE t SET a=1 WHERE id=2; -- 等事务2</span><br><span class="line">事务2：UPDATE t SET a=1 WHERE id=1; -- 等事务1 → 死锁</span><br></pre></td></tr></table></figure>
+
+<h3 id="3）如何避免"><a href="#3）如何避免" class="headerlink" title="3）如何避免"></a>3）如何避免</h3><ul>
+<li>按<strong>固定顺序</strong>访问资源（先 id&#x3D;1 再 id&#x3D;2）</li>
+<li>控制<strong>事务大小</strong>，避免长事务</li>
+<li>合理设置<strong>超时</strong>：<code>innodb_lock_wait_timeout=50</code></li>
+<li>死锁检测：<code>SHOW ENGINE INNODB STATUS;</code></li>
+</ul>
+<h3 id="4）隐蔽变种：间隙锁造成的-INSERT-死锁"><a href="#4）隐蔽变种：间隙锁造成的-INSERT-死锁" class="headerlink" title="4）隐蔽变种：间隙锁造成的 INSERT 死锁"></a>4）隐蔽变种：间隙锁造成的 INSERT 死锁</h3><p>不只 UPDATE 会死锁——<strong>RR 级别下两个并发 INSERT 也可能死锁</strong>：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-- 表中唯一索引 uk_phone 已有 (&#x27;13800000001&#x27;)</span><br><span class="line">事务1：INSERT INTO t(phone) VALUES(&#x27;13800000002&#x27;);  -- 持有间隙锁 + 插入意向</span><br><span class="line">事务2：INSERT INTO t(phone) VALUES(&#x27;13800000003&#x27;);  -- 同一间隙，互相等插入意向锁 → 死锁</span><br></pre></td></tr></table></figure>
+
+<p><strong>原理</strong>：间隙锁之间<strong>互不排斥</strong>，但<strong>插入意向锁</strong>与间隙锁互斥；两个事务在同一间隙插入不同值时，可能形成「各持间隙锁、互等插入意向」的环。</p>
+<p><strong>应对</strong>：高并发写入场景（如订单号、注册）考虑 <strong><code>READ COMMITTED</code></strong> 消除间隙锁，或接受死锁率并让应用<strong>幂等重试</strong>。</p>
+<hr>
+<h2 id="七、实战高频坑（必避）"><a href="#七、实战高频坑（必避）" class="headerlink" title="七、实战高频坑（必避）"></a>七、实战高频坑（必避）</h2><ol>
+<li><strong>无索引 → 行锁变表锁</strong>：<code>UPDATE t SET name=&#39;a&#39; WHERE age=20;</code>（age 无索引）</li>
+<li><strong>长事务 + 慢查询 → 锁等待堆积</strong></li>
+<li><strong>RR 间隙锁导致插入阻塞</strong>：范围查询容易触发</li>
+<li><strong>忘记提交&#x2F;回滚</strong>：锁一直不释放</li>
+</ol>
+<hr>
+<h2 id="八、总结（一句话记）"><a href="#八、总结（一句话记）" class="headerlink" title="八、总结（一句话记）"></a>八、总结（一句话记）</h2><ul>
+<li><strong>粒度</strong>：全局 &gt; 表 &gt; 行（粒度越小，并发越高、开销越大）</li>
+<li><strong>读写</strong>：S 锁共享，X 锁独占</li>
+<li><strong>行锁三形态</strong>：记录锁、间隙锁、临键锁（RR 防幻读）</li>
+<li><strong>死锁四条件</strong>：互斥、持有等待、不可剥夺、循环等待</li>
+</ul>
+<hr>
+<h2 id="九、分步-SQL-脚本（双会话复现）"><a href="#九、分步-SQL-脚本（双会话复现）" class="headerlink" title="九、分步 SQL 脚本（双会话复现）"></a>九、分步 SQL 脚本（双会话复现）</h2><p>环境要求：<strong>InnoDB</strong>、默认 <strong>RR（可重复读）</strong>。请开<strong>两个会话</strong>（两个终端或客户端连接），按小节顺序分别执行，可观察阻塞、间隙锁与死锁。</p>
+<h3 id="9-1-前置准备：建库建表与测试数据"><a href="#9-1-前置准备：建库建表与测试数据" class="headerlink" title="9.1 前置准备：建库建表与测试数据"></a>9.1 前置准备：建库建表与测试数据</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 1. 创建数据库</span></span><br><span class="line"><span class="keyword">CREATE</span> DATABASE IF <span class="keyword">NOT</span> <span class="keyword">EXISTS</span> lock_demo <span class="keyword">DEFAULT</span> <span class="keyword">CHARACTER SET</span> utf8mb4;</span><br><span class="line">USE lock_demo;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 2. 创建测试表（InnoDB + 主键索引）</span></span><br><span class="line"><span class="keyword">DROP</span> <span class="keyword">TABLE</span> IF <span class="keyword">EXISTS</span> <span class="keyword">user</span>;</span><br><span class="line"><span class="keyword">CREATE TABLE</span> <span class="keyword">user</span> (</span><br><span class="line">    id <span class="type">INT</span> <span class="keyword">PRIMARY KEY</span> AUTO_INCREMENT,</span><br><span class="line">    name <span class="type">VARCHAR</span>(<span class="number">20</span>) <span class="keyword">NOT NULL</span>,</span><br><span class="line">    age <span class="type">INT</span></span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 3. 插入测试数据</span></span><br><span class="line"><span class="keyword">INSERT INTO</span> <span class="keyword">user</span>(name,age) <span class="keyword">VALUES</span> </span><br><span class="line">(<span class="string">&#x27;张三&#x27;</span>,<span class="number">20</span>),</span><br><span class="line">(<span class="string">&#x27;李四&#x27;</span>,<span class="number">25</span>),</span><br><span class="line">(<span class="string">&#x27;王五&#x27;</span>,<span class="number">30</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看数据</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span>;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="9-2-行排他锁-FOR-UPDATE-阻塞演示"><a href="#9-2-行排他锁-FOR-UPDATE-阻塞演示" class="headerlink" title="9.2 行排他锁 FOR UPDATE 阻塞演示"></a>9.2 行排他锁 FOR UPDATE 阻塞演示</h3><p><strong>会话 1（先执行，不提交）</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="comment">-- 加行级排他锁</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> id <span class="operator">=</span> <span class="number">1</span> <span class="keyword">FOR</span> <span class="keyword">UPDATE</span>;</span><br><span class="line"><span class="comment">-- 故意不 COMMIT，锁一直持有</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 2（马上执行，会被阻塞）</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="comment">-- 尝试修改同一条 id=1，被行锁阻塞</span></span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">user</span> <span class="keyword">SET</span> age<span class="operator">=</span><span class="number">21</span> <span class="keyword">WHERE</span> id <span class="operator">=</span> <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>收尾：会话 1 提交释放锁</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">COMMIT</span>;</span><br></pre></td></tr></table></figure>
+<p>👉 现象：会话2立刻执行成功，<strong>行锁只锁 id&#x3D;1，不锁其他行</strong></p>
+<hr>
+<h3 id="9-3-无索引导致行锁退化为表锁"><a href="#9-3-无索引导致行锁退化为表锁" class="headerlink" title="9.3 无索引导致行锁退化为表锁"></a>9.3 无索引导致行锁退化为表锁</h3><p><strong>场景</strong>：<strong><code>age</code></strong> 无索引，按 <strong><code>age</code></strong> 更新。</p>
+<p><strong>会话 1</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">user</span> <span class="keyword">SET</span> name<span class="operator">=</span><span class="string">&#x27;张小三&#x27;</span> <span class="keyword">WHERE</span> age <span class="operator">=</span> <span class="number">20</span>;</span><br><span class="line"><span class="comment">-- 不提交</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 2</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="comment">-- 更新 id=2 无关数据，居然也被阻塞（行锁变表锁）</span></span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">user</span> <span class="keyword">SET</span> name<span class="operator">=</span><span class="string">&#x27;李小四&#x27;</span> <span class="keyword">WHERE</span> id <span class="operator">=</span> <span class="number">2</span>;</span><br></pre></td></tr></table></figure>
+<p>👉 结论：<strong>查询条件无索引 → InnoDB 行锁退化成整张表锁，并发直接废掉</strong></p>
+<hr>
+<h3 id="9-4-共享锁与读写互斥演示"><a href="#9-4-共享锁与读写互斥演示" class="headerlink" title="9.4 共享锁与读写互斥演示"></a>9.4 共享锁与读写互斥演示</h3><p><strong>会话 1：加共享锁</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">1</span> LOCK <span class="keyword">IN</span> SHARE MODE;</span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 2：普通读</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">1</span>; <span class="comment">-- 正常查询</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 2：尝试写（被阻塞）</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">user</span> <span class="keyword">SET</span> age<span class="operator">=</span><span class="number">22</span> <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">1</span>; <span class="comment">-- 阻塞</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 1：提交释放</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">COMMIT</span>;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="9-5-间隙锁与临键锁阻塞插入（RR）"><a href="#9-5-间隙锁与临键锁阻塞插入（RR）" class="headerlink" title="9.5 间隙锁与临键锁阻塞插入（RR）"></a>9.5 间隙锁与临键锁阻塞插入（RR）</h3><p>表内现有数据：<strong><code>id</code></strong> 为 <strong>1、2、3</strong>（与 <strong>9.1</strong> 插入一致）。</p>
+<p><strong>会话 1：范围查询加锁</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> id <span class="keyword">BETWEEN</span> <span class="number">1</span> <span class="keyword">AND</span> <span class="number">3</span> <span class="keyword">FOR</span> <span class="keyword">UPDATE</span>;</span><br><span class="line"><span class="comment">-- 不提交</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 2：插入新行（被阻塞）</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">INSERT INTO</span> <span class="keyword">user</span>(id,name,age) <span class="keyword">VALUES</span>(<span class="number">4</span>,<span class="string">&#x27;赵六&#x27;</span>,<span class="number">28</span>); <span class="comment">-- 直接阻塞</span></span><br></pre></td></tr></table></figure>
+<p>👉 原理：RR 级别临键锁+间隙锁，<strong>防止幻读，锁住区间不让插入</strong></p>
+<hr>
+<h3 id="9-6-经典死锁完整复现"><a href="#9-6-经典死锁完整复现" class="headerlink" title="9.6 经典死锁完整复现"></a>9.6 经典死锁完整复现</h3><p><strong>会话 1：第一步</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 事务1</span></span><br><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">user</span> <span class="keyword">SET</span> age<span class="operator">=</span><span class="number">21</span> <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">1</span>;</span><br><span class="line"><span class="comment">-- 先持有 id=1 行锁</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 2：第一步</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 事务2</span></span><br><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">user</span> <span class="keyword">SET</span> age<span class="operator">=</span><span class="number">26</span> <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">2</span>;</span><br><span class="line"><span class="comment">-- 先持有 id=2 行锁</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 1：第二步</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 事务1 尝试拿 id=2 锁，等待事务2</span></span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">user</span> <span class="keyword">SET</span> age<span class="operator">=</span><span class="number">22</span> <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">2</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 2：第二步</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 事务2 尝试拿 id=1 锁，循环等待 → 立刻触发死锁</span></span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">user</span> <span class="keyword">SET</span> age<span class="operator">=</span><span class="number">27</span> <span class="keyword">WHERE</span> id<span class="operator">=</span><span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p>👉 现象：MySQL 自动检测死锁，<strong>直接回滚其中一个事务</strong>，报死锁错误。</p>
+<hr>
+<h3 id="9-7-查看锁状态与死锁日志"><a href="#9-7-查看锁状态与死锁日志" class="headerlink" title="9.7 查看锁状态与死锁日志"></a>9.7 查看锁状态与死锁日志</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看 InnoDB 锁、死锁详情</span></span><br><span class="line"><span class="keyword">SHOW</span> ENGINE INNODB STATUS;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看当前事务、锁等待</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.innodb_trx;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.innodb_locks;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.innodb_lock_waits;</span><br></pre></td></tr></table></figure>
+
+<p><strong>说明</strong>：<strong>MySQL 8.0</strong> 起 <strong><code>information_schema.innodb_locks</code></strong>、<strong><code>innodb_lock_waits</code></strong> 已移除；<strong>8.0</strong> 请优先看 <strong><code>SHOW ENGINE INNODB STATUS</code></strong>，并结合 <strong><code>performance_schema</code></strong> 中 <strong><code>data_locks</code></strong> &#x2F; <strong><code>data_lock_waits</code></strong> 等表（与版本文档为准）。</p>
+<hr>
+<h3 id="9-8-脚本实验小结（看完九必记）"><a href="#9-8-脚本实验小结（看完九必记）" class="headerlink" title="9.8 脚本实验小结（看完九必记）"></a>9.8 脚本实验小结（看完九必记）</h3><ol>
+<li>行锁<strong>依赖索引</strong>，无索引直接降级表锁  </li>
+<li><strong><code>FOR UPDATE</code></strong> 排他锁、<strong><code>LOCK IN SHARE MODE</code></strong> 共享锁  </li>
+<li><strong>RR</strong> 隔离级别有<strong>临键锁 + 间隙锁</strong>，防幻读但会阻塞插入  </li>
+<li>多事务<strong>交叉更新不同行</strong>极易死锁，统一更新顺序可避免  </li>
+<li>长事务不提交 &#x3D; 锁不释放 &#x3D; 业务阻塞雪崩</li>
+</ol>
+<hr>
+<h2 id="十、五大实验：现象、原理与面试标准答"><a href="#十、五大实验：现象、原理与面试标准答" class="headerlink" title="十、五大实验：现象、原理与面试标准答"></a>十、五大实验：现象、原理与面试标准答</h2><p>与<strong>第九节</strong>中五个脚本场景一一对应：<strong>现象 → 底层原理 → 面试可直接背诵的表述</strong>。</p>
+<p><strong>统一前提</strong>：</p>
+<ul>
+<li>引擎：<strong>InnoDB</strong></li>
+<li>隔离级别：<strong>RR 可重复读（默认）</strong></li>
+<li>锁粒度：行锁依赖<strong>索引</strong>，无索引降级为表锁</li>
+</ul>
+<hr>
+<h3 id="实验一：行排他锁-FOR-UPDATE-阻塞演示"><a href="#实验一：行排他锁-FOR-UPDATE-阻塞演示" class="headerlink" title="实验一：行排他锁 FOR UPDATE 阻塞演示"></a>实验一：行排他锁 FOR UPDATE 阻塞演示</h3><h4 id="执行流程"><a href="#执行流程" class="headerlink" title="执行流程"></a>执行流程</h4><p>会话1：开启事务 → <code>id=1</code> 加 <code>FOR UPDATE</code> 不提交<br>会话2：修改 <code>id=1</code> 被阻塞；修改 <code>id=2</code> 正常执行</p>
+<h4 id="现象"><a href="#现象" class="headerlink" title="现象"></a>现象</h4><ol>
+<li>同一条主键记录：<strong>写操作被阻塞</strong></li>
+<li>不同主键记录：<strong>完全不受影响</strong></li>
+<li>会话1 <code>commit</code> 后，会话2立刻执行成功</li>
+</ol>
+<h4 id="底层原理"><a href="#底层原理" class="headerlink" title="底层原理"></a>底层原理</h4><ol>
+<li><code>FOR UPDATE</code> 加 <strong>行级排他锁（X锁）</strong></li>
+<li>排他锁规则：<strong>写写互斥、读写互斥</strong></li>
+<li>InnoDB 行锁<strong>只锁索引命中的单行</strong>，不影响其他行</li>
+</ol>
+<h4 id="面试标准答案"><a href="#面试标准答案" class="headerlink" title="面试标准答案"></a>面试标准答案</h4><blockquote>
+<p>InnoDB 中通过主键&#x2F;唯一索引精准查询加 <code>FOR UPDATE</code>，会加<strong>行级排他锁</strong>；只锁定当前命中的单行记录，其他行不受影响，能保证高并发。排他锁与任何读写操作都互斥，事务提交后锁自动释放。</p>
+</blockquote>
+<hr>
+<h3 id="实验二：无索引导致行锁退化为表锁"><a href="#实验二：无索引导致行锁退化为表锁" class="headerlink" title="实验二：无索引导致行锁退化为表锁"></a>实验二：无索引导致行锁退化为表锁</h3><h4 id="执行流程-1"><a href="#执行流程-1" class="headerlink" title="执行流程"></a>执行流程</h4><p>按无索引字段 <code>age=20</code> 更新，会话1不提交，会话2更新<strong>完全无关的 id&#x3D;2</strong> 也被阻塞</p>
+<h4 id="现象-1"><a href="#现象-1" class="headerlink" title="现象"></a>现象</h4><p>明明更新不同行，却<strong>整张表都被锁住</strong>，所有写操作全部阻塞</p>
+<h4 id="底层原理-1"><a href="#底层原理-1" class="headerlink" title="底层原理"></a>底层原理</h4><ol>
+<li>InnoDB <strong>行锁是锁索引，不是锁数据行</strong></li>
+<li>条件字段<strong>无索引</strong>，MySQL 无法定位具体行</li>
+<li>只能逐行加行锁扫描全表，最终<strong>退化成表级锁</strong></li>
+</ol>
+<h4 id="面试标准答案-1"><a href="#面试标准答案-1" class="headerlink" title="面试标准答案"></a>面试标准答案</h4><blockquote>
+<p>InnoDB 行锁<strong>必须依赖索引</strong>。如果更新&#x2F;删除条件没有索引或索引失效，MySQL 无法精确定位行记录，会扫描全表并逐行加锁，最终<strong>行锁降级为表锁</strong>，严重降低并发性能，开发中必须保证更新条件走索引。</p>
+</blockquote>
+<hr>
+<h3 id="实验三：共享锁与读写互斥演示"><a href="#实验三：共享锁与读写互斥演示" class="headerlink" title="实验三：共享锁与读写互斥演示"></a>实验三：共享锁与读写互斥演示</h3><h4 id="执行流程-2"><a href="#执行流程-2" class="headerlink" title="执行流程"></a>执行流程</h4><p>会话1：<code>LOCK IN SHARE MODE</code> 加共享锁<br>会话2：普通<code>SELECT</code>能查，<code>UPDATE/DELETE</code>被阻塞</p>
+<h4 id="现象-2"><a href="#现象-2" class="headerlink" title="现象"></a>现象</h4><ol>
+<li><strong>多个事务可以同时加共享锁</strong>（读读兼容）</li>
+<li>加了共享锁后，其他事务<strong>不能加排他锁、不能修改数据</strong></li>
+<li>事务提交后，写操作立刻放行</li>
+</ol>
+<h4 id="底层原理-2"><a href="#底层原理-2" class="headerlink" title="底层原理"></a>底层原理</h4><ul>
+<li>共享锁（S锁）：<strong>读读兼容，读写互斥</strong></li>
+<li>意向锁辅助，S锁阻塞所有写操作，保证数据当前快照不被修改</li>
+</ul>
+<h4 id="面试标准答案-2"><a href="#面试标准答案-2" class="headerlink" title="面试标准答案"></a>面试标准答案</h4><blockquote>
+<p>共享锁（S锁）又叫读锁，使用 <code>LOCK IN SHARE MODE</code> 加锁。特性是<strong>读读可以并发，读写、写写互斥</strong>；适合需要强一致性、临时禁止别人修改数据的场景，事务提交自动释放锁。</p>
+</blockquote>
+<hr>
+<h3 id="实验四：间隙锁与临键锁阻塞插入（RR-与幻读）"><a href="#实验四：间隙锁与临键锁阻塞插入（RR-与幻读）" class="headerlink" title="实验四：间隙锁与临键锁阻塞插入（RR 与幻读）"></a>实验四：间隙锁与临键锁阻塞插入（RR 与幻读）</h3><h4 id="执行流程-3"><a href="#执行流程-3" class="headerlink" title="执行流程"></a>执行流程</h4><p>会话1：范围查询 <code>between 1 and 3 for update</code> 不提交<br>会话2：插入区间内新 ID，直接被阻塞</p>
+<h4 id="现象-3"><a href="#现象-3" class="headerlink" title="现象"></a>现象</h4><p>没有任何行被修改，<strong>只是范围加锁</strong>，却无法往区间里插入新数据</p>
+<h4 id="底层原理-3"><a href="#底层原理-3" class="headerlink" title="底层原理"></a>底层原理</h4><ol>
+<li>MySQL RR 隔离级别默认使用 <strong>Next-Key Lock 临键锁</strong></li>
+<li>临键锁 &#x3D; 记录锁 + 间隙锁</li>
+<li>范围查询会锁住<strong>索引区间间隙</strong>，禁止其他事务插入新记录，<strong>解决幻读</strong></li>
+<li>间隙锁只在 <strong>RR</strong> 存在，<strong>RC 隔离级别没有间隙锁</strong></li>
+</ol>
+<h4 id="面试标准答案-3"><a href="#面试标准答案-3" class="headerlink" title="面试标准答案"></a>面试标准答案</h4><blockquote>
+<p>InnoDB 在 RR 可重复读隔离级别下，采用<strong>临键锁（Next-Key Lock）</strong> 解决幻读。临键锁由记录锁+间隙锁组成，范围查询会锁定索引左右间隙，禁止其他事务在区间内插入数据；RC 读已提交级别会关闭间隙锁，因此无法彻底避免幻读，但并发更高。</p>
+</blockquote>
+<hr>
+<h3 id="实验五：经典死锁复现"><a href="#实验五：经典死锁复现" class="headerlink" title="实验五：经典死锁复现"></a>实验五：经典死锁复现</h3><h4 id="执行流程-4"><a href="#执行流程-4" class="headerlink" title="执行流程"></a>执行流程</h4><ul>
+<li>事务1：先锁 id&#x3D;1 → 再请求锁 id&#x3D;2</li>
+<li>事务2：先锁 id&#x3D;2 → 再请求锁 id&#x3D;1</li>
+<li>互相等待，立刻触发死锁，MySQL 自动回滚一个事务</li>
+</ul>
+<h4 id="现象-4"><a href="#现象-4" class="headerlink" title="现象"></a>现象</h4><ol>
+<li>互相持有对方需要的锁，循环等待</li>
+<li>InnoDB <strong>自动死锁检测</strong>，回滚代价小的事务，抛出死锁异常</li>
+<li>不会无限阻塞</li>
+</ol>
+<h4 id="底层原理-4"><a href="#底层原理-4" class="headerlink" title="底层原理"></a>底层原理</h4><p>死锁产生<strong>四个必要条件</strong>同时满足：</p>
+<ol>
+<li>互斥条件：锁资源独占</li>
+<li>持有并等待：自己拿着锁，还等别人的锁</li>
+<li>不可剥夺：锁不能被强行抢占</li>
+<li>循环等待：事务形成等待环路</li>
+</ol>
+<h4 id="面试标准答案（必背）"><a href="#面试标准答案（必背）" class="headerlink" title="面试标准答案（必背）"></a>面试标准答案（必背）</h4><blockquote>
+<p>死锁产生必须同时满足四个条件：<strong>互斥、持有并等待、不可剥夺、循环等待</strong>。<br>规避方案：</p>
+<ol>
+<li>统一多事务<strong>访问资源的顺序</strong>；</li>
+<li>拆分长事务，尽早提交；</li>
+<li>避免在事务中做无关耗时操作；</li>
+<li>合理设置锁等待超时时间。<br>InnoDB 自带<strong>死锁检测机制</strong>，发现循环等待会自动回滚一个事务，避免程序卡死。</li>
+</ol>
+</blockquote>
+<hr>
+<h2 id="十一、面试高频一句话速记"><a href="#十一、面试高频一句话速记" class="headerlink" title="十一、面试高频一句话速记"></a>十一、面试高频一句话速记</h2><ol>
+<li>行锁<strong>靠索引</strong>，无索引变表锁  </li>
+<li><strong>S</strong> 锁读读兼容，<strong>X</strong> 锁完全独占  </li>
+<li><strong>RR</strong> 有间隙锁防幻读，<strong>RC</strong> 没有  </li>
+<li>交叉改不同行、顺序乱写易出死锁</li>
+</ol>
+<hr>
+<h2 id="十二、二十道高频面试题与标准答"><a href="#十二、二十道高频面试题与标准答" class="headerlink" title="十二、二十道高频面试题与标准答"></a>十二、二十道高频面试题与标准答</h2><p>全部<strong>面试可直接背诵</strong>，基于 <strong>InnoDB</strong>、<strong>RR</strong> 隔离级别，精简不废话。</p>
+<h3 id="1-MySQL-有哪些锁分类？"><a href="#1-MySQL-有哪些锁分类？" class="headerlink" title="1. MySQL 有哪些锁分类？"></a>1. MySQL 有哪些锁分类？</h3><p><strong>答案</strong></p>
+<ol>
+<li>按粒度：<strong>全局锁、表级锁、行级锁</strong></li>
+<li>按读写：<strong>共享锁S、排他锁X</strong></li>
+<li>InnoDB 特有：<strong>意向锁、记录锁、间隙锁、临键锁</strong></li>
+</ol>
+<h3 id="2-全局锁作用是什么？怎么加？"><a href="#2-全局锁作用是什么？怎么加？" class="headerlink" title="2. 全局锁作用是什么？怎么加？"></a>2. 全局锁作用是什么？怎么加？</h3><p><strong>答案</strong><br>整库只读，所有库表只能读不能写、阻塞 DDL&#x2F;DML。<br>加锁：<code>FLUSH TABLES WITH READ LOCK;</code><br>解锁：<code>UNLOCK TABLES;</code><br>多用于全库逻辑备份；生产优先用 <code>mysqldump --single-transaction</code> 快照备份，不加锁。</p>
+<h3 id="3-什么是-MDL-元数据锁？"><a href="#3-什么是-MDL-元数据锁？" class="headerlink" title="3. 什么是 MDL 元数据锁？"></a>3. 什么是 MDL 元数据锁？</h3><p><strong>答案</strong><br>访问表时<strong>自动加</strong>，保护表结构不被中途修改&#x2F;删除。<br>长事务不提交 + 执行 DDL 改表结构，会造成 MDL 锁等待阻塞，线上高发故障点。</p>
+<h3 id="4-表锁和行锁区别？"><a href="#4-表锁和行锁区别？" class="headerlink" title="4. 表锁和行锁区别？"></a>4. 表锁和行锁区别？</h3><p><strong>答案</strong></p>
+<ul>
+<li>表锁：粒度大、开销小、并发低、MyISAM 默认</li>
+<li>行锁：粒度小、开销大、并发高、InnoDB 支持<br>InnoDB 优先用行锁提升并发。</li>
+</ul>
+<h3 id="5-共享锁S、排他锁X-特性？"><a href="#5-共享锁S、排他锁X-特性？" class="headerlink" title="5. 共享锁S、排他锁X 特性？"></a>5. 共享锁S、排他锁X 特性？</h3><p><strong>答案</strong></p>
+<ul>
+<li>共享锁S：<strong>读读兼容，读写&#x2F;写写互斥</strong></li>
+<li>排他锁X：<strong>读写、写写全部互斥，独占资源</strong><br>加锁：<br>S：<code>select ... lock in share mode</code><br>X：<code>select ... for update</code></li>
+</ul>
+<h3 id="6-意向锁-IS-IX-作用？"><a href="#6-意向锁-IS-IX-作用？" class="headerlink" title="6. 意向锁 IS&#x2F;IX 作用？"></a>6. 意向锁 IS&#x2F;IX 作用？</h3><p><strong>答案</strong><br>意向锁是<strong>表级锁</strong>，事务加行锁前必须先加意向锁。<br>作用：快速判断表内是否有行锁，不用遍历所有行锁，提升加锁效率。</p>
+<ul>
+<li>IS：要加 S 行锁</li>
+<li>IX：要加 X 行锁<br>意向锁之间互相兼容，只和表级 S&#x2F;X 锁互斥。</li>
+</ul>
+<h3 id="7-InnoDB-行锁本质是什么？"><a href="#7-InnoDB-行锁本质是什么？" class="headerlink" title="7. InnoDB 行锁本质是什么？"></a>7. InnoDB 行锁本质是什么？</h3><p><strong>答案</strong><br><strong>行锁锁的是索引，不是物理数据行</strong>。<br>查询条件<strong>无索引、索引失效</strong>，行锁会<strong>退化成表锁</strong>，并发骤降。</p>
+<h3 id="8-什么情况下行锁会降级为表锁？"><a href="#8-什么情况下行锁会降级为表锁？" class="headerlink" title="8. 什么情况下行锁会降级为表锁？"></a>8. 什么情况下行锁会降级为表锁？</h3><p><strong>答案</strong></p>
+<ol>
+<li>where 条件<strong>无索引字段</strong></li>
+<li>索引失效（函数、隐式类型转换、like 前缀模糊等）</li>
+<li>没有命中任何记录，全表扫描加锁</li>
+</ol>
+<h3 id="9-InnoDB-三种行锁算法？"><a href="#9-InnoDB-三种行锁算法？" class="headerlink" title="9. InnoDB 三种行锁算法？"></a>9. InnoDB 三种行锁算法？</h3><p><strong>答案</strong></p>
+<ol>
+<li><strong>记录锁</strong>：锁单行索引记录</li>
+<li><strong>间隙锁 Gap Lock</strong>：锁索引间隙，不锁记录，防止幻读插入</li>
+<li><strong>临键锁 Next-Key Lock</strong> &#x3D; 记录锁+间隙锁，左开右闭区间，RR 默认</li>
+</ol>
+<h3 id="10-间隙锁什么时候生效？什么时候关闭？"><a href="#10-间隙锁什么时候生效？什么时候关闭？" class="headerlink" title="10. 间隙锁什么时候生效？什么时候关闭？"></a>10. 间隙锁什么时候生效？什么时候关闭？</h3><p><strong>答案</strong></p>
+<ul>
+<li>生效：<strong>RR 可重复读</strong>隔离级别、范围查询&#x2F;不走唯一索引等值查询</li>
+<li>关闭：<strong>RC 读已提交</strong> 没有间隙锁，并发更高，但会有幻读</li>
+</ul>
+<h3 id="11-临键锁解决了什么问题？"><a href="#11-临键锁解决了什么问题？" class="headerlink" title="11. 临键锁解决了什么问题？"></a>11. 临键锁解决了什么问题？</h3><p><strong>答案</strong><br>在 RR 隔离级别下，通过<strong>临键锁+间隙锁</strong>彻底<strong>解决幻读</strong>，禁止其他事务在索引区间插入新数据。</p>
+<h3 id="12-什么是幻读？怎么解决？"><a href="#12-什么是幻读？怎么解决？" class="headerlink" title="12. 什么是幻读？怎么解决？"></a>12. 什么是幻读？怎么解决？</h3><p><strong>答案</strong><br>同一事务内，前后两次范围查询，查到别人新插入的数据。<br>解决：</p>
+<ul>
+<li>数据库层：InnoDB RR + 临键锁</li>
+<li>业务层：悲观锁、分布式锁限制插入</li>
+</ul>
+<h3 id="13-死锁产生的四个必要条件？"><a href="#13-死锁产生的四个必要条件？" class="headerlink" title="13. 死锁产生的四个必要条件？"></a>13. 死锁产生的四个必要条件？</h3><p><strong>答案</strong></p>
+<ol>
+<li>互斥：锁资源独占</li>
+<li>持有并等待：拿着自己的锁，等待别人的锁</li>
+<li>不可剥夺：锁不能被强行抢占</li>
+<li>循环等待：事务互相等待形成环路</li>
+</ol>
+<h3 id="14-MySQL-怎么处理死锁？"><a href="#14-MySQL-怎么处理死锁？" class="headerlink" title="14. MySQL 怎么处理死锁？"></a>14. MySQL 怎么处理死锁？</h3><p><strong>答案</strong><br>InnoDB 有<strong>自动死锁检测</strong>，检测到循环等待后，<strong>自动回滚代价更小的一个事务</strong>，抛出死锁异常，避免无限阻塞。</p>
+<h3 id="15-如何避免-MySQL-死锁？"><a href="#15-如何避免-MySQL-死锁？" class="headerlink" title="15. 如何避免 MySQL 死锁？"></a>15. 如何避免 MySQL 死锁？</h3><p><strong>答案</strong></p>
+<ol>
+<li>统一所有事务<strong>访问资源&#x2F;更新行的顺序</strong></li>
+<li>精简事务，<strong>避免长事务</strong>，尽早 commit</li>
+<li>事务内不做耗时网络&#x2F;IO 操作</li>
+<li>合理设置锁等待超时 <code>innodb_lock_wait_timeout</code></li>
+</ol>
+<h3 id="16-for-update-和-lock-in-share-mode-区别？"><a href="#16-for-update-和-lock-in-share-mode-区别？" class="headerlink" title="16. for update 和 lock in share mode 区别？"></a>16. for update 和 lock in share mode 区别？</h3><p><strong>答案</strong></p>
+<ul>
+<li><code>for update</code>：加<strong>排他锁X</strong>，别人不能读也不能改</li>
+<li><code>lock in share mode</code>：加<strong>共享锁S</strong>，别人可以读、不能改</li>
+</ul>
+<h3 id="17-RR-和-RC-在锁层面最大区别？"><a href="#17-RR-和-RC-在锁层面最大区别？" class="headerlink" title="17. RR 和 RC 在锁层面最大区别？"></a>17. RR 和 RC 在锁层面最大区别？</h3><p><strong>答案</strong></p>
+<ol>
+<li>RR 有<strong>间隙锁&#x2F;临键锁</strong>，防幻读；RC 没有</li>
+<li>RC 行锁范围更小、并发更高，但存在幻读</li>
+<li>RC 锁释放更早，阻塞更少</li>
+</ol>
+<h3 id="18-长事务有什么锁风险？"><a href="#18-长事务有什么锁风险？" class="headerlink" title="18. 长事务有什么锁风险？"></a>18. 长事务有什么锁风险？</h3><p><strong>答案</strong><br>长事务不提交：</p>
+<ol>
+<li>行锁、MDL 锁长期不释放</li>
+<li>造成大量锁等待、业务阻塞</li>
+<li>undo log 不能清理，占用磁盘</li>
+<li>容易触发死锁、数据库性能雪崩</li>
+</ol>
+<h3 id="19-如何查看-MySQL-当前锁和死锁？"><a href="#19-如何查看-MySQL-当前锁和死锁？" class="headerlink" title="19. 如何查看 MySQL 当前锁和死锁？"></a>19. 如何查看 MySQL 当前锁和死锁？</h3><p><strong>答案</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看最近死锁、锁详情</span></span><br><span class="line"><span class="keyword">SHOW</span> ENGINE INNODB STATUS;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看事务、锁、锁等待</span></span><br><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> information_schema.innodb_trx;</span><br><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> information_schema.innodb_locks;</span><br><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> information_schema.innodb_lock_waits;</span><br></pre></td></tr></table></figure>
+
+<h3 id="20-线上开发写-UPDATE-防锁坑要注意什么？"><a href="#20-线上开发写-UPDATE-防锁坑要注意什么？" class="headerlink" title="20. 线上开发写 UPDATE 防锁坑要注意什么？"></a>20. 线上开发写 UPDATE 防锁坑要注意什么？</h3><p><strong>答案</strong></p>
+<ol>
+<li>更新条件<strong>必须走索引</strong>，防止行锁变表锁</li>
+<li>尽量用<strong>主键&#x2F;唯一索引</strong>精准等值，少用范围查询</li>
+<li>事务尽量短小，及时提交</li>
+<li>禁止大事务批量更新、避免范围锁区间过大</li>
+<li>统一更新顺序，避免交叉更新产生死锁</li>
+</ol>
+<hr>
+<h2 id="十三、进阶实战专题：MDL、Online-DDL-与锁监控"><a href="#十三、进阶实战专题：MDL、Online-DDL-与锁监控" class="headerlink" title="十三、进阶实战专题：MDL、Online DDL 与锁监控"></a>十三、进阶实战专题：MDL、Online DDL 与锁监控</h2><p>面试题讲完了，这一节回到线上真实战场：<strong>MDL 阻塞、Online DDL、死锁日志解读、锁等待监控</strong>——这是 DBA 日常处理锁问题的完整工具箱。</p>
+<h3 id="1-MDL-元数据锁实战案例（线上最高发的锁事故）"><a href="#1-MDL-元数据锁实战案例（线上最高发的锁事故）" class="headerlink" title="1. MDL 元数据锁实战案例（线上最高发的锁事故）"></a>1. MDL 元数据锁实战案例（线上最高发的锁事故）</h3><h4 id="场景复现"><a href="#场景复现" class="headerlink" title="场景复现"></a>场景复现</h4><p><strong>会话 1</strong>：一个忘记提交的长事务，哪怕只是查了一次：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> <span class="keyword">WHERE</span> id <span class="operator">=</span> <span class="number">1</span>;   <span class="comment">-- 普通读也会拿 MDL 共享锁</span></span><br><span class="line"><span class="comment">-- 忘记 COMMIT，连接池里挂着</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 2</strong>：DBA 在低峰期加个字段：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ALTER TABLE</span> <span class="keyword">user</span> <span class="keyword">ADD</span> <span class="keyword">COLUMN</span> age2 <span class="type">INT</span>;   <span class="comment">-- 需要 MDL 排他锁 → 被会话 1 阻塞</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>会话 3 及之后</strong>：<strong>所有新查询全部排队</strong>：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> <span class="keyword">user</span> LIMIT <span class="number">1</span>;  <span class="comment">-- 也被阻塞！因为 MDL 等待队列是排他的</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>现象</strong>：整张表<strong>读写全堵</strong>，连接数飙升，业务报警——而根源只是一个没提交的事务。</p>
+<h4 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h4><ul>
+<li><strong>MDL 不需要显式加</strong>：访问一张表自动加 <strong>MDL 共享锁（读&#x2F;写）</strong>，DDL 需要 <strong>MDL 排他锁</strong>；</li>
+<li>排他锁在队列里等待时，<strong>后来的共享锁也要排队</strong>（防饿死策略），所以一个被卡住的 DDL 会<strong>堵死整张表的所有新请求</strong>；</li>
+<li>等待超时由 <strong><code>lock_wait_timeout</code></strong>（默认 <strong>1 年</strong>！）控制——DDL 被 MDL 卡住<strong>默认永不超时</strong>，必须人工干预。</li>
+</ul>
+<h4 id="排查与止血（MySQL-8-0）"><a href="#排查与止血（MySQL-8-0）" class="headerlink" title="排查与止血（MySQL 8.0）"></a>排查与止血（MySQL 8.0）</h4><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- ① 打开 MDL 监控（8.0 默认已启用 instrument）</span></span><br><span class="line"><span class="keyword">UPDATE</span> performance_schema.setup_instruments</span><br><span class="line"><span class="keyword">SET</span> ENABLED <span class="operator">=</span> <span class="string">&#x27;YES&#x27;</span>, TIMED <span class="operator">=</span> <span class="string">&#x27;YES&#x27;</span></span><br><span class="line"><span class="keyword">WHERE</span> NAME <span class="operator">=</span> <span class="string">&#x27;wait/lock/metadata/sql/mdl&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- ② 找出谁拿着 MDL、谁在等</span></span><br><span class="line"><span class="keyword">SELECT</span> m.OBJECT_SCHEMA, m.OBJECT_NAME,</span><br><span class="line">       m.LOCK_TYPE, m.LOCK_STATUS,</span><br><span class="line">       t.PROCESSLIST_ID, t.PROCESSLIST_INFO, t.PROCESSLIST_TIME</span><br><span class="line"><span class="keyword">FROM</span> performance_schema.metadata_locks m</span><br><span class="line"><span class="keyword">JOIN</span> performance_schema.threads t <span class="keyword">ON</span> m.OWNER_THREAD_ID <span class="operator">=</span> t.THREAD_ID</span><br><span class="line"><span class="keyword">WHERE</span> m.OBJECT_SCHEMA <span class="operator">=</span> <span class="string">&#x27;lock_demo&#x27;</span> <span class="keyword">AND</span> m.OBJECT_NAME <span class="operator">=</span> <span class="string">&#x27;user&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- ③ 找到阻塞源（PROCESSLIST_TIME 很大的那个长事务），杀掉</span></span><br><span class="line">KILL <span class="operator">&lt;</span>PROCESSLIST_ID<span class="operator">&gt;</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>预防三件套</strong>：</p>
+<ol>
+<li>应用侧<strong>严禁长事务</strong>，<code>autocommit=1</code> 保持默认；</li>
+<li>DDL 前查长事务：<code>SELECT * FROM information_schema.innodb_trx WHERE TIME_TO_SEC(TIMEDIFF(NOW(), trx_started)) &gt; 60;</code></li>
+<li>DDL 语句显式缩短等待：<strong><code>ALTER TABLE ... , LOCK=DEFAULT</code></strong> 无效于 MDL，要靠<strong>低峰窗口 + 语句超时</strong>（部分版本支持 <strong><code>lock_wait_timeout</code></strong> 会话级临时调小）。</li>
+</ol>
+<h3 id="2-Online-DDL-与锁（8-0-8-4-的三种算法）"><a href="#2-Online-DDL-与锁（8-0-8-4-的三种算法）" class="headerlink" title="2. Online DDL 与锁（8.0&#x2F;8.4 的三种算法）"></a>2. Online DDL 与锁（8.0&#x2F;8.4 的三种算法）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ALTER TABLE</span> t <span class="keyword">ADD</span> <span class="keyword">COLUMN</span> c <span class="type">INT</span>,</span><br><span class="line">  ALGORITHM<span class="operator">=</span>INSTANT;          <span class="comment">-- 8.0.12+：只改数据字典，秒级，不锁表</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ALTER TABLE</span> t <span class="keyword">ADD</span> INDEX idx_c (c),</span><br><span class="line">  ALGORITHM<span class="operator">=</span>INPLACE, LOCK<span class="operator">=</span><span class="keyword">NONE</span>;  <span class="comment">-- 原地重建，期间允许读写</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ALTER TABLE</span> t MODIFY <span class="keyword">COLUMN</span> c <span class="type">BIGINT</span>,</span><br><span class="line">  ALGORITHM<span class="operator">=</span><span class="keyword">COPY</span>;             <span class="comment">-- 拷表重建，全程锁表（仅特殊场景不得不选）</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>算法</th>
+<th>锁表行为</th>
+<th>速度</th>
+<th>典型操作</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>INSTANT</strong></td>
+<td>仅瞬间 MDL</td>
+<td>秒级（与表大小无关）</td>
+<td>末尾加列、删列（8.0.29+）</td>
+</tr>
+<tr>
+<td><strong>INPLACE</strong></td>
+<td>开始&#x2F;结束各一次短暂 MDL，中间可读写</td>
+<td>与表大小成正比</td>
+<td>加索引、改列类型（部分）</td>
+</tr>
+<tr>
+<td><strong>COPY</strong></td>
+<td>全程禁写</td>
+<td>慢，双倍磁盘</td>
+<td>改存储引擎等兜底场景</td>
+</tr>
+</tbody></table>
+<p><strong>实战要点</strong>：</p>
+<ol>
+<li><strong>优先 INSTANT</strong>：<code>ADD COLUMN</code> 默认就走 INSTANT（8.0），无需指定；可用 <code>SHOW WARNINGS</code> 或 <code>information_schema.tables</code> 的 <strong><code>ALGORITHM</code></strong> 记录确认；</li>
+<li><strong>INPLACE 仍会抢两次 MDL</strong>——长事务环境下照样卡，执行前照第 1 节流程排查；</li>
+<li>**大表变更（千万行以上）**生产惯例走 <strong>gh-ost &#x2F; pt-online-schema-change</strong>：影子表 + binlog 追增量，把锁窗口压到毫秒级切换；</li>
+<li><strong>DDL 期间磁盘</strong>：COPY&#x2F;部分 INPLACE 需要<strong>额外一份表大小</strong>的空间，磁盘水位不足会直接失败。</li>
+</ol>
+<h3 id="3-死锁日志完整解读（SHOW-ENGINE-INNODB-STATUS）"><a href="#3-死锁日志完整解读（SHOW-ENGINE-INNODB-STATUS）" class="headerlink" title="3. 死锁日志完整解读（SHOW ENGINE INNODB STATUS）"></a>3. 死锁日志完整解读（SHOW ENGINE INNODB STATUS）</h3><p>执行 <strong><code>SHOW ENGINE INNODB STATUS\G</code></strong>，找到 <strong><code>LATEST DETECTED DEADLOCK</code></strong> 段，逐块读懂它：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">------------------------</span><br><span class="line">LATEST DETECTED DEADLOCK</span><br><span class="line">------------------------</span><br><span class="line">2026-10-25 14:32:07 139999999</span><br><span class="line">*** (1) TRANSACTION:</span><br><span class="line">TRANSACTION 4210, ACTIVE 8 sec starting index read</span><br><span class="line">mysql tables in use 1, locked 1</span><br><span class="line">LOCK WAIT 3 lock struct(s), heap size 1184, 2 row lock(s)</span><br><span class="line">UPDATE user SET age=22 WHERE id=2        ← 事务1【正在等】的语句</span><br><span class="line"></span><br><span class="line">*** (1) HOLDS THE LOCK(S):               ← 事务1 已持有：id=1 的 X 锁</span><br><span class="line">RECORD LOCKS space id 12 page no 4 n bits 72 index PRIMARY</span><br><span class="line">of table `lock_demo`.`user` trx id 4210 lock_mode X locks rec but not gap</span><br><span class="line">Record lock, heap no 2 ...</span><br><span class="line"></span><br><span class="line">*** (1) WAITING FOR THIS LOCK TO BE GRANTED:   ← 事务1 在等：id=2 的 X 锁</span><br><span class="line">RECORD LOCKS ... index PRIMARY of table `lock_demo`.`user`</span><br><span class="line">trx id 4210 lock_mode X locks rec but not gap waiting</span><br><span class="line"></span><br><span class="line">*** (2) TRANSACTION:                       ← 事务2 镜像信息（持有 id=2，等 id=1）</span><br><span class="line">*** (2) HOLDS THE LOCK(S): ... id=2 ...</span><br><span class="line">*** (2) WAITING FOR THIS LOCK TO BE GRANTED: ... id=1 ...</span><br><span class="line"></span><br><span class="line">*** WE ROLL BACK TRANSACTION (2)           ← InnoDB 选择回滚事务2</span><br></pre></td></tr></table></figure>
+
+<p><strong>解读四步法</strong>：</p>
+<ol>
+<li><strong>看两个事务各自 HOLDS 什么</strong>——谁在哪个索引、哪条记录上持锁（注意 <code>lock_mode X locks rec but not gap</code> &#x3D; 记录锁；<code>locks gap before rec</code> &#x3D; 间隙锁）；</li>
+<li><strong>看各自 WAITING FOR 什么</strong>——交叉等待关系一目了然；</li>
+<li><strong>看被回滚的是谁</strong>——<code>WE ROLL BACK TRANSACTION (N)</code>，业务侧要能对死锁异常做<strong>重试</strong>；</li>
+<li><strong>归因改写</strong>：两事务更新顺序相反 → 应用层统一按主键顺序更新即可消除。</li>
+</ol>
+<p><strong>持续收集</strong>：单条 <code>LATEST DETECTED DEADLOCK</code> 会被覆盖，线上建议：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 8.0.14+ 把死锁日志也写进 error log，持久留档</span></span><br><span class="line"><span class="keyword">SET</span> <span class="keyword">GLOBAL</span> innodb_print_all_deadlocks <span class="operator">=</span> <span class="keyword">ON</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-锁等待监控-SQL（performance-schema，8-0-8-4-标准姿势）"><a href="#4-锁等待监控-SQL（performance-schema，8-0-8-4-标准姿势）" class="headerlink" title="4. 锁等待监控 SQL（performance_schema，8.0&#x2F;8.4 标准姿势）"></a>4. 锁等待监控 SQL（performance_schema，8.0&#x2F;8.4 标准姿势）</h3><p>8.0 起 <strong><code>information_schema.innodb_locks/lock_waits</code></strong> 已移除，改用 <strong>performance_schema</strong>：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- ① 当前所有锁（谁持有 GRANTED / 谁在等 WAITING）</span></span><br><span class="line"><span class="keyword">SELECT</span> ENGINE_TRANSACTION_ID, OBJECT_SCHEMA, OBJECT_NAME,</span><br><span class="line">       INDEX_NAME, LOCK_TYPE, LOCK_MODE, LOCK_STATUS, LOCK_DATA</span><br><span class="line"><span class="keyword">FROM</span> performance_schema.data_locks</span><br><span class="line"><span class="keyword">WHERE</span> OBJECT_SCHEMA <span class="operator">=</span> <span class="string">&#x27;lock_demo&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- ② 锁等待关系：谁挡谁</span></span><br><span class="line"><span class="keyword">SELECT</span> w.REQUESTING_ENGINE_TRANSACTION_ID <span class="keyword">AS</span> waiting_trx,</span><br><span class="line">       w.BLOCKING_ENGINE_TRANSACTION_ID    <span class="keyword">AS</span> blocking_trx,</span><br><span class="line">       dl.OBJECT_NAME, dl.INDEX_NAME, dl.LOCK_MODE</span><br><span class="line"><span class="keyword">FROM</span> performance_schema.data_lock_waits w</span><br><span class="line"><span class="keyword">JOIN</span> performance_schema.data_locks dl</span><br><span class="line">  <span class="keyword">ON</span> dl.ENGINE_LOCK_ID <span class="operator">=</span> w.REQUESTING_ENGINE_LOCK_ID;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- ③ 等待者/阻塞者各自在执行什么 SQL（关联线程与事务）</span></span><br><span class="line"><span class="keyword">SELECT</span> btrx.trx_mysql_thread_id <span class="keyword">AS</span> blocking_thread,</span><br><span class="line">       bproc.PROCESSLIST_INFO   <span class="keyword">AS</span> blocking_sql,</span><br><span class="line">       wtrx.trx_mysql_thread_id <span class="keyword">AS</span> waiting_thread,</span><br><span class="line">       wproc.PROCESSLIST_INFO   <span class="keyword">AS</span> waiting_sql,</span><br><span class="line">       TIMESTAMPDIFF(<span class="keyword">SECOND</span>, wtrx.trx_wait_started, NOW()) <span class="keyword">AS</span> wait_sec</span><br><span class="line"><span class="keyword">FROM</span> performance_schema.data_lock_waits w</span><br><span class="line"><span class="keyword">JOIN</span> information_schema.innodb_trx btrx</span><br><span class="line">  <span class="keyword">ON</span> btrx.trx_id <span class="operator">=</span> w.BLOCKING_ENGINE_TRANSACTION_ID</span><br><span class="line"><span class="keyword">JOIN</span> information_schema.innodb_trx wtrx</span><br><span class="line">  <span class="keyword">ON</span> wtrx.trx_id <span class="operator">=</span> w.REQUESTING_ENGINE_TRANSACTION_ID</span><br><span class="line"><span class="keyword">JOIN</span> performance_schema.threads bproc</span><br><span class="line">  <span class="keyword">ON</span> bproc.PROCESSLIST_ID <span class="operator">=</span> btrx.trx_mysql_thread_id</span><br><span class="line"><span class="keyword">JOIN</span> performance_schema.threads wproc</span><br><span class="line">  <span class="keyword">ON</span> wproc.PROCESSLIST_ID <span class="operator">=</span> wtrx.trx_mysql_thread_id</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> wait_sec <span class="keyword">DESC</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- ④ 一键杀阻塞源（wait_sec 大且 blocking_sql 为长事务时）</span></span><br><span class="line"><span class="comment">-- KILL &lt;blocking_thread&gt;;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>常用阈值告警</strong>：<code>wait_sec &gt; 10</code> 秒即应触发告警；<strong><code>innodb_lock_wait_timeout</code></strong>（默认 50s）超时会报 <strong><code>ERROR 1205 Lock wait timeout exceeded</code></strong>——注意它<strong>只回滚等待中的那条语句</strong>，事务本身还在，应用需正确处理。</p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>粒度</td>
+<td><strong>全局 &gt; 表 &gt; 行</strong>，粒度越小并发越高、开销越大</td>
+</tr>
+<tr>
+<td>读写兼容</td>
+<td><strong>S 锁读读兼容</strong>，<strong>X 锁完全独占</strong>，意向锁只与表级 S&#x2F;X 互斥</td>
+</tr>
+<tr>
+<td>行锁三形态</td>
+<td><strong>记录锁、间隙锁、临键锁</strong>；RR 默认临键锁防幻读，RC 无间隙锁</td>
+</tr>
+<tr>
+<td>行锁本质</td>
+<td><strong>锁索引而非数据行</strong>，无索引&#x2F;索引失效退化为表锁</td>
+</tr>
+<tr>
+<td>死锁</td>
+<td>四条件齐备才发生；<strong>统一加锁顺序 + 短事务</strong> + InnoDB 自动检测回滚</td>
+</tr>
+<tr>
+<td>MDL</td>
+<td>DDL 需排他锁，<strong>长事务不提交 → 全表新请求排队</strong>；<code>lock_wait_timeout</code> 默认 1 年</td>
+</tr>
+<tr>
+<td>Online DDL</td>
+<td><strong>INSTANT 秒级改字典，INPLACE 中间可读写，COPY 全程锁表</strong>；大表用 gh-ost</td>
+</tr>
+<tr>
+<td>锁监控</td>
+<td>8.0 用 <strong><code>performance_schema.data_locks</code> &#x2F; <code>data_lock_waits</code></strong> 查等待链，找到 blocking 线程再 KILL</td>
+</tr>
+</tbody></table>
+<p>锁讲透了「写与写之间怎么排队」，下一章回到查询本身——把常用的高级查询写法一次练熟。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/docker/03-docker-1panel/" rel="prev" title="第三章：Docker 部署 1Panel">
+                  <i class="fa fa-angle-left"></i> 第三章：Docker 部署 1Panel
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/mysql/04-mysql-advanced-query/" rel="next" title="第四章：MySQL 高级查询">
+                  第四章：MySQL 高级查询 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

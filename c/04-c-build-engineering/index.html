@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：构建与工程实践概念基础 编译四阶段：预处理（-E）→ 编译（-S）→ 汇编（-c）→ 链接——理解各阶段产物是排查「头文件缺失 &#x2F; 未定义引用」的基础。 静态库 vs 动态库：.a 链进可执行文件（体积大、部署简单），.so 运行时加载（体积小、可热更新但需管理路径）。 Make 是 C 工程的事实构建标准：依赖关系 + 增量编译，几十行 Makefile 管理中型项目绰绰有余。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：构建与工程实践">
+<meta property="og:url" content="https://my919.github.io/c/04-c-build-engineering/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：构建与工程实践概念基础 编译四阶段：预处理（-E）→ 编译（-S）→ 汇编（-c）→ 链接——理解各阶段产物是排查「头文件缺失 &#x2F; 未定义引用」的基础。 静态库 vs 动态库：.a 链进可执行文件（体积大、部署简单），.so 运行时加载（体积小、可热更新但需管理路径）。 Make 是 C 工程的事实构建标准：依赖关系 + 增量编译，几十行 Makefile 管理中型项目绰绰有余。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:37:20.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.567Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="C">
+<meta property="article:tag" content="Makefile">
+<meta property="article:tag" content="gdb">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/c/04-c-build-engineering/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/c/04-c-build-engineering/","path":"c/04-c-build-engineering/","title":"第四章：构建与工程实践"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：构建与工程实践 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9A%E6%9E%84%E5%BB%BA%E4%B8%8E%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5"><span class="nav-number">1.</span> <span class="nav-text">第四章：构建与工程实践</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81gcc-%E5%B7%A5%E5%85%B7%E9%93%BE%E4%B8%8E%E7%BC%96%E8%AF%91%E5%9B%9B%E9%98%B6%E6%AE%B5"><span class="nav-number">1.2.</span> <span class="nav-text">一、gcc 工具链与编译四阶段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%A4%9A%E6%96%87%E4%BB%B6%E7%BB%84%E7%BB%87%E4%B8%8E%E5%A4%B4%E6%96%87%E4%BB%B6"><span class="nav-number">1.3.</span> <span class="nav-text">二、多文件组织与头文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81Makefile"><span class="nav-number">1.4.</span> <span class="nav-text">三、Makefile</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%C2%B7%E8%A1%A5%E5%85%85%E3%80%81CMake%EF%BC%9A%E7%8E%B0%E4%BB%A3-target-%E5%86%99%E6%B3%95"><span class="nav-number">1.5.</span> <span class="nav-text">三·补充、CMake：现代 target 写法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%C2%B7%E8%A1%A5%E5%85%85%E4%BA%8C%E3%80%81%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%E7%AE%80%E4%BB%8B"><span class="nav-number">1.6.</span> <span class="nav-text">三·补充二、交叉编译简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E9%9D%99%E6%80%81%E5%BA%93%E4%B8%8E%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">1.7.</span> <span class="nav-text">四、静态库与动态库</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%B0%83%E8%AF%95%E4%B8%8E%E6%80%A7%E8%83%BD"><span class="nav-number">1.8.</span> <span class="nav-text">五、调试与性能</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-gdb-%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C"><span class="nav-number">1.8.1.</span> <span class="nav-text">1. gdb 常用操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-perf-%E7%83%AD%E7%82%B9%E5%88%86%E6%9E%90"><span class="nav-number">1.8.2.</span> <span class="nav-text">2. perf 热点分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E9%9D%99%E6%80%81%E5%88%86%E6%9E%90%E4%B8%8E-CI-%E9%9B%86%E6%88%90"><span class="nav-number">1.8.3.</span> <span class="nav-text">3. 静态分析与 CI 集成</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81C-ABI-%E4%B8%8E-FFI-%E6%A1%A5%E6%8E%A5"><span class="nav-number">1.9.</span> <span class="nav-text">六、C ABI 与 FFI 桥接</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%A2%AB-C-Rust-Python-%E8%B0%83%E7%94%A8%EF%BC%9A%E7%A8%B3%E5%AE%9A-ABI-%E5%A4%B4"><span class="nav-number">1.9.1.</span> <span class="nav-text">1. 被 C++&#x2F;Rust&#x2F;Python 调用：稳定 ABI 头</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1"><span class="nav-number">1.10.</span> <span class="nav-text">七、常见陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/c/04-c-build-engineering/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：构建与工程实践 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：构建与工程实践
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:37:20" itemprop="dateCreated datePublished" datetime="2026-05-01T12:37:20+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/C-%E8%AF%AD%E8%A8%80/" itemprop="url" rel="index"><span itemprop="name">C 语言</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>7.7k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：构建与工程实践"><a href="#第四章：构建与工程实践" class="headerlink" title="第四章：构建与工程实践"></a>第四章：构建与工程实践</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>编译四阶段</strong>：预处理（<code>-E</code>）→ 编译（<code>-S</code>）→ 汇编（<code>-c</code>）→ 链接——理解各阶段产物是排查「头文件缺失 &#x2F; 未定义引用」的基础。</li>
+<li><strong>静态库 vs 动态库</strong>：<code>.a</code> 链进可执行文件（体积大、部署简单），<code>.so</code> 运行时加载（体积小、可热更新但需管理路径）。</li>
+<li><strong>Make 是 C 工程的事实构建标准</strong>：依赖关系 + 增量编译，几十行 Makefile 管理中型项目绰绰有余。</li>
+<li><strong>调试三件套</strong>：<code>gdb</code>（断点&#x2F;查看）、ASan（内存错误）、<code>perf</code>（性能热点）——修复效率取决于工具而非脑补。</li>
+<li><strong>C ABI 是互操作边界</strong>：头文件 + 符号约定是所有语言与 C 打交道的接口，<code>extern &quot;C&quot;</code>、<code>void*</code>、回调是三大常见桥接。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/c/03-c-strings-stdlib/">第三章：字符串与常用标准库</a>，是 C 系列收官章。示例基于 gcc 14 &#x2F; GNU make。</p>
+</blockquote>
+<hr>
+<h2 id="一、gcc-工具链与编译四阶段"><a href="#一、gcc-工具链与编译四阶段" class="headerlink" title="一、gcc 工具链与编译四阶段"></a>一、gcc 工具链与编译四阶段</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 四阶段手动走一遍（理解用）</span></span><br><span class="line">gcc -E main.c -o main.i     <span class="comment"># 1. 预处理：展开 #include/#define</span></span><br><span class="line">gcc -S main.i -o main.s     <span class="comment"># 2. 编译：生成汇编</span></span><br><span class="line">gcc -c main.s -o main.o     <span class="comment"># 3. 汇编：生成目标文件</span></span><br><span class="line">gcc main.o -o prog          <span class="comment"># 4. 链接：合并目标与库</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 日常一步到位 + 推荐告警等级</span></span><br><span class="line">gcc -Wall -Wextra -Werror -g -O2 main.c -o prog</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>常用选项</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>-Wall -Wextra</code></strong></td>
+<td>高强度告警；<code>-Werror</code> 告警即错误</td>
+</tr>
+<tr>
+<td><strong><code>-g</code></strong></td>
+<td>生成调试信息（gdb&#x2F;ASan 符号必需）</td>
+</tr>
+<tr>
+<td><strong><code>-O0/-O2/-Os</code></strong></td>
+<td>优化等级：调试用 O0、发布用 O2、嵌入用 Os</td>
+</tr>
+<tr>
+<td><strong><code>-std=c11/-std=c17</code></strong></td>
+<td>指定标准，避免 GNU 扩展依赖</td>
+</tr>
+<tr>
+<td><strong><code>-I/-L/-l</code></strong></td>
+<td>头文件路径 &#x2F; 库路径 &#x2F; 链接库名（<code>-lm</code> 数学库）</td>
+</tr>
+<tr>
+<td><strong><code>-fsanitize=address,undefined</code></strong></td>
+<td>ASan+UBSan 运行时检查</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>调试构建与发布构建分离</strong>：<code>make DEBUG=1</code> 走 <code>-O0 -g -fsanitize</code>，发布走 <code>-O2 -DNDEBUG</code>（关闭 assert）。</p>
+</blockquote>
+<hr>
+<h2 id="二、多文件组织与头文件"><a href="#二、多文件组织与头文件" class="headerlink" title="二、多文件组织与头文件"></a>二、多文件组织与头文件</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* stack.h —— 头文件：声明 + include guard */</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifndef</span> STACK_H</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> STACK_H</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stddef.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="type">int</span>   *data;</span><br><span class="line">    <span class="type">size_t</span> len;</span><br><span class="line">    <span class="type">size_t</span> cap;</span><br><span class="line">&#125; Stack;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span>  <span class="title function_">stack_init</span><span class="params">(Stack *s)</span>;</span><br><span class="line"><span class="type">int</span>   <span class="title function_">stack_push</span><span class="params">(Stack *s, <span class="type">int</span> v)</span>;   <span class="comment">/* 0 成功，-1 失败 */</span></span><br><span class="line"><span class="type">int</span>   <span class="title function_">stack_pop</span><span class="params">(Stack *s, <span class="type">int</span> *out)</span>;</span><br><span class="line"><span class="type">void</span>  <span class="title function_">stack_free</span><span class="params">(Stack *s)</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">/* STACK_H */</span></span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* stack.c —— 实现：static 函数仅本编译单元可见 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;stack.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">stack_init</span><span class="params">(Stack *s)</span> &#123; s-&gt;data = <span class="literal">NULL</span>; s-&gt;len = s-&gt;cap = <span class="number">0</span>; &#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">stack_push</span><span class="params">(Stack *s, <span class="type">int</span> v)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (s-&gt;len == s-&gt;cap) &#123;</span><br><span class="line">        <span class="type">size_t</span> ncap = s-&gt;cap ? s-&gt;cap * <span class="number">2</span> : <span class="number">8</span>;</span><br><span class="line">        <span class="type">int</span> *nd = <span class="built_in">realloc</span>(s-&gt;data, ncap * <span class="keyword">sizeof</span> *nd);</span><br><span class="line">        <span class="keyword">if</span> (!nd) <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">        s-&gt;data = nd;</span><br><span class="line">        s-&gt;cap = ncap;</span><br><span class="line">    &#125;</span><br><span class="line">    s-&gt;data[s-&gt;len++] = v;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">stack_pop</span><span class="params">(Stack *s, <span class="type">int</span> *out)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (s-&gt;len == <span class="number">0</span>) <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    *out = s-&gt;data[--s-&gt;len];</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">stack_free</span><span class="params">(Stack *s)</span> &#123; <span class="built_in">free</span>(s-&gt;data); s-&gt;data = <span class="literal">NULL</span>; s-&gt;len = s-&gt;cap = <span class="number">0</span>; &#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* main.c */</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;stack.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">    Stack s;</span><br><span class="line">    stack_init(&amp;s);</span><br><span class="line">    stack_push(&amp;s, <span class="number">1</span>);</span><br><span class="line">    stack_push(&amp;s, <span class="number">2</span>);</span><br><span class="line">    <span class="type">int</span> v;</span><br><span class="line">    <span class="keyword">while</span> (stack_pop(&amp;s, &amp;v) == <span class="number">0</span>) <span class="built_in">printf</span>(<span class="string">&quot;%d &quot;</span>, v);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;\n&quot;</span>);</span><br><span class="line">    stack_free(&amp;s);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>头文件三规则</strong>：</p>
+<ol>
+<li><strong>include guard</strong>（或 <code>#pragma once</code>）防重复包含。</li>
+<li>头文件只放<strong>声明</strong>（类型&#x2F;原型&#x2F;宏），<strong>定义放 .c</strong>——<code>static</code> 保持内部链接。</li>
+<li>头文件自身可独立编译（自带所需 include）。</li>
+</ol>
+<hr>
+<h2 id="三、Makefile"><a href="#三、Makefile" class="headerlink" title="三、Makefile"></a>三、Makefile</h2><figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 可变参数：make DEBUG=1</span></span><br><span class="line">CC      ?= gcc</span><br><span class="line">CFLAGS  := -std=c11 -Wall -Wextra</span><br><span class="line">LDLIBS  :=</span><br><span class="line">SRC     := <span class="variable">$(<span class="built_in">wildcard</span> *.c)</span></span><br><span class="line">OBJ     := $(SRC:.c=.o)</span><br><span class="line">TARGET  := prog</span><br><span class="line"></span><br><span class="line"><span class="keyword">ifeq</span> (<span class="variable">$(DEBUG)</span>,1)</span><br><span class="line">  CFLAGS += -O0 -g -fsanitize=address,undefined</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">  CFLAGS += -O2 -DNDEBUG</span><br><span class="line"><span class="keyword">endif</span></span><br><span class="line"></span><br><span class="line"><span class="section">all: <span class="variable">$(TARGET)</span></span></span><br><span class="line"></span><br><span class="line"><span class="variable">$(TARGET)</span>: <span class="variable">$(OBJ)</span></span><br><span class="line">	<span class="variable">$(CC)</span> <span class="variable">$(CFLAGS)</span> -o <span class="variable">$@</span> <span class="variable">$^</span> <span class="variable">$(LDLIBS)</span></span><br><span class="line"></span><br><span class="line"><span class="section">%.o: %.c stack.h          # 头文件依赖</span></span><br><span class="line">	<span class="variable">$(CC)</span> <span class="variable">$(CFLAGS)</span> -c -o <span class="variable">$@</span> <span class="variable">$&lt;</span></span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -f <span class="variable">$(OBJ)</span> <span class="variable">$(TARGET)</span></span><br><span class="line"></span><br><span class="line"><span class="meta"><span class="keyword">.PHONY</span>: all clean</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">make            <span class="comment"># 增量构建：只重编改动的 .c</span></span><br><span class="line">make clean      <span class="comment"># 清理</span></span><br><span class="line">make DEBUG=1    <span class="comment"># 调试构建（带 ASan）</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>四个自动变量</strong>：<code>$@</code> 目标、<code>$^</code> 全部依赖、<code>$&lt;</code> 首个依赖、<code>$(SRC:.c=.o)</code> 模式替换。<code>TAB</code> 缩进是 Makefile 的铁律（空格报错）。</p>
+</blockquote>
+<hr>
+<h2 id="三·补充、CMake：现代-target-写法"><a href="#三·补充、CMake：现代-target-写法" class="headerlink" title="三·补充、CMake：现代 target 写法"></a>三·补充、CMake：现代 target 写法</h2><p>项目稍大或要跨平台（含 MSVC）时，CMake（<strong>3.28+</strong>）是事实标准。核心是<strong>围绕 target 组织属性</strong>，不再用全局变量：</p>
+<figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">cmake_minimum_required</span>(VERSION <span class="number">3.28</span>)</span><br><span class="line"><span class="keyword">project</span>(stackdemo C)</span><br><span class="line"></span><br><span class="line"><span class="keyword">set</span>(CMAKE_C_STANDARD <span class="number">17</span>)            <span class="comment"># C17 基准；C23 用 23（3.28+ 支持）</span></span><br><span class="line"><span class="keyword">set</span>(CMAKE_C_STANDARD_REQUIRED <span class="keyword">ON</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">add_library</span>(stack STATIC src/stack.c)</span><br><span class="line"><span class="comment"># PUBLIC：使用者和本库都需要 include；PRIVATE：仅本库内部</span></span><br><span class="line"><span class="keyword">target_include_directories</span>(stack PUBLIC <span class="keyword">include</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">target_compile_options</span>(stack PRIVATE</span><br><span class="line">    $&lt;$&lt;C_COMPILER_ID:GNU,Clang&gt;:-Wall -Wextra -Wpedantic&gt;</span><br><span class="line">    $&lt;$&lt;C_COMPILER_ID:MSVC&gt;:/W4&gt;)</span><br><span class="line"></span><br><span class="line"><span class="keyword">add_executable</span>(prog src/main.c)</span><br><span class="line"><span class="keyword">target_link_libraries</span>(prog PRIVATE stack)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Debug 配置自动带 sanitizer（单配置生成器）</span></span><br><span class="line"><span class="keyword">if</span>(CMAKE_BUILD_TYPE <span class="keyword">STREQUAL</span> <span class="string">&quot;Debug&quot;</span> <span class="keyword">AND</span> CMAKE_C_COMPILER_ID <span class="keyword">MATCHES</span> <span class="string">&quot;GNU|Clang&quot;</span>)</span><br><span class="line">    <span class="keyword">target_compile_options</span>(prog PRIVATE -fsanitize=address,undefined)</span><br><span class="line">    <span class="keyword">target_link_options</span>(prog PRIVATE -fsanitize=address,undefined)</span><br><span class="line"><span class="keyword">endif</span>()</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug</span><br><span class="line">cmake --build build</span><br></pre></td></tr></table></figure>
+
+<p><strong>现代 CMake 三原则</strong>：</p>
+<ol>
+<li><strong>一切挂在 target 上</strong>：<code>target_include_directories</code> &#x2F; <code>target_compile_options</code> &#x2F; <code>target_link_libraries</code>，拒绝 <code>include_directories()</code> 全局污染。</li>
+<li><strong>PUBLIC&#x2F;PRIVATE&#x2F;INTERFACE 表达传递性</strong>：依赖的头文件路径随库自动传递给使用者。</li>
+<li><strong>生成器表达式</strong>（<code>$&lt;...&gt;</code>）按编译器&#x2F;配置分流选项，一份脚本同时服务 GCC 与 MSVC 2022。</li>
+</ol>
+<hr>
+<h2 id="三·补充二、交叉编译简介"><a href="#三·补充二、交叉编译简介" class="headerlink" title="三·补充二、交叉编译简介"></a>三·补充二、交叉编译简介</h2><p>嵌入式场景在 x86 主机上编出 ARM 目标程序，CMake 用 <strong>toolchain 文件</strong>描述目标平台：</p>
+<figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># arm-linux.cmake</span></span><br><span class="line"><span class="keyword">set</span>(CMAKE_SYSTEM_NAME Linux)</span><br><span class="line"><span class="keyword">set</span>(CMAKE_SYSTEM_PROCESSOR arm)</span><br><span class="line"><span class="keyword">set</span>(CMAKE_C_COMPILER arm-linux-gnueabihf-gcc)</span><br><span class="line"><span class="keyword">set</span>(CMAKE_FIND_ROOT_PATH /opt/arm-sysroot)   <span class="comment"># 目标平台的头文件/库根</span></span><br><span class="line"><span class="keyword">set</span>(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)</span><br><span class="line"><span class="keyword">set</span>(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)</span><br><span class="line"><span class="keyword">set</span>(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cmake -S . -B build-arm -DCMAKE_TOOLCHAIN_FILE=arm-linux.cmake</span><br><span class="line">cmake --build build-arm</span><br><span class="line">file build-arm/prog        <span class="comment"># ELF 32-bit ARM —— 主机不可直接运行</span></span><br></pre></td></tr></table></figure>
+
+<p>要点：<strong>编译器换前缀</strong>（<code>arm-linux-gnueabihf-gcc</code>）、<strong>sysroot 提供目标侧头文件与库</strong>、<code>find_*</code> 只在 sysroot 内找。裸机&#x2F;RTOS 换 <code>arm-none-eabi-gcc</code> 即可，链接脚本与启动文件随工程自带。</p>
+<hr>
+<h2 id="四、静态库与动态库"><a href="#四、静态库与动态库" class="headerlink" title="四、静态库与动态库"></a>四、静态库与动态库</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 静态库：目标文件打包进可执行文件</span></span><br><span class="line">gcc -c stack.c -o stack.o</span><br><span class="line">ar rcs libstack.a stack.o</span><br><span class="line">gcc main.c -L. -lstack -o static_prog      <span class="comment"># 体积大，单文件部署</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 动态库：运行时加载</span></span><br><span class="line">gcc -fPIC -shared stack.c -o libstack.so</span><br><span class="line">gcc main.c -L. -lstack -o shared_prog</span><br><span class="line">LD_LIBRARY_PATH=. ./shared_prog            <span class="comment"># 运行时找库路径</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看依赖与符号</span></span><br><span class="line">ldd shared_prog                            <span class="comment"># 动态依赖列表</span></span><br><span class="line">nm -D libstack.so | grep stack             <span class="comment"># 导出符号</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>静态库 <code>.a</code></th>
+<th>动态库 <code>.so</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>链接时机</td>
+<td>编译期拷入</td>
+<td>运行时加载</td>
+</tr>
+<tr>
+<td>体积</td>
+<td>可执行文件大</td>
+<td>共享，多程序复用</td>
+</tr>
+<tr>
+<td>升级</td>
+<td>需重新链接</td>
+<td>替换 .so 即可</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>单文件简单</td>
+<td>需管理库路径&#x2F;版本（soname）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>运行时找不到 <code>.so</code></strong> 是新手高频问题：<code>LD_LIBRARY_PATH</code> 临时、<code>ldconfig</code> 配 <code>/etc/ld.so.conf</code> 持久、或编译时 <code>-Wl,-rpath,/path</code> 内嵌路径。</p>
+</blockquote>
+<hr>
+<h2 id="五、调试与性能"><a href="#五、调试与性能" class="headerlink" title="五、调试与性能"></a>五、调试与性能</h2><h3 id="1-gdb-常用操作"><a href="#1-gdb-常用操作" class="headerlink" title="1. gdb 常用操作"></a>1. gdb 常用操作</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">gcc -O0 -g main.c -o prog</span><br><span class="line">gdb ./prog</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>break main</code> &#x2F; <code>b file:line</code></strong></td>
+<td>断点</td>
+</tr>
+<tr>
+<td><strong><code>run</code> &#x2F; <code>next</code> &#x2F; <code>step</code></strong></td>
+<td>运行 &#x2F; 逐过程 &#x2F; 逐语句（可进函数）</td>
+</tr>
+<tr>
+<td><strong><code>print expr</code></strong></td>
+<td>查看变量（<code>p *s</code>、<code>p arr[2]@3</code>）</td>
+</tr>
+<tr>
+<td><strong><code>bt</code></strong></td>
+<td>崩溃回溯调用栈（配合 core 文件）</td>
+</tr>
+<tr>
+<td><strong><code>watch var</code></strong></td>
+<td>数据断点：变量被改即停</td>
+</tr>
+<tr>
+<td><strong><code>info locals / frame n</code></strong></td>
+<td>局部变量 &#x2F; 切栈帧</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 段错误现场还原：开 core dump</span></span><br><span class="line"><span class="built_in">ulimit</span> -c unlimited</span><br><span class="line">./prog                 <span class="comment"># 崩溃生成 core</span></span><br><span class="line">gdb ./prog core        <span class="comment"># bt 直接定位出错行</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-perf-热点分析"><a href="#2-perf-热点分析" class="headerlink" title="2. perf 热点分析"></a>2. perf 热点分析</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">perf record -g ./prog      <span class="comment"># 采样（含调用栈）</span></span><br><span class="line">perf report                <span class="comment"># 热点函数排序</span></span><br><span class="line">perf <span class="built_in">stat</span> ./prog           <span class="comment"># 汇总：cycles/cache-miss/branch-miss</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-静态分析与-CI-集成"><a href="#3-静态分析与-CI-集成" class="headerlink" title="3. 静态分析与 CI 集成"></a>3. 静态分析与 CI 集成</h3><p>编译器告警之外再加一层静态分析，并在 CI 里强制：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># GCC 13+ 自带静态分析器</span></span><br><span class="line">gcc -fanalyzer -Wall -Wextra -c main.c</span><br><span class="line"></span><br><span class="line"><span class="comment"># clang-tidy（语义级检查，需 compile_commands.json）</span></span><br><span class="line">cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON</span><br><span class="line">clang-tidy -p build src/*.c</span><br><span class="line"></span><br><span class="line"><span class="comment"># cppcheck（轻量，无编译数据库也能跑）</span></span><br><span class="line">cppcheck --<span class="built_in">enable</span>=warning,performance,portability --std=c17 src/</span><br></pre></td></tr></table></figure>
+
+<p>GitHub Actions 最小流水线（编译 + ASan 测试 + 静态分析）：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">name:</span> <span class="string">ci</span></span><br><span class="line"><span class="attr">on:</span> [<span class="string">push</span>, <span class="string">pull_request</span>]</span><br><span class="line"><span class="attr">jobs:</span></span><br><span class="line">  <span class="attr">build:</span></span><br><span class="line">    <span class="attr">runs-on:</span> <span class="string">ubuntu-latest</span></span><br><span class="line">    <span class="attr">steps:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">uses:</span> <span class="string">actions/checkout@v4</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">sudo</span> <span class="string">apt-get</span> <span class="string">install</span> <span class="string">-y</span> <span class="string">gcc-14</span> <span class="string">clang-tidy</span> <span class="string">cppcheck</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">cmake</span> <span class="string">-S</span> <span class="string">.</span> <span class="string">-B</span> <span class="string">build</span> <span class="string">-DCMAKE_BUILD_TYPE=Debug</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">cmake</span> <span class="string">--build</span> <span class="string">build</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">ctest</span> <span class="string">--test-dir</span> <span class="string">build</span> <span class="string">--output-on-failure</span>   <span class="comment"># 测试内已带 ASan</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">cppcheck</span> <span class="string">--error-exitcode=1</span> <span class="string">--enable=warning</span> <span class="string">src/</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>CI 里的三档闸门</strong>：<code>-Wall -Wextra -Werror</code>（编译即失败）、ASan&#x2F;UBSan 测试（运行时失败）、静态分析（模式级失败）——任何一档红都挡合并，是 C 项目质量底线。</p>
+</blockquote>
+<hr>
+<h2 id="六、C-ABI-与-FFI-桥接"><a href="#六、C-ABI-与-FFI-桥接" class="headerlink" title="六、C ABI 与 FFI 桥接"></a>六、C ABI 与 FFI 桥接</h2><h3 id="1-被-C-Rust-Python-调用：稳定-ABI-头"><a href="#1-被-C-Rust-Python-调用：稳定-ABI-头" class="headerlink" title="1. 被 C++&#x2F;Rust&#x2F;Python 调用：稳定 ABI 头"></a>1. 被 C++&#x2F;Rust&#x2F;Python 调用：稳定 ABI 头</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* mylib.h —— C ABI 导出：extern &quot;C&quot; 防 C++ 名字修饰 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifndef</span> MYLIB_H</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> MYLIB_H</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> __cplusplus</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">Context</span> <span class="title">Context</span>;</span>          <span class="comment">/* 不透明指针：隐藏实现 */</span></span><br><span class="line"></span><br><span class="line">Context *<span class="title function_">context_create</span><span class="params">(<span class="type">int</span> cap)</span>;</span><br><span class="line"><span class="type">void</span>     <span class="title function_">context_destroy</span><span class="params">(Context *c)</span>;</span><br><span class="line"><span class="type">int</span>      <span class="title function_">context_process</span><span class="params">(Context *c, <span class="type">const</span> <span class="type">char</span> *in, <span class="type">size_t</span> len)</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> __cplusplus</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Python ctypes 直接调用（.so 无需绑定器）</span></span><br><span class="line"><span class="keyword">import</span> ctypes</span><br><span class="line">lib = ctypes.CDLL(<span class="string">&quot;./libmylib.so&quot;</span>)</span><br><span class="line">ctx = lib.context_create(<span class="number">64</span>)</span><br><span class="line">lib.context_process(ctx, <span class="string">b&quot;hello&quot;</span>, <span class="number">5</span>)</span><br><span class="line">lib.context_destroy(ctx)</span><br></pre></td></tr></table></figure>
+
+<p><strong>三个桥接惯例</strong>：</p>
+<ol>
+<li><strong><code>extern &quot;C&quot;</code></strong>：关闭 C++ 名字修饰，符号保持 C 约定。</li>
+<li><strong>不透明指针</strong>（<code>typedef struct X X;</code>）：实现隐藏在 .c，跨语言只需传指针。</li>
+<li><strong>回调传函数指针 + <code>void *user_data</code></strong>：C 侧「多态」的标准接缝（见第二章）。</li>
+</ol>
+<hr>
+<h2 id="七、常见陷阱"><a href="#七、常见陷阱" class="headerlink" title="七、常见陷阱"></a>七、常见陷阱</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>未定义引用</strong></td>
+<td>忘链库&#x2F;漏 .c 文件；<code>-l</code> 顺序在后（<code>gcc main.o -lfoo</code>）</td>
+</tr>
+<tr>
+<td><strong>头文件循环包含</strong></td>
+<td>guard 只防重入；互引改前置声明 <code>struct X;</code></td>
+</tr>
+<tr>
+<td><strong>重复定义</strong></td>
+<td>头文件写了定义（非 static）；定义放 .c</td>
+</tr>
+<tr>
+<td><strong>Makefile 空格缩进</strong></td>
+<td>命令行必须 TAB</td>
+</tr>
+<tr>
+<td><strong>依赖缺失</strong></td>
+<td>改头文件没重编：<code>%.o: %.c stack.h</code> 显式声明</td>
+</tr>
+<tr>
+<td><strong>发布用 O0</strong></td>
+<td>性能测试必须 -O2；调试必须 -O0 -g</td>
+</tr>
+<tr>
+<td><strong>gdb 无符号</strong></td>
+<td>忘 <code>-g</code>；优化器会重排变量，调试配 -O0</td>
+</tr>
+<tr>
+<td><strong>.so 找不到</strong></td>
+<td>rpath&#x2F;ldconfig&#x2F;LD_LIBRARY_PATH 三选一</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>编译阶段</td>
+<td>-E&#x2F;-S&#x2F;-c&#x2F;链接四步；<code>-Wall -Wextra -g -O2</code> 日常组合</td>
+</tr>
+<tr>
+<td>CMake</td>
+<td>target 属性化（PUBLIC&#x2F;PRIVATE）、生成器表达式分流 GCC&#x2F;MSVC</td>
+</tr>
+<tr>
+<td>交叉编译</td>
+<td>toolchain 文件 + sysroot；换编译器前缀编 ARM 目标</td>
+</tr>
+<tr>
+<td>头文件</td>
+<td>guard + 只声明；static 内部链接；可独立编译</td>
+</tr>
+<tr>
+<td>Makefile</td>
+<td>自动变量 <code>$@ $^ $&lt;</code>；DEBUG 分流；TAB 铁律</td>
+</tr>
+<tr>
+<td>库</td>
+<td><code>.a</code> 部署简单 &#x2F; <code>.so</code> 升级灵活；运行路径 rpath 管理</td>
+</tr>
+<tr>
+<td>调试</td>
+<td>gdb 断点&#x2F;watch&#x2F;bt+core；perf record 热点；ASan 抓内存错</td>
+</tr>
+<tr>
+<td>质量闸门</td>
+<td>编译告警 <code>-Werror</code> + sanitizer 测试 + cppcheck&#x2F;clang-tidy 三档进 CI</td>
+</tr>
+<tr>
+<td>FFI</td>
+<td>extern “C” + 不透明指针 + 回调 user_data 三惯例</td>
+</tr>
+</tbody></table>
+<hr>
+<p>至此 C 系列四章完结：</p>
+<ol>
+<li><a href="/c/01-c-language-basics/">第一章：C 语言基础</a>——类型、控制流、结构体、预处理</li>
+<li><a href="/c/02-c-pointers-memory/">第二章：指针、数组与内存管理</a>——指针算术、动态内存、ASan</li>
+<li><a href="/c/03-c-strings-stdlib/">第三章：字符串与常用标准库</a>——string.h&#x2F;stdio&#x2F;stdlib&#x2F;time 安全用法</li>
+<li><a href="/c/04-c-build-engineering/">第四章：构建与工程实践</a>——工具链、Makefile、库、gdb&#x2F;perf、FFI</li>
+</ol>
+<p>延伸阅读：与 <a href="/rust/rust-guide/">Rust</a> 对照（所有权如何系统性消灭本章的内存陷阱）；嵌入式外设实践见 <a href="/embedded/04-uart/">UART</a> 等系列。官方标准草案：<strong><a target="_blank" rel="noopener" href="https://www.open-std.org/jtc1/sc22/wg14/">https://www.open-std.org/jtc1/sc22/wg14/</a></strong></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/C/" rel="tag"># C</a>
+              <a href="/tags/Makefile/" rel="tag"># Makefile</a>
+              <a href="/tags/gdb/" rel="tag"># gdb</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/c/03-c-strings-stdlib/" rel="prev" title="第三章：字符串与常用标准库">
+                  <i class="fa fa-angle-left"></i> 第三章：字符串与常用标准库
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/blockchain/02-blockchain-minimal-implementation/" rel="next" title="第二章：区块链代码示例：最小实现">
+                  第二章：区块链代码示例：最小实现 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

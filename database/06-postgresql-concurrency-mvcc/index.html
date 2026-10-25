@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第六章：PostgreSQL 并发与 MVCC 入门概念基础 并发问题：多个事务同时读写同一批行时，会出现脏读、不可重复读、幻读与丢失更新；数据库必须给出确定性的答案——这就是隔离级别要解决的问题。 MVCC（多版本并发控制）：每行保留多个版本，行头部的 xmin &#x2F; xmax 记录创建与删除它的事务；读按快照判断可见性，做到读写互不阻塞。 隔离级别决定快照粒度：默认 READ COMM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第六章：PostgreSQL 并发与 MVCC 入门">
+<meta property="og:url" content="https://my919.github.io/database/06-postgresql-concurrency-mvcc/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第六章：PostgreSQL 并发与 MVCC 入门概念基础 并发问题：多个事务同时读写同一批行时，会出现脏读、不可重复读、幻读与丢失更新；数据库必须给出确定性的答案——这就是隔离级别要解决的问题。 MVCC（多版本并发控制）：每行保留多个版本，行头部的 xmin &#x2F; xmax 记录创建与删除它的事务；读按快照判断可见性，做到读写互不阻塞。 隔离级别决定快照粒度：默认 READ COMM">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T09:10:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.572Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="MVCC">
+<meta property="article:tag" content="PostgreSQL">
+<meta property="article:tag" content="事务">
+<meta property="article:tag" content="锁">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/database/06-postgresql-concurrency-mvcc/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/database/06-postgresql-concurrency-mvcc/","path":"database/06-postgresql-concurrency-mvcc/","title":"第六章：PostgreSQL 并发与 MVCC 入门"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第六章：PostgreSQL 并发与 MVCC 入门 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%85%AD%E7%AB%A0%EF%BC%9APostgreSQL-%E5%B9%B6%E5%8F%91%E4%B8%8E-MVCC-%E5%85%A5%E9%97%A8"><span class="nav-number">1.</span> <span class="nav-text">第六章：PostgreSQL 并发与 MVCC 入门</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BF%AB%E7%85%A7%E8%AF%BB%EF%BC%88%E6%A6%82%E5%BF%B5%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">快照读（概念）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%BF%AB%E7%85%A7%E4%B8%8E%E9%BB%98%E8%AE%A4%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB"><span class="nav-number">1.3.</span> <span class="nav-text">一、快照与默认隔离级别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%98%BE%E5%BC%8F%E8%A1%8C%E9%94%81%EF%BC%9AFOR-UPDATE-FOR-SHARE"><span class="nav-number">1.4.</span> <span class="nav-text">二、显式行锁：FOR UPDATE &#x2F; FOR SHARE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81SKIP-LOCKED-%E4%B8%8E-NOWAIT%EF%BC%88%E9%98%9F%E5%88%97%E4%B8%8E%E6%8A%A2%E9%94%81%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">三、SKIP LOCKED 与 NOWAIT（队列与抢锁）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%AD%BB%E9%94%81%EF%BC%88deadlock-detected%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">四、死锁（deadlock detected）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%A1%A8%E7%BA%A7%E9%94%81%E5%86%B2%E7%AA%81%E7%9F%A9%E9%98%B5%EF%BC%88%E5%AE%9E%E6%88%98%E7%89%88%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">五、表级锁冲突矩阵（实战版）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81pg-stat-activity-%E6%8E%92%E9%94%81%E5%AE%9E%E6%88%98"><span class="nav-number">1.8.</span> <span class="nav-text">六、pg_stat_activity 排锁实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%89%BE%E9%98%BB%E5%A1%9E%E9%93%BE"><span class="nav-number">1.8.1.</span> <span class="nav-text">1. 找阻塞链</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%9C%8B%E9%94%81%E7%9A%84%E7%BB%86%E8%8A%82"><span class="nav-number">1.8.2.</span> <span class="nav-text">2. 看锁的细节</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%A4%84%E7%BD%AE%E9%98%BB%E5%A1%9E%E6%BA%90"><span class="nav-number">1.8.3.</span> <span class="nav-text">3. 处置阻塞源</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81VACUUM-%E6%9C%BA%E5%88%B6%E6%B7%B1%E5%85%A5"><span class="nav-number">1.9.</span> <span class="nav-text">七、VACUUM 机制深入</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%AD%BB%E5%85%83%E7%BB%84%E8%A7%82%E6%B5%8B"><span class="nav-number">1.9.1.</span> <span class="nav-text">1. 死元组观测</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-autovacuum-%E8%A7%A6%E5%8F%91%E5%85%AC%E5%BC%8F"><span class="nav-number">1.9.2.</span> <span class="nav-text">2. autovacuum 触发公式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%99%AE%E9%80%9A-VACUUM-vs-VACUUM-FULL"><span class="nav-number">1.9.3.</span> <span class="nav-text">3. 普通 VACUUM vs VACUUM FULL</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E4%BA%8B%E5%8A%A1-ID-%E5%9B%9E%E5%8D%B7%EF%BC%88xid-wraparound%EF%BC%89%E4%B8%8E-freeze"><span class="nav-number">1.10.</span> <span class="nav-text">八、事务 ID 回卷（xid wraparound）与 freeze</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E9%97%AE%E9%A2%98%E6%98%AF%E4%BB%80%E4%B9%88"><span class="nav-number">1.10.1.</span> <span class="nav-text">1. 问题是什么</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%A7%A3%E6%B3%95%EF%BC%9Afreeze%EF%BC%88%E5%86%BB%E7%BB%93%EF%BC%89"><span class="nav-number">1.10.2.</span> <span class="nav-text">2. 解法：freeze（冻结）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%9B%91%E6%8E%A7%E4%B8%8E%E5%BA%94%E6%80%A5"><span class="nav-number">1.10.3.</span> <span class="nav-text">3. 监控与应急</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E4%B8%8E-MySQL-InnoDB-%E7%9A%84%E7%B2%97%E5%AF%B9%E7%85%A7%EF%BC%88%E9%98%B2%E6%B7%B7%EF%BC%89"><span class="nav-number">1.11.</span> <span class="nav-text">九、与 MySQL InnoDB 的粗对照（防混）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"><span class="nav-number">1.12.</span> <span class="nav-text">十、延伸阅读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.13.</span> <span class="nav-text">本章小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E8%AF%AD"><span class="nav-number">1.14.</span> <span class="nav-text">结语</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/database/06-postgresql-concurrency-mvcc/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第六章：PostgreSQL 并发与 MVCC 入门 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第六章：PostgreSQL 并发与 MVCC 入门
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 17:10:00" itemprop="dateCreated datePublished" datetime="2026-05-03T17:10:00+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/" itemprop="url" rel="index"><span itemprop="name">数据库</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.1k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第六章：PostgreSQL-并发与-MVCC-入门"><a href="#第六章：PostgreSQL-并发与-MVCC-入门" class="headerlink" title="第六章：PostgreSQL 并发与 MVCC 入门"></a>第六章：PostgreSQL 并发与 MVCC 入门</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>并发问题</strong>：多个事务同时读写同一批行时，会出现<strong>脏读、不可重复读、幻读</strong>与<strong>丢失更新</strong>；数据库必须给出确定性的答案——这就是<strong>隔离级别</strong>要解决的问题。</li>
+<li><strong>MVCC（多版本并发控制）</strong>：每行保留<strong>多个版本</strong>，行头部的 <strong><code>xmin</code> &#x2F; <code>xmax</code></strong> 记录创建与删除它的事务；读按<strong>快照</strong>判断可见性，做到<strong>读写互不阻塞</strong>。</li>
+<li><strong>隔离级别决定快照粒度</strong>：默认 <strong><code>READ COMMITTED</code></strong> 每条语句一个快照；<strong><code>REPEATABLE READ</code></strong> 整个事务一个快照；<strong><code>SERIALIZABLE</code></strong> 进一步检测读写冲突，冲突时需应用<strong>重试</strong>。</li>
+<li><strong>MVCC 不是免费的</strong>：旧版本（<strong>死元组</strong>）要靠 <strong><code>VACUUM</code></strong> 回收；「先读后改」的临界区仍需<strong>显式行锁（<code>FOR UPDATE</code>）</strong>，并发抢任务用 <strong><code>SKIP LOCKED</code></strong>。</li>
+</ol>
+<h2 id="快照读（概念）"><a href="#快照读（概念）" class="headerlink" title="快照读（概念）"></a>快照读（概念）</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  T1[事务 T1 xid&#x3D;100] --&gt; Snap[可见 xmin xmax]
+  Snap --&gt; Row1[行版本 v1]
+  Snap --&gt; Row2[行版本 v2 对 T1 不可见]
+</code>
+</pre>
+
+<hr>
+<h2 id="一、快照与默认隔离级别"><a href="#一、快照与默认隔离级别" class="headerlink" title="一、快照与默认隔离级别"></a>一、快照与默认隔离级别</h2><ul>
+<li>默认 <strong><code>READ COMMITTED</code></strong>：单条 <strong>SQL</strong> 内看到<strong>语句开始时</strong>已提交的数据版本。  </li>
+<li><strong><code>REPEATABLE READ</code></strong>：事务内<strong>首条 SQL</strong> 建立快照，后续读一致。  </li>
+<li><strong><code>SERIALIZABLE</code></strong>：可检测读写依赖，失败时返回 <strong><code>40001 serialization_failure</code></strong>，应用应<strong>重试</strong>。</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> transaction_isolation;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、显式行锁：FOR-UPDATE-FOR-SHARE"><a href="#二、显式行锁：FOR-UPDATE-FOR-SHARE" class="headerlink" title="二、显式行锁：FOR UPDATE &#x2F; FOR SHARE"></a>二、显式行锁：<code>FOR UPDATE</code> &#x2F; <code>FOR SHARE</code></h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> accounts <span class="keyword">WHERE</span> id <span class="operator">=</span> <span class="number">1</span> <span class="keyword">FOR</span> <span class="keyword">UPDATE</span>;</span><br><span class="line"><span class="comment">-- 其他事务对同一行的 FOR UPDATE / 写操作会阻塞或失败（视 NOWAIT）</span></span><br><span class="line"><span class="keyword">COMMIT</span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>FOR UPDATE</code></strong>：排他行锁，用于「先读后改」的临界区。  </li>
+<li><strong><code>FOR SHARE</code></strong>：共享行锁，允许他人<strong>并发读</strong>，阻塞<strong>写</strong>。</li>
+</ul>
+<hr>
+<h2 id="三、SKIP-LOCKED-与-NOWAIT（队列与抢锁）"><a href="#三、SKIP-LOCKED-与-NOWAIT（队列与抢锁）" class="headerlink" title="三、SKIP LOCKED 与 NOWAIT（队列与抢锁）"></a>三、<code>SKIP LOCKED</code> 与 <code>NOWAIT</code>（队列与抢锁）</h2><p><strong><code>SKIP LOCKED</code></strong>：跳过已被其他事务锁定的行，取下一批可用行——常用于<strong>任务队列</strong>、<strong>公平抢单</strong>。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> jobs</span><br><span class="line"><span class="keyword">WHERE</span> status <span class="operator">=</span> <span class="string">&#x27;pending&#x27;</span></span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> id</span><br><span class="line"><span class="keyword">FOR</span> <span class="keyword">UPDATE</span> <span class="keyword">SKIP</span> LOCKED</span><br><span class="line">LIMIT <span class="number">1</span>;</span><br><span class="line"><span class="comment">-- 抢到则更新为 processing，再 COMMIT</span></span><br></pre></td></tr></table></figure>
+
+<p><strong><code>NOWAIT</code></strong>：若不能立即加锁则<strong>立刻报错</strong>，适合避免长时间等待（由应用捕获错误后重试或放弃）。</p>
+<hr>
+<h2 id="四、死锁（deadlock-detected）"><a href="#四、死锁（deadlock-detected）" class="headerlink" title="四、死锁（deadlock detected）"></a>四、死锁（<code>deadlock detected</code>）</h2><p><strong>PostgreSQL</strong> 会自动检测<strong>事务间循环等待</strong>，回滚<strong>其中一个事务</strong>（报错 <strong><code>40P01 deadlock_detected</code></strong>）。<br>规避思路与 <strong>MySQL</strong> 类似：<strong>固定加锁顺序</strong>、<strong>缩短事务</strong>、<strong>避免无关长耗时</strong>在事务内执行。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 排障时常看（需权限）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> pg_locks <span class="keyword">WHERE</span> <span class="keyword">NOT</span> granted;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、表级锁冲突矩阵（实战版）"><a href="#五、表级锁冲突矩阵（实战版）" class="headerlink" title="五、表级锁冲突矩阵（实战版）"></a>五、表级锁冲突矩阵（实战版）</h2><p><strong>PostgreSQL</strong> 有 <strong>8</strong> 种表级锁模式，完整矩阵只需记住<strong>实战常用的六行</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>持有操作（锁模式）</th>
+<th>会阻塞谁</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>SELECT</code></strong>（ACCESS SHARE）</td>
+<td>仅阻塞 <strong><code>ACCESS EXCLUSIVE</code></strong>（<strong><code>ALTER TABLE</code> &#x2F; <code>DROP</code> &#x2F; <code>TRUNCATE</code> &#x2F; <code>VACUUM FULL</code></strong>）</td>
+</tr>
+<tr>
+<td><strong><code>SELECT … FOR UPDATE</code></strong>（ROW SHARE）</td>
+<td>阻塞 <strong><code>SHARE</code></strong>（普通 <strong><code>CREATE INDEX</code></strong>）及以上</td>
+</tr>
+<tr>
+<td><strong><code>INSERT/UPDATE/DELETE</code></strong>（ROW EXCLUSIVE）</td>
+<td>阻塞 <strong><code>SHARE</code></strong>、<strong><code>EXCLUSIVE</code></strong>、<strong><code>ACCESS EXCLUSIVE</code></strong>；<strong>不阻塞 <code>SELECT</code>，也不阻塞别人的 DML</strong></td>
+</tr>
+<tr>
+<td><strong><code>VACUUM</code> &#x2F; <code>ANALYZE</code> &#x2F; <code>CREATE INDEX CONCURRENTLY</code></strong>（SHARE UPDATE EXCLUSIVE）</td>
+<td>互相阻塞（同表不能并发建两个索引）、阻塞 DDL</td>
+</tr>
+<tr>
+<td><strong><code>CREATE INDEX</code></strong>（SHARE，不带 CONCURRENTLY）</td>
+<td><strong>阻塞写入 DML</strong>——大表建索引务必加 <strong><code>CONCURRENTLY</code></strong></td>
+</tr>
+<tr>
+<td><strong><code>ALTER TABLE</code> 等 DDL</strong>（ACCESS EXCLUSIVE）</td>
+<td><strong>阻塞一切</strong>，包括只读 <strong><code>SELECT</code></strong></td>
+</tr>
+</tbody></table>
+<p>速记：<strong>读写互不阻塞</strong>（MVCC 红利）；<strong>普通建索引阻塞写</strong>；<strong>DDL 阻塞一切</strong>，上线要走低峰 + <strong><code>lock_timeout</code></strong> 保护。</p>
+<hr>
+<h2 id="六、pg-stat-activity-排锁实战"><a href="#六、pg-stat-activity-排锁实战" class="headerlink" title="六、pg_stat_activity 排锁实战"></a>六、<code>pg_stat_activity</code> 排锁实战</h2><p>「接口全卡住」时按三步走：</p>
+<h3 id="1-找阻塞链"><a href="#1-找阻塞链" class="headerlink" title="1. 找阻塞链"></a>1. 找阻塞链</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> blocked.pid            <span class="keyword">AS</span> blocked_pid,</span><br><span class="line">       blocking.pid           <span class="keyword">AS</span> blocking_pid,</span><br><span class="line">       now() <span class="operator">-</span> blocked.query_start <span class="keyword">AS</span> blocked_for,</span><br><span class="line">       <span class="keyword">left</span>(blocked.query, <span class="number">80</span>)   <span class="keyword">AS</span> blocked_query,</span><br><span class="line">       <span class="keyword">left</span>(blocking.query, <span class="number">80</span>)  <span class="keyword">AS</span> blocking_query</span><br><span class="line"><span class="keyword">FROM</span> pg_stat_activity blocked</span><br><span class="line"><span class="keyword">JOIN</span> pg_stat_activity blocking</span><br><span class="line">  <span class="keyword">ON</span> blocking.pid <span class="operator">=</span> <span class="keyword">ANY</span> (pg_blocking_pids(blocked.pid))</span><br><span class="line"><span class="keyword">WHERE</span> blocked.wait_event_type <span class="operator">=</span> <span class="string">&#x27;Lock&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>pg_blocking_pids(pid)</code></strong> 直接给出「谁挡着我」，<strong>PG 9.6+</strong> 可用——不必再手 join <strong><code>pg_locks</code></strong> 推等待图。</p>
+<h3 id="2-看锁的细节"><a href="#2-看锁的细节" class="headerlink" title="2. 看锁的细节"></a>2. 看锁的细节</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> l.pid, l.mode, l.granted, l.relation::regclass <span class="keyword">AS</span> tbl, <span class="keyword">left</span>(a.query, <span class="number">60</span>) <span class="keyword">AS</span> query</span><br><span class="line"><span class="keyword">FROM</span> pg_locks l</span><br><span class="line"><span class="keyword">JOIN</span> pg_stat_activity a <span class="keyword">ON</span> a.pid <span class="operator">=</span> l.pid</span><br><span class="line"><span class="keyword">WHERE</span> <span class="keyword">NOT</span> l.granted;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-处置阻塞源"><a href="#3-处置阻塞源" class="headerlink" title="3. 处置阻塞源"></a>3. 处置阻塞源</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 温和：取消其当前语句；激进：直接断开该连接（二选一，先礼后兵）</span></span><br><span class="line"><span class="keyword">SELECT</span> pg_cancel_backend(<span class="operator">&lt;</span>blocking_pid<span class="operator">&gt;</span>);</span><br><span class="line"><span class="keyword">SELECT</span> pg_terminate_backend(<span class="operator">&lt;</span>blocking_pid<span class="operator">&gt;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>预防优于救火：给应用设 <strong><code>lock_timeout = &#39;3s&#39;</code></strong>（等锁超时即报错）与 <strong><code>idle_in_transaction_session_timeout</code></strong>（防空转事务持锁不放）。</p>
+<hr>
+<h2 id="七、VACUUM-机制深入"><a href="#七、VACUUM-机制深入" class="headerlink" title="七、VACUUM 机制深入"></a>七、<code>VACUUM</code> 机制深入</h2><h3 id="1-死元组观测"><a href="#1-死元组观测" class="headerlink" title="1. 死元组观测"></a>1. 死元组观测</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> relname,</span><br><span class="line">       n_live_tup, n_dead_tup,</span><br><span class="line">       ROUND(n_dead_tup <span class="operator">*</span> <span class="number">100.0</span> <span class="operator">/</span> <span class="built_in">NULLIF</span>(n_live_tup <span class="operator">+</span> n_dead_tup, <span class="number">0</span>), <span class="number">1</span>) <span class="keyword">AS</span> dead_pct,</span><br><span class="line">       last_autovacuum, last_autoanalyze</span><br><span class="line"><span class="keyword">FROM</span> pg_stat_user_tables</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> n_dead_tup <span class="keyword">DESC</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>dead_pct</code></strong> 持续高于 <strong>20%</strong> 且 <strong><code>last_autovacuum</code></strong> 很久没动 → autovacuum 追不上写入，需要调参。</p>
+<h3 id="2-autovacuum-触发公式"><a href="#2-autovacuum-触发公式" class="headerlink" title="2. autovacuum 触发公式"></a>2. autovacuum 触发公式</h3><p>某张表触发 vacuum 的条件（简化）：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">死元组数 &gt; autovacuum_vacuum_threshold(默认 50)</span><br><span class="line">        + autovacuum_vacuum_scale_factor(默认 0.2) × 表行数</span><br></pre></td></tr></table></figure>
+
+<p><strong>坑在默认值</strong>：<strong>1 亿行</strong>的大表要攒够 <strong>2000 万</strong>死元组才触发一次——间隔太长、单次太重。<strong>大表按表调低比例</strong>：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ALTER TABLE</span> big_orders <span class="keyword">SET</span> (autovacuum_vacuum_scale_factor <span class="operator">=</span> <span class="number">0.02</span>,</span><br><span class="line">                            autovacuum_analyze_scale_factor <span class="operator">=</span> <span class="number">0.01</span>);</span><br></pre></td></tr></table></figure>
+
+<p>相关旋钮：<strong><code>autovacuum_max_workers</code></strong>（默认 <strong>3</strong>，大集群可调高）、<strong><code>autovacuum_naptime</code></strong>（巡检间隔）。</p>
+<h3 id="3-普通-VACUUM-vs-VACUUM-FULL"><a href="#3-普通-VACUUM-vs-VACUUM-FULL" class="headerlink" title="3. 普通 VACUUM vs VACUUM FULL"></a>3. 普通 <code>VACUUM</code> vs <code>VACUUM FULL</code></h3><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>锁</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>VACUUM</code></strong></td>
+<td>SHARE UPDATE EXCLUSIVE，<strong>不阻塞读写</strong></td>
+<td>死元组空间<strong>标记复用</strong>，文件<strong>不缩小</strong></td>
+</tr>
+<tr>
+<td><strong><code>VACUUM FULL</code></strong></td>
+<td><strong>ACCESS EXCLUSIVE</strong>，全程锁表</td>
+<td>重写整表、<strong>归还磁盘</strong>，维护窗口才用</td>
+</tr>
+</tbody></table>
+<p>在线收表体积请用 <strong><code>pg_repack</code></strong>（见 <a href="/database/05-postgresql-index-optimization/">第五章</a>）。</p>
+<hr>
+<h2 id="八、事务-ID-回卷（xid-wraparound）与-freeze"><a href="#八、事务-ID-回卷（xid-wraparound）与-freeze" class="headerlink" title="八、事务 ID 回卷（xid wraparound）与 freeze"></a>八、事务 ID 回卷（xid wraparound）与 freeze</h2><h3 id="1-问题是什么"><a href="#1-问题是什么" class="headerlink" title="1. 问题是什么"></a>1. 问题是什么</h3><p><strong><code>xmin</code> &#x2F; <code>xmax</code></strong> 是 <strong>32 位</strong>无符号整数，全局约 <strong>40 亿</strong>个事务号<strong>环形复用</strong>：一个事务号「跑完一圈」约 <strong>20 亿</strong>事务后会被当成<strong>新事务</strong>——如果不处理，旧数据会突然「变成未来的数据」而<strong>不可见</strong>，等效于<strong>数据丢失</strong>。</p>
+<h3 id="2-解法：freeze（冻结）"><a href="#2-解法：freeze（冻结）" class="headerlink" title="2. 解法：freeze（冻结）"></a>2. 解法：freeze（冻结）</h3><p><strong><code>VACUUM</code></strong> 扫描时把足够老的行版本 <strong><code>xmin</code></strong> 改写成特殊的 <strong><code>FrozenTransactionId</code>（&#x3D;2）</strong>——冻结行对<strong>所有未来事务</strong>永久可见，不再参与年龄计算。相关参数：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>autovacuum_freeze_max_age</code></strong></td>
+<td><strong>2 亿</strong></td>
+<td>表的 <strong><code>relfrozenxid</code> 年龄</strong>超过它就<strong>强制 autovacuum</strong>（拦不住也要拦）</td>
+</tr>
+<tr>
+<td><strong><code>vacuum_freeze_min_age</code></strong></td>
+<td><strong>5000 万</strong></td>
+<td>行年龄超过它才允许被 freeze</td>
+</tr>
+<tr>
+<td><strong><code>vacuum_freeze_table_age</code></strong></td>
+<td><strong>1.5 亿</strong></td>
+<td>超过则整表扫描（而非只扫脏页）</td>
+</tr>
+</tbody></table>
+<h3 id="3-监控与应急"><a href="#3-监控与应急" class="headerlink" title="3. 监控与应急"></a>3. 监控与应急</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 表年龄排行：逼近 2 亿就要人工干预</span></span><br><span class="line"><span class="keyword">SELECT</span> relname, age(relfrozenxid) <span class="keyword">AS</span> xid_age</span><br><span class="line"><span class="keyword">FROM</span> pg_class</span><br><span class="line"><span class="keyword">WHERE</span> relkind <span class="keyword">IN</span> (<span class="string">&#x27;r&#x27;</span>, <span class="string">&#x27;m&#x27;</span>)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> age(relfrozenxid) <span class="keyword">DESC</span></span><br><span class="line">LIMIT <span class="number">10</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 库级年龄（告警常用阈值 10 亿+）</span></span><br><span class="line"><span class="keyword">SELECT</span> datname, age(datfrozenxid) <span class="keyword">FROM</span> pg_database;</span><br></pre></td></tr></table></figure>
+
+<p><strong>应急</strong>：年龄逼近 <strong><code>autovacuum_freeze_max_age</code></strong> 时对大表手动 <strong><code>VACUUM (FREEZE, VERBOSE) tbl;</code></strong>；若数据库已因回卷保护<strong>拒绝写入</strong>，按官方文档以<strong>单用户模式</strong>启动做 <strong><code>VACUUM FREEZE</code></strong>。<strong>防大于治</strong>：别让 autovacuum 长期追不上，监控 <strong><code>datfrozenxid</code> 年龄</strong>是巡检标配。</p>
+<hr>
+<h2 id="九、与-MySQL-InnoDB-的粗对照（防混）"><a href="#九、与-MySQL-InnoDB-的粗对照（防混）" class="headerlink" title="九、与 MySQL InnoDB 的粗对照（防混）"></a>九、与 <strong>MySQL InnoDB</strong> 的粗对照（防混）</h2><table>
+<thead>
+<tr>
+<th>话题</th>
+<th>MySQL InnoDB（见 <strong><code>MySQL锁详解.md</code></strong>）</th>
+<th>PostgreSQL（入门记法）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>默认隔离</td>
+<td>常为 <strong>RR</strong></td>
+<td><strong>RC</strong></td>
+</tr>
+<tr>
+<td>幻读与范围锁</td>
+<td><strong>间隙锁 &#x2F; Next-Key</strong> 叙述多</td>
+<td><strong>SSI &#x2F; 谓词锁</strong> 等在 <strong>SERIALIZABLE</strong> 下讨论多</td>
+</tr>
+<tr>
+<td>队列抢任务</td>
+<td><strong><code>FOR UPDATE</code></strong> + 设计索引</td>
+<td><strong><code>FOR UPDATE SKIP LOCKED</code></strong> 一等公民</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="十、延伸阅读"><a href="#十、延伸阅读" class="headerlink" title="十、延伸阅读"></a>十、延伸阅读</h2><ul>
+<li><a href="/database/05-postgresql-index-optimization/">第五章：PostgreSQL 索引与性能优化</a>：<code>EXPLAIN</code>、<strong><code>VACUUM</code></strong>、慢语句。  </li>
+<li><a href="/database/02-postgresql-docker/">第二章：Docker 部署 PostgreSQL 实践</a>：实例与卷、连接串。  </li>
+<li><a href="/database/04-postgresql-advanced-query/">第四章：PostgreSQL 高级查询</a>：复杂只读查询。</li>
+</ul>
+<p>线上问题请结合 <strong><code>pg_stat_activity</code></strong>、<strong><code>pg_locks</code></strong>、日志与监控，本文不替代完整 <strong>DBA Runbook</strong>。</p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>可见性</td>
+<td>MVCC 靠 <strong><code>xmin</code> &#x2F; <code>xmax</code></strong> + 快照判断行版本可见性，<strong>读写互不阻塞</strong></td>
+</tr>
+<tr>
+<td>隔离级别</td>
+<td>默认 <strong><code>READ COMMITTED</code></strong>；<strong><code>RR</code></strong> 事务级快照；<strong><code>SERIALIZABLE</code></strong> 冲突报 <strong><code>40001</code></strong> 需重试</td>
+</tr>
+<tr>
+<td>行锁</td>
+<td><strong><code>FOR UPDATE</code></strong> 保临界区、<strong><code>FOR SHARE</code></strong> 共享读；抢任务用 <strong><code>SKIP LOCKED</code></strong>、不等待用 <strong><code>NOWAIT</code></strong></td>
+</tr>
+<tr>
+<td>表级锁</td>
+<td>普通读写互不阻塞；普通 <strong><code>CREATE INDEX</code></strong> 阻塞写、<strong>DDL</strong> 阻塞一切，上线配 <strong><code>lock_timeout</code></strong></td>
+</tr>
+<tr>
+<td>排锁</td>
+<td><strong><code>pg_blocking_pids()</code></strong> 找阻塞链、<strong><code>pg_stat_activity</code></strong> 看语句、<strong><code>pg_terminate_backend</code></strong> 兜底</td>
+</tr>
+<tr>
+<td>死锁</td>
+<td>PG 自动检测循环等待并回滚一方（<strong><code>40P01</code></strong>）；预防靠<strong>固定加锁顺序、缩短事务</strong></td>
+</tr>
+<tr>
+<td>VACUUM</td>
+<td>触发阈值 &#x3D; <strong><code>threshold(50) + scale_factor(0.2) × 行数</code></strong>；大表按表调低比例，<strong><code>VACUUM FULL</code></strong> 全程锁表慎用</td>
+</tr>
+<tr>
+<td>xid 回卷</td>
+<td>32 位事务号环形复用，老元组靠 <strong>freeze</strong> 永久可见；监控 <strong><code>age(relfrozenxid)</code></strong> 逼近 <strong>2 亿</strong>须人工干预</td>
+</tr>
+</tbody></table>
+<h2 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h2><p>至此 PostgreSQL 课程六章完结：<a href="/database/postgresql-guide/">第一章：PostgreSQL 概述与 DDL 入门</a> 建立结构与 DDL 直觉，<a href="/database/02-postgresql-docker/">第二章：Docker 部署 PostgreSQL 实践</a> 把实例跑起来，<a href="/database/03-postgresql-storage-engine/">第三章：PostgreSQL 存储引擎与表访问方法</a> 搞懂数据如何存，<a href="/database/04-postgresql-advanced-query/">第四章：PostgreSQL 高级查询</a> 把数据查得准，<a href="/database/05-postgresql-index-optimization/">第五章：PostgreSQL 索引与性能优化</a> 查得快，本章则守住<strong>并发正确性</strong>这条底线。</p>
+<p>继续进阶可探索：<strong>流复制与高可用（Patroni &#x2F; CloudNativePG）</strong>、<strong>逻辑复制与分区表</strong>、<strong><code>pg_stat_statements</code> 深度观测</strong>，并结合线上监控与 <strong>DBA Runbook</strong> 持续打磨。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E4%BA%8B%E5%8A%A1/" rel="tag"># 事务</a>
+              <a href="/tags/PostgreSQL/" rel="tag"># PostgreSQL</a>
+              <a href="/tags/MVCC/" rel="tag"># MVCC</a>
+              <a href="/tags/%E9%94%81/" rel="tag"># 锁</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/database/05-postgresql-index-optimization/" rel="prev" title="第五章：PostgreSQL 索引与性能优化">
+                  <i class="fa fa-angle-left"></i> 第五章：PostgreSQL 索引与性能优化
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/redis/03-redis-string-type/" rel="next" title="第三章：Redis String 数据类型：概念、命令与案例">
+                  第三章：Redis String 数据类型：概念、命令与案例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

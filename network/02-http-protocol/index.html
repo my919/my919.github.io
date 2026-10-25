@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例概念基础 应用层的「请求-响应」协议：客户端发请求（方法 + URI + 首部 + 可选正文），服务器回响应（状态码 + 首部 + 正文）；它是 Web 与 API 的基础语义层，每个请求对应一次事务。 无状态：服务器默认不记住「上一次请求」，会话靠 Cookie、Token、服务端会话存储实现；请求自带全部上下文，天然利于">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例">
+<meta property="og:url" content="https://my919.github.io/network/02-http-protocol/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例概念基础 应用层的「请求-响应」协议：客户端发请求（方法 + URI + 首部 + 可选正文），服务器回响应（状态码 + 首部 + 正文）；它是 Web 与 API 的基础语义层，每个请求对应一次事务。 无状态：服务器默认不记住「上一次请求」，会话靠 Cookie、Token、服务端会话存储实现；请求自带全部上下文，天然利于">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:46:50.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.584Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="HTTP">
+<meta property="article:tag" content="Protocol">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/network/02-http-protocol/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/network/02-http-protocol/","path":"network/02-http-protocol/","title":"第二章：HTTP 详解：报文、方法、版本与 curl/nc 示例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第二章：HTTP 详解：报文、方法、版本与 curl/nc 示例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E7%AB%A0%EF%BC%9AHTTP-%E8%AF%A6%E8%A7%A3%EF%BC%9A%E6%8A%A5%E6%96%87%E3%80%81%E6%96%B9%E6%B3%95%E3%80%81%E7%89%88%E6%9C%AC%E4%B8%8E-curl-nc-%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AF%B7%E6%B1%82%E5%93%8D%E5%BA%94%E6%A8%A1%E5%9E%8B%EF%BC%88%E8%AF%AD%E4%B9%89%E5%B1%82%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">请求响应模型（语义层）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%A5%E6%96%87%E7%BB%93%E6%9E%84%EF%BC%88%E4%BD%9C%E7%94%A8%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">报文结构（作用）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%AF%B7%E6%B1%82"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 请求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%93%8D%E5%BA%94"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 响应</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E6%96%B9%E6%B3%95%E4%B8%8E%E5%B9%82%E7%AD%89%EF%BC%88%E5%8E%9F%E7%90%86%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">常用方法与幂等（原理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8A%B6%E6%80%81%E7%A0%81%EF%BC%88%E5%88%86%E7%B1%BB%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">状态码（分类）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E7%8A%B6%E6%80%81%E4%B8%8E%E8%B5%84%E6%BA%90%E6%A8%A1%E5%9E%8B%EF%BC%88%E5%8E%9F%E7%90%86%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">无状态与资源模型（原理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AE%B9%E5%8D%8F%E5%95%86%EF%BC%88Agent-Driven-Negotiation%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">内容协商（Agent-Driven Negotiation）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#HTTP-%E7%BC%93%E5%AD%98%E4%B8%8E%E6%9D%A1%E4%BB%B6%E8%AF%B7%E6%B1%82"><span class="nav-number">1.8.</span> <span class="nav-text">HTTP 缓存与条件请求</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%BC%93%E5%AD%98%E6%8C%87%E4%BB%A4%EF%BC%88Cache-Control%EF%BC%89"><span class="nav-number">1.8.1.</span> <span class="nav-text">1. 缓存指令（Cache-Control）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%BC%BA%E7%BC%93%E5%AD%98%E4%B8%8E%E5%8D%8F%E5%95%86%E7%BC%93%E5%AD%98"><span class="nav-number">1.8.2.</span> <span class="nav-text">2. 强缓存与协商缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%9D%A1%E4%BB%B6%E8%AF%B7%E6%B1%82%EF%BC%88%E5%86%99%E5%B9%B6%E5%8F%91%E4%B8%8E%E4%B9%90%E8%A7%82%E9%94%81%EF%BC%89"><span class="nav-number">1.8.3.</span> <span class="nav-text">3. 条件请求（写并发与乐观锁）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-Range-%E8%8C%83%E5%9B%B4%E8%AF%B7%E6%B1%82%EF%BC%88%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0-%E5%88%86%E7%89%87%E4%B8%8B%E8%BD%BD%EF%BC%89"><span class="nav-number">1.8.4.</span> <span class="nav-text">4. Range 范围请求（断点续传 &#x2F; 分片下载）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%E7%AE%A1%E7%90%86%EF%BC%9AKeep-Alive-%E4%B8%8E%E7%AE%A1%E9%81%93%E5%8C%96"><span class="nav-number">1.9.</span> <span class="nav-text">连接管理：Keep-Alive 与管道化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#HTTP-1-1-%E4%B8%8E-HTTP-2%EF%BC%88%E6%BC%94%E8%BF%9B%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">HTTP&#x2F;1.1 与 HTTP&#x2F;2（演进）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%A6%96%E9%83%A8%E9%80%9F%E6%9F%A5"><span class="nav-number">1.11.</span> <span class="nav-text">常见首部速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%8C%E6%95%B4%E9%80%9A%E4%BF%A1%E6%95%B0%E6%8D%AE%E6%B5%81%E7%A8%8B%EF%BC%88%E7%AB%AF%E5%88%B0%E7%AB%AF%EF%BC%89"><span class="nav-number">1.12.</span> <span class="nav-text">完整通信数据流程（端到端）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%8D%8F%E8%AE%AE%E6%A0%88%E4%B8%8E%E5%90%84%E5%B1%82%E8%81%8C%E8%B4%A3"><span class="nav-number">1.12.1.</span> <span class="nav-text">1. 协议栈与各层职责</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%97%B6%E5%BA%8F%EF%BC%9ADNS-%E2%86%92-TCP-%E2%86%92-TLS-%E2%86%92-HTTP-%E2%86%92-%E5%85%B3%E9%97%AD"><span class="nav-number">1.12.2.</span> <span class="nav-text">2. 时序：DNS → TCP → TLS → HTTP → 关闭</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%BA%BF%E8%B7%AF%E4%B8%8A%E3%80%8C%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7%E3%80%8D%EF%BC%9AHTTP-%E5%9C%A8-TCP-%E5%AD%97%E8%8A%82%E6%B5%81%E4%B8%AD"><span class="nav-number">1.12.3.</span> <span class="nav-text">3. 线路上「长什么样」：HTTP 在 TCP 字节流中</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-POST-%E6%8F%90%E4%BA%A4-JSON-%E7%9A%84%E5%AE%8C%E6%95%B4%E6%95%B0%E6%8D%AE%E8%B7%AF%E5%BE%84"><span class="nav-number">1.12.4.</span> <span class="nav-text">4. POST 提交 JSON 的完整数据路径</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-HTTP-1-1-%E8%BF%9E%E6%8E%A5%E5%A4%8D%E7%94%A8-vs-HTTP-2-%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8"><span class="nav-number">1.12.5.</span> <span class="nav-text">5. HTTP&#x2F;1.1 连接复用 vs HTTP&#x2F;2 多路复用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E7%94%A8-curl-%E5%AF%B9%E7%85%A7%E5%90%84%E9%98%B6%E6%AE%B5"><span class="nav-number">1.12.6.</span> <span class="nav-text">6. 用 curl 对照各阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-%E4%B8%8E%E7%9B%B8%E9%82%BB%E5%8D%8F%E8%AE%AE%E6%96%87%E6%A1%A3%E7%9A%84%E5%AF%B9%E7%85%A7"><span class="nav-number">1.12.7.</span> <span class="nav-text">7. 与相邻协议文档的对照</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B%EF%BC%9Acurl-%E8%A7%82%E5%AF%9F%E6%8A%A5%E6%96%87"><span class="nav-number">1.13.</span> <span class="nav-text">示例：curl 观察报文</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B%EF%BC%9A%E7%94%A8-nc-%E5%8F%91%E9%80%81%E6%9C%80%E5%B0%8F-HTTP-1-1-%E8%AF%B7%E6%B1%82%EF%BC%88%E6%98%8E%E6%96%87%EF%BC%89"><span class="nav-number">1.14.</span> <span class="nav-text">示例：用 nc 发送最小 HTTP&#x2F;1.1 请求（明文）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A4%BA%E4%BE%8B%EF%BC%9APython-3-%E6%9C%80%E5%B0%8F-HTTP-%E5%AE%A2%E6%88%B7%E7%AB%AF%EF%BC%88%E6%A0%87%E5%87%86%E5%BA%93%EF%BC%89"><span class="nav-number">1.15.</span> <span class="nav-text">示例：Python 3 最小 HTTP 客户端（标准库）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%9D%A2%E8%AF%95%E9%A2%98%E9%80%9F%E8%A7%88"><span class="nav-number">1.16.</span> <span class="nav-text">常见面试题速览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.17.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/network/02-http-protocol/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第二章：HTTP 详解：报文、方法、版本与 curl/nc 示例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:46:50" itemprop="dateCreated datePublished" datetime="2026-05-01T12:46:50+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" itemprop="url" rel="index"><span itemprop="name">计算机网络</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>11k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>10 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第二章：HTTP-详解：报文、方法、版本与-curl-nc-示例"><a href="#第二章：HTTP-详解：报文、方法、版本与-curl-nc-示例" class="headerlink" title="第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例"></a>第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>应用层的「请求-响应」协议</strong>：客户端发<strong>请求</strong>（<strong>方法 + URI + 首部 + 可选正文</strong>），服务器回<strong>响应</strong>（<strong>状态码 + 首部 + 正文</strong>）；它是 <strong>Web 与 API 的基础语义层</strong>，每个请求对应一次事务。</li>
+<li><strong>无状态</strong>：服务器默认不记住「上一次请求」，会话靠 <strong>Cookie</strong>、<strong>Token</strong>、服务端会话存储实现；请求自带全部上下文，天然利于<strong>水平扩展</strong>。</li>
+<li><strong>URI + 方法表达操作语义</strong>：<strong>GET&#x2F;POST&#x2F;PUT&#x2F;DELETE</strong> 等方法对<strong>资源（URI）<strong>施加操作，配合</strong>幂等性</strong>约定与<strong>状态码</strong>（2xx&#x2F;3xx&#x2F;4xx&#x2F;5xx）表达结果。</li>
+<li><strong>可扩展、可分层</strong>：首部机制支持缓存、鉴权、内容协商等扩展；传输上先经 <strong>TLS</strong> 加密即 <strong>HTTPS</strong>，并把语义承载在 <strong>TCP</strong> 字节流（<strong>HTTP&#x2F;3</strong> 则改由 <strong>QUIC</strong> 承载）。</li>
+<li><strong>版本演进围绕「效率」</strong>：<strong>HTTP&#x2F;1.1</strong> 文本协议 + Keep-Alive → <strong>HTTP&#x2F;2</strong> 二进制帧多路复用 → <strong>HTTP&#x2F;3</strong> 换到 QUIC 传输，语义不变。</li>
+</ol>
+<p>先看最抽象的请求响应模型，再逐层深入：</p>
+<h2 id="请求响应模型（语义层）"><a href="#请求响应模型（语义层）" class="headerlink" title="请求响应模型（语义层）"></a>请求响应模型（语义层）</h2><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant C as Client
+  participant S as Server TCP :80&#x2F;443
+
+  C-&gt;&gt;S: HTTP Request 方法 URI 首部
+  S-&gt;&gt;S: 路由 &#x2F; 业务处理
+  S--&gt;&gt;C: HTTP Response 状态码 首部 Body
+</code>
+</pre>
+
+<h2 id="报文结构（作用）"><a href="#报文结构（作用）" class="headerlink" title="报文结构（作用）"></a>报文结构（作用）</h2><h3 id="1-请求"><a href="#1-请求" class="headerlink" title="1. 请求"></a>1. 请求</h3><figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">GET</span> <span class="string">/path</span> <span class="meta">HTTP/1.1</span></span><br><span class="line"><span class="attribute">Host</span><span class="punctuation">: </span>example.com</span><br><span class="line"><span class="attribute">User-Agent</span><span class="punctuation">: </span>demo</span><br><span class="line"><span class="attribute">Accept</span><span class="punctuation">: </span>*/*</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>请求行</strong>：方法、<strong>请求目标</strong>（路径或绝对 <strong>URI</strong>）、版本。  </li>
+<li><strong>首部</strong>：<strong><code>Host</code></strong> 在 <strong>HTTP&#x2F;1.1</strong> 中语义必填；<strong><code>Content-Length</code></strong> &#x2F; <strong><code>Transfer-Encoding: chunked</code></strong> 控制正文边界。</li>
+</ul>
+<h3 id="2-响应"><a href="#2-响应" class="headerlink" title="2. 响应"></a>2. 响应</h3><figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">HTTP/1.1</span> <span class="number">200</span> OK</span><br><span class="line"><span class="attribute">Content-Type</span><span class="punctuation">: </span>text/plain; charset=utf-8</span><br><span class="line"><span class="attribute">Content-Length</span><span class="punctuation">: </span>5</span><br><span class="line"></span><br><span class="line"><span class="language-ebnf"><span class="attribute">hello</span></span></span><br></pre></td></tr></table></figure>
+
+<h2 id="常用方法与幂等（原理）"><a href="#常用方法与幂等（原理）" class="headerlink" title="常用方法与幂等（原理）"></a>常用方法与幂等（原理）</h2><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>典型语义</th>
+<th>幂等</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>GET</strong></td>
+<td>读取资源</td>
+<td>是</td>
+</tr>
+<tr>
+<td><strong>POST</strong></td>
+<td>创建 &#x2F; 提交</td>
+<td>否</td>
+</tr>
+<tr>
+<td><strong>PUT</strong></td>
+<td>整体替换</td>
+<td>是</td>
+</tr>
+<tr>
+<td><strong>PATCH</strong></td>
+<td>部分更新</td>
+<td>视实现</td>
+</tr>
+<tr>
+<td><strong>DELETE</strong></td>
+<td>删除</td>
+<td>是</td>
+</tr>
+<tr>
+<td><strong>HEAD</strong></td>
+<td>同 <strong>GET</strong> 无正文</td>
+<td>是</td>
+</tr>
+<tr>
+<td><strong>OPTIONS</strong></td>
+<td>探测支持的方法</td>
+<td>是</td>
+</tr>
+</tbody></table>
+<p><strong>幂等</strong>：多次执行相同请求<strong>不应</strong>带来额外副作用（仍可能每次返回相同结果）。</p>
+<h2 id="状态码（分类）"><a href="#状态码（分类）" class="headerlink" title="状态码（分类）"></a>状态码（分类）</h2><table>
+<thead>
+<tr>
+<th>范围</th>
+<th>含义</th>
+<th>例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>2xx</strong></td>
+<td>成功</td>
+<td><strong>200</strong>、<strong>201</strong>、<strong>204</strong></td>
+</tr>
+<tr>
+<td><strong>3xx</strong></td>
+<td>重定向</td>
+<td><strong>301</strong>、<strong>302</strong>、<strong>304</strong></td>
+</tr>
+<tr>
+<td><strong>4xx</strong></td>
+<td>客户端错误</td>
+<td><strong>400</strong>、<strong>401</strong>、<strong>403</strong>、<strong>404</strong></td>
+</tr>
+<tr>
+<td><strong>5xx</strong></td>
+<td>服务器错误</td>
+<td><strong>500</strong>、<strong>502</strong>、<strong>503</strong></td>
+</tr>
+</tbody></table>
+<h2 id="无状态与资源模型（原理）"><a href="#无状态与资源模型（原理）" class="headerlink" title="无状态与资源模型（原理）"></a>无状态与资源模型（原理）</h2><p><strong>HTTP</strong> 本身<strong>无状态</strong>：服务器默认不记住「上一次请求」；会话常靠 <strong>Cookie</strong>、<strong>Token</strong>、服务端会话存储实现。<strong>REST</strong> 风格强调用 <strong>URI</strong> 表示<strong>资源</strong>，用 <strong>HTTP 方法</strong>表达操作（与 <a href="/network/14-rpc-concepts/">第十四章：RPC 概念详解：原理、形态与 JSON-RPC &#x2F; curl 示例</a> 风格对照）。</p>
+<h2 id="内容协商（Agent-Driven-Negotiation）"><a href="#内容协商（Agent-Driven-Negotiation）" class="headerlink" title="内容协商（Agent-Driven Negotiation）"></a>内容协商（Agent-Driven Negotiation）</h2><p>同一个 <strong>URI</strong> 可返回不同「表示」，客户端用请求首部声明偏好，服务端挑最合适的版本：</p>
+<table>
+<thead>
+<tr>
+<th>请求首部</th>
+<th>响应首部</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>Accept</code></strong></td>
+<td><strong><code>Content-Type</code></strong></td>
+<td>MIME 类型偏好（<code>text/html</code>、<code>application/json;q=0.9</code>）</td>
+</tr>
+<tr>
+<td><strong><code>Accept-Encoding</code></strong></td>
+<td><strong><code>Content-Encoding</code></strong></td>
+<td>压缩算法（<code>gzip</code>、<code>br</code> 即 Brotli）</td>
+</tr>
+<tr>
+<td><strong><code>Accept-Language</code></strong></td>
+<td><strong><code>Content-Language</code></strong></td>
+<td>语言偏好（<code>zh-CN,en;q=0.8</code>）</td>
+</tr>
+<tr>
+<td><strong><code>Accept-Charset</code></strong>（已废弃）</td>
+<td>—</td>
+<td>字符集（现代统一 UTF-8）</td>
+</tr>
+</tbody></table>
+<p><strong><code>q</code> 值</strong>（0~1）表示权重；服务端无法完全满足时可回 <strong>406 Not Acceptable</strong>（实践中少见，多数直接降级）。</p>
+<h2 id="HTTP-缓存与条件请求"><a href="#HTTP-缓存与条件请求" class="headerlink" title="HTTP 缓存与条件请求"></a>HTTP 缓存与条件请求</h2><p>缓存是 <strong>HTTP</strong> 最重要的性能机制：响应首部声明「<strong>能不能存、存多久</strong>」，请求首部完成「<strong>再验证与条件操作</strong>」。</p>
+<h3 id="1-缓存指令（Cache-Control）"><a href="#1-缓存指令（Cache-Control）" class="headerlink" title="1. 缓存指令（Cache-Control）"></a>1. 缓存指令（Cache-Control）</h3><table>
+<thead>
+<tr>
+<th>指令</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>max-age=N</code></strong></td>
+<td>可缓存 <strong>N</strong> 秒（相对时间，优先级高于 <strong><code>Expires</code></strong>）</td>
+</tr>
+<tr>
+<td><strong><code>no-cache</code></strong></td>
+<td><strong>可以缓存</strong>，但每次使用前必须向源站<strong>再验证</strong>（不是「不缓存」）</td>
+</tr>
+<tr>
+<td><strong><code>no-store</code></strong></td>
+<td>真正<strong>不写入任何缓存</strong>（敏感数据用）</td>
+</tr>
+<tr>
+<td><strong><code>public</code> &#x2F; <code>private</code></strong></td>
+<td>是否允许共享缓存（CDN &#x2F; 代理）缓存</td>
+</tr>
+<tr>
+<td><strong><code>immutable</code></strong></td>
+<td>内容永不变（配合带指纹的文件名，浏览器连再验证都省掉）</td>
+</tr>
+</tbody></table>
+<p>请求侧还有 <strong><code>Cache-Control: no-cache</code></strong>（强制再验证）等。<strong><code>Pragma: no-cache</code></strong> 与 <strong><code>Expires</code></strong> 是 <strong>HTTP&#x2F;1.0</strong> 遗产，现代栈以 <strong><code>Cache-Control</code></strong> 为准。</p>
+<h3 id="2-强缓存与协商缓存"><a href="#2-强缓存与协商缓存" class="headerlink" title="2. 强缓存与协商缓存"></a>2. 强缓存与协商缓存</h3><ul>
+<li><strong>强缓存</strong>：<strong><code>Cache-Control: max-age</code></strong> &#x2F; <strong><code>Expires</code></strong> 未过期时，浏览器<strong>根本不发请求</strong>，直接用本地副本（开发者工具显示 <code>200 (from disk cache)</code>）。</li>
+<li><strong>协商缓存</strong>：过期后带 <strong><code>If-None-Match: &quot;etag&quot;</code></strong> 或 <strong><code>If-Modified-Since: 时间</code></strong> 询问源站；未变回 <strong>304 Not Modified</strong>（无正文），变了回 <strong>200</strong> 新内容。</li>
+</ul>
+<pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant B as 浏览器
+  participant S as 源站
+  B-&gt;&gt;S: GET &#x2F;app.js
+  S--&gt;&gt;B: 200 + ETag: &quot;v123&quot; + Cache-Control: max-age&#x3D;60
+  Note over B: 60 秒内强缓存命中，不发请求
+  B-&gt;&gt;S: GET &#x2F;app.js（If-None-Match: &quot;v123&quot;）
+  S--&gt;&gt;B: 304 Not Modified（无正文）
+</code>
+</pre>
+
+<p><strong><code>ETag</code></strong>（内容指纹，强校验）优于 <strong><code>Last-Modified</code></strong>（秒级精度，弱校验）；多机部署时文件修改时间可能不一致，<strong><code>ETag</code></strong> 也常需自定义为内容哈希而非默认的 <code>mtime-size</code>。</p>
+<h3 id="3-条件请求（写并发与乐观锁）"><a href="#3-条件请求（写并发与乐观锁）" class="headerlink" title="3. 条件请求（写并发与乐观锁）"></a>3. 条件请求（写并发与乐观锁）</h3><table>
+<thead>
+<tr>
+<th>首部</th>
+<th>用途</th>
+<th>条件不满足时</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>If-None-Match: *</code></strong></td>
+<td><strong>PUT</strong> 创建：仅当资源<strong>不存在</strong>才执行（防覆盖）</td>
+<td><strong>412</strong></td>
+</tr>
+<tr>
+<td><strong><code>If-Match: &quot;etag&quot;</code></strong></td>
+<td><strong>PUT &#x2F; DELETE</strong>：仅当版本未变（乐观锁）</td>
+<td><strong>412 Precondition Failed</strong></td>
+</tr>
+<tr>
+<td><strong><code>If-Unmodified-Since</code></strong></td>
+<td>同上，基于时间戳</td>
+<td><strong>412</strong></td>
+</tr>
+<tr>
+<td><strong><code>If-Modified-Since</code> &#x2F; <code>If-None-Match</code></strong></td>
+<td><strong>GET</strong> 再验证</td>
+<td>回完整 <strong>200</strong></td>
+</tr>
+</tbody></table>
+<h3 id="4-Range-范围请求（断点续传-分片下载）"><a href="#4-Range-范围请求（断点续传-分片下载）" class="headerlink" title="4. Range 范围请求（断点续传 &#x2F; 分片下载）"></a>4. Range 范围请求（断点续传 &#x2F; 分片下载）</h3><figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">GET</span> <span class="string">/big.iso</span> <span class="meta">HTTP/1.1</span></span><br><span class="line"><span class="attribute">Host</span><span class="punctuation">: </span>example.com</span><br><span class="line"><span class="attribute">Range</span><span class="punctuation">: </span>bytes=0-1048575</span><br></pre></td></tr></table></figure>
+
+<p>服务端支持时回 <strong>206 Partial Content</strong>：</p>
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">HTTP/1.1</span> <span class="number">206</span> Partial Content</span><br><span class="line"><span class="attribute">Accept-Ranges</span><span class="punctuation">: </span>bytes</span><br><span class="line"><span class="attribute">Content-Range</span><span class="punctuation">: </span>bytes 0-1048575/10737418240</span><br><span class="line"><span class="attribute">Content-Length</span><span class="punctuation">: </span>1048576</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>Accept-Ranges: bytes</code></strong> 是服务端的<strong>能力声明</strong>（普通 <strong>200</strong> 响应里带它表示「支持范围请求」）。</li>
+<li>多段请求 <strong><code>Range: bytes=0-99,200-299</code></strong> 回 <strong>206</strong> + <strong><code>multipart/byteranges</code></strong> 复合正文。</li>
+<li>范围越界回 <strong>416 Range Not Satisfiable</strong>。</li>
+<li><strong><code>If-Range</code></strong> 把「范围条件」与「版本未变」绑定：ETag 变了就整段重新下载，避免拼出「新旧混合」的文件。</li>
+<li>手工验证：<strong><code>curl -r 0-1048575 -o part1.bin https://example.com/big.iso</code></strong>。</li>
+</ul>
+<h2 id="连接管理：Keep-Alive-与管道化"><a href="#连接管理：Keep-Alive-与管道化" class="headerlink" title="连接管理：Keep-Alive 与管道化"></a>连接管理：Keep-Alive 与管道化</h2><p><strong>HTTP&#x2F;1.0</strong> 默认「一请求一连接」，<strong>HTTP&#x2F;1.1</strong> 起默认 <strong><code>Connection: keep-alive</code></strong>：同一 <strong>TCP</strong> 上串行跑多个事务，省掉重复握手与慢启动。</p>
+<ul>
+<li><strong><code>Keep-Alive: timeout=5, max=100</code></strong>：服务端提示空闲 5 秒关闭、单连接最多 100 个请求（各实现不一）。</li>
+<li><strong>管道化（Pipelining）</strong>：HTTP&#x2F;1.1 允许不等响应连发多个请求，但响应必须<strong>按序返回</strong>——队头阻塞严重，浏览器普遍禁用，实践中被 <strong>HTTP&#x2F;2</strong> 多路复用取代。</li>
+<li><strong><code>Connection: close</code></strong>：任一方声明「本响应后关闭连接」，服务端主动关会把 <strong>TIME_WAIT</strong> 留在服务端，高并发短连接下慎用。</li>
+<li>客户端连接数限制：浏览器对单域名通常只开 <strong>6</strong> 条 <strong>HTTP&#x2F;1.1</strong> 持久连接（域名分片曾是绕过手段），<strong>HTTP&#x2F;2</strong> 单连接即可，无需分片。</li>
+</ul>
+<h2 id="HTTP-1-1-与-HTTP-2（演进）"><a href="#HTTP-1-1-与-HTTP-2（演进）" class="headerlink" title="HTTP&#x2F;1.1 与 HTTP&#x2F;2（演进）"></a>HTTP&#x2F;1.1 与 HTTP&#x2F;2（演进）</h2><ul>
+<li><strong>HTTP&#x2F;1.1</strong>（<strong>RFC 9112</strong>）：文本形态；<strong>Keep-Alive</strong> 复用连接；<strong>队头阻塞</strong>限制并发效率。  </li>
+<li><strong>HTTP&#x2F;2</strong>（<strong>RFC 9113</strong>）：二进制<strong>帧</strong>；<strong>单连接多路复用</strong>；<strong>HPACK</strong> 压缩首部；浏览器场景几乎总与 <strong>TLS</strong> 同用。  </li>
+<li><strong>HTTP&#x2F;3</strong>（<strong>RFC 9114</strong>）：基于 <a href="/network/15-quic-protocol/">第十五章：QUIC 详解：基于 UDP 的可靠传输、TLS 集成与 HTTP&#x2F;3</a>（<a href="/network/05-udp-protocol/">第五章：UDP 协议详解：数据报语义、MTU 与示例代码</a>）。</li>
+</ul>
+<p><strong>HTTP&#x2F;2 的关键细节</strong>：所有报文被拆成带 <strong>Stream ID</strong> 的二进制<strong>帧</strong>（HEADERS &#x2F; DATA &#x2F; SETTINGS &#x2F; WINDOW_UPDATE &#x2F; RST_STREAM 等），同一连接上多个流<strong>交错传输</strong>互不阻塞；首部用 <strong>HPACK</strong>（静态表 + 动态表 + Huffman 编码）大幅压缩；<strong>流控</strong>由 <code>WINDOW_UPDATE</code> 帧按流和连接两级控制。但 <strong>HTTP&#x2F;2 仍在 TCP 上</strong>——TCP 丢包重传时<strong>所有流一起等</strong>，这是 HTTP&#x2F;3 换 QUIC 的根本动机。</p>
+<h2 id="常见首部速查"><a href="#常见首部速查" class="headerlink" title="常见首部速查"></a>常见首部速查</h2><p><strong>请求侧</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>首部</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>Host</code></strong></td>
+<td>目标主机（虚拟主机路由依据，HTTP&#x2F;1.1 必填）</td>
+</tr>
+<tr>
+<td><strong><code>Authorization</code></strong></td>
+<td>凭证（<code>Bearer &lt;token&gt;</code>、<code>Basic base64</code>）</td>
+</tr>
+<tr>
+<td><strong><code>Content-Type</code> &#x2F; <code>Content-Length</code></strong></td>
+<td>正文类型与长度（有 Body 时）</td>
+</tr>
+<tr>
+<td><strong><code>Referer</code> &#x2F; <code>Origin</code></strong></td>
+<td>来源页面 &#x2F; 跨域来源（CSRF、CORS 判定）</td>
+</tr>
+<tr>
+<td><strong><code>If-None-Match</code> &#x2F; <code>If-Modified-Since</code></strong></td>
+<td>协商缓存再验证</td>
+</tr>
+<tr>
+<td><strong><code>Range</code></strong></td>
+<td>范围请求（断点续传）</td>
+</tr>
+<tr>
+<td><strong><code>X-Forwarded-For</code></strong></td>
+<td>代理追加的原始客户端 IP 链（非标准但事实标准）</td>
+</tr>
+</tbody></table>
+<p><strong>响应侧</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>首部</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>Set-Cookie</code></strong></td>
+<td>种 Cookie（<code>HttpOnly; Secure; SameSite=Lax</code>）</td>
+</tr>
+<tr>
+<td><strong><code>Location</code></strong></td>
+<td>3xx 重定向目标 &#x2F; 201 新资源地址</td>
+</tr>
+<tr>
+<td><strong><code>ETag</code> &#x2F; <code>Last-Modified</code></strong></td>
+<td>资源版本指纹 &#x2F; 修改时间</td>
+</tr>
+<tr>
+<td><strong><code>Cache-Control</code></strong></td>
+<td>缓存策略</td>
+</tr>
+<tr>
+<td><strong><code>Access-Control-Allow-Origin</code></strong></td>
+<td>CORS 放行规则</td>
+</tr>
+<tr>
+<td><strong><code>Content-Security-Policy</code></strong> 等</td>
+<td>安全加固（XSS、点击劫持防护）</td>
+</tr>
+<tr>
+<td><strong><code>Retry-After</code></strong></td>
+<td>503&#x2F;429 时建议的重试等待</td>
+</tr>
+</tbody></table>
+<p><strong>HTTPS 性能要点</strong>（与首部配合）：<strong>TLS 会话复用</strong>（session ticket）省握手往返；<strong>OCSP Stapling</strong> 省证书吊销检查；<strong>HSTS</strong>（<code>Strict-Transport-Security</code>）强制后续走 HTTPS，消除 301 跳转开销。详见 <a href="/network/04-https-tls-guide/">第四章：HTTPS 详解：TLS 握手、证书与 openssl&#x2F;curl 示例</a>。</p>
+<h2 id="完整通信数据流程（端到端）"><a href="#完整通信数据流程（端到端）" class="headerlink" title="完整通信数据流程（端到端）"></a>完整通信数据流程（端到端）</h2><p>下面以浏览器访问 <strong><code>https://api.example.com/v1/users?page=1</code></strong> 为例，从<strong>应用层到链路层</strong>走一遍真实链路。明文 <strong>HTTP</strong> 跳过 <strong>TLS</strong> 阶段，端口由 <strong>443</strong> 换为 <strong>80</strong> 即可。</p>
+<h3 id="1-协议栈与各层职责"><a href="#1-协议栈与各层职责" class="headerlink" title="1. 协议栈与各层职责"></a>1. 协议栈与各层职责</h3><pre>
+<code class="mermaid">
+
+flowchart TB
+  subgraph app [应用层]
+    UA[浏览器 &#x2F; curl &#x2F; 后端 HttpClient]
+    HTTP[HTTP 请求行 + 首部 + Body]
+  end
+  subgraph transport [传输层]
+    TLS[TLS 1.3 加密记录 可选]
+    TCP[TCP 可靠字节流 :443 &#x2F; :80]
+  end
+  subgraph network [网络层与以下]
+    IP[IP 分组 源&#x2F;目的 IP]
+    MAC[以太网&#x2F;WiFi 帧]
+  end
+  UA --&gt; HTTP
+  HTTP --&gt; TLS
+  TLS --&gt; TCP
+  TCP --&gt; IP
+  IP --&gt; MAC
+</code>
+</pre>
+
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>本例中的关键信息</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>HTTP</strong></td>
+<td><code>GET /v1/users?page=1</code>、<code>Host</code>、<code>Accept</code>、<code>Authorization</code></td>
+<td>表达<strong>资源</strong>与<strong>操作语义</strong></td>
+</tr>
+<tr>
+<td><strong>TLS</strong></td>
+<td><strong>SNI</strong>&#x3D;<code>api.example.com</code>、证书链、会话密钥</td>
+<td>加密与完整性（见 <a href="/network/04-https-tls-guide/">第四章：HTTPS 详解：TLS 握手、证书与 openssl&#x2F;curl 示例</a>）</td>
+</tr>
+<tr>
+<td><strong>TCP</strong></td>
+<td>四元组 <code>(客户端IP, 随机端口, 服务端IP, 443)</code>、序号&#x2F;ACK</td>
+<td><strong>面向连接</strong>的可靠管道</td>
+</tr>
+<tr>
+<td><strong>IP</strong></td>
+<td>源&#x2F;目的 IP、TTL</td>
+<td>跨网段<strong>路由</strong>（见 <a href="/network/06-ip-protocol/">第六章：IP 协议详解：原理、编址与排障示例</a>）</td>
+</tr>
+<tr>
+<td><strong>DNS</strong></td>
+<td><code>A</code> &#x2F; <code>AAAA</code> 记录</td>
+<td>把<strong>主机名</strong>解析为 IP（见 <a href="/network/10-dns-protocol/">第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例</a>）</td>
+</tr>
+</tbody></table>
+<h3 id="2-时序：DNS-→-TCP-→-TLS-→-HTTP-→-关闭"><a href="#2-时序：DNS-→-TCP-→-TLS-→-HTTP-→-关闭" class="headerlink" title="2. 时序：DNS → TCP → TLS → HTTP → 关闭"></a>2. 时序：DNS → TCP → TLS → HTTP → 关闭</h3><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant B as 浏览器
+  participant DNS as DNS 解析器
+  participant S as api.example.com :443
+
+  Note over B,DNS: ① 名称解析
+  B-&gt;&gt;DNS: 查询 api.example.com A&#x2F;AAAA
+  DNS--&gt;&gt;B: 93.184.216.34
+
+  Note over B,S: ② TCP 三次握手
+  B-&gt;&gt;S: SYN
+  S--&gt;&gt;B: SYN-ACK
+  B-&gt;&gt;S: ACK
+
+  Note over B,S: ③ TLS 握手 HTTP 在加密记录内传输
+  B-&gt;&gt;S: ClientHello SNI&#x3D;api.example.com
+  S--&gt;&gt;B: ServerHello + 证书链
+  B-&gt;&gt;S: Finished 会话密钥就绪
+
+  Note over B,S: ④ HTTP 请求 &#x2F; 响应
+  B-&gt;&gt;S: GET &#x2F;v1&#x2F;users?page&#x3D;1 HTTP&#x2F;1.1 Host Accept
+  S-&gt;&gt;S: 路由 Controller 查库
+  S--&gt;&gt;B: 200 OK Content-Type application&#x2F;json Body
+
+  Note over B,S: ⑤ 连接处置
+  alt Connection close
+    B-&gt;&gt;S: FIN 四次挥手
+  else Keep-Alive
+    B-&gt;&gt;S: 下一请求复用同 TCP
+  end
+</code>
+</pre>
+
+<p><strong>阶段说明</strong>：</p>
+<ol>
+<li><strong>DNS</strong>：若本地&#x2F;系统缓存无记录，先 <a href="/network/10-dns-protocol/">第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例</a> 递归查询得到 <strong>IP</strong>；否则直接进入 <strong>TCP</strong>。  </li>
+<li><strong>TCP 握手</strong>：<a href="/network/01-tcp-protocol/">第一章：TCP 协议详解：连接、可靠传输与编程示例</a> <strong>SYN → SYN-ACK → ACK</strong> 后，两端才有可用的<strong>字节流管道</strong>（详见 TCP 文「完整通信流程」）。  </li>
+<li><strong>TLS</strong>（HTTPS）：在 TCP 之上协商密钥；<strong>ALPN</strong> 常协商 <code>h2</code>（HTTP&#x2F;2）或 <code>http/1.1</code>。  </li>
+<li><strong>HTTP 交换</strong>：请求&#x2F;响应作为<strong>明文语义</strong>（TLS 下被加密后写入 TCP）。  </li>
+<li><strong>连接结束</strong>：<strong>HTTP&#x2F;1.1</strong> 默认 <strong><code>Connection: keep-alive</code></strong> 可复用 TCP；显式 <strong><code>close</code></strong> 或空闲超时后 <strong>TCP 挥手</strong>。</li>
+</ol>
+<h3 id="3-线路上「长什么样」：HTTP-在-TCP-字节流中"><a href="#3-线路上「长什么样」：HTTP-在-TCP-字节流中" class="headerlink" title="3. 线路上「长什么样」：HTTP 在 TCP 字节流中"></a>3. 线路上「长什么样」：HTTP 在 TCP 字节流中</h3><p><strong>HTTP&#x2F;1.1</strong> 是<strong>文本协议</strong>，在 TCP 上按序发送；一次 <strong>GET</strong> 在链路上近似如下（<code>\r\n</code> 为行结束，空行分隔首部与正文）：</p>
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">GET /v1/users?page=1 HTTP/1.1\r\n</span><br><span class="line"><span class="attribute">Host</span><span class="punctuation">: </span>api.example.com\r\n</span><br><span class="line"><span class="attribute">User-Agent</span><span class="punctuation">: </span>curl/8.0\r\n</span><br><span class="line"><span class="attribute">Accept</span><span class="punctuation">: </span>application/json\r\n</span><br><span class="line"><span class="attribute">Connection</span><span class="punctuation">: </span>keep-alive\r\n</span><br><span class="line">\r\n</span><br></pre></td></tr></table></figure>
+
+<p>服务端返回：</p>
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">HTTP/1.1</span> <span class="number">200</span> OK\r\n</span><br><span class="line"><span class="attribute">Content-Type</span><span class="punctuation">: </span>application/json; charset=utf-8\r\n</span><br><span class="line"><span class="attribute">Content-Length</span><span class="punctuation">: </span>42\r\n</span><br><span class="line"><span class="attribute">Connection</span><span class="punctuation">: </span>keep-alive\r\n</span><br><span class="line">\r\n</span><br><span class="line">&#123;&quot;data&quot;:[],&quot;page&quot;:1,&quot;total&quot;:0&#125;</span><br></pre></td></tr></table></figure>
+
+<pre>
+<code class="mermaid">
+
+flowchart LR
+  subgraph req [请求方向 Client → Server]
+    R1[请求行 GET ... HTTP&#x2F;1.1]
+    R2[首部 Host Accept ...]
+    R3[空行]
+    R4[Body 可选 POST&#x2F;PUT]
+  end
+  R1 --&gt; R2 --&gt; R3 --&gt; R4
+  subgraph tcp [TCP 分段]
+    Seg1[Segment seq&#x3D;n]
+    Seg2[Segment seq&#x3D;n+k]
+  end
+  R1 --&gt; Seg1
+  R2 --&gt; Seg1
+  R3 --&gt; Seg2
+  R4 --&gt; Seg2
+</code>
+</pre>
+
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>原理</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>Content-Length</code></strong></td>
+<td>首部给出正文<strong>字节数</strong>，读满即结束</td>
+<td>固定大小 JSON、文件</td>
+</tr>
+<tr>
+<td><strong><code>Transfer-Encoding: chunked</code></strong></td>
+<td>分块传输，每块带长度，<strong>0 块</strong>结束</td>
+<td>流式生成、未知总长</td>
+</tr>
+<tr>
+<td><strong><code>Connection: keep-alive</code></strong></td>
+<td>同一 <strong>TCP</strong> 上连续多个 HTTP 事务</td>
+<td>浏览器多资源、API 高频调用</td>
+</tr>
+</tbody></table>
+<h3 id="4-POST-提交-JSON-的完整数据路径"><a href="#4-POST-提交-JSON-的完整数据路径" class="headerlink" title="4. POST 提交 JSON 的完整数据路径"></a>4. POST 提交 JSON 的完整数据路径</h3><p>以 <strong><code>POST /v1/users</code></strong> 创建用户为例（仍走 HTTPS）：</p>
+<pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant C as Client
+  participant S as Server
+
+  C-&gt;&gt;C: 序列化 JSON 到 Body
+  C-&gt;&gt;S: POST &#x2F;v1&#x2F;users HTTP&#x2F;1.1
+  Note right of C: Content-Type application&#x2F;json&lt;br&#x2F;&gt;Content-Length N
+  C-&gt;&gt;S: Body name email ...
+  S-&gt;&gt;S: 解析 JSON 校验 写库
+  S--&gt;&gt;C: 201 Created Location &#x2F;v1&#x2F;users&#x2F;42
+  Note left of S: Body id 42 ...
+</code>
+</pre>
+
+<p>客户端必须告知服务端<strong>如何解析正文</strong>：<strong><code>Content-Type: application/json</code></strong> + <strong><code>Content-Length</code></strong>（或 <strong>chunked</strong>）。服务端按 <strong>状态码</strong> 区分成功：<strong>201 Created</strong> 常带 <strong><code>Location</code></strong> 指向新资源 URI。</p>
+<h3 id="5-HTTP-1-1-连接复用-vs-HTTP-2-多路复用"><a href="#5-HTTP-1-1-连接复用-vs-HTTP-2-多路复用" class="headerlink" title="5. HTTP&#x2F;1.1 连接复用 vs HTTP&#x2F;2 多路复用"></a>5. HTTP&#x2F;1.1 连接复用 vs HTTP&#x2F;2 多路复用</h3><p><strong>HTTP&#x2F;1.1 + Keep-Alive</strong>：多个请求<strong>串行</strong>占用同一 TCP，避免重复握手，但仍可能<strong>队头阻塞</strong>（前一响应慢会拖后后续请求）。</p>
+<pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant C as Client
+  participant S as Server
+  Note over C,S: 同一 TCP 连接
+  C-&gt;&gt;S: GET &#x2F;style.css
+  S--&gt;&gt;C: 200 CSS
+  C-&gt;&gt;S: GET &#x2F;api&#x2F;data
+  S--&gt;&gt;C: 200 JSON
+</code>
+</pre>
+
+<p><strong>HTTP&#x2F;2</strong>：在<strong>单 TCP</strong> 上拆成<strong>二进制帧</strong>、<strong>Stream ID</strong> 多路并行（见上文「HTTP&#x2F;1.1 与 HTTP&#x2F;2」）。<strong>HTTP&#x2F;3</strong> 则把语义映射到 <a href="/network/15-quic-protocol/">第十五章：QUIC 详解：基于 UDP 的可靠传输、TLS 集成与 HTTP&#x2F;3</a>，传输层不再依赖 TCP。</p>
+<h3 id="6-用-curl-对照各阶段"><a href="#6-用-curl-对照各阶段" class="headerlink" title="6. 用 curl 对照各阶段"></a>6. 用 curl 对照各阶段</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># -v 打印 DNS、TCP/TLS、HTTP 首部；-w 输出各阶段耗时</span></span><br><span class="line">curl -v -w <span class="string">&#x27;\nnamelookup:%&#123;time_namelookup&#125; connect:%&#123;time_connect&#125; tls:%&#123;time_appconnect&#125; starttransfer:%&#123;time_starttransfer&#125;\n&#x27;</span> \</span><br><span class="line">  <span class="string">&#x27;https://api.example.com/v1/users?page=1&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>curl 输出段</th>
+<th>对应流程</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Trying ... Connected</code></td>
+<td><strong>DNS</strong> 完成 + <strong>TCP 握手</strong></td>
+</tr>
+<tr>
+<td><code>TLSv1.3 ... SSL certificate verify ok</code></td>
+<td><strong>TLS</strong> 握手与证书校验</td>
+</tr>
+<tr>
+<td><code>&gt; GET /v1/...</code></td>
+<td>发出 <strong>HTTP 请求</strong></td>
+</tr>
+<tr>
+<td><code>&lt; HTTP/1.1 200</code></td>
+<td>收到 <strong>HTTP 响应</strong> 状态行</td>
+</tr>
+<tr>
+<td><code>namelookup</code> &#x2F; <code>connect</code> &#x2F; <code>tls</code> &#x2F; <code>starttransfer</code></td>
+<td>各阶段耗时（排障常用）</td>
+</tr>
+</tbody></table>
+<p>明文 <strong>HTTP</strong> 本地实验（<strong>无 TLS</strong>）仍可用 <strong>nc</strong>（见下文 nc 示例一节）；生产环境对外服务应使用 <a href="/network/04-https-tls-guide/">第四章：HTTPS 详解：TLS 握手、证书与 openssl&#x2F;curl 示例</a>。</p>
+<h3 id="7-与相邻协议文档的对照"><a href="#7-与相邻协议文档的对照" class="headerlink" title="7. 与相邻协议文档的对照"></a>7. 与相邻协议文档的对照</h3><table>
+<thead>
+<tr>
+<th>主题</th>
+<th>文档</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>主机名 → IP</td>
+<td><a href="/network/10-dns-protocol/">第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例</a></td>
+</tr>
+<tr>
+<td>可靠传输、握手&#x2F;挥手</td>
+<td><a href="/network/01-tcp-protocol/">第一章：TCP 协议详解：连接、可靠传输与编程示例</a></td>
+</tr>
+<tr>
+<td>加密与证书</td>
+<td><a href="/network/04-https-tls-guide/">第四章：HTTPS 详解：TLS 握手、证书与 openssl&#x2F;curl 示例</a></td>
+</tr>
+<tr>
+<td>全双工推送</td>
+<td><a href="/network/11-websocket-protocol/">第十一章：WebSocket 详解：握手、帧与 Python 示例</a></td>
+</tr>
+<tr>
+<td>UDP 上的 HTTP&#x2F;3</td>
+<td><a href="/network/03-http3-protocol/">第三章：HTTP3 详解：QUIC 承载、版本对照与 curl 验证</a> · <a href="/network/15-quic-protocol/">第十五章：QUIC 详解：基于 UDP 的可靠传输、TLS 集成与 HTTP&#x2F;3</a></td>
+</tr>
+</tbody></table>
+<h2 id="示例：curl-观察报文"><a href="#示例：curl-观察报文" class="headerlink" title="示例：curl 观察报文"></a>示例：<code>curl</code> 观察报文</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -v --http1.1 https://example.com/ -o /dev/null</span><br></pre></td></tr></table></figure>
+
+<p>查看 <strong>TLS</strong> 与 <strong>HTTP&#x2F;2</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -v --http2 https://example.com/ -o /dev/null</span><br></pre></td></tr></table></figure>
+
+<p>仅看响应头：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -sI https://example.com/</span><br></pre></td></tr></table></figure>
+
+<h2 id="示例：用-nc-发送最小-HTTP-1-1-请求（明文）"><a href="#示例：用-nc-发送最小-HTTP-1-1-请求（明文）" class="headerlink" title="示例：用 nc 发送最小 HTTP&#x2F;1.1 请求（明文）"></a>示例：用 <strong>nc</strong> 发送最小 <strong>HTTP&#x2F;1.1</strong> 请求（明文）</h2><p><strong>仅用于本地实验</strong>（对端须是明文 <strong>HTTP</strong>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n&#x27;</span> | nc example.com 80 | <span class="built_in">head</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="示例：Python-3-最小-HTTP-客户端（标准库）"><a href="#示例：Python-3-最小-HTTP-客户端（标准库）" class="headerlink" title="示例：Python 3 最小 HTTP 客户端（标准库）"></a>示例：<strong>Python 3</strong> 最小 <strong>HTTP</strong> 客户端（标准库）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> urllib.request</span><br><span class="line"></span><br><span class="line">req = urllib.request.Request(<span class="string">&quot;https://example.com/&quot;</span>, headers=&#123;<span class="string">&quot;User-Agent&quot;</span>: <span class="string">&quot;demo&quot;</span>&#125;)</span><br><span class="line"><span class="keyword">with</span> urllib.request.urlopen(req, timeout=<span class="number">10</span>) <span class="keyword">as</span> resp:</span><br><span class="line">    <span class="built_in">print</span>(resp.status, resp.getheader(<span class="string">&quot;Content-Type&quot;</span>))</span><br><span class="line">    <span class="built_in">print</span>(resp.read(<span class="number">200</span>))</span><br></pre></td></tr></table></figure>
+
+<p>缓存与条件请求（<strong><code>ETag</code></strong>、<strong><code>If-None-Match</code></strong>）见 <strong>RFC 9110</strong> 缓存章节。</p>
+<h2 id="常见面试题速览"><a href="#常见面试题速览" class="headerlink" title="常见面试题速览"></a>常见面试题速览</h2><ol>
+<li><strong>GET 与 POST 的本质区别</strong>——语义（读 vs 提交）与<strong>幂等性</strong>；报文层面两者都能带 Body，差异在约定、缓存与重试行为。</li>
+<li><strong>HTTP 与 HTTPS</strong>——HTTPS &#x3D; HTTP + TLS；默认 443 vs 80；多一次握手与证书校验；浏览器场景的 <strong>HTTP&#x2F;2</strong> 几乎只在 TLS 上启用。</li>
+<li><strong>队头阻塞在哪一层</strong>——HTTP&#x2F;1.1 是<strong>应用层</strong>串行；HTTP&#x2F;2 解决了应用层队头阻塞，但 <strong>TCP 层</strong>丢包仍会整流阻塞；HTTP&#x2F;3 用 <strong>QUIC</strong> 流彻底解开。</li>
+<li><strong>301 &#x2F; 302 &#x2F; 307 &#x2F; 308 区别</strong>——301&#x2F;308 永久重定向，302&#x2F;307 临时；307&#x2F;308 <strong>保证方法与 Body 不变</strong>，302 的历史实现可能把 POST 悄悄改成 GET。</li>
+<li><strong>Cookie 与 Session</strong>——Cookie 是客户端存储凭证的载体，Session 是服务端会话状态，二者常配合使用；<code>HttpOnly</code> &#x2F; <code>Secure</code> &#x2F; <code>SameSite</code> 是 Cookie 安全三件套。</li>
+<li><strong>为什么需要 Host 头</strong>——一个 IP 可承载多个站点（虚拟主机）；TLS 的 <strong>SNI</strong> 同理，用于选择证书。</li>
+<li><strong><code>Content-Length</code> 与 <code>chunked</code> 互斥</strong>——正文定界二者只居其一；<code>chunked</code> 以 <strong>0 长度块</strong>结尾，适合流式、未知总长。</li>
+<li><strong>no-cache 与 no-store</strong>——<code>no-cache</code> 是「存了但每次要再验证」，<code>no-store</code> 才是「完全不存」。</li>
+<li><strong>HTTP&#x2F;2 一定更快吗</strong>——不一定：单连接丢包时所有流一起等（TCP 层队头阻塞）；丢包率高的移动弱网下 HTTP&#x2F;3 优势明显。</li>
+<li><strong>什么时候用 204 而不是 200</strong>——操作成功但无内容返回时（如 DELETE、埋点上报），省响应体字节与解析。</li>
+<li><strong>POST 为什么不算幂等</strong>——重复提交会创建多条资源；需要幂等写时用 PUT 或加幂等键（<code>Idempotency-Key</code>）。</li>
+</ol>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模型</td>
+<td><strong>请求-响应</strong>、<strong>无状态</strong>；方法 + URI 表达对资源的操作，幂等性是重要约定</td>
+</tr>
+<tr>
+<td>报文</td>
+<td>请求行&#x2F;状态行 + 首部 + 空行 + 正文；<code>Content-Length</code> &#x2F; <code>chunked</code> 定界正文</td>
+</tr>
+<tr>
+<td>端到端</td>
+<td><strong>DNS → TCP → TLS → HTTP</strong>；<code>curl -v -w</code> 可对照各阶段与耗时</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>HTTP&#x2F;1.1 Keep-Alive 有队头阻塞 → HTTP&#x2F;2 二进制帧多路复用 → HTTP&#x2F;3 基于 QUIC</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Protocol/" rel="tag"># Protocol</a>
+              <a href="/tags/HTTP/" rel="tag"># HTTP</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/network/01-tcp-protocol/" rel="prev" title="第一章：TCP 协议详解：连接、可靠传输与编程示例">
+                  <i class="fa fa-angle-left"></i> 第一章：TCP 协议详解：连接、可靠传输与编程示例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/network/03-http3-protocol/" rel="next" title="第三章：HTTP3 详解：QUIC 承载、版本对照与 curl 验证">
+                  第三章：HTTP3 详解：QUIC 承载、版本对照与 curl 验证 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

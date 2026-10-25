@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第一章：ClickHouse 列式存储入门概念基础 列式存储：ClickHouse 按列组织数据，SELECT avg(price) 只读 price 一列，IO 远小于行存全表扫描——这是它分析查询快的根源。 向量化执行：数据按列块批量进入对 CPU 缓存友好的计算路径，充分利用批量计算，吞吐远高于逐行解释执行。 专为 OLAP 而生：适合大规模聚合、日志与事件分析；不适合高并发单行点查、频繁小">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第一章：ClickHouse 列式存储入门">
+<meta property="og:url" content="https://my919.github.io/database/01-clickhouse-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第一章：ClickHouse 列式存储入门概念基础 列式存储：ClickHouse 按列组织数据，SELECT avg(price) 只读 price 一列，IO 远小于行存全表扫描——这是它分析查询快的根源。 向量化执行：数据按列块批量进入对 CPU 缓存友好的计算路径，充分利用批量计算，吞吐远高于逐行解释执行。 专为 OLAP 而生：适合大规模聚合、日志与事件分析；不适合高并发单行点查、频繁小">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:27:43.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.569Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="ClickHouse">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/database/01-clickhouse-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/database/01-clickhouse-guide/","path":"database/01-clickhouse-guide/","title":"第一章：ClickHouse 列式存储入门"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第一章：ClickHouse 列式存储入门 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E7%AB%A0%EF%BC%9AClickHouse-%E5%88%97%E5%BC%8F%E5%AD%98%E5%82%A8%E5%85%A5%E9%97%A8"><span class="nav-number">1.</span> <span class="nav-text">第一章：ClickHouse 列式存储入门</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%97%E5%AD%98%E4%B8%8E%E5%AE%9A%E4%BD%8D"><span class="nav-number">1.2.</span> <span class="nav-text">列存与定位</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%97%E5%AD%98%E6%9F%A5%E8%AF%A2%E8%B7%AF%E5%BE%84"><span class="nav-number">1.2.1.</span> <span class="nav-text">列存查询路径</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%B8%BA%E4%BD%95%E5%88%97%E5%AD%98%E9%80%82%E5%90%88%E5%88%86%E6%9E%90"><span class="nav-number">1.2.2.</span> <span class="nav-text">1. 为何列存适合分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%8D%8F%E8%AE%AE%E4%B8%8E%E7%AB%AF%E5%8F%A3"><span class="nav-number">1.2.3.</span> <span class="nav-text">2. 协议与端口</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BF%AB%E9%80%9F%E4%B8%8A%E6%89%8B"><span class="nav-number">1.3.</span> <span class="nav-text">快速上手</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%AE%A2%E6%88%B7%E7%AB%AF"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 客户端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%BB%BA%E5%BA%93%E5%BB%BA%E8%A1%A8"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 建库建表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%A8%80%E7%96%8F%E7%B4%A2%E5%BC%95%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%BB%E9%94%AE%E4%B8%8D%E5%8D%A0%E5%A4%9A%E5%B0%91%E5%86%85%E5%AD%98"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. 稀疏索引：为什么主键不占多少内存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E9%80%89%E6%8B%A9%EF%BC%9A%E7%9C%81%E7%A9%BA%E9%97%B4%E5%B0%B1%E6%98%AF%E7%9C%81%E6%97%B6%E9%97%B4"><span class="nav-number">1.3.4.</span> <span class="nav-text">4. 数据类型选择：省空间就是省时间</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E6%9F%A5%E8%AF%A2"><span class="nav-number">1.4.</span> <span class="nav-text">常用查询</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MergeTree-%E5%BC%95%E6%93%8E%E5%AE%B6%E6%97%8F%EF%BC%88%E6%A6%82%E5%BF%B5%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">MergeTree 引擎家族（概念）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%95%E6%93%8E%E9%80%89%E5%9E%8B%E9%80%9F%E8%AE%B0"><span class="nav-number">1.5.1.</span> <span class="nav-text">引擎选型速记</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%89%A9%E5%8C%96%E8%A7%86%E5%9B%BE%EF%BC%9A%E5%86%99%E5%85%A5%E6%97%B6%E9%A2%84%E8%81%9A%E5%90%88"><span class="nav-number">1.6.</span> <span class="nav-text">物化视图：写入时预聚合</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E-Doris-StarRocks-%E7%9A%84%E6%A8%AA%E5%90%91%E5%AF%B9%E6%AF%94"><span class="nav-number">1.7.</span> <span class="nav-text">与 Doris &#x2F; StarRocks 的横向对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E%E5%91%A8%E8%BE%B9%E7%B3%BB%E7%BB%9F%E5%88%86%E5%B7%A5"><span class="nav-number">1.8.</span> <span class="nav-text">与周边系统分工</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%91%E9%87%8F%E5%8C%96%E6%89%A7%E8%A1%8C%EF%BC%9A%E5%BF%AB%E5%9C%A8-CPU-%E5%B1%82%E9%9D%A2"><span class="nav-number">1.9.</span> <span class="nav-text">向量化执行：快在 CPU 层面</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E6%A6%82%E8%A7%88%EF%BC%9AReplicatedMergeTree-Keeper"><span class="nav-number">1.10.</span> <span class="nav-text">集群部署概览：ReplicatedMergeTree + Keeper</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E6%B3%A8%E6%84%8F"><span class="nav-number">1.11.</span> <span class="nav-text">生产注意</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.12.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/database/01-clickhouse-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第一章：ClickHouse 列式存储入门 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第一章：ClickHouse 列式存储入门
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:27:43" itemprop="dateCreated datePublished" datetime="2026-05-01T12:27:43+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/" itemprop="url" rel="index"><span itemprop="name">数据库</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.7k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第一章：ClickHouse-列式存储入门"><a href="#第一章：ClickHouse-列式存储入门" class="headerlink" title="第一章：ClickHouse 列式存储入门"></a>第一章：ClickHouse 列式存储入门</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>列式存储</strong>：<strong>ClickHouse</strong> 按<strong>列</strong>组织数据，<code>SELECT avg(price)</code> 只读 <strong><code>price</code></strong> 一列，IO 远小于行存全表扫描——这是它分析查询快的根源。</li>
+<li><strong>向量化执行</strong>：数据按<strong>列块</strong>批量进入对 CPU 缓存友好的计算路径，充分利用批量计算，吞吐远高于逐行解释执行。</li>
+<li><strong>专为 OLAP 而生</strong>：适合<strong>大规模聚合、日志与事件分析</strong>；不适合高并发单行点查、频繁小事务更新（OLTP 仍用 <a href="/mysql/mysql-guide/">第一章：MySQL DDL 语句与表设计入门</a> 等）。</li>
+<li><strong>MergeTree 引擎家族</strong>：核心表引擎支持<strong>分区、排序键、TTL、副本</strong>，是绝大多数分析表的底座。</li>
+<li><strong>双协议接入</strong>：<strong>HTTP 8123</strong>（<code>curl</code>、JDBC HTTP、BI 工具）与 <strong>Native 9000</strong>（<code>clickhouse-client</code>、官方驱动）按场景选择。</li>
+<li><strong>版本基准</strong>：本文以 <strong>ClickHouse 25.x</strong>（2025 年稳定线）语法与行为为准；长期支持版（LTS）每年 3 月、8 月发布，生产建议选 LTS 标签。</li>
+</ol>
+<h2 id="列存与定位"><a href="#列存与定位" class="headerlink" title="列存与定位"></a>列存与定位</h2><h3 id="列存查询路径"><a href="#列存查询路径" class="headerlink" title="列存查询路径"></a>列存查询路径</h3><pre>
+<code class="mermaid">
+
+flowchart LR
+  SQL[SELECT 聚合] --&gt; CH[ClickHouse]
+  CH --&gt; Part[按分区裁剪]
+  Part --&gt; Col[列块向量化扫描]
+  Col --&gt; Agg[GROUP BY 结果]
+</code>
+</pre>
+
+<h3 id="1-为何列存适合分析"><a href="#1-为何列存适合分析" class="headerlink" title="1. 为何列存适合分析"></a>1. 为何列存适合分析</h3><ul>
+<li><strong>按列压缩与读取</strong>：<code>SELECT avg(price)</code> 只读 <strong><code>price</code></strong> 列，IO 远小于行存全表扫描。  </li>
+<li><strong>向量化执行</strong>：一批数据在 CPU 缓存友好地计算。  </li>
+<li><strong>不适合</strong>：高并发单行点查、频繁小事务更新（OLTP 仍用 <a href="/mysql/mysql-guide/">第一章：MySQL DDL 语句与表设计入门</a> 等）。</li>
+</ul>
+<h3 id="2-协议与端口"><a href="#2-协议与端口" class="headerlink" title="2. 协议与端口"></a>2. 协议与端口</h3><table>
+<thead>
+<tr>
+<th>协议</th>
+<th>默认端口</th>
+<th>典型客户端</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>HTTP</strong></td>
+<td><strong>8123</strong></td>
+<td><strong><code>curl</code></strong>、JDBC HTTP、BI 工具</td>
+</tr>
+<tr>
+<td><strong>Native</strong></td>
+<td><strong>9000</strong></td>
+<td><strong><code>clickhouse-client</code></strong>、官方驱动</td>
+</tr>
+</tbody></table>
+<h2 id="快速上手"><a href="#快速上手" class="headerlink" title="快速上手"></a>快速上手</h2><h3 id="1-客户端"><a href="#1-客户端" class="headerlink" title="1. 客户端"></a>1. 客户端</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">clickhouse-client --host 127.0.0.1 --port 9000 -u default --password</span><br></pre></td></tr></table></figure>
+
+<p>HTTP 探测：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -sS <span class="string">&quot;http://127.0.0.1:8123/ping&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-建库建表"><a href="#2-建库建表" class="headerlink" title="2. 建库建表"></a>2. 建库建表</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> DATABASE IF <span class="keyword">NOT</span> <span class="keyword">EXISTS</span> analytics;</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE TABLE</span> analytics.events (</span><br><span class="line">  event_date <span class="type">Date</span>,</span><br><span class="line">  user_id UInt64,</span><br><span class="line">  event_type LowCardinality(String),</span><br><span class="line">  properties String</span><br><span class="line">) ENGINE <span class="operator">=</span> MergeTree()</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(event_date)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (event_date, user_id);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>PARTITION BY</code></strong>：按月分区，便于 TTL 与删除旧分区。  </li>
+<li><strong><code>ORDER BY</code></strong>：主键排序键，决定数据在磁盘上的排列与稀疏索引。</li>
+</ul>
+<h3 id="3-稀疏索引：为什么主键不占多少内存"><a href="#3-稀疏索引：为什么主键不占多少内存" class="headerlink" title="3. 稀疏索引：为什么主键不占多少内存"></a>3. 稀疏索引：为什么主键不占多少内存</h3><p>MergeTree 的主键索引<strong>不是 B-Tree</strong>，而是<strong>稀疏索引（Sparse Index）</strong>：</p>
+<ul>
+<li>数据按 <strong><code>ORDER BY</code></strong> 排序后切成 <strong>granule</strong>（默认每 <strong>8192</strong> 行一个）。  </li>
+<li>索引只记录<strong>每个 granule 第一行</strong>的排序键值——亿行表的主键索引通常只有<strong>几万条</strong>，可常驻内存。  </li>
+<li>查询时先二分查找索引定位到<strong>候选 granule 区间</strong>，再并行扫描这些 granule——这就是「索引在 ClickHouse 里很轻」的原因。</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看表的分区与 part 结构</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="keyword">partition</span>, name, <span class="keyword">rows</span>, formatReadableSize(bytes_on_disk) <span class="keyword">AS</span> size</span><br><span class="line"><span class="keyword">FROM</span> system.parts</span><br><span class="line"><span class="keyword">WHERE</span> <span class="keyword">table</span> <span class="operator">=</span> <span class="string">&#x27;events&#x27;</span> <span class="keyword">AND</span> active</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> <span class="keyword">partition</span> <span class="keyword">DESC</span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>partition</strong>：分区键值（如 <code>202605</code>）。  </li>
+<li><strong>part</strong>：分区内的物理数据块，后台 <strong>merge</strong> 会持续把小 part 合成大 part。  </li>
+<li>part 过多会触发 <strong><code>Too many parts</code></strong> 报错——写入批量化是预防关键（排查详见 <a href="/database/03-clickhouse-query-tuning/">第三章：ClickHouse 查询与性能调优</a>）。</li>
+</ul>
+<h3 id="4-数据类型选择：省空间就是省时间"><a href="#4-数据类型选择：省空间就是省时间" class="headerlink" title="4. 数据类型选择：省空间就是省时间"></a>4. 数据类型选择：省空间就是省时间</h3><p>ClickHouse 的类型选择直接影响压缩率与扫描速度：</p>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>推荐类型</th>
+<th>避免</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>枚举&#x2F;状态（几十~几万取值）</td>
+<td><strong><code>LowCardinality(String)</code></strong></td>
+<td>裸 <code>String</code></td>
+</tr>
+<tr>
+<td>整数</td>
+<td>按需选 <code>UInt8/16/32/64</code></td>
+<td>一律 <code>UInt64</code> 浪费空间</td>
+</tr>
+<tr>
+<td>金额</td>
+<td><strong><code>Decimal(18, 2)</code></strong></td>
+<td><code>Float64</code>（精度坑）</td>
+</tr>
+<tr>
+<td>时间</td>
+<td><code>DateTime</code>（秒）&#x2F; <code>DateTime64(3)</code>（毫秒）</td>
+<td>字符串存时间</td>
+</tr>
+<tr>
+<td>可空</td>
+<td>尽量不用 <code>Nullable</code>，用默认值代替</td>
+<td><code>Nullable(String)</code> 压缩差</td>
+</tr>
+<tr>
+<td>IP 地址</td>
+<td><code>IPv4</code> &#x2F; <code>IPv6</code> 原生类型</td>
+<td><code>String</code></td>
+</tr>
+</tbody></table>
+<p><strong>经验法则</strong>：列越窄、基数越低，压缩越狠、扫描越快——<strong><code>LowCardinality</code></strong> 是字符串枚举列的必选项。</p>
+<h2 id="常用查询"><a href="#常用查询" class="headerlink" title="常用查询"></a>常用查询</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 聚合</span></span><br><span class="line"><span class="keyword">SELECT</span> event_type, <span class="built_in">count</span>() <span class="keyword">AS</span> cnt</span><br><span class="line"><span class="keyword">FROM</span> analytics.events</span><br><span class="line"><span class="keyword">WHERE</span> event_date <span class="operator">&gt;=</span> today() <span class="operator">-</span> <span class="number">7</span></span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> event_type</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> cnt <span class="keyword">DESC</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 去重近似（HyperLogLog 在 CH 中有专门类型与函数）</span></span><br><span class="line"><span class="keyword">SELECT</span> uniq(user_id) <span class="keyword">FROM</span> analytics.events <span class="keyword">WHERE</span> event_date <span class="operator">=</span> today();</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>FINAL</code></strong>、<strong><code>PREWHERE</code></strong>、<strong>物化视图（Materialized View）</strong> 是生产调优常用手段，需结合表引擎文档使用。</p>
+<h2 id="MergeTree-引擎家族（概念）"><a href="#MergeTree-引擎家族（概念）" class="headerlink" title="MergeTree 引擎家族（概念）"></a>MergeTree 引擎家族（概念）</h2><table>
+<thead>
+<tr>
+<th>引擎</th>
+<th>用途</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>MergeTree</strong></td>
+<td>通用分析表，支持分区、TTL、二级索引</td>
+<td>日志、事件明细</td>
+</tr>
+<tr>
+<td><strong>ReplacingMergeTree</strong></td>
+<td>按排序键去重（后台 merge 时，保留 <code>ver</code> 最大版本）</td>
+<td>用户状态快照、订单最新态</td>
+</tr>
+<tr>
+<td><strong>SummingMergeTree</strong></td>
+<td>merge 时把数值列相加（预聚合）</td>
+<td>按天累计的指标宽表</td>
+</tr>
+<tr>
+<td><strong>AggregatingMergeTree</strong></td>
+<td>存储聚合<strong>中间状态</strong>（<code>-State</code> 函数写入）</td>
+<td>物化视图的落表引擎</td>
+</tr>
+<tr>
+<td><strong>CollapsingMergeTree</strong></td>
+<td>用 <code>Sign</code> 列（1&#x2F;-1）对冲删除旧行</td>
+<td>实时变更流、可撤销统计</td>
+</tr>
+<tr>
+<td><strong>VersionedCollapsingMergeTree</strong></td>
+<td>带版本号的折叠，解决乱序写入</td>
+<td>上游乱序送达的变更数据</td>
+</tr>
+<tr>
+<td><strong>ReplicatedMergeTree</strong></td>
+<td>以上引擎的<strong>副本版</strong>，靠 Keeper 协调</td>
+<td>生产集群标配</td>
+</tr>
+</tbody></table>
+<p>分布式表 <strong><code>Distributed</code></strong> 引擎配合集群配置做水平扩展：本地表存分片数据，<code>Distributed</code> 表路由查询到各分片并归并结果。</p>
+<h3 id="引擎选型速记"><a href="#引擎选型速记" class="headerlink" title="引擎选型速记"></a>引擎选型速记</h3><ol>
+<li><strong>明细表</strong>永远从 <strong><code>MergeTree</code></strong>（集群用 <strong><code>ReplicatedMergeTree</code></strong>）起步。  </li>
+<li>需要「<strong>同一 key 只留最新</strong>」用 <strong><code>ReplacingMergeTree</code></strong>，但去重<strong>只发生在 merge 时</strong>，查询要加 <strong><code>FINAL</code></strong> 或 <strong><code>GROUP BY</code> + <code>argMax</code></strong> 兜底。  </li>
+<li>需要「<strong>写入即聚合</strong>」用 <strong><code>AggregatingMergeTree</code></strong> 搭配<strong>物化视图</strong>，而不是让查询扫明细。</li>
+</ol>
+<h2 id="物化视图：写入时预聚合"><a href="#物化视图：写入时预聚合" class="headerlink" title="物化视图：写入时预聚合"></a>物化视图：写入时预聚合</h2><p><strong>物化视图（Materialized View）</strong> 是 ClickHouse 报表提速的第一手段：<strong>数据写入源表时</strong>，自动按视图定义的 SQL 算出结果并写入<strong>目标表</strong>。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 目标表存按天聚合的结果</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> analytics.events_daily (</span><br><span class="line">  event_date <span class="type">Date</span>,</span><br><span class="line">  event_type LowCardinality(String),</span><br><span class="line">  cnt UInt64</span><br><span class="line">) ENGINE <span class="operator">=</span> SummingMergeTree()</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (event_date, event_type);</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 视图：events 每写入一批，就同步聚合进 events_daily</span></span><br><span class="line"><span class="keyword">CREATE</span> MATERIALIZED <span class="keyword">VIEW</span> analytics.mv_daily</span><br><span class="line"><span class="keyword">TO</span> analytics.events_daily <span class="keyword">AS</span></span><br><span class="line"><span class="keyword">SELECT</span> event_date, event_type, <span class="built_in">count</span>() <span class="keyword">AS</span> cnt</span><br><span class="line"><span class="keyword">FROM</span> analytics.events</span><br><span class="line"><span class="keyword">GROUP</span> <span class="keyword">BY</span> event_date, event_type;</span><br></pre></td></tr></table></figure>
+
+<p>要点：</p>
+<ul>
+<li><strong>只对新写入生效</strong>，历史数据需手工 <code>INSERT INTO ... SELECT</code> 回填。  </li>
+<li><strong>查询端仍需再聚合一层</strong>（merge 时机不定），写完整的物化视图用法见 <a href="/database/03-clickhouse-query-tuning/">第三章：ClickHouse 查询与性能调优</a>。</li>
+</ul>
+<h2 id="与-Doris-StarRocks-的横向对比"><a href="#与-Doris-StarRocks-的横向对比" class="headerlink" title="与 Doris &#x2F; StarRocks 的横向对比"></a>与 Doris &#x2F; StarRocks 的横向对比</h2><p>同赛道竞品常被一起评估，粗对照如下（2025 年视角）：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th><strong>ClickHouse 25.x</strong></th>
+<th><strong>Apache Doris</strong></th>
+<th><strong>StarRocks</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单机性能</td>
+<td>极致（向量化鼻祖之一）</td>
+<td>高</td>
+<td>高</td>
+</tr>
+<tr>
+<td>SQL 兼容</td>
+<td>自有方言，功能极多</td>
+<td>接近 MySQL 协议</td>
+<td>接近 MySQL 协议</td>
+</tr>
+<tr>
+<td>JOIN 能力</td>
+<td>较弱（右表进内存）</td>
+<td>较强</td>
+<td>较强（CBO 成熟）</td>
+</tr>
+<tr>
+<td>高并发报表</td>
+<td>一般（几十 QPS）</td>
+<td>较好</td>
+<td>较好</td>
+</tr>
+<tr>
+<td>生态与资料</td>
+<td>最丰富</td>
+<td>中文社区活跃</td>
+<td>中文社区活跃</td>
+</tr>
+<tr>
+<td>运维复杂度</td>
+<td>中（Keeper + 分片手工）</td>
+<td>较低（FE&#x2F;BE 自管理）</td>
+<td>较低</td>
+</tr>
+</tbody></table>
+<p><strong>选型一句话</strong>：单表超大规模、写入吞吐优先选 <strong>ClickHouse</strong>；多表关联 + 高并发报表多，评估 <strong>Doris &#x2F; StarRocks</strong>；明细 + 报表混合负载可两者并存，各干各的强项。</p>
+<h2 id="与周边系统分工"><a href="#与周边系统分工" class="headerlink" title="与周边系统分工"></a>与周边系统分工</h2><ul>
+<li><strong>写入</strong>：业务库 → <strong>Kafka</strong> &#x2F; 日志采集 → <strong>ClickHouse</strong> 批量写入（<strong>Buffer</strong> 表或外部引擎）。  </li>
+<li><strong>查询</strong>：Grafana、Metabase、自研报表；复杂 SQL 注意避免 <strong><code>SELECT *</code></strong> 大宽表。  </li>
+<li><strong>缓存热结果</strong>：短时指标可落 <a href="/redis/redis-guide/">第一章：Redis 概述、安装与 CLI 入门</a>，明细仍在 <strong>ClickHouse</strong>。</li>
+</ul>
+<p>容器部署见 <a href="/database/02-clickhouse-docker/">第二章：Docker 部署 ClickHouse 实践</a>。</p>
+<h2 id="向量化执行：快在-CPU-层面"><a href="#向量化执行：快在-CPU-层面" class="headerlink" title="向量化执行：快在 CPU 层面"></a>向量化执行：快在 CPU 层面</h2><p>列存解决的是<strong>少读盘</strong>，向量化解决的是<strong>读进来之后算得快</strong>：</p>
+<ul>
+<li><strong>批量而非逐行</strong>：表达式一次处理一个<strong>列块</strong>（通常几千行的数组），而不是一行行解释执行。  </li>
+<li><strong>SIMD 指令</strong>：<code>sum</code>、<code>count</code> 等聚合经编译生成 <strong>AVX2&#x2F;AVX-512</strong> 向量化指令，一条指令算多个值。  </li>
+<li><strong>CPU 缓存友好</strong>：列块紧凑连续，预取命中率高；行存的「字段散布在行里」会频繁缓存失效。  </li>
+<li><strong>多核并行</strong>：查询按 granule 拆成任务流，默认吃满 <strong><code>max_threads</code></strong>（&#x3D; CPU 核数）。</li>
+</ul>
+<p>这也是为什么 ClickHouse 对<strong>虚机 &#x2F; 容器限核</strong>敏感——CPU 被限到 2 核时，聚合吞吐近乎同比腰斩，容量规划要预留核数。</p>
+<h2 id="集群部署概览：ReplicatedMergeTree-Keeper"><a href="#集群部署概览：ReplicatedMergeTree-Keeper" class="headerlink" title="集群部署概览：ReplicatedMergeTree + Keeper"></a>集群部署概览：ReplicatedMergeTree + Keeper</h2><p>单机之上，生产最小可信拓扑是 <strong>2 分片 × 2 副本</strong>：</p>
+<ol>
+<li><strong>ClickHouse Keeper</strong>（或 ZooKeeper）：3 节点小集群，存<strong>副本元数据与日志序号</strong>，协调「谁同步谁」；自身用 Raft 选主，独立于数据节点部署。  </li>
+<li><strong>ReplicatedMergeTree</strong>：建表加副本参数，同分片的多个副本通过 Keeper 交换 <strong>part 清单</strong>、互拉数据，写入任一副本即可。  </li>
+<li><strong>Distributed 表</strong>：建在每个节点上，按 <strong>sharding key</strong>（如 <code>user_id</code> 哈希）把写入&#x2F;查询路由到目标分片。</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 副本表（宏 &#123;shard&#125;/&#123;replica&#125; 在配置文件中定义）</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> analytics.events <span class="keyword">ON</span> CLUSTER my_cluster (</span><br><span class="line">  event_date <span class="type">Date</span>,</span><br><span class="line">  user_id UInt64,</span><br><span class="line">  event_type LowCardinality(String)</span><br><span class="line">) ENGINE <span class="operator">=</span> ReplicatedMergeTree(</span><br><span class="line">    <span class="string">&#x27;/clickhouse/tables/&#123;shard&#125;/events&#x27;</span>, <span class="string">&#x27;&#123;replica&#125;&#x27;</span>)</span><br><span class="line"><span class="keyword">PARTITION</span> <span class="keyword">BY</span> toYYYYMM(event_date)</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> (event_date, user_id);</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 分布式表：查询入口</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> analytics.events_all <span class="keyword">ON</span> CLUSTER my_cluster</span><br><span class="line"><span class="keyword">AS</span> analytics.events</span><br><span class="line">ENGINE <span class="operator">=</span> Distributed(my_cluster, analytics, events, cityHash64(user_id));</span><br></pre></td></tr></table></figure>
+
+<p>要点：<strong><code>ON CLUSTER</code></strong> 让 DDL 在集群所有节点执行；分片键选<strong>基数高、分布均匀</strong>的列，避免数据倾斜。完整容器化集群清单见 <a href="/database/02-clickhouse-docker/">第二章：Docker 部署 ClickHouse 实践</a>。</p>
+<h2 id="生产注意"><a href="#生产注意" class="headerlink" title="生产注意"></a>生产注意</h2><ul>
+<li><strong>副本与 Keeper</strong>：<strong>ClickHouse Keeper</strong>（或 <strong>ZooKeeper</strong>）协调复制与分布式 DDL；Keeper 集群<strong>必须奇数节点</strong>（3 或 5），与数据节点分开部署。  </li>
+<li><strong>资源</strong>：内存用于 merge 与查询；磁盘顺序写与 <strong>merge</strong> 压力需监控；<strong>CPU 核数直接决定聚合吞吐</strong>。  </li>
+<li><strong>写入纪律</strong>：<strong>批量写入</strong>（每批几万~几十万行），避免高频小批产生海量小 part 触发 <strong><code>Too many parts</code></strong>。  </li>
+<li><strong>升级</strong>：固定版本标签，阅读 <strong>Release Notes</strong> 中不兼容变更；跨大版本先在测试集群滚动验证。</li>
+</ul>
+<p>官方文档：<a target="_blank" rel="noopener" href="https://clickhouse.com/docs">https://clickhouse.com/docs</a></p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>定位</td>
+<td>列存 + 向量化执行，面向 OLAP 大规模聚合分析，不适合 OLTP 点查与小事务</td>
+</tr>
+<tr>
+<td>建表关键</td>
+<td>MergeTree 引擎 + <code>PARTITION BY</code> 分区 + <code>ORDER BY</code> 排序键</td>
+</tr>
+<tr>
+<td>索引机制</td>
+<td><strong>稀疏索引</strong>：granule（8192 行）首行进索引，索引轻、可常驻内存</td>
+</tr>
+<tr>
+<td>查询</td>
+<td>聚合与 <code>uniq</code> 是强项；<code>FINAL</code>、<code>PREWHERE</code>、物化视图是常用调优手段</td>
+</tr>
+<tr>
+<td>引擎家族</td>
+<td>Replacing &#x2F; Summing &#x2F; Aggregating &#x2F; CollapsingMergeTree 各司其职，<code>Distributed</code> 做水平扩展</td>
+</tr>
+<tr>
+<td>物化视图</td>
+<td>写入时预聚合落表，历史数据手工回填，查询端再聚合一层</td>
+</tr>
+<tr>
+<td>横向对比</td>
+<td>单表极致性能选 ClickHouse；高并发多表 JOIN 报表评估 Doris &#x2F; StarRocks</td>
+</tr>
+<tr>
+<td>生产底线</td>
+<td>Keeper（奇数节点）协调副本与 DDL，批量写入防 <code>Too many parts</code>，固定版本升级</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/ClickHouse/" rel="tag"># ClickHouse</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/database/03-oracle-plsql/" rel="prev" title="第三章：PL&#x2F;SQL 程序设计">
+                  <i class="fa fa-angle-left"></i> 第三章：PL/SQL 程序设计
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/database/04-oracle-architecture-storage/" rel="next" title="第四章：体系结构与存储管理">
+                  第四章：体系结构与存储管理 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

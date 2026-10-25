@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：集成 Nacos：注册中心与配置中心概念基础 Nacos（Naming + Configuration service）是阿里开源的注册中心 + 配置中心一体化组件，本工程用它同时完成服务发现与远程配置两件事。 注册中心解决「服务在哪」：服务启动后把实例（IP + 端口）注册进去并心跳保活，消费方（如 Gateway 的 lb:&#x2F;&#x2F;）订阅服务列表实现动态寻址，扩缩容无需改任何配置。 配置中">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：集成 Nacos：注册中心与配置中心">
+<meta property="og:url" content="https://my919.github.io/springcloudalibaba/03-sca-integrate-nacos/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：集成 Nacos：注册中心与配置中心概念基础 Nacos（Naming + Configuration service）是阿里开源的注册中心 + 配置中心一体化组件，本工程用它同时完成服务发现与远程配置两件事。 注册中心解决「服务在哪」：服务启动后把实例（IP + 端口）注册进去并心跳保活，消费方（如 Gateway 的 lb:&#x2F;&#x2F;）订阅服务列表实现动态寻址，扩缩容无需改任何配置。 配置中">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-17T02:05:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.598Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="SpringCloudAlibaba">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/springcloudalibaba/03-sca-integrate-nacos/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/springcloudalibaba/03-sca-integrate-nacos/","path":"springcloudalibaba/03-sca-integrate-nacos/","title":"第三章：集成 Nacos：注册中心与配置中心"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：集成 Nacos：注册中心与配置中心 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9A%E9%9B%86%E6%88%90-Nacos%EF%BC%9A%E6%B3%A8%E5%86%8C%E4%B8%AD%E5%BF%83%E4%B8%8E%E9%85%8D%E7%BD%AE%E4%B8%AD%E5%BF%83"><span class="nav-number">1.</span> <span class="nav-text">第三章：集成 Nacos：注册中心与配置中心</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.2.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9E%B6%E6%9E%84"><span class="nav-number">1.3.</span> <span class="nav-text">架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Maven-%E4%BE%9D%E8%B5%96"><span class="nav-number">1.4.</span> <span class="nav-text">Maven 依赖</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E"><span class="nav-number">1.5.</span> <span class="nav-text">配置说明</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E5%8A%A0%E8%BD%BD%E4%B8%8E%E6%B3%A8%E5%86%8C%EF%BC%88%E6%80%BB%E8%A7%88%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">配置加载与注册（总览）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B3%A8%E5%86%8C%E5%8F%91%E7%8E%B0"><span class="nav-number">1.5.2.</span> <span class="nav-text">注册发现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%AE%9E%E4%BE%8B%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5"><span class="nav-number">1.5.2.1.</span> <span class="nav-text">实例模型与健康检查</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%9B%86%E7%BE%A4%E4%B8%8E%E6%9D%83%E9%87%8D"><span class="nav-number">1.5.2.2.</span> <span class="nav-text">集群与权重</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BC%98%E9%9B%85%E4%B8%8A%E4%B8%8B%E7%BA%BF%E6%97%B6%E5%BA%8F"><span class="nav-number">1.5.2.3.</span> <span class="nav-text">优雅上下线时序</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E4%B8%AD%E5%BF%83%EF%BC%882025-1-%E5%BF%85%E9%85%8D-import%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">配置中心（2025.1 必配 import）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#namespace-Group-DataId-%E4%B8%89%E5%85%83%E7%BB%84"><span class="nav-number">1.5.3.1.</span> <span class="nav-text">namespace &#x2F; Group &#x2F; DataId 三元组</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E7%9B%91%E5%90%AC%E4%B8%8E%E7%81%B0%E5%BA%A6%E5%8F%91%E5%B8%83"><span class="nav-number">1.5.3.2.</span> <span class="nav-text">配置监听与灰度发布</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%89%A9%E5%B1%95%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%85%B1%E4%BA%AB%E9%85%8D%E7%BD%AE"><span class="nav-number">1.5.3.3.</span> <span class="nav-text">扩展配置与共享配置</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%AC%E4%BB%93%E5%BA%93%E9%9C%80%E8%A6%81%E7%9A%84-DataId"><span class="nav-number">1.5.3.4.</span> <span class="nav-text">本仓库需要的 DataId</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%A8-Nacos-%E6%8E%A7%E5%88%B6%E5%8F%B0%E6%96%B0%E5%BB%BA%E9%85%8D%E7%BD%AE"><span class="nav-number">1.5.4.</span> <span class="nav-text">在 Nacos 控制台新建配置</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AD%A5%E9%AA%A4-1%EF%BC%9A%E7%99%BB%E5%BD%95%E5%B9%B6%E8%BF%9B%E5%85%A5%E9%85%8D%E7%BD%AE%E5%88%97%E8%A1%A8"><span class="nav-number">1.5.4.1.</span> <span class="nav-text">步骤 1：登录并进入配置列表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AD%A5%E9%AA%A4-2%EF%BC%9A%E6%96%B0%E5%BB%BA%E4%B8%80%E6%9D%A1%E9%85%8D%E7%BD%AE"><span class="nav-number">1.5.4.2.</span> <span class="nav-text">步骤 2：新建一条配置</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AD%A5%E9%AA%A4-3%EF%BC%9A%E6%8C%89-DataId-%E5%A1%AB%E5%86%99%E5%86%85%E5%AE%B9%EF%BC%88%E7%A4%BA%E4%BE%8B%EF%BC%89"><span class="nav-number">1.5.4.3.</span> <span class="nav-text">步骤 3：按 DataId 填写内容（示例）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AD%A5%E9%AA%A4-4%EF%BC%9A%E8%AE%A9%E5%BA%94%E7%94%A8%E5%8A%A0%E8%BD%BD-Nacos-%E9%85%8D%E7%BD%AE"><span class="nav-number">1.5.4.4.</span> <span class="nav-text">步骤 4：让应用加载 Nacos 配置</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AD%A5%E9%AA%A4-5%EF%BC%9A%E4%BF%AE%E6%94%B9%E4%B8%8E%E5%9B%9E%E6%BB%9A"><span class="nav-number">1.5.4.5.</span> <span class="nav-text">步骤 5：修改与回滚</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%B0%E5%BB%BA%E9%85%8D%E7%BD%AE%E8%87%AA%E6%A3%80%E6%B8%85%E5%8D%95"><span class="nav-number">1.5.4.6.</span> <span class="nav-text">新建配置自检清单</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.6.</span> <span class="nav-text">前置条件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Nacos-3-x-%E7%9B%B8%E5%AF%B9-2-x-%E7%9A%84%E5%8F%98%E5%8C%96%E8%A6%81%E7%82%B9"><span class="nav-number">1.6.1.</span> <span class="nav-text">Nacos 3.x 相对 2.x 的变化要点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%AE%B9%E7%81%BE%E4%B8%8E%E6%9C%AC%E5%9C%B0%E5%BF%AB%E7%85%A7"><span class="nav-number">1.6.2.</span> <span class="nav-text">客户端容灾与本地快照</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Nacos-Server-%E9%83%A8%E7%BD%B2"><span class="nav-number">1.7.</span> <span class="nav-text">Nacos Server 部署</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%AC%E4%BB%93%E5%BA%93%E7%8E%B0%E7%BD%91%EF%BC%88Kubernetes-NodePort%EF%BC%89"><span class="nav-number">1.7.1.</span> <span class="nav-text">本仓库现网（Kubernetes NodePort）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Docker-%E5%8D%95%E6%9C%BA%EF%BC%88%E6%9C%AC%E5%9C%B0%E8%87%AA%E5%BB%BA%EF%BC%8C%E5%AF%B9%E9%BD%90-SCA-2025-1%EF%BC%89"><span class="nav-number">1.7.2.</span> <span class="nav-text">Docker 单机（本地自建，对齐 SCA 2025.1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Docker-Compose%EF%BC%88Derby-%E5%86%85%E5%B5%8C%E5%BA%93%EF%BC%89"><span class="nav-number">1.7.3.</span> <span class="nav-text">Docker Compose（Derby 内嵌库）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%96%E7%BD%AE-MySQL%EF%BC%88%E7%94%9F%E4%BA%A7%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="nav-number">1.7.4.</span> <span class="nav-text">外置 MySQL（生产推荐）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E8%A6%81%E7%82%B9%EF%BC%88%E7%94%9F%E4%BA%A7%EF%BC%89"><span class="nav-number">1.7.5.</span> <span class="nav-text">集群部署要点（生产）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E9%A1%B9%E4%B8%8E%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F"><span class="nav-number">1.8.</span> <span class="nav-text">配置项与环境变量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E%E5%85%B6%E5%AE%83%E7%BB%84%E4%BB%B6%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-number">1.9.</span> <span class="nav-text">与其它组件的关系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6"><span class="nav-number">1.10.</span> <span class="nav-text">相关文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.11.</span> <span class="nav-text">验证步骤</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="nav-number">1.12.</span> <span class="nav-text">常见问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="nav-number">1.13.</span> <span class="nav-text">参考链接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.14.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/springcloudalibaba/03-sca-integrate-nacos/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：集成 Nacos：注册中心与配置中心 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：集成 Nacos：注册中心与配置中心
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-17 10:05:00" itemprop="dateCreated datePublished" datetime="2026-05-17T10:05:00+08:00">2026-05-17</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/SpringCloudAlibaba/" itemprop="url" rel="index"><span itemprop="name">SpringCloudAlibaba</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>11k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>10 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：集成-Nacos：注册中心与配置中心"><a href="#第三章：集成-Nacos：注册中心与配置中心" class="headerlink" title="第三章：集成 Nacos：注册中心与配置中心"></a>第三章：集成 Nacos：注册中心与配置中心</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>Nacos</strong>（<strong>Na</strong>ming + <strong>Co</strong>nfiguration <strong>s</strong>ervice）是阿里开源的<strong>注册中心 + 配置中心</strong>一体化组件，本工程用它同时完成<strong>服务发现</strong>与<strong>远程配置</strong>两件事。</li>
+<li><strong>注册中心</strong>解决「<strong>服务在哪</strong>」：服务启动后把实例（IP + 端口）注册进去并<strong>心跳保活</strong>，消费方（如 Gateway 的 <code>lb://</code>）<strong>订阅</strong>服务列表实现<strong>动态寻址</strong>，扩缩容无需改任何配置。</li>
+<li><strong>配置中心</strong>解决「<strong>配置共享与动态化</strong>」：公共配置以 <strong>DataId</strong> 为单位托管，多环境用 <strong>namespace &#x2F; Group</strong> 隔离，支持<strong>控制台编辑、监听查询、历史版本回滚</strong>。</li>
+<li><strong>SCA 2025.1 接入方式</strong>：经 <code>nacos-discovery</code> &#x2F; <code>nacos-config</code> starter 接入，配置必须走 <strong><code>spring.config.import</code></strong>（bootstrap 已移除），<code>optional:</code> 前缀保证 Nacos 不可用时<strong>仍可本地启动</strong>。</li>
+<li><strong>为什么选 Nacos</strong>：与 Spring Cloud Alibaba <strong>同栈兼容</strong>、临时实例默认 <strong>AP 模式高可用</strong>、控制台<strong>开箱即用</strong>，是 SCA 微服务体系默认的<strong>基座组件</strong>。</li>
+</ol>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p><a target="_blank" rel="noopener" href="https://nacos.io/">Nacos</a> 在本项目中同时承担 <strong>服务注册发现</strong> 与 <strong>配置中心</strong>。版本线：<strong>SCA 2025.1.0.0</strong> + <strong>Spring Boot 4</strong>，客户端通过 <code>spring-cloud-starter-alibaba-nacos-discovery</code> 与 <code>nacos-config</code> 接入；<strong>不再使用</strong> <code>spring-cloud-starter-bootstrap</code>。</p>
+<p>默认地址：<code>192.168.1.22:30010</code>（K8s NodePort，容器内一般为 8848）。</p>
+<h2 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h2><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant App as cloud-order
+  participant N as Nacos :30010
+  participant GW as cloud-gateway
+  App-&gt;&gt;N: 注册实例 + 心跳
+  GW-&gt;&gt;N: 订阅服务列表
+  Client-&gt;&gt;GW: GET &#x2F;order&#x2F;1
+  GW-&gt;&gt;N: 解析 cloud-order 实例
+  GW-&gt;&gt;App: 转发
+</code>
+</pre>
+
+<h2 id="Maven-依赖"><a href="#Maven-依赖" class="headerlink" title="Maven 依赖"></a>Maven 依赖</h2><p>父 POM <code>dependencyManagement</code> 已锁定 <code>spring-cloud-alibaba-dependencies</code> <strong>2025.1.0.0</strong>。各业务模块引入：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.alibaba.cloud<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-cloud-starter-alibaba-nacos-discovery<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.alibaba.cloud<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-cloud-starter-alibaba-nacos-config<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="配置说明"><a href="#配置说明" class="headerlink" title="配置说明"></a>配置说明</h2><h3 id="配置加载与注册（总览）"><a href="#配置加载与注册（总览）" class="headerlink" title="配置加载与注册（总览）"></a>配置加载与注册（总览）</h3><pre>
+<code class="mermaid">
+
+flowchart TD
+  subgraph reg [注册发现]
+    App[cloud-* 应用] --&gt;|心跳注册| N[Nacos Naming]
+    GW[cloud-gateway] --&gt;|订阅服务列表| N
+  end
+  subgraph cfg [配置中心]
+    YML[application-dev.yml import] --&gt; NC[Nacos Config DataId]
+    NC --&gt; App
+  end
+</code>
+</pre>
+
+<h3 id="注册发现"><a href="#注册发现" class="headerlink" title="注册发现"></a>注册发现</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">cloud:</span></span><br><span class="line">    <span class="attr">nacos:</span></span><br><span class="line">      <span class="attr">discovery:</span></span><br><span class="line">        <span class="attr">server-addr:</span> <span class="string">$&#123;NACOS_SERVER_ADDR:192.168.1.22:30010&#125;</span></span><br><span class="line">        <span class="attr">fail-fast:</span> <span class="literal">false</span></span><br></pre></td></tr></table></figure>
+
+<p><code>fail-fast: false</code>：Nacos 暂不可用时仍允许进程启动（适合本地先起应用后起 Nacos）。</p>
+<h4 id="实例模型与健康检查"><a href="#实例模型与健康检查" class="headerlink" title="实例模型与健康检查"></a>实例模型与健康检查</h4><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>临时实例（默认）</th>
+<th>持久实例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>健康判定</td>
+<td>客户端<strong>心跳</strong>保活（默认 5s 一次），超 15s 标记不健康、30s 剔除</td>
+<td>Server 端<strong>主动探测</strong>（TCP&#x2F;HTTP）</td>
+</tr>
+<tr>
+<td>一致性</td>
+<td><strong>AP 模式</strong>，注册表在内存，牺牲一致保可用</td>
+<td><strong>CP 模式</strong>（Raft），数据落盘</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>绝大多数微服务</td>
+<td>MySQL、DNS 等「不能误剔除」的基础设施</td>
+</tr>
+</tbody></table>
+<p>临时实例宕机时，宁可列表中短暂残留并由调用方容错，也不让注册中心自身成为瓶颈——这是微服务默认选 AP 的原因。声明持久实例：<code>spring.cloud.nacos.discovery.ephemeral: false</code>。</p>
+<h4 id="集群与权重"><a href="#集群与权重" class="headerlink" title="集群与权重"></a>集群与权重</h4><ul>
+<li><strong>集群划分</strong>：<code>spring.cloud.nacos.discovery.cluster-name</code>（如 <code>HZ</code> &#x2F; <code>SH</code>），配合 <strong>NacosRule</strong> 负载均衡可实现<strong>同集群优先</strong>调用，减少跨机房流量。</li>
+<li><strong>权重</strong>：控制台可对实例设置 <strong>0~1 权重</strong>，权重为 0 即摘流——发布前先在控制台把老实例权重归零，配合连接排空实现<strong>优雅下线</strong>。</li>
+<li><strong>元数据</strong>：<code>spring.cloud.nacos.discovery.metadata.*</code> 携带自定义键值（如 <code>version: v2</code>），配合自定义负载均衡或 Gateway 谓词实现<strong>灰度路由</strong>。</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">cloud:</span></span><br><span class="line">    <span class="attr">nacos:</span></span><br><span class="line">      <span class="attr">discovery:</span></span><br><span class="line">        <span class="attr">cluster-name:</span> <span class="string">HZ</span></span><br><span class="line">        <span class="attr">metadata:</span></span><br><span class="line">          <span class="attr">version:</span> <span class="string">v2</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="优雅上下线时序"><a href="#优雅上下线时序" class="headerlink" title="优雅上下线时序"></a>优雅上下线时序</h4><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant Ops as 运维
+  participant N as Nacos
+  participant GW as Gateway &#x2F; Consumer
+  participant App as 目标实例
+  Ops-&gt;&gt;N: 实例权重置 0（或下线）
+  N--&gt;&gt;GW: 推送最新实例列表
+  GW-&gt;&gt;GW: 不再路由到该实例
+  Ops-&gt;&gt;App: 等待存量请求处理完，再停进程
+  App-&gt;&gt;N: 注销（或心跳超时剔除）
+</code>
+</pre>
+
+<p>直接 <code>kill</code> 进程依赖心跳超时剔除（最长约 30s），期间 Consumer 仍可能打到已死实例；<strong>先摘流再停机</strong>是发布标配动作。</p>
+<h3 id="配置中心（2025-1-必配-import）"><a href="#配置中心（2025-1-必配-import）" class="headerlink" title="配置中心（2025.1 必配 import）"></a>配置中心（2025.1 必配 import）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">config:</span></span><br><span class="line">    <span class="attr">import:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">optional:nacos:application.yml</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">optional:nacos:application-datasource.yml</span></span><br><span class="line">  <span class="attr">cloud:</span></span><br><span class="line">    <span class="attr">nacos:</span></span><br><span class="line">      <span class="attr">config:</span></span><br><span class="line">        <span class="attr">server-addr:</span> <span class="string">$&#123;NACOS_SERVER_ADDR:192.168.1.22:30010&#125;</span></span><br><span class="line">        <span class="attr">dataId:</span> <span class="string">application.yml</span></span><br><span class="line">        <span class="attr">group:</span> <span class="string">DEFAULT_GROUP</span></span><br><span class="line">        <span class="attr">file-extension:</span> <span class="string">yml</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="namespace-Group-DataId-三元组"><a href="#namespace-Group-DataId-三元组" class="headerlink" title="namespace &#x2F; Group &#x2F; DataId 三元组"></a>namespace &#x2F; Group &#x2F; DataId 三元组</h4><p>Nacos 配置的唯一定位是 <strong>namespace + Group + DataId</strong> 三元组：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>用途</th>
+<th>本仓库</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>namespace</strong></td>
+<td>环境级隔离（dev&#x2F;test&#x2F;prod 互不可见）</td>
+<td>默认 <code>public</code>（生产建议拆分）</td>
+</tr>
+<tr>
+<td><strong>Group</strong></td>
+<td>业务&#x2F;用途分组</td>
+<td><code>DEFAULT_GROUP</code></td>
+</tr>
+<tr>
+<td><strong>DataId</strong></td>
+<td>配置文件名</td>
+<td><code>application.yml</code>、<code>application-datasource.yml</code> 等</td>
+</tr>
+</tbody></table>
+<p>生产建议：<code>dev</code> &#x2F; <code>test</code> &#x2F; <code>prod</code> 各建一个 namespace，客户端用 <code>spring.cloud.nacos.config.namespace</code> 指向对应<strong>命名空间 ID</strong>（一串 UUID，不是名称），杜绝测试配置误发生产；注册发现侧同理（<code>discovery.namespace</code>），两个 namespace 可保持一致。</p>
+<h4 id="配置监听与灰度发布"><a href="#配置监听与灰度发布" class="headerlink" title="配置监听与灰度发布"></a>配置监听与灰度发布</h4><ul>
+<li><strong>监听机制</strong>：2.x&#x2F;3.x 客户端与 Server 走 <strong>gRPC 长连接</strong>，配置变更即时推送；控制台「监听查询」可看到已订阅的客户端 IP。</li>
+<li><strong>动态刷新</strong>：<code>@ConfigurationProperties</code> 与 <code>@RefreshScope</code> Bean 自动生效；普通 <code>@Value</code> 字段需加 <code>@RefreshScope</code>；数据源、Seata 等基础设施项建议<strong>重启生效</strong>。</li>
+<li><strong>灰度（Beta）发布</strong>：编辑配置时可按 <strong>IP 列表</strong> 先对少量实例下发灰度内容，验证后全量——适合数据源参数、功能开关的试点。</li>
+<li><strong>历史版本</strong>：每次发布留存历史版本，误改可在控制台一键回滚。</li>
+</ul>
+<p>监听原理与 <code>@RefreshScope</code> 示例详见 <a href="/springcloudalibaba/02-sca-multi-env-config-nacos/">第二章：Spring Cloud 多环境配置与 Nacos：Profile 与 config.import 分层</a>。</p>
+<h4 id="扩展配置与共享配置"><a href="#扩展配置与共享配置" class="headerlink" title="扩展配置与共享配置"></a>扩展配置与共享配置</h4><p>除 <code>spring.config.import</code> 逐个声明外，SCA 还提供两组「约定式」配置入口：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">cloud:</span></span><br><span class="line">    <span class="attr">nacos:</span></span><br><span class="line">      <span class="attr">config:</span></span><br><span class="line">        <span class="attr">shared-configs:</span></span><br><span class="line">          <span class="bullet">-</span> <span class="attr">data-id:</span> <span class="string">common-logging.yml</span></span><br><span class="line">            <span class="attr">group:</span> <span class="string">DEFAULT_GROUP</span></span><br><span class="line">            <span class="attr">refresh:</span> <span class="literal">true</span></span><br><span class="line">        <span class="string">extension-configs[0]:</span></span><br><span class="line">          <span class="attr">data-id:</span> <span class="string">order-biz.yml</span></span><br><span class="line">          <span class="attr">group:</span> <span class="string">ORDER_GROUP</span></span><br><span class="line">          <span class="attr">refresh:</span> <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>入口</th>
+<th>语义</th>
+<th>优先级</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>shared-configs</code></td>
+<td>多应用共享的公共配置</td>
+<td>较低</td>
+</tr>
+<tr>
+<td><code>extension-configs</code></td>
+<td>当前应用的扩展配置（下标越大优先级越高）</td>
+<td>高于 shared</td>
+</tr>
+<tr>
+<td><code>spring.config.import</code></td>
+<td>显式声明，<strong>推荐主用</strong></td>
+<td>由链上位置决定</td>
+</tr>
+</tbody></table>
+<p>两种方式<strong>不要混用同一 DataId</strong>，避免同一属性在多处声明、排查时找不到生效点；本仓库统一只用 <code>spring.config.import</code>。</p>
+<h4 id="本仓库需要的-DataId"><a href="#本仓库需要的-DataId" class="headerlink" title="本仓库需要的 DataId"></a>本仓库需要的 DataId</h4><table>
+<thead>
+<tr>
+<th>DataId</th>
+<th>Group</th>
+<th>引入模块</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>application.yml</code></td>
+<td><code>DEFAULT_GROUP</code></td>
+<td>全部（dev&#x2F;test&#x2F;prod）</td>
+<td>公共覆盖（日志、开关等）</td>
+</tr>
+<tr>
+<td><code>application-datasource.yml</code></td>
+<td><code>DEFAULT_GROUP</code></td>
+<td>cloud-order、cloud-stock</td>
+<td>数据源；与 classpath 同名</td>
+</tr>
+<tr>
+<td><code>application-seata.yml</code></td>
+<td><code>DEFAULT_GROUP</code></td>
+<td>cloud-order、cloud-stock</td>
+<td>Seata；可复制 <code>config/nacos-application-seata.yml</code></td>
+</tr>
+</tbody></table>
+<p><code>spring.config.import</code> 里写的是 <code>optional:nacos:application-datasource.yml</code>，则控制台 <strong>Data ID 必须完全一致</strong>（含 <code>.yml</code> 后缀），<strong>不要</strong>写成 <code>application-datasource</code> 或 <code>application-datasource.yaml</code>（除非 import 也改后缀）。</p>
+<h3 id="在-Nacos-控制台新建配置"><a href="#在-Nacos-控制台新建配置" class="headerlink" title="在 Nacos 控制台新建配置"></a>在 Nacos 控制台新建配置</h3><p>以下以地址 <strong><a target="_blank" rel="noopener" href="http://192.168.1.22:30010/nacos">http://192.168.1.22:30010/nacos</a></strong>、账号 <strong>nacos &#x2F; admin</strong> 为例（与仓库默认一致）。</p>
+<h4 id="步骤-1：登录并进入配置列表"><a href="#步骤-1：登录并进入配置列表" class="headerlink" title="步骤 1：登录并进入配置列表"></a>步骤 1：登录并进入配置列表</h4><ol>
+<li>浏览器打开 <code>http://192.168.1.22:30010/nacos</code>。  </li>
+<li>使用用户名、密码登录（本仓库默认 <code>NACOS_USERNAME=nacos</code>，<code>NACOS_PASSWORD=admin</code>）。  </li>
+<li>左侧菜单进入 <strong>配置管理 → 配置列表</strong>（Nacos 3.x 可能在 <strong>配置管理</strong> 下，名称略有差异）。  </li>
+<li>确认顶部 <strong>命名空间</strong> 为 <strong>public</strong>（或与你环境一致的 namespace；本仓库未单独配置 <code>namespace</code>，即默认 public）。</li>
+</ol>
+<h4 id="步骤-2：新建一条配置"><a href="#步骤-2：新建一条配置" class="headerlink" title="步骤 2：新建一条配置"></a>步骤 2：新建一条配置</h4><ol>
+<li>点击 <strong>「+」</strong> 或 <strong>「创建配置」</strong>。  </li>
+<li>填写表单：</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>表单项</th>
+<th>填写值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Data ID</td>
+<td>见上表，如 <code>application-datasource.yml</code></td>
+<td>与 <code>spring.config.import</code> 中 <code>nacos:</code> 后的名称一致</td>
+</tr>
+<tr>
+<td>Group</td>
+<td><code>DEFAULT_GROUP</code></td>
+<td>与 <code>application-dev.yml</code> 中 <code>group</code> 一致</td>
+</tr>
+<tr>
+<td>配置格式</td>
+<td><strong>YAML</strong></td>
+<td>与 <code>file-extension: yml</code> 对应</td>
+</tr>
+<tr>
+<td>配置内容</td>
+<td>见下方示例</td>
+<td>可先最小配置，再逐步补全</td>
+</tr>
+</tbody></table>
+<ol start="3">
+<li>点击 <strong>发布</strong>（或 <strong>确认</strong>）。  </li>
+<li>在配置列表中应能看到刚发布的 DataId；可点 <strong>详情</strong> 核对内容。</li>
+</ol>
+<h4 id="步骤-3：按-DataId-填写内容（示例）"><a href="#步骤-3：按-DataId-填写内容（示例）" class="headerlink" title="步骤 3：按 DataId 填写内容（示例）"></a>步骤 3：按 DataId 填写内容（示例）</h4><p><strong>（1）<code>application.yml</code></strong> — 可选，用于全环境公共项，例如：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 示例：仅作占位或统一日志级别</span></span><br><span class="line"><span class="attr">logging:</span></span><br><span class="line">  <span class="attr">level:</span></span><br><span class="line">    <span class="attr">root:</span> <span class="string">INFO</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>（2）<code>application-datasource.yml</code></strong> — order&#x2F;stock 必建（若要用 Nacos 管库连接）。可与本地 <code>application-datasource.yml</code> 对齐，例如：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">dynamic:</span></span><br><span class="line">      <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">      <span class="attr">primary:</span> <span class="string">mysql</span></span><br><span class="line">      <span class="attr">datasource:</span></span><br><span class="line">        <span class="attr">mysql:</span></span><br><span class="line">          <span class="attr">driver-class-name:</span> <span class="string">com.mysql.cj.jdbc.Driver</span></span><br><span class="line">          <span class="attr">url:</span> <span class="string">jdbc:mysql://192.168.1.22:30000/study?useUnicode=true&amp;characterEncoding=utf8&amp;useSSL=false&amp;serverTimezone=Asia/Shanghai&amp;allowPublicKeyRetrieval=true</span></span><br><span class="line">          <span class="attr">username:</span> <span class="string">root</span></span><br><span class="line">          <span class="attr">password:</span> <span class="string">你的密码</span></span><br><span class="line"></span><br><span class="line"><span class="attr">mybatis-flex:</span></span><br><span class="line">  <span class="attr">configuration:</span></span><br><span class="line">    <span class="attr">map-underscore-to-camel-case:</span> <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>（3）<code>application-seata.yml</code></strong> — 仅 order&#x2F;stock。建议直接复制仓库文件 <code>config/nacos-application-seata.yml</code> 全文粘贴到配置内容框，再按环境改 <code>grouplist.default</code>（TC 地址，默认 <code>192.168.1.22:30014</code>）。</p>
+<h4 id="步骤-4：让应用加载-Nacos-配置"><a href="#步骤-4：让应用加载-Nacos-配置" class="headerlink" title="步骤 4：让应用加载 Nacos 配置"></a>步骤 4：让应用加载 Nacos 配置</h4><ol>
+<li>确认各模块 <code>application-dev.yml</code>（或当前 Profile）已包含：</li>
+</ol>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">config:</span></span><br><span class="line">    <span class="attr">import:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">optional:nacos:application.yml</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">optional:nacos:application-datasource.yml</span></span><br><span class="line">      <span class="comment"># order/stock 另加：</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">optional:nacos:application-seata.yml</span></span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li><strong>重启</strong>对应服务（如 <code>cloud-order</code>）。启动日志中不应出现 Nacos 配置拉取失败（<code>optional:</code> 时 Nacos 未建配置也不会启动失败，但不会用到远程值）。  </li>
+<li>在 Nacos <strong>配置列表</strong> 点该配置的 <strong>监听查询</strong>，重启后应能看到 <code>cloud-order</code> 等客户端 IP（表示已订阅）。</li>
+</ol>
+<h4 id="步骤-5：修改与回滚"><a href="#步骤-5：修改与回滚" class="headerlink" title="步骤 5：修改与回滚"></a>步骤 5：修改与回滚</h4><ol>
+<li>配置列表找到 DataId → <strong>编辑</strong> → 改 YAML → <strong>发布</strong>。  </li>
+<li>是否自动刷新取决于是否配置 refresh；本仓库对多数项以 <strong>重启服务</strong> 验证为准。  </li>
+<li>误改时可使用 Nacos <strong>历史版本</strong> 回滚（版本列表 → 回滚）。</li>
+</ol>
+<h4 id="新建配置自检清单"><a href="#新建配置自检清单" class="headerlink" title="新建配置自检清单"></a>新建配置自检清单</h4><ul>
+<li><input disabled="" type="checkbox"> Data ID 与 import 字符串一致（含 <code>.yml</code>）  </li>
+<li><input disabled="" type="checkbox"> Group 为 <code>DEFAULT_GROUP</code>  </li>
+<li><input disabled="" type="checkbox"> 命名空间与客户端一致（默认 public）  </li>
+<li><input disabled="" type="checkbox"> YAML 缩进正确（建议 2 空格，勿混 Tab）  </li>
+<li><input disabled="" type="checkbox"> order&#x2F;stock 已发布 <code>application-datasource.yml</code>；启用 Seata 时已发布 <code>application-seata.yml</code>  </li>
+<li><input disabled="" type="checkbox"> 重启服务后业务正常（如 <code>GET /stock/goods/1</code>）</li>
+</ul>
+<h2 id="前置条件"><a href="#前置条件" class="headerlink" title="前置条件"></a>前置条件</h2><table>
+<thead>
+<tr>
+<th>组件</th>
+<th>本仓库 &#x2F; 建议版本</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SCA BOM</td>
+<td><strong>2025.1.0.0</strong></td>
+<td>根 <code>pom.xml</code></td>
+</tr>
+<tr>
+<td>nacos-client</td>
+<td><strong>3.1.1</strong>（BOM 管理）</td>
+<td>与 Server <strong>3.1.x</strong> 同世代</td>
+</tr>
+<tr>
+<td>Nacos Server</td>
+<td><strong>3.1.x</strong>（自建示例 <strong>v3.1.1</strong>）</td>
+<td>本仓库集群 NodePort <strong>30010</strong> → 8848</td>
+</tr>
+<tr>
+<td>JDK</td>
+<td><strong>21</strong></td>
+<td>各微服务模块</td>
+</tr>
+</tbody></table>
+<p><strong>Nacos 3.x 端口</strong>：业务配置 <code>server-addr</code> 仍写 <strong>8848 所在地址</strong>（本仓库为 <code>192.168.1.22:30010</code>）；控制台常为 <strong>8080</strong>（路径 <code>/index.html</code>），与 2.x 单端口习惯不同。客户端 gRPC（如 <strong>9848</strong>）由 SDK 处理，一般无需在业务 yml 手写。</p>
+<p><strong>鉴权</strong>：自 <strong>2.2.1</strong> 起镜像需配置 <code>NACOS_AUTH_TOKEN</code>、<code>NACOS_AUTH_IDENTITY_KEY</code>、<code>NACOS_AUTH_IDENTITY_VALUE</code>，勿用文档占位符上生产。</p>
+<h3 id="Nacos-3-x-相对-2-x-的变化要点"><a href="#Nacos-3-x-相对-2-x-的变化要点" class="headerlink" title="Nacos 3.x 相对 2.x 的变化要点"></a>Nacos 3.x 相对 2.x 的变化要点</h3><table>
+<thead>
+<tr>
+<th>变化</th>
+<th>2.x</th>
+<th>3.x</th>
+<th>对业务的影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>控制台端口</td>
+<td>与客户端共用 8848（<code>/nacos</code> 路径）</td>
+<td><strong>独立 8080</strong>（<code>/index.html</code>）</td>
+<td>K8s NodePort、防火墙需<strong>分别映射</strong></td>
+</tr>
+<tr>
+<td>鉴权</td>
+<td>可关闭、token 可空</td>
+<td><strong>默认强鉴权</strong>，三项必填</td>
+<td>空 token 无法启动，部署清单必须补全</td>
+</tr>
+<tr>
+<td>通信协议</td>
+<td>gRPC 为主</td>
+<td>gRPC 为主（9848&#x2F;9849）</td>
+<td>防火墙除 8848 外需放行 gRPC 端口</td>
+</tr>
+<tr>
+<td>数据模型</td>
+<td>namespace&#x2F;group&#x2F;dataId</td>
+<td>相同</td>
+<td>无迁移成本，配置可平滑导入</td>
+</tr>
+<tr>
+<td>Admin API</td>
+<td><code>/nacos/v1/...</code></td>
+<td>独立 admin 端口与 API 路径</td>
+<td>运维脚本中的 OpenAPI 需按 3.x 文档改写</td>
+</tr>
+</tbody></table>
+<p><strong>升级路线</strong>：先升 Server 到 3.1.x（2.x 客户端可继续工作一段时间做过渡），再随 SCA BOM 升级客户端到 3.1.1；<strong>不要</strong>长期混用 2.x Server + 3.x 客户端。</p>
+<h3 id="客户端容灾与本地快照"><a href="#客户端容灾与本地快照" class="headerlink" title="客户端容灾与本地快照"></a>客户端容灾与本地快照</h3><p>Nacos 不可用时业务不至于瘫痪，靠的是多层兜底：</p>
+<ol>
+<li><strong>启动期</strong>：<code>optional:</code> 前缀 + <code>fail-fast: false</code>，拉取失败退回 classpath 本地配置。</li>
+<li><strong>运行期</strong>：客户端把已拉取的配置与已订阅的服务列表写入<strong>本地快照</strong>（默认 <code>$&#123;user.home&#125;/nacos/config</code>、<code>$&#123;user.home&#125;/nacos/naming</code> 下），Server 宕机后重启进程可加载<strong>最后一次成功的快照</strong>。</li>
+<li><strong>心跳重试</strong>：注册失败按退避策略重试，Server 恢复后自动补注册。</li>
+</ol>
+<p>注意快照是<strong>容灾而非常态</strong>：长期以快照运行意味着 Nacos 集群已不可用，应尽快恢复；不要把快照目录提交进 Git。</p>
+<h2 id="Nacos-Server-部署"><a href="#Nacos-Server-部署" class="headerlink" title="Nacos Server 部署"></a>Nacos Server 部署</h2><h3 id="本仓库现网（Kubernetes-NodePort）"><a href="#本仓库现网（Kubernetes-NodePort）" class="headerlink" title="本仓库现网（Kubernetes NodePort）"></a>本仓库现网（Kubernetes NodePort）</h3><table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对外地址</td>
+<td><code>192.168.1.22:30010</code></td>
+</tr>
+<tr>
+<td>控制台</td>
+<td><code>http://192.168.1.22:30010/nacos</code></td>
+</tr>
+<tr>
+<td>应用 <code>NACOS_SERVER_ADDR</code></td>
+<td>同上</td>
+</tr>
+<tr>
+<td>默认账号</td>
+<td><code>nacos</code> &#x2F; <code>admin</code>（与 <code>NACOS_PASSWORD</code> 默认一致，请按集群修改）</td>
+</tr>
+</tbody></table>
+<h3 id="Docker-单机（本地自建，对齐-SCA-2025-1）"><a href="#Docker-单机（本地自建，对齐-SCA-2025-1）" class="headerlink" title="Docker 单机（本地自建，对齐 SCA 2025.1）"></a>Docker 单机（本地自建，对齐 SCA 2025.1）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> NACOS_AUTH_TOKEN=<span class="string">&#x27;请替换为长度足够的随机串&#x27;</span></span><br><span class="line"><span class="built_in">export</span> NACOS_AUTH_IDENTITY_KEY=<span class="string">&#x27;serverIdentityKey&#x27;</span></span><br><span class="line"><span class="built_in">export</span> NACOS_AUTH_IDENTITY_VALUE=<span class="string">&#x27;serverIdentityValue&#x27;</span></span><br><span class="line"></span><br><span class="line">docker run -d --name nacos \</span><br><span class="line">  -e MODE=standalone \</span><br><span class="line">  -e NACOS_AUTH_TOKEN \</span><br><span class="line">  -e NACOS_AUTH_IDENTITY_KEY \</span><br><span class="line">  -e NACOS_AUTH_IDENTITY_VALUE \</span><br><span class="line">  -p 8080:8080 -p 8848:8848 -p 9848:9848 \</span><br><span class="line">  nacos/nacos-server:v3.1.1</span><br></pre></td></tr></table></figure>
+
+<p>本地联调时设置：<code>NACOS_SERVER_ADDR=127.0.0.1:8848</code>。控制台：<strong><a target="_blank" rel="noopener" href="http://127.0.0.1:8080/index.html">http://127.0.0.1:8080/index.html</a></strong>（默认 <code>nacos/nacos</code>，首次登录应改密）。</p>
+<h3 id="Docker-Compose（Derby-内嵌库）"><a href="#Docker-Compose（Derby-内嵌库）" class="headerlink" title="Docker Compose（Derby 内嵌库）"></a>Docker Compose（Derby 内嵌库）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">nacos:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">nacos/nacos-server:v3.1.1</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">MODE:</span> <span class="string">standalone</span></span><br><span class="line">      <span class="attr">NACOS_AUTH_TOKEN:</span> <span class="string">&quot;请替换&quot;</span></span><br><span class="line">      <span class="attr">NACOS_AUTH_IDENTITY_KEY:</span> <span class="string">serverIdentityKey</span></span><br><span class="line">      <span class="attr">NACOS_AUTH_IDENTITY_VALUE:</span> <span class="string">serverIdentityValue</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;8080:8080&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;8848:8848&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;9848:9848&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="外置-MySQL（生产推荐）"><a href="#外置-MySQL（生产推荐）" class="headerlink" title="外置 MySQL（生产推荐）"></a>外置 MySQL（生产推荐）</h3><ol>
+<li>建库（如 <code>nacos_devtest</code>，<code>utf8mb4</code>）。  </li>
+<li>执行与 Server 版本匹配的 <strong><code>mysql-schema.sql</code></strong>（见 <a target="_blank" rel="noopener" href="https://github.com/alibaba/nacos/tree/develop/plugin-default-impl/nacos-default-datasource-plugin/nacos-datasource-plugin-mysql/src/main/resources/META-INF">Nacos 仓库 datasource 插件目录</a>）。  </li>
+<li>启动镜像时设置 <code>SPRING_DATASOURCE_PLATFORM=mysql</code> 及 <code>MYSQL_SERVICE_*</code>（<code>MYSQL_SERVICE_HOST</code> 须为容器可达主机名，勿对宿主机 MySQL 填 <code>127.0.0.1</code>）。</li>
+</ol>
+<p>完整 Compose &#x2F; K8s 多文档 YAML 见官方 <a target="_blank" rel="noopener" href="https://github.com/nacos-group/nacos-docker">nacos-docker</a>（<code>standalone-mysql.yaml</code>、<code>nacos-stack-mysql.yaml</code> 等）。</p>
+<h3 id="集群部署要点（生产）"><a href="#集群部署要点（生产）" class="headerlink" title="集群部署要点（生产）"></a>集群部署要点（生产）</h3><p>单机只够开发用，生产至少 <strong>3 节点</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>要点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>节点数</td>
+<td><strong>奇数</strong>（3 或 5），Raft 选主需要多数派</td>
+</tr>
+<tr>
+<td>存储</td>
+<td>全部节点指向<strong>同一外置 MySQL</strong>，Derby 仅限单机</td>
+</tr>
+<tr>
+<td>入口</td>
+<td>节点前挂 <strong>SLB&#x2F;Nginx</strong>，业务 <code>server-addr</code> 填 VIP 而非单节点 IP</td>
+</tr>
+<tr>
+<td>端口</td>
+<td>8848（客户端）、9848&#x2F;9849（gRPC）、8080（控制台）按需在 LB 上暴露</td>
+</tr>
+<tr>
+<td>数据备份</td>
+<td>备份 MySQL 库即可，配置历史与命名空间全在其中</td>
+</tr>
+</tbody></table>
+<p>本仓库用 K8s NodePort 暴露单节点属<strong>开发形态</strong>；上生产请切换为集群 + 外置 MySQL + LB。</p>
+<h2 id="配置项与环境变量"><a href="#配置项与环境变量" class="headerlink" title="配置项与环境变量"></a>配置项与环境变量</h2><table>
+<thead>
+<tr>
+<th>配置项 &#x2F; 环境变量</th>
+<th>说明</th>
+<th>本仓库默认</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NACOS_SERVER_ADDR</code></td>
+<td>注册 + 配置中心地址</td>
+<td><code>192.168.1.22:30010</code></td>
+</tr>
+<tr>
+<td><code>NACOS_USERNAME</code></td>
+<td>控制台鉴权用户</td>
+<td><code>nacos</code></td>
+</tr>
+<tr>
+<td><code>NACOS_PASSWORD</code></td>
+<td>密码</td>
+<td><code>admin</code></td>
+</tr>
+<tr>
+<td><code>spring.cloud.nacos.discovery.fail-fast</code></td>
+<td>注册失败是否快速失败</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>spring.config.import</code></td>
+<td>Nacos 配置 DataId 列表</td>
+<td>见 <code>application-dev.yml</code></td>
+</tr>
+<tr>
+<td><code>spring.cloud.nacos.config.group</code></td>
+<td>配置分组</td>
+<td><code>DEFAULT_GROUP</code></td>
+</tr>
+</tbody></table>
+<h2 id="与其它组件的关系"><a href="#与其它组件的关系" class="headerlink" title="与其它组件的关系"></a>与其它组件的关系</h2><ul>
+<li><strong>Seata</strong>：TC 可用 file 模式直连；生产可将 <code>application-seata.yml</code> 放 Nacos，见 <a href="/springcloudalibaba/06-sca-integrate-seata/">第六章：集成 Seata：AT 模式分布式事务</a>。  </li>
+<li><strong>Sentinel</strong>：勿在 Nacos 中写 <code>transport.dashboard: 8858</code>（容器内端口）；客户端以 classpath <code>application-sentinel-client.yml</code> 为准。  </li>
+<li><strong>Gateway</strong>：依赖 Nacos 解析 <code>lb://</code> 实例，须先于或同步启动下游服务。</li>
+</ul>
+<h2 id="相关文件"><a href="#相关文件" class="headerlink" title="相关文件"></a>相关文件</h2><table>
+<thead>
+<tr>
+<th>路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>pom.xml</code></td>
+<td>SCA BOM <code>2025.1.0.0</code></td>
+</tr>
+<tr>
+<td><code>cloud-order/.../application-dev.yml</code></td>
+<td>import + discovery</td>
+</tr>
+<tr>
+<td><code>cloud-gateway/.../application-dev.yml</code></td>
+<td>网关 Nacos</td>
+</tr>
+<tr>
+<td><code>config/nacos-application-seata.yml</code></td>
+<td>可粘贴到 Nacos 的 Seata 模板</td>
+</tr>
+<tr>
+<td>各模块 <code>application.yml</code></td>
+<td><code>spring.application.name</code></td>
+</tr>
+</tbody></table>
+<h2 id="验证步骤"><a href="#验证步骤" class="headerlink" title="验证步骤"></a>验证步骤</h2><ol>
+<li>浏览器打开 <code>http://192.168.1.22:30010/nacos</code>，登录。  </li>
+<li><strong>服务管理 → 服务列表</strong>：启动 <code>cloud-stock</code> 后应出现 <code>cloud-stock</code>。  </li>
+<li><strong>配置管理</strong>：发布 <code>application-datasource.yml</code>，重启 order 验证 JDBC 是否指向新库。</li>
+</ol>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 经网关访问（需 gateway + stock 已注册）</span></span><br><span class="line"><span class="built_in">Invoke-RestMethod</span> <span class="literal">-Uri</span> <span class="string">&quot;http://127.0.0.1:9000/stock/goods/1&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -s <span class="string">&quot;http://127.0.0.1:9000/stock/goods/1&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h2><p><strong>Q：报错 <code>No spring.config.import set</code>？</strong><br>A：SCA 2025.1 强制要求。在 <code>application-dev.yml</code> 增加 <code>spring.config.import</code> 的 <code>nacos:</code> 项（见上文）。</p>
+<p><strong>Q：服务注册成功但网关 503？</strong><br>A：检查 gateway 的 <code>lb://服务名</code> 与 Nacos 中 <strong>serviceId</strong> 是否一致（本仓库为小写 <code>cloud-order</code> 等）；<code>discovery.locator.lower-case-service-id: true</code> 已开启。</p>
+<p><strong>Q：Nacos 3.x 与 2.x 客户端兼容性？</strong><br>A：SCA 2025.1 发布说明建议 Nacos Server <strong>3.1.0+</strong>；若用 2.x 服务端，以实际集群文档为准。</p>
+<p><strong>Q：控制台已建配置，应用仍用本地 jdbc？</strong><br>A：检查 DataId&#x2F;Group&#x2F;命名空间；确认 <code>spring.config.import</code> 含对应 <code>nacos:</code> 项且已重启；<code>optional:</code> 时拉取失败会静默 fallback 到 classpath。</p>
+<p><strong>Q：能否用 <code>application-dev.yml</code> 作为 DataId？</strong><br>A：可以，但须在 import 中写 <code>optional:nacos:application-dev.yml</code>，与本仓库约定的 <code>application.yml</code> 等不同；团队需统一命名，避免每人一个 DataId。</p>
+<p><strong>Q：临时实例与持久实例怎么选？</strong><br>A：微服务默认临时实例（心跳、AP）；MySQL、DNS 等基础设施类注册用持久实例（Server 探测、CP 落盘），通过 <code>spring.cloud.nacos.discovery.ephemeral: false</code> 声明。</p>
+<p><strong>Q：发布时如何避免流量打到正在重启的实例？</strong><br>A：先在控制台把实例<strong>权重置 0 或下线</strong>，等存量请求处理完再停进程；直接 kill 依赖心跳剔除（最长约 30s），期间可能产生少量失败。</p>
+<p><strong>Q：namespace 填了名称却拉不到配置？</strong><br>A：<code>spring.cloud.nacos.config.namespace</code> 要填命名空间的 <strong>ID</strong>（控制台命名空间列表里那串 UUID），不是显示名称。</p>
+<p><strong>Q：多实例部署 Gateway 后路由不生效？</strong><br>A：确认 Gateway 自身也注册到了同一 namespace；<code>lb://</code> 只能解析<strong>本 namespace</strong> 内的服务，跨 namespace 不可见。</p>
+<h2 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://nacos.io/">Nacos 官网</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/nacos-group/nacos-docker">nacos-docker 仓库</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/alibaba/spring-cloud-alibaba/releases/tag/2025.1.0.0">SCA 2025.1.0.0 Release</a></li>
+<li><a target="_blank" rel="noopener" href="https://sca.aliyun.com/docs/2025.x/overview/version-explain/">SCA 版本说明</a></li>
+<li><a target="_blank" rel="noopener" href="https://sca.aliyun.com/docs/2025.x/user-guide/nacos/quick-start/">Nacos 快速开始（SCA 2025.x）</a></li>
+</ul>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>双角色</td>
+<td>Nacos 同时承担<strong>服务注册发现</strong>与<strong>配置中心</strong>，本仓库地址 <code>192.168.1.22:30010</code></td>
+</tr>
+<tr>
+<td>接入方式</td>
+<td>SCA <strong>2025.1.0.0</strong>，discovery + config starter，<strong><code>spring.config.import</code> 必配</strong>（bootstrap 已移除）</td>
+</tr>
+<tr>
+<td>DataId 约定</td>
+<td>Data ID 与 import 字符串<strong>完全一致</strong>（含 <code>.yml</code>），Group 默认 <code>DEFAULT_GROUP</code></td>
+</tr>
+<tr>
+<td>容错</td>
+<td><code>fail-fast: false</code> + <code>optional:</code> 前缀，Nacos 不可用时仍可本地启动</td>
+</tr>
+<tr>
+<td>部署形态</td>
+<td>K8s NodePort 现网 + Docker&#x2F;Compose 自建，<strong>生产推荐外置 MySQL</strong></td>
+</tr>
+</tbody></table>
+<hr>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/SpringCloudAlibaba/" rel="tag"># SpringCloudAlibaba</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/springcloudalibaba/02-sca-multi-env-config-nacos/" rel="prev" title="第二章：Spring Cloud 多环境配置与 Nacos：Profile 与 config.import 分层">
+                  <i class="fa fa-angle-left"></i> 第二章：Spring Cloud 多环境配置与 Nacos：Profile 与 config.import 分层
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/springcloudalibaba/04-sca-integrate-gateway/" rel="next" title="第四章：集成 SpringCloudGateway：统一入口与路由">
+                  第四章：集成 SpringCloudGateway：统一入口与路由 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

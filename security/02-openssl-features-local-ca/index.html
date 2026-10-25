@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第二章：OpenSSL 功能全景与自建局域网 CA 实战概念基础 OpenSSL 有两层身份：一是命令行工具（生成证书、密钥、加解密、签名等日常操作）；二是底层密码库（libcrypto &#x2F; libssl，几乎所有软件的加密都靠它：Nginx、Python、Java、curl、安卓、iOS 等）。 事实标准：90% 的互联网加密通信，底层都在用 OpenSSL；HTTPS、TLS、QUI">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第二章：OpenSSL 功能全景与自建局域网 CA 实战">
+<meta property="og:url" content="https://my919.github.io/security/02-openssl-features-local-ca/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第二章：OpenSSL 功能全景与自建局域网 CA 实战概念基础 OpenSSL 有两层身份：一是命令行工具（生成证书、密钥、加解密、签名等日常操作）；二是底层密码库（libcrypto &#x2F; libssl，几乎所有软件的加密都靠它：Nginx、Python、Java、curl、安卓、iOS 等）。 事实标准：90% 的互联网加密通信，底层都在用 OpenSSL；HTTPS、TLS、QUI">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:43:11.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.594Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="OpenSSL">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/security/02-openssl-features-local-ca/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/security/02-openssl-features-local-ca/","path":"security/02-openssl-features-local-ca/","title":"第二章：OpenSSL 功能全景与自建局域网 CA 实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第二章：OpenSSL 功能全景与自建局域网 CA 实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E7%AB%A0%EF%BC%9AOpenSSL-%E5%8A%9F%E8%83%BD%E5%85%A8%E6%99%AF%E4%B8%8E%E8%87%AA%E5%BB%BA%E5%B1%80%E5%9F%9F%E7%BD%91-CA-%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">第二章：OpenSSL 功能全景与自建局域网 CA 实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#OpenSSL-%E5%88%B0%E5%BA%95%E8%83%BD%E5%81%9A%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.2.</span> <span class="nav-text">OpenSSL 到底能做什么？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%AF%81%E4%B9%A6%E4%BD%93%E7%B3%BB"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 证书体系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%8A%A0%E5%AF%86-%E8%A7%A3%E5%AF%86-%E6%96%87%E4%BB%B6%EF%BC%88%E8%B6%85%E7%BA%A7%E5%AE%9E%E7%94%A8%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 加密 &#x2F; 解密 文件（超级实用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E8%AE%A1%E7%AE%97%E5%93%88%E5%B8%8C%EF%BC%88MD5-SHA1-SHA256%EF%BC%89"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. 计算哈希（MD5&#x2F;SHA1&#x2F;SHA256）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E7%94%9F%E6%88%90%E9%9A%8F%E6%9C%BA%E5%AF%86%E7%A0%81-%E5%AF%86%E9%92%A5"><span class="nav-number">1.2.4.</span> <span class="nav-text">4. 生成随机密码&#x2F;密钥</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E6%B5%8B%E8%AF%95-HTTPS-SSL-%E8%BF%9E%E6%8E%A5"><span class="nav-number">1.2.5.</span> <span class="nav-text">5. 测试 HTTPS&#x2F;SSL 连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E6%A8%A1%E6%8B%9F-HTTPS-%E6%9C%8D%E5%8A%A1%E5%99%A8"><span class="nav-number">1.2.6.</span> <span class="nav-text">6. 模拟 HTTPS 服务器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-%E7%AD%BE%E5%90%8D-%E9%AA%8C%E7%AD%BE"><span class="nav-number">1.2.7.</span> <span class="nav-text">7. 签名 &amp; 验签</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-%E5%AF%86%E7%A0%81%E7%AE%97%E6%B3%95%EF%BC%88%E5%88%86%E7%B1%BB%E6%96%87%E6%A1%A3%EF%BC%89"><span class="nav-number">1.2.8.</span> <span class="nav-text">8. 密码算法（分类文档）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%93%AA%E4%BA%9B%E8%BD%AF%E4%BB%B6%E5%9C%A8%E5%BA%95%E5%B1%82%E4%BD%BF%E7%94%A8-OpenSSL%EF%BC%9F"><span class="nav-number">1.3.</span> <span class="nav-text">哪些软件在底层使用 OpenSSL？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E6%88%98%EF%BC%9A%E6%90%AD%E5%BB%BA%E5%B1%80%E5%9F%9F%E7%BD%91%E5%85%A8%E5%A5%97%E5%8F%AF%E4%BF%A1%E8%AF%81%E4%B9%A6%EF%BC%88%E8%87%AA%E5%BB%BA%E6%A0%B9CA-%E7%AD%BE%E5%8F%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AF%81%E4%B9%A6%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">实战：搭建局域网全套可信证书（自建根CA + 签发服务器证书）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%AE%E5%BD%95%E5%87%86%E5%A4%87"><span class="nav-number">1.4.1.</span> <span class="nav-text">目录准备</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E7%94%9F%E6%88%90-%E6%A0%B9CA%E7%A7%81%E9%92%A5-%E6%A0%B9CA%E8%87%AA%E7%AD%BE%E5%90%8D%E8%AF%81%E4%B9%A6"><span class="nav-number">1.4.2.</span> <span class="nav-text">第一步：生成 根CA私钥 + 根CA自签名证书</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E7%94%9F%E6%88%90%E6%A0%B9CA%E7%A7%81%E9%92%A5"><span class="nav-number">1.4.2.1.</span> <span class="nav-text">1. 生成根CA私钥</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E7%94%9F%E6%88%90%E6%A0%B9CA%E8%AF%81%E4%B9%A6%EF%BC%88%E6%9C%89%E6%95%88%E6%9C%9F10%E5%B9%B4%EF%BC%89"><span class="nav-number">1.4.2.2.</span> <span class="nav-text">2. 生成根CA证书（有效期10年）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E7%94%9F%E6%88%90%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%A7%81%E9%92%A5-CSR%E8%AF%B7%E6%B1%82"><span class="nav-number">1.4.3.</span> <span class="nav-text">第二步：生成服务器私钥 + CSR请求</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E7%94%9F%E6%88%90%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%A7%81%E9%92%A5"><span class="nav-number">1.4.3.1.</span> <span class="nav-text">1. 生成服务器私钥</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6%E8%AF%B7%E6%B1%82-CSR"><span class="nav-number">1.4.3.2.</span> <span class="nav-text">2. 生成证书请求 CSR</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E5%88%9B%E5%BB%BASAN%E6%89%A9%E5%B1%95%E9%85%8D%E7%BD%AE%EF%BC%88%E5%85%B3%E9%94%AE%EF%BC%81%E6%94%AF%E6%8C%81IP%E8%AE%BF%E9%97%AE%EF%BC%89"><span class="nav-number">1.4.4.</span> <span class="nav-text">第三步：创建SAN扩展配置（关键！支持IP访问）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9A%E7%94%A8%E6%A0%B9CA%E7%AD%BE%E5%8F%91-%E5%B1%80%E5%9F%9F%E7%BD%91%E5%8F%AF%E4%BF%A1%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AF%81%E4%B9%A6"><span class="nav-number">1.4.5.</span> <span class="nav-text">第四步：用根CA签发 局域网可信服务器证书</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%80%E7%BB%88%E6%8B%BF%E5%88%B04%E4%B8%AA%E6%96%87%E4%BB%B6"><span class="nav-number">1.4.5.1.</span> <span class="nav-text">最终拿到4个文件</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%BE%E5%A4%87%E5%AF%BC%E5%85%A5%E6%A0%B9CA%EF%BC%8C%E5%AE%9E%E7%8E%B0%E6%B0%B8%E4%B9%85%E4%BF%A1%E4%BB%BB"><span class="nav-number">1.4.6.</span> <span class="nav-text">设备导入根CA，实现永久信任</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Windows"><span class="nav-number">1.4.6.1.</span> <span class="nav-text">Windows</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Mac"><span class="nav-number">1.4.6.2.</span> <span class="nav-text">Mac</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Android"><span class="nav-number">1.4.6.3.</span> <span class="nav-text">Android</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#iOS"><span class="nav-number">1.4.6.4.</span> <span class="nav-text">iOS</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%A0%E7%9A%84Python-HTTP-3-%E9%A1%B9%E7%9B%AE%E6%80%8E%E4%B9%88%E7%94%A8"><span class="nav-number">1.4.7.</span> <span class="nav-text">你的Python HTTP&#x2F;3 项目怎么用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%8E%E7%BB%AD%E6%8D%A2IP%E6%80%8E%E4%B9%88%E5%8A%9E"><span class="nav-number">1.4.8.</span> <span class="nav-text">后续换IP怎么办</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E9%98%B6%EF%BC%9A%E6%8A%8A%E2%80%9D%E7%8E%A9%E5%85%B7-CA%E2%80%9D%E5%8D%87%E7%BA%A7%E4%B8%BA%E2%80%9D%E5%8F%AF%E7%AE%A1%E7%90%86-CA%E2%80%9D"><span class="nav-number">1.5.</span> <span class="nav-text">进阶：把”玩具 CA”升级为”可管理 CA”</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%B8%A4%E7%A7%8D%E7%AD%BE%E5%8F%91%E6%96%B9%E5%BC%8F%E5%AF%B9%E6%AF%94"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 两种签发方式对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%A7%84%E8%8C%83%E5%8C%96-CA-%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 规范化 CA 目录结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%94%A8-openssl-ca-%E7%AD%BE%E5%8F%91%E4%B8%8E%E5%90%8A%E9%94%80"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 用 openssl ca 签发与吊销</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%AF%81%E4%B9%A6%E5%88%B0%E6%9C%9F%E5%B7%A1%E6%A3%80%EF%BC%88%E9%98%B2%E2%80%9D%E5%87%8C%E6%99%A8%E8%BF%87%E6%9C%9F%E2%80%9D%EF%BC%89"><span class="nav-number">1.5.4.</span> <span class="nav-text">4. 证书到期巡检（防”凌晨过期”）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E4%B8%AD%E9%97%B4-CA%EF%BC%9A%E6%A0%B9%E5%AF%86%E9%92%A5%E4%B8%8D%E8%BF%9B%E7%94%9F%E4%BA%A7"><span class="nav-number">1.5.5.</span> <span class="nav-text">5. 中间 CA：根密钥不进生产</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.6.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/security/02-openssl-features-local-ca/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第二章：OpenSSL 功能全景与自建局域网 CA 实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第二章：OpenSSL 功能全景与自建局域网 CA 实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:43:11" itemprop="dateCreated datePublished" datetime="2026-05-01T13:43:11+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%AE%89%E5%85%A8/" itemprop="url" rel="index"><span itemprop="name">安全</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第二章：OpenSSL-功能全景与自建局域网-CA-实战"><a href="#第二章：OpenSSL-功能全景与自建局域网-CA-实战" class="headerlink" title="第二章：OpenSSL 功能全景与自建局域网 CA 实战"></a>第二章：OpenSSL 功能全景与自建局域网 CA 实战</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>OpenSSL 有两层身份</strong>：一是<strong>命令行工具</strong>（生成证书、密钥、加解密、签名等日常操作）；二是<strong>底层密码库</strong>（libcrypto &#x2F; libssl，几乎所有软件的加密都靠它：Nginx、Python、Java、curl、安卓、iOS 等）。</li>
+<li><strong>事实标准</strong>：<strong>90% 的互联网加密通信，底层都在用 OpenSSL</strong>；HTTPS、TLS、QUIC、VPN、SSH 全覆盖。</li>
+<li><strong>命令行能做什么</strong>：证书体系（生成&#x2F;查看&#x2F;转换）、文件加解密、哈希校验、随机密码&#x2F;密钥、测试 HTTPS 连接、模拟 HTTPS 服务器、签名验签——本章逐条给出命令。</li>
+<li><strong>为什么需要自建 CA</strong>：局域网&#x2F;内网服务（如 <code>https://192.168.1.22</code>）无法从公网 CA 获取证书；自己做<strong>根 CA</strong> 签发服务器证书并导入设备信任，即可实现浏览器<strong>绿标、无不安全警告</strong>。</li>
+<li><strong>本章定位</strong>：先给出<strong>功能全景</strong>，再用一条条可复制的命令完成<strong>局域网全套可信证书</strong>实战。</li>
+</ol>
+<p>命令行生成证书、CSR、格式转换等逐步操作见 <a href="/security/01-openssl-cli-guide/">第一章：OpenSSL 命令行入门与常用操作总览</a>。</p>
+<hr>
+<h2 id="OpenSSL-到底能做什么？"><a href="#OpenSSL-到底能做什么？" class="headerlink" title="OpenSSL 到底能做什么？"></a>OpenSSL 到底能做什么？</h2><h3 id="1-证书体系"><a href="#1-证书体系" class="headerlink" title="1. 证书体系"></a>1. 证书体系</h3><ul>
+<li>生成私钥、公钥</li>
+<li>生成自签名证书（本地&#x2F;内网开发）</li>
+<li>生成 CSR（向 CA 申请正式 HTTPS 证书）</li>
+<li>查看证书信息</li>
+<li>证书格式转换（PEM ↔ PFX ↔ DER）</li>
+</ul>
+<hr>
+<h3 id="2-加密-解密-文件（超级实用）"><a href="#2-加密-解密-文件（超级实用）" class="headerlink" title="2. 加密 &#x2F; 解密 文件（超级实用）"></a>2. 加密 &#x2F; 解密 文件（超级实用）</h3><p>直接用命令加密文件，无需任何软件：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 加密文件</span></span><br><span class="line">openssl enc -aes-256-cbc -<span class="keyword">in</span> 照片.jpg -out 照片.jpg.enc</span><br><span class="line"></span><br><span class="line"><span class="comment"># 解密</span></span><br><span class="line">openssl enc -d -aes-256-cbc -<span class="keyword">in</span> 照片.jpg.enc -out 照片.jpg</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="3-计算哈希（MD5-SHA1-SHA256）"><a href="#3-计算哈希（MD5-SHA1-SHA256）" class="headerlink" title="3. 计算哈希（MD5&#x2F;SHA1&#x2F;SHA256）"></a>3. 计算哈希（MD5&#x2F;SHA1&#x2F;SHA256）</h3><p>校验文件是否被篡改：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl sha256 安装包.exe</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="4-生成随机密码-密钥"><a href="#4-生成随机密码-密钥" class="headerlink" title="4. 生成随机密码&#x2F;密钥"></a>4. 生成随机密码&#x2F;密钥</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成 32 位随机密钥</span></span><br><span class="line">openssl rand -hex 32</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="5-测试-HTTPS-SSL-连接"><a href="#5-测试-HTTPS-SSL-连接" class="headerlink" title="5. 测试 HTTPS&#x2F;SSL 连接"></a>5. 测试 HTTPS&#x2F;SSL 连接</h3><p>排查网站证书是否有效：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl s_client -connect www.baidu.com:443</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="6-模拟-HTTPS-服务器"><a href="#6-模拟-HTTPS-服务器" class="headerlink" title="6. 模拟 HTTPS 服务器"></a>6. 模拟 HTTPS 服务器</h3><p><strong>一行命令启动一个 HTTPS 服务器</strong>（本地测试超好用）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl s_server -cert cert.pem -key key.pem -www</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="7-签名-验签"><a href="#7-签名-验签" class="headerlink" title="7. 签名 &amp; 验签"></a>7. 签名 &amp; 验签</h3><p>确保文件不被篡改、来源可靠（软件发布、固件验证必备）：</p>
+<ul>
+<li>私钥签名</li>
+<li>公钥验签</li>
+</ul>
+<hr>
+<h3 id="8-密码算法（分类文档）"><a href="#8-密码算法（分类文档）" class="headerlink" title="8. 密码算法（分类文档）"></a>8. 密码算法（分类文档）</h3><p>OpenSSL <strong>不包含世界上所有算法</strong>，但覆盖 <strong>TLS &#x2F; HTTPS &#x2F; 证书 &#x2F; 文件加密</strong> 等场景的<strong>主流与推荐</strong>实现。按类别详见：</p>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>文档</th>
+<th>推荐算法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>哈希</td>
+<td><a href="/security/03-openssl-hash-algorithms/">第三章：OpenSSL 哈希算法：SHA-256、SHA-3 与推荐用法</a></td>
+<td><strong>SHA-256</strong>、SHA-512、SHA-3</td>
+</tr>
+<tr>
+<td>对称加密</td>
+<td><a href="/security/04-openssl-symmetric-encryption/">第四章：OpenSSL 对称加密：AES-GCM、ChaCha20 与推荐用法</a></td>
+<td><strong>AES-256-GCM</strong>、ChaCha20-Poly1305</td>
+</tr>
+<tr>
+<td>非对称 &#x2F; 密钥交换</td>
+<td><a href="/security/05-openssl-asymmetric-key-exchange/">第五章：OpenSSL 非对称加密与密钥交换：RSA、Ed25519、X25519</a></td>
+<td><strong>Ed25519</strong>、<strong>X25519</strong>、EC P-256、RSA 2048+</td>
+</tr>
+<tr>
+<td>签名 &#x2F; HMAC</td>
+<td><a href="/security/06-openssl-digital-signature-hmac/">第六章：OpenSSL 数字签名与 HMAC：完整性、身份与推荐用法</a></td>
+<td><strong>Ed25519</strong>、ECDSA、<strong>HMAC-SHA256</strong></td>
+</tr>
+<tr>
+<td>密钥派生 &#x2F; 随机数</td>
+<td><a href="/security/07-openssl-kdf-random/">第七章：OpenSSL 密钥派生与随机数：PBKDF2、rand 与推荐用法</a></td>
+<td><strong>openssl rand</strong>、<strong>PBKDF2</strong></td>
+</tr>
+</tbody></table>
+<p>查看本机支持：<code>openssl list -digest-algorithms</code>、<code>-cipher-algorithms</code>、<code>-public-key-algorithms</code>。</p>
+<hr>
+<h2 id="哪些软件在底层使用-OpenSSL？"><a href="#哪些软件在底层使用-OpenSSL？" class="headerlink" title="哪些软件在底层使用 OpenSSL？"></a>哪些软件在底层使用 OpenSSL？</h2><ul>
+<li><strong>Nginx &#x2F; Apache</strong>（HTTPS 加密）</li>
+<li><strong>curl &#x2F; wget</strong></li>
+<li><strong>Python &#x2F; PHP &#x2F; Node.js</strong></li>
+<li><strong>Android &#x2F; iOS 系统加密</strong></li>
+<li><strong>Docker &#x2F; Kubernetes</strong></li>
+<li><strong>Wi-Fi 加密、VPN、SSH</strong></li>
+<li><strong>你的浏览器底层密码库</strong></li>
+</ul>
+<p>一句话：<strong>互联网加密的基石</strong>。</p>
+<hr>
+<h2 id="实战：搭建局域网全套可信证书（自建根CA-签发服务器证书）"><a href="#实战：搭建局域网全套可信证书（自建根CA-签发服务器证书）" class="headerlink" title="实战：搭建局域网全套可信证书（自建根CA + 签发服务器证书）"></a>实战：搭建局域网全套可信证书（自建根CA + 签发服务器证书）</h2><p>核心思路：</p>
+<ol>
+<li>自己做<strong>根CA证书</strong>（相当于自己当权威证书机构）</li>
+<li>用根CA签发<strong>局域网服务器证书</strong>（绑定你的IP：192.168.1.22）</li>
+<li>手机&#x2F;电脑<strong>导入根CA证书</strong>，之后访问 <code>https://192.168.1.22</code> <strong>浏览器绿标、无不安全警告</strong></li>
+</ol>
+<p>全程一条一条复制命令即可，适配你的 IP：<strong>192.168.1.22</strong></p>
+<hr>
+<h3 id="目录准备"><a href="#目录准备" class="headerlink" title="目录准备"></a>目录准备</h3><p>新建文件夹，所有文件放这里：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p ~/ssl/lan-ca</span><br><span class="line"><span class="built_in">cd</span> ~/ssl/lan-ca</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="第一步：生成-根CA私钥-根CA自签名证书"><a href="#第一步：生成-根CA私钥-根CA自签名证书" class="headerlink" title="第一步：生成 根CA私钥 + 根CA自签名证书"></a>第一步：生成 根CA私钥 + 根CA自签名证书</h3><h4 id="1-生成根CA私钥"><a href="#1-生成根CA私钥" class="headerlink" title="1. 生成根CA私钥"></a>1. 生成根CA私钥</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -aes256 -out ca.key 4096</span><br></pre></td></tr></table></figure>
+<p>设置一个密码（记住，后面签发证书要用）</p>
+<h4 id="2-生成根CA证书（有效期10年）"><a href="#2-生成根CA证书（有效期10年）" class="headerlink" title="2. 生成根CA证书（有效期10年）"></a>2. 生成根CA证书（有效期10年）</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 -out ca.crt</span><br></pre></td></tr></table></figure>
+<p>填写信息可随意，一路回车也行。<br>产出：</p>
+<ul>
+<li><code>ca.key</code>：根CA私钥（绝密，别外泄）</li>
+<li><code>ca.crt</code>：<strong>根CA证书</strong>（手机、电脑要安装这个）</li>
+</ul>
+<hr>
+<h3 id="第二步：生成服务器私钥-CSR请求"><a href="#第二步：生成服务器私钥-CSR请求" class="headerlink" title="第二步：生成服务器私钥 + CSR请求"></a>第二步：生成服务器私钥 + CSR请求</h3><h4 id="1-生成服务器私钥"><a href="#1-生成服务器私钥" class="headerlink" title="1. 生成服务器私钥"></a>1. 生成服务器私钥</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out server.key 2048</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-生成证书请求-CSR"><a href="#2-生成证书请求-CSR" class="headerlink" title="2. 生成证书请求 CSR"></a>2. 生成证书请求 CSR</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl req -new -key server.key -out server.csr</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="第三步：创建SAN扩展配置（关键！支持IP访问）"><a href="#第三步：创建SAN扩展配置（关键！支持IP访问）" class="headerlink" title="第三步：创建SAN扩展配置（关键！支持IP访问）"></a>第三步：创建SAN扩展配置（关键！支持IP访问）</h3><p>新建文件 <code>server.ext</code>，复制下面内容：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">authorityKeyIdentifier</span>=keyid,issuer</span><br><span class="line"><span class="attr">basicConstraints</span>=CA:<span class="literal">FALSE</span></span><br><span class="line"><span class="attr">keyUsage</span> = digitalSignature, keyEncipherment</span><br><span class="line"><span class="attr">subjectAltName</span> = IP:<span class="number">192.168</span>.<span class="number">1.22</span>,IP:<span class="number">127.0</span>.<span class="number">0.1</span>,DNS:localhost</span><br></pre></td></tr></table></figure>
+<hr>
+<h3 id="第四步：用根CA签发-局域网可信服务器证书"><a href="#第四步：用根CA签发-局域网可信服务器证书" class="headerlink" title="第四步：用根CA签发 局域网可信服务器证书"></a>第四步：用根CA签发 局域网可信服务器证书</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">openssl x509 -req \</span><br><span class="line">  -<span class="keyword">in</span> server.csr \</span><br><span class="line">  -CA ca.crt -CAkey ca.key \</span><br><span class="line">  -CAcreateserial \</span><br><span class="line">  -out server.crt \</span><br><span class="line">  -days 3650 -sha256 \</span><br><span class="line">  -extfile server.ext</span><br></pre></td></tr></table></figure>
+
+<h4 id="最终拿到4个文件"><a href="#最终拿到4个文件" class="headerlink" title="最终拿到4个文件"></a>最终拿到4个文件</h4><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ca.key       # 根CA私钥（保密）</span><br><span class="line">ca.crt       # 根CA证书（给设备安装信任）</span><br><span class="line">server.key   # 网站/QUIC服务私钥</span><br><span class="line">server.crt   # 网站/QUIC服务证书</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="设备导入根CA，实现永久信任"><a href="#设备导入根CA，实现永久信任" class="headerlink" title="设备导入根CA，实现永久信任"></a>设备导入根CA，实现永久信任</h3><h4 id="Windows"><a href="#Windows" class="headerlink" title="Windows"></a>Windows</h4><ol>
+<li>双击 <code>ca.crt</code> → 安装证书</li>
+<li>存储位置：<strong>本地计算机</strong></li>
+<li>放入：<strong>受信任的根证书颁发机构</strong></li>
+<li>下一步到底即可</li>
+</ol>
+<h4 id="Mac"><a href="#Mac" class="headerlink" title="Mac"></a>Mac</h4><p>双击 <code>ca.crt</code> → 钥匙串 → 设为<strong>始终信任</strong></p>
+<h4 id="Android"><a href="#Android" class="headerlink" title="Android"></a>Android</h4><p>把 <code>ca.crt</code> 发到手机，设置 → 安全 → 安装证书 → 选择文件</p>
+<h4 id="iOS"><a href="#iOS" class="headerlink" title="iOS"></a>iOS</h4><p>邮件发 <code>ca.crt</code>，点开安装，再到 设置→通用→关于本机→证书信任设置 开启信任</p>
+<hr>
+<h3 id="你的Python-HTTP-3-项目怎么用"><a href="#你的Python-HTTP-3-项目怎么用" class="headerlink" title="你的Python HTTP&#x2F;3 项目怎么用"></a>你的Python HTTP&#x2F;3 项目怎么用</h3><p>服务端配置：</p>
+<ul>
+<li>证书：<code>server.crt</code></li>
+<li>私钥：<code>server.key</code></li>
+</ul>
+<p>Python 客户端运行时：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python xxx.py --host 192.168.1.22 --port 4433 --ca-certs ca.crt</span><br></pre></td></tr></table></figure>
+<p>客户端用 <strong>根CA证书</strong> 校验，完全可信、无警告。</p>
+<hr>
+<h3 id="后续换IP怎么办"><a href="#后续换IP怎么办" class="headerlink" title="后续换IP怎么办"></a>后续换IP怎么办</h3><p>如果以后改成 <code>192.168.1.33</code>，只需要：</p>
+<ol>
+<li>修改 <code>server.ext</code> 里的 <code>IP:xxx</code></li>
+<li>重新执行<strong>第四步签发命令</strong>即可，根CA不用重新生成。</li>
+</ol>
+<hr>
+<h2 id="进阶：把”玩具-CA”升级为”可管理-CA”"><a href="#进阶：把”玩具-CA”升级为”可管理-CA”" class="headerlink" title="进阶：把”玩具 CA”升级为”可管理 CA”"></a>进阶：把”玩具 CA”升级为”可管理 CA”</h2><p>上面的 <code>openssl x509 -req -CAcreateserial</code> 适合一次性签发；<strong>长期运营</strong>的 CA（要签发几十上百张证书、要能吊销）需要规范化结构。</p>
+<h3 id="1-两种签发方式对比"><a href="#1-两种签发方式对比" class="headerlink" title="1. 两种签发方式对比"></a>1. 两种签发方式对比</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th><code>openssl x509 -req</code>（本文实战）</th>
+<th><code>openssl ca</code>（正规 CA）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>签发记录</td>
+<td>无（只留 <code>.srl</code> 序列号文件）</td>
+<td><strong>index.txt 数据库</strong>：谁签的、何时过期、是否吊销一目了然</td>
+</tr>
+<tr>
+<td>证书吊销</td>
+<td><strong>不支持</strong></td>
+<td>支持 CRL &#x2F; OCSP</td>
+</tr>
+<tr>
+<td>配置</td>
+<td>命令行参数</td>
+<td><code>openssl.cnf</code> 集中管理默认策略</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>个人内网、几台设备</td>
+<td>团队内网、物联网设备群、需要审计</td>
+</tr>
+</tbody></table>
+<h3 id="2-规范化-CA-目录结构"><a href="#2-规范化-CA-目录结构" class="headerlink" title="2. 规范化 CA 目录结构"></a>2. 规范化 CA 目录结构</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p ~/ssl/my-ca/&#123;certs,crl,newcerts,private&#125;</span><br><span class="line"><span class="built_in">chmod</span> 700 ~/ssl/my-ca/private</span><br><span class="line"><span class="built_in">echo</span> 1000 &gt; ~/ssl/my-ca/serial        <span class="comment"># 下一张证书的序列号</span></span><br><span class="line"><span class="built_in">echo</span> 1000 &gt; ~/ssl/my-ca/crlnumber     <span class="comment"># 下一份 CRL 的编号</span></span><br><span class="line"><span class="built_in">touch</span> ~/ssl/my-ca/index.txt           <span class="comment"># 签发数据库（空文件起步）</span></span><br></pre></td></tr></table></figure>
+
+<p>目录职责：</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>private/cakey.pem</code></td>
+<td><strong>CA 私钥</strong>（chmod 600，泄露&#x3D;全部证书作废）</td>
+</tr>
+<tr>
+<td><code>cacert.pem</code></td>
+<td>CA 证书（分发给各设备导入）</td>
+</tr>
+<tr>
+<td><code>newcerts/</code></td>
+<td>每签发一张证书自动存一份副本，文件名即序列号</td>
+</tr>
+<tr>
+<td><code>index.txt</code></td>
+<td>签发台账：状态（V有效&#x2F;R吊销）、过期时间、序列号、主题</td>
+</tr>
+<tr>
+<td><code>crl/</code></td>
+<td>证书吊销列表</td>
+</tr>
+</tbody></table>
+<p><code>openssl.cnf</code> 最小配置片段（指向上述目录）：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[ CA_default ]</span></span><br><span class="line"><span class="attr">dir</span>             = /root/ssl/my-ca</span><br><span class="line"><span class="attr">database</span>        = <span class="variable">$dir</span>/index.txt</span><br><span class="line"><span class="attr">new_certs_dir</span>   = <span class="variable">$dir</span>/newcerts</span><br><span class="line"><span class="attr">certificate</span>     = <span class="variable">$dir</span>/cacert.pem</span><br><span class="line"><span class="attr">private_key</span>     = <span class="variable">$dir</span>/private/cakey.pem</span><br><span class="line"><span class="attr">serial</span>          = <span class="variable">$dir</span>/serial</span><br><span class="line"><span class="attr">default_md</span>      = sha256</span><br><span class="line"><span class="attr">default_days</span>    = <span class="number">825</span>        <span class="comment"># 公网 CA/B 论坛对服务器证书的上限，内网参照即可</span></span><br><span class="line"><span class="attr">policy</span>          = policy_any</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-用-openssl-ca-签发与吊销"><a href="#3-用-openssl-ca-签发与吊销" class="headerlink" title="3. 用 openssl ca 签发与吊销"></a>3. 用 <code>openssl ca</code> 签发与吊销</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 签发（读 openssl.cnf，交互确认后落库）</span></span><br><span class="line">openssl ca -<span class="keyword">in</span> server.csr -out certs/server.crt -extensions server_ext</span><br><span class="line"></span><br><span class="line"><span class="comment"># 吊销：私钥泄露 / 设备退役时执行</span></span><br><span class="line">openssl ca -revoke newcerts/1001.pem -crl_reason keyCompromise</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重新生成 CRL 并分发（Nginx 配 ssl_crl 或客户端手动校验）</span></span><br><span class="line">openssl ca -gencrl -out crl/ca.crl</span><br><span class="line"></span><br><span class="line"><span class="comment"># 校验某证书是否在吊销列表中</span></span><br><span class="line">openssl verify -crl_check -CAfile &lt;(<span class="built_in">cat</span> cacert.pem crl/ca.crl) certs/server.crt</span><br></pre></td></tr></table></figure>
+
+<p>吊销后 <code>index.txt</code> 中该行状态由 <code>V</code> 变 <code>R</code>；<strong>CRL 有缓存期</strong>（<code>default_crl_days</code>，默认 30 天），对实时性要求高的场景用 <strong>OCSP</strong>（<code>openssl ocsp</code> 起响应器，客户端在线查询单张证书状态）。</p>
+<h3 id="4-证书到期巡检（防”凌晨过期”）"><a href="#4-证书到期巡检（防”凌晨过期”）" class="headerlink" title="4. 证书到期巡检（防”凌晨过期”）"></a>4. 证书到期巡检（防”凌晨过期”）</h3><p>内网证书没有 ACME 自动续期，靠脚本巡检兜底：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 列出 30 天内到期的证书（对 index.txt 或证书目录批量跑）</span></span><br><span class="line"><span class="keyword">for</span> f <span class="keyword">in</span> certs/*.crt; <span class="keyword">do</span></span><br><span class="line">  openssl x509 -<span class="keyword">in</span> <span class="string">&quot;<span class="variable">$f</span>&quot;</span> -checkend $((<span class="number">30</span>*<span class="number">86400</span>)) -noout \</span><br><span class="line">    || <span class="built_in">echo</span> <span class="string">&quot;30天内到期: <span class="variable">$f</span> (<span class="subst">$(openssl x509 -in <span class="string">&quot;<span class="variable">$f</span>&quot;</span> -noout -enddate)</span>)&quot;</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<p>接入 cron&#x2F;systemd timer 每周跑一次，输出推送到告警群即可。</p>
+<h3 id="5-中间-CA：根密钥不进生产"><a href="#5-中间-CA：根密钥不进生产" class="headerlink" title="5. 中间 CA：根密钥不进生产"></a>5. 中间 CA：根密钥不进生产</h3><p>规范做法是<strong>根 CA 离线保存</strong>，日常签发放到中间 CA：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">根 CA（离线，锁保险柜）</span><br><span class="line">  └── 中间 CA（在线，签服务器/客户端证书）</span><br><span class="line">        └── 服务器证书（192.168.1.22）</span><br></pre></td></tr></table></figure>
+
+<p>好处：中间 CA 私钥泄露只需<strong>吊销中间 CA 并重签</strong>，根 CA 与已导入设备的信任不受影响；浏览器链式验证 <code>服务器 → 中间 → 根</code> 照常工作。签发中间 CA 证书时扩展里写 <code>basicConstraints=critical,CA:TRUE,pathlen:0</code>（<code>pathlen:0</code> 禁止它再签下级 CA）。</p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>是工具</td>
+<td><strong>命令行</strong>生成证书、加密文件、测试 HTTPS</td>
+</tr>
+<tr>
+<td>是库</td>
+<td><strong>几乎所有软件</strong>的加密都靠它，<strong>互联网加密的基石</strong></td>
+</tr>
+<tr>
+<td>全覆盖</td>
+<td>HTTPS、TLS、QUIC、VPN、SSH 全支持</td>
+</tr>
+<tr>
+<td>自建 CA</td>
+<td>根 CA 自签 → SAN 绑 IP 签发服务器证书 → 设备导入根证书；<strong>换 IP 只需改 SAN 重新签发</strong></td>
+</tr>
+<tr>
+<td>可管理 CA</td>
+<td><strong><code>openssl ca</code></strong> + <code>index.txt</code> 台账 + <code>newcerts/</code> 归档；<strong>吊销</strong>走 <code>ca -revoke</code> → <code>ca -gencrl</code></td>
+</tr>
+<tr>
+<td>吊销分发</td>
+<td><strong>CRL</strong> 有缓存期（默认 30 天）；要实时用 <strong>OCSP</strong> 在线查询</td>
+</tr>
+<tr>
+<td>根密钥安全</td>
+<td><strong>根 CA 离线</strong>，日常签发用<strong>中间 CA</strong>（<code>pathlen:0</code>），泄露可单独吊销</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OpenSSL/" rel="tag"># OpenSSL</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/opencv/01-opencv-guide/" rel="prev" title="第一章：OpenCV 计算机视觉入门">
+                  <i class="fa fa-angle-left"></i> 第一章：OpenCV 计算机视觉入门
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/security/01-openssl-cli-guide/" rel="next" title="第一章：OpenSSL 命令行入门与常用操作总览">
+                  第一章：OpenSSL 命令行入门与常用操作总览 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

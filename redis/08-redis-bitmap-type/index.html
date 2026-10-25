@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第八章：Redis Bitmap 数据类型：概念、命令与案例概念基础Bitmap（位图） 不是一种独立类型，而是 String 的「位视角」——把值的每个二进制位当作一个独立元素来读写：  按位偏移读写 0&#x2F;1，可 BITCOUNT 统计 1 的个数，BITOP AND&#x2F;OR&#x2F;XOR&#x2F;NOT 做位运算。   省空间：1 亿个布尔标记理论上只需 ~12 MB（10^8 ÷ 8 字节），比「">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第八章：Redis Bitmap 数据类型：概念、命令与案例">
+<meta property="og:url" content="https://my919.github.io/redis/08-redis-bitmap-type/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第八章：Redis Bitmap 数据类型：概念、命令与案例概念基础Bitmap（位图） 不是一种独立类型，而是 String 的「位视角」——把值的每个二进制位当作一个独立元素来读写：  按位偏移读写 0&#x2F;1，可 BITCOUNT 统计 1 的个数，BITOP AND&#x2F;OR&#x2F;XOR&#x2F;NOT 做位运算。   省空间：1 亿个布尔标记理论上只需 ~12 MB（10^8 ÷ 8 字节），比「">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T09:31:37.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.592Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Bitmap">
+<meta property="article:tag" content="Redis">
+<meta property="article:tag" content="位图">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/redis/08-redis-bitmap-type/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/redis/08-redis-bitmap-type/","path":"redis/08-redis-bitmap-type/","title":"第八章：Redis Bitmap 数据类型：概念、命令与案例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第八章：Redis Bitmap 数据类型：概念、命令与案例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%85%AB%E7%AB%A0%EF%BC%9ARedis-Bitmap-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%EF%BC%9A%E6%A6%82%E5%BF%B5%E3%80%81%E5%91%BD%E4%BB%A4%E4%B8%8E%E6%A1%88%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第八章：Redis Bitmap 数据类型：概念、命令与案例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86%EF%BC%9A%E5%AD%98%E5%82%A8%E4%B8%8E%E5%86%85%E5%AD%98%E8%B4%A6"><span class="nav-number">1.2.</span> <span class="nav-text">核心原理：存储与内存账</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%9C%AC%E8%B4%A8%E6%98%AF-String"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 本质是 String</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%86%85%E5%AD%98%E8%B4%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 内存账</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-offset-%E4%B8%8A%E9%99%90%E4%B8%8E%E4%BD%8D%E5%BA%8F"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. offset 上限与位序</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%97%B6%E9%97%B4%E5%A4%8D%E6%9D%82%E5%BA%A6"><span class="nav-number">1.2.4.</span> <span class="nav-text">4. 时间复杂度</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.3.</span> <span class="nav-text">常用命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">1.4.</span> <span class="nav-text">典型应用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%BC%E5%90%88%E6%A1%88%E4%BE%8B%EF%BC%88redis-cli%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">综合案例（redis-cli）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%94%A8%E6%88%B7%E7%AD%BE%E5%88%B0%E4%B8%8E%E7%BB%9F%E8%AE%A1"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 用户签到与统计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%97%A5%E6%B4%BB%E4%B8%8E%E6%AC%A1%E6%97%A5%E7%95%99%E5%AD%98"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 日活与次日留存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E4%BD%8D%E8%BF%90%E7%AE%97"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 位运算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%BF%9E%E7%BB%AD%E7%AD%BE%E5%88%B0%E5%A4%A9%E6%95%B0%EF%BC%9ABITPOS-%E6%89%BE%E6%9C%80%E8%BF%91%E4%B8%80%E6%AC%A1%E6%96%AD%E7%AD%BE"><span class="nav-number">1.5.4.</span> <span class="nav-text">4. 连续签到天数：BITPOS 找最近一次断签</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E7%A8%80%E7%96%8F-ID-%E5%88%86%E6%A1%B6%EF%BC%9A%E6%8A%8A%E5%8D%81%E4%BA%BF%E7%BA%A7-UID-%E8%A3%85%E8%BF%9B%E5%B0%8F%E4%BD%8D%E5%9B%BE"><span class="nav-number">1.5.5.</span> <span class="nav-text">5. 稀疏 ID 分桶：把十亿级 UID 装进小位图</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-BITFIELD%EF%BC%9A%E5%A4%9A%E4%BD%8D%E5%8E%8B%E7%BC%A9%E5%AD%98%E6%9E%9A%E4%B8%BE%E7%8A%B6%E6%80%81"><span class="nav-number">1.5.6.</span> <span class="nav-text">6. BITFIELD：多位压缩存枚举状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-%E5%AE%9E%E6%88%98%E7%BB%84%E5%90%88%EF%BC%9ABitmap-%E4%B8%8E-HLL-%E5%8F%8C%E5%86%99"><span class="nav-number">1.5.7.</span> <span class="nav-text">7. 实战组合：Bitmap 与 HLL 双写</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-%E5%AF%BC%E5%87%BA%E7%AD%BE%E5%88%B0%E6%9C%88%E5%8E%86%EF%BC%9AGETRANGE-%E8%AF%BB%E5%8E%9F%E5%A7%8B%E5%AD%97%E8%8A%82"><span class="nav-number">1.5.8.</span> <span class="nav-text">8. 导出签到月历：GETRANGE 读原始字节</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%A4%BA%E4%BE%8B%EF%BC%88Lettuce%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">Java 客户端示例（Lettuce）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Python-%E7%A4%BA%E4%BE%8B%EF%BC%88redis-py%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">Python 示例（redis-py）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-number">1.8.</span> <span class="nav-text">与关系型方案对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91%E4%B8%8E%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">1.9.</span> <span class="nav-text">常见坑与注意事项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/redis/08-redis-bitmap-type/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第八章：Redis Bitmap 数据类型：概念、命令与案例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第八章：Redis Bitmap 数据类型：概念、命令与案例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 17:31:37" itemprop="dateCreated datePublished" datetime="2026-05-03T17:31:37+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Redis-%E7%BC%93%E5%AD%98/" itemprop="url" rel="index"><span itemprop="name">Redis 缓存</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.8k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第八章：Redis-Bitmap-数据类型：概念、命令与案例"><a href="#第八章：Redis-Bitmap-数据类型：概念、命令与案例" class="headerlink" title="第八章：Redis Bitmap 数据类型：概念、命令与案例"></a>第八章：Redis Bitmap 数据类型：概念、命令与案例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>Bitmap（位图）</strong> 不是一种独立类型，而是 <strong>String 的「位视角」</strong>——把值的每个<strong>二进制位</strong>当作一个独立元素来读写：</p>
+<ol>
+<li>按<strong>位偏移</strong>读写 <strong>0&#x2F;1</strong>，可 <strong><code>BITCOUNT</code></strong> 统计 <strong>1</strong> 的个数，<strong><code>BITOP AND/OR/XOR/NOT</code></strong> 做位运算。  </li>
+<li><strong>省空间</strong>：1 亿个布尔标记理论上只需 <strong>~12 MB</strong>（10^8 ÷ 8 字节），比「每个用户一个 <strong>String key</strong>」的 key 头开销小得多（仍要算总内存）。  </li>
+<li><strong>offset</strong> 从 <strong>0</strong> 开始；未设置位视为 <strong>0</strong>。  </li>
+<li><strong>心智模型</strong>：offset 是「编号」（用户 ID、第几天），位值是「状态」（是否签到&#x2F;是否活跃）——用之前先设计好<strong>编号 → offset 的映射规则</strong>，是 Bitmap 唯一的难点。  </li>
+<li><strong><code>SETBIT</code> 返回该位原来的值</strong>——利用这一点可以判断「今天是否首次签到」（旧值 0 → 首次）。</li>
+</ol>
+<h2 id="核心原理：存储与内存账"><a href="#核心原理：存储与内存账" class="headerlink" title="核心原理：存储与内存账"></a>核心原理：存储与内存账</h2><h3 id="1-本质是-String"><a href="#1-本质是-String" class="headerlink" title="1. 本质是 String"></a>1. 本质是 String</h3><p>位图数据就存在 <strong>SDS 字节串</strong>里；所以 <strong><code>EXPIRE</code> 照常可用</strong>，<strong><code>STRLEN</code></strong> 返回占用<strong>字节数</strong>（<code>BITCOUNT</code> 统计的是 <strong>1 的个数</strong>，两者含义不同）。底层用 <strong>popcount</strong> 指令做统计，O(N) 但极快（现代 CPU 单指令处理 8 字节）。</p>
+<h3 id="2-内存账"><a href="#2-内存账" class="headerlink" title="2. 内存账"></a>2. 内存账</h3><p>占用 ≈ <strong>(最大 offset ÷ 8) 字节</strong>。<strong>与设了几个 1 无关，只与最大 offset 有关</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>最大 offset</th>
+<th>约占用内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>100 万</td>
+<td>122 KB</td>
+</tr>
+<tr>
+<td>1 亿</td>
+<td>12 MB</td>
+</tr>
+<tr>
+<td>10 亿</td>
+<td>119 MB</td>
+</tr>
+</tbody></table>
+<p><strong>稀疏 ID 是大坑</strong>：只有 100 个用户但 ID 是十亿级时，<code>SETBIT dau 1000000000 1</code> 也会为最大 offset 分配整段空间——这就是注意事项里「分桶」的原因。</p>
+<h3 id="3-offset-上限与位序"><a href="#3-offset-上限与位序" class="headerlink" title="3. offset 上限与位序"></a>3. offset 上限与位序</h3><p>offset 上限 <strong>2^32 - 1</strong>（约 42.9 亿位，对应 512 MB 的 String 上限）。字节内位序为<strong>大端</strong>（offset 0 是第 0 字节的最高位），这影响 <code>GET</code> 原样读出后人工解读，但不影响 SETBIT&#x2F;GETBIT 的正确性。</p>
+<h3 id="4-时间复杂度"><a href="#4-时间复杂度" class="headerlink" title="4. 时间复杂度"></a>4. 时间复杂度</h3><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>复杂度</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>SETBIT</code> &#x2F; <code>GETBIT</code></strong></td>
+<td><strong>O(1)</strong></td>
+<td>直接定位字节与位</td>
+</tr>
+<tr>
+<td><strong><code>BITCOUNT</code></strong></td>
+<td>O(N)</td>
+<td>N 为字节数，popcount 极快</td>
+</tr>
+<tr>
+<td><strong><code>BITPOS</code></strong></td>
+<td>O(N)</td>
+<td>顺序扫</td>
+</tr>
+<tr>
+<td><strong><code>BITOP</code></strong></td>
+<td>O(N)</td>
+<td>对两个大位图做 AND&#x2F;OR 是<strong>同步执行</strong>——超大位图运算放低峰期或拆小</td>
+</tr>
+<tr>
+<td><strong><code>BITFIELD</code></strong></td>
+<td>O(1) 每子命令</td>
+<td>一次操作多个位域（如 2 位存「未读&#x2F;已读&#x2F;置顶」三态）</td>
+</tr>
+</tbody></table>
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>SETBIT key offset value</code></strong></td>
+<td><strong>value</strong> 为 <strong>0 或 1</strong>；返回旧值</td>
+</tr>
+<tr>
+<td><strong><code>GETBIT key offset</code></strong></td>
+<td>读某一位</td>
+</tr>
+<tr>
+<td><strong><code>BITCOUNT key [start end [BIT]]</code></strong></td>
+<td>统计 <strong>1</strong> 的个数（7.0+ 支持 <strong><code>BIT</code></strong> 按位区间）</td>
+</tr>
+<tr>
+<td><strong><code>BITOP operation destkey key [key ...]</code></strong></td>
+<td>多 <strong>key</strong> 位运算写入 <strong>dest</strong>（<strong><code>AND</code>&#x2F;<code>OR</code>&#x2F;<code>XOR</code>&#x2F;<code>NOT</code></strong>）</td>
+</tr>
+<tr>
+<td><strong><code>BITPOS key bit [start [end]]</code></strong></td>
+<td>找第一个 <strong>0&#x2F;1</strong> 的位置</td>
+</tr>
+<tr>
+<td><strong><code>BITFIELD key [GET/SET/INCRBY …]</code></strong></td>
+<td>位域级读写（多状态压缩存储）</td>
+</tr>
+</tbody></table>
+<h2 id="典型应用场景"><a href="#典型应用场景" class="headerlink" title="典型应用场景"></a>典型应用场景</h2><ol>
+<li><strong>签到</strong>：<strong><code>sign:2026:05:user:1001</code></strong> 用「当月第几天 - 1」映射 <strong>offset</strong>，31 天只占 4 字节；连续签到天数用 <strong><code>BITPOS</code></strong> 找最近一次 0 的位置推算。  </li>
+<li><strong>日活标记</strong>：<strong><code>dau:2026-05-03</code></strong> 下 <strong>offset &#x3D; 用户整型 ID</strong>，次日 <strong><code>BITOP AND</code></strong> 两天位图即得「留存」（昨日活跃 ∩ 今日活跃）。  </li>
+<li><strong>与 HyperLogLog</strong>：<strong>Bitmap</strong> 偏「<strong>谁来了</strong>」的<strong>位图</strong>（能回答「某用户来没来」）；<strong>UV 近似</strong>计数用 <strong>HLL</strong>（回答「大约多少人」）。  </li>
+<li><strong>布隆过滤器底座</strong>：自研 Bloom Filter 可用 Bitmap 存位数组，多哈希函数对应多个 offset（生产直接用 RedisBloom 模块更省心）。  </li>
+<li><strong>多状态压缩</strong>：<strong><code>BITFIELD</code></strong> 用 2~4 位存一个枚举状态，比每位图只存布尔利用率更高。</li>
+</ol>
+<h2 id="综合案例（redis-cli）"><a href="#综合案例（redis-cli）" class="headerlink" title="综合案例（redis-cli）"></a>综合案例（redis-cli）</h2><h3 id="1-用户签到与统计"><a href="#1-用户签到与统计" class="headerlink" title="1. 用户签到与统计"></a>1. 用户签到与统计</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 5 月 1 日、2 日签到（offset = 日 - 1）</span></span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 0 1</span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 1 1</span><br><span class="line">redis-cli GETBIT sign:2026:05:user:1 0</span><br><span class="line">redis-cli BITCOUNT sign:2026:05:user:1          <span class="comment"># 当月已签 2 天</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 利用 SETBIT 返回旧值判断「今日首签」</span></span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 1 1        <span class="comment"># 返回 1 -&gt; 已签过，不重复发奖</span></span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 2 1        <span class="comment"># 返回 0 -&gt; 首签，发积分</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-日活与次日留存"><a href="#2-日活与次日留存" class="headerlink" title="2. 日活与次日留存"></a>2. 日活与次日留存</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 5 月 3 日活跃用户 1、3；5 月 4 日活跃用户 3、5</span></span><br><span class="line">redis-cli SETBIT dau:2026-05-03 1 1</span><br><span class="line">redis-cli SETBIT dau:2026-05-03 3 1</span><br><span class="line">redis-cli SETBIT dau:2026-05-04 3 1</span><br><span class="line">redis-cli SETBIT dau:2026-05-04 5 1</span><br><span class="line"></span><br><span class="line">redis-cli BITCOUNT dau:2026-05-04                <span class="comment"># 当日 DAU = 2</span></span><br><span class="line">redis-cli BITOP AND dau:retain dau:2026-05-03 dau:2026-05-04</span><br><span class="line">redis-cli BITCOUNT dau:retain                    <span class="comment"># 留存 = 1（用户 3）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-位运算"><a href="#3-位运算" class="headerlink" title="3. 位运算"></a>3. 位运算</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SETBIT bm:a 0 1</span><br><span class="line">redis-cli SETBIT bm:a 2 1</span><br><span class="line">redis-cli SETBIT bm:b 1 1</span><br><span class="line">redis-cli BITOP AND bm:and bm:a bm:b</span><br><span class="line">redis-cli GET bm:and</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-连续签到天数：BITPOS-找最近一次断签"><a href="#4-连续签到天数：BITPOS-找最近一次断签" class="headerlink" title="4. 连续签到天数：BITPOS 找最近一次断签"></a>4. 连续签到天数：BITPOS 找最近一次断签</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 已签 1~4 日，5 日断签，6、7 日又签</span></span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 0 1</span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 1 1</span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 2 1</span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 3 1</span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 5 1</span><br><span class="line">redis-cli SETBIT sign:2026:05:user:1 6 1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 从「今天对应 offset」往前找第一个 0 的位置，差值即连续签到天数</span></span><br><span class="line">redis-cli BITPOS sign:2026:05:user:1 0 0 -1 BIT    <span class="comment"># 第一个 0 在 offset 4</span></span><br></pre></td></tr></table></figure>
+
+<p>口径：今天 offset&#x3D;6，最近断签点 offset&#x3D;4，连续签到 &#x3D; 6 - 4 &#x3D; 2 天。规则务必与产品文档写清「断签日是否计入」。</p>
+<h3 id="5-稀疏-ID-分桶：把十亿级-UID-装进小位图"><a href="#5-稀疏-ID-分桶：把十亿级-UID-装进小位图" class="headerlink" title="5. 稀疏 ID 分桶：把十亿级 UID 装进小位图"></a>5. 稀疏 ID 分桶：把十亿级 UID 装进小位图</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># UID 1,000,000,123 拆为：桶号 = UID / 1000000，桶内 offset = UID % 1000000</span></span><br><span class="line"><span class="comment"># 即 dau:2026-05-04:1000 的 offset 123</span></span><br><span class="line">redis-cli SETBIT dau:2026-05-04:1000 123 1</span><br><span class="line">redis-cli BITCOUNT dau:2026-05-04:1000</span><br><span class="line"><span class="comment"># 全量 DAU = 各桶 BITCOUNT 求和（应用层聚合）</span></span><br></pre></td></tr></table></figure>
+
+<p>每桶最多 1,000,000 bit ≈ <strong>122 KB</strong>，内存与「该段实际用户数」脱钩，彻底解决稀疏 ID 撑爆单 key 的问题；代价是统计要多桶求和。</p>
+<h3 id="6-BITFIELD：多位压缩存枚举状态"><a href="#6-BITFIELD：多位压缩存枚举状态" class="headerlink" title="6. BITFIELD：多位压缩存枚举状态"></a>6. BITFIELD：多位压缩存枚举状态</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 每个用户占 2bit：0 未读 / 1 已读 / 2 置顶；用户 1001 的槽位从 offset 2002 开始</span></span><br><span class="line">redis-cli BITFIELD msg:9:state SET u2 2002 1       <span class="comment"># 标记已读</span></span><br><span class="line">redis-cli BITFIELD msg:9:state GET u2 2002         <span class="comment"># 读回状态</span></span><br></pre></td></tr></table></figure>
+
+<p>相比一用户一 Bitmap，<strong><code>BITFIELD</code></strong> 把「布尔」升级为「小整数枚举」，4bit 一槽可存 16 种状态，适合消息状态、任务进度等场景。</p>
+<h3 id="7-实战组合：Bitmap-与-HLL-双写"><a href="#7-实战组合：Bitmap-与-HLL-双写" class="headerlink" title="7. 实战组合：Bitmap 与 HLL 双写"></a>7. 实战组合：Bitmap 与 HLL 双写</h3><p>DAU 报表同时要「精确到人」和「大盘数字」时，一次请求双写两套结构，各取所长：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 用户 1001 活跃：Bitmap 记「他来了」，HLL 记「又多了一个可能不同的人」</span></span><br><span class="line">redis-cli SETBIT dau:2026-05-04 1001 1</span><br><span class="line">redis-cli PFADD uv:2026-05-04 u1001</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查询：单个用户在不在 → Bitmap；全天大约多少人 → HLL</span></span><br><span class="line">redis-cli GETBIT dau:2026-05-04 1001</span><br><span class="line">redis-cli PFCOUNT uv:2026-05-04</span><br></pre></td></tr></table></figure>
+
+<p>两笔写都是 O(1) 内存级操作，双写成本可忽略；Bitmap 保精确明细位，HLL 保跨天可合并的近似总数，是低成本 DAU 系统的常见搭配。</p>
+<h3 id="8-导出签到月历：GETRANGE-读原始字节"><a href="#8-导出签到月历：GETRANGE-读原始字节" class="headerlink" title="8. 导出签到月历：GETRANGE 读原始字节"></a>8. 导出签到月历：GETRANGE 读原始字节</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 签到位图本质是 String，可直接 GET/GETRANGE 导出给前端画月历</span></span><br><span class="line">redis-cli GET sign:2026:05:user:1</span><br><span class="line">redis-cli STRLEN sign:2026:05:user:1        <span class="comment"># 占用字节数（31 天 ≈ 4 字节）</span></span><br></pre></td></tr></table></figure>
+
+<p>前端&#x2F;应用层拿到字节串后自行按位展开成「每日是否签到」数组——<strong>Redis 只负责存和数，渲染口径全在客户端</strong>，这正是 Bitmap 作为「哑存储」的边界。</p>
+<h2 id="Java-客户端示例（Lettuce）"><a href="#Java-客户端示例（Lettuce）" class="headerlink" title="Java 客户端示例（Lettuce）"></a>Java 客户端示例（Lettuce）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">RedisCommands</span>&lt;String, String&gt; <span class="variable">cmd</span> <span class="operator">=</span> lettuceConnection.sync();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 签到：旧值为 0 说明今日首签</span></span><br><span class="line"><span class="type">boolean</span> <span class="variable">firstSign</span> <span class="operator">=</span> cmd.setbit(<span class="string">&quot;sign:2026:05:user:1&quot;</span>, dayOfMonth - <span class="number">1</span>, <span class="number">1</span>) == <span class="number">0</span>;</span><br><span class="line"><span class="keyword">if</span> (firstSign) &#123;</span><br><span class="line">    grantPoints(<span class="string">&quot;user:1&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 当月签到天数</span></span><br><span class="line"><span class="type">Long</span> <span class="variable">signed</span> <span class="operator">=</span> cmd.bitcount(<span class="string">&quot;sign:2026:05:user:1&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 留存：BITOP AND</span></span><br><span class="line">cmd.bitopAnd(<span class="string">&quot;dau:retain&quot;</span>, <span class="string">&quot;dau:2026-05-03&quot;</span>, <span class="string">&quot;dau:2026-05-04&quot;</span>);</span><br><span class="line"><span class="type">Long</span> <span class="variable">retained</span> <span class="operator">=</span> cmd.bitcount(<span class="string">&quot;dau:retain&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<h2 id="Python-示例（redis-py）"><a href="#Python-示例（redis-py）" class="headerlink" title="Python 示例（redis-py）"></a>Python 示例（redis-py）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> redis</span><br><span class="line"></span><br><span class="line">r = redis.Redis(host=<span class="string">&quot;127.0.0.1&quot;</span>, port=<span class="number">6379</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 签到</span></span><br><span class="line">old = r.setbit(<span class="string">&quot;sign:2026:05:user:1&quot;</span>, <span class="number">2</span>, <span class="number">1</span>)   <span class="comment"># old == 0 -&gt; 首签</span></span><br><span class="line">count = r.bitcount(<span class="string">&quot;sign:2026:05:user:1&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日活与留存</span></span><br><span class="line">r.setbit(<span class="string">&quot;dau:2026-05-04&quot;</span>, <span class="number">1001</span>, <span class="number">1</span>)</span><br><span class="line">r.bitop(<span class="string">&quot;AND&quot;</span>, <span class="string">&quot;dau:retain&quot;</span>, <span class="string">&quot;dau:2026-05-03&quot;</span>, <span class="string">&quot;dau:2026-05-04&quot;</span>)</span><br><span class="line">retained = r.bitcount(<span class="string">&quot;dau:retain&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h2 id="与关系型方案对比"><a href="#与关系型方案对比" class="headerlink" title="与关系型方案对比"></a>与关系型方案对比</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Redis Bitmap</th>
+<th>MySQL 签到表</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>存储 1 亿标记</td>
+<td><strong>~12 MB</strong></td>
+<td>1 亿行 × 几十字节 ≈ 数 GB</td>
+</tr>
+<tr>
+<td>「某天是否签到」</td>
+<td><strong><code>GETBIT</code></strong> O(1)</td>
+<td>SELECT 索引查询，毫秒级</td>
+</tr>
+<tr>
+<td>留存计算</td>
+<td><strong><code>BITOP AND</code></strong> 一次位运算</td>
+<td>两表 JOIN，大数据量很慢</td>
+</tr>
+<tr>
+<td>灵活性</td>
+<td>只能存布尔&#x2F;小位域</td>
+<td>可存签到时间、来源等富字段</td>
+</tr>
+</tbody></table>
+<p>实践中「<strong>Bitmap 存状态 + MySQL 存明细</strong>」：查询「签没签」走 Redis，需要明细再回库。</p>
+<h2 id="常见坑与注意事项"><a href="#常见坑与注意事项" class="headerlink" title="常见坑与注意事项"></a>常见坑与注意事项</h2><ol>
+<li><strong>稀疏 ID</strong>：用户 <strong>ID</strong> 为 <strong>十亿级</strong> 时，<strong><code>SETBIT dau 1000000000 1</code></strong> 会促使<strong>底层分配很长空间</strong>，可能<strong>极度浪费</strong>；需<strong>分桶</strong>（如 <code>dau:{date}:{uid/1000000}</code> 段内取模）或换结构。  </li>
+<li><strong>TTL</strong>：位图也是 <strong>String</strong>，可 <strong><code>EXPIRE</code></strong>；按周期命名的 key（如 <code>dau:2026-05-03</code>）记得设过期防堆积。  </li>
+<li><strong>统计口径</strong>：<strong><code>BITCOUNT</code></strong> 是「<strong>1 的个数</strong>」，业务上对应「签到天数」等要先设计好 <strong>offset</strong> 含义。  </li>
+<li><strong>大位图 BITOP</strong>：两个 119 MB 位图做 AND 要扫全部字节，同步执行会阻塞，放低峰或分桶。  </li>
+<li><strong>跨 key 长度不一</strong>：<strong><code>BITOP AND</code></strong> 结果长度取最长输入，短 key 缺位按 0 处理——口径不一致时结果可能出乎意料。  </li>
+<li><strong><code>BITOP NOT</code> 的补位陷阱</strong>：<strong><code>NOT</code></strong> 只接受单操作数，且结果位数取决于输入 key 长度；对「从未写过的高位」取反会得到 1——「求未签到名单」不能简单 NOT，要用全 1 基准位图做 XOR。  </li>
+<li><strong><code>BITPOS</code> 找不到时的返回值</strong>：全 0 位图找 1 返回 <strong>-1</strong>；找 0 时若 key 不存在按「offset 0 即 0」返回 <strong>0</strong>——判空 key 与真实位要区分。  </li>
+<li><strong>与 Set 存标记的取舍</strong>：1 亿布尔标记用 Set 需数 GB（每成员一份 SDS + dictEntry），Bitmap 仅 ~12 MB；但 Set 能枚举成员、Bitmap 不能反向查「所有签了的人」——要明细回查选 Set，要极致省空间选 Bitmap。  </li>
+<li><strong>首次写超大 offset 的瞬时分配</strong>：<strong><code>SETBIT</code></strong> 需要把 SDS 扩展到对应长度，首次写 offset&#x3D;4 亿会一次性分配 ~50 MB 并清零——单线程下这是一次可感知的卡顿，生产上<strong>预热</strong>（启动时对各桶写一次最高位再清 0）或分桶规避。</li>
+</ol>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>本质</td>
+<td><strong>String 的位视角</strong>，offset → 0&#x2F;1</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>≈ <strong>最大 offset ÷ 8 字节</strong>，与 1 的个数无关；稀疏 ID 要<strong>分桶</strong></td>
+</tr>
+<tr>
+<td>高频命令</td>
+<td><strong>SETBIT &#x2F; GETBIT &#x2F; BITCOUNT &#x2F; BITOP &#x2F; BITPOS &#x2F; BITFIELD</strong></td>
+</tr>
+<tr>
+<td>场景</td>
+<td>签到、日活与留存、布尔标记、布隆过滤底座</td>
+</tr>
+<tr>
+<td>对比 HLL</td>
+<td>Bitmap 答「<strong>谁</strong>来过」；HLL 答「<strong>大约多少人</strong>」（见下一章）</td>
+</tr>
+</tbody></table>
+<p><strong>延伸阅读</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>HyperLogLog数据类型、应用场景及案例.md</code></strong></td>
+<td>近似 <strong>UV</strong></td>
+</tr>
+<tr>
+<td><strong><code>String数据类型、应用场景及案例.md</code></strong></td>
+<td>普通 <strong>KV</strong></td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Redis/" rel="tag"># Redis</a>
+              <a href="/tags/Bitmap/" rel="tag"># Bitmap</a>
+              <a href="/tags/%E4%BD%8D%E5%9B%BE/" rel="tag"># 位图</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/redis/09-redis-hyperloglog-type/" rel="prev" title="第九章：Redis HyperLogLog：概念、命令与案例">
+                  <i class="fa fa-angle-left"></i> 第九章：Redis HyperLogLog：概念、命令与案例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/redis/10-redis-geospatial-type/" rel="next" title="第十章：Redis Geospatial：概念、命令与案例">
+                  第十章：Redis Geospatial：概念、命令与案例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第二章：Nginx 反向代理与负载均衡概念基础 反向代理是系统入口：客户端只认识 Nginx，真实后端（Spring Boot&#x2F;Node&#x2F;Go）藏在 upstream 里——发布、扩缩容、灰度都对客户端无感。 upstream 是逻辑集群：多个后端实例组成一个名字，proxy_pass http:&#x2F;&#x2F;集群名 即完成负载均衡；默认轮询，还有权重、ip_hash、least_con">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第二章：Nginx 反向代理与负载均衡">
+<meta property="og:url" content="https://my919.github.io/nginx/02-nginx-reverse-proxy-lb/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第二章：Nginx 反向代理与负载均衡概念基础 反向代理是系统入口：客户端只认识 Nginx，真实后端（Spring Boot&#x2F;Node&#x2F;Go）藏在 upstream 里——发布、扩缩容、灰度都对客户端无感。 upstream 是逻辑集群：多个后端实例组成一个名字，proxy_pass http:&#x2F;&#x2F;集群名 即完成负载均衡；默认轮询，还有权重、ip_hash、least_con">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:31:51.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.587Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Nginx">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/nginx/02-nginx-reverse-proxy-lb/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/nginx/02-nginx-reverse-proxy-lb/","path":"nginx/02-nginx-reverse-proxy-lb/","title":"第二章：Nginx 反向代理与负载均衡"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第二章：Nginx 反向代理与负载均衡 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E7%AB%A0%EF%BC%9ANginx-%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%E4%B8%8E%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1"><span class="nav-number">1.</span> <span class="nav-text">第二章：Nginx 反向代理与负载均衡</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E6%9C%80%E5%B0%8F%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86"><span class="nav-number">1.2.</span> <span class="nav-text">一、最小反向代理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81proxy-pass-%E8%B7%AF%E5%BE%84%E8%A7%84%E5%88%99%EF%BC%88%E9%AB%98%E9%A2%91%E5%9D%91%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">二、proxy_pass 路径规则（高频坑）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81upstream-%E4%B8%8E%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E7%AD%96%E7%95%A5"><span class="nav-number">1.4.</span> <span class="nav-text">三、upstream 与负载均衡策略</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5%E4%B8%8E%E6%95%85%E9%9A%9C%E6%91%98%E9%99%A4"><span class="nav-number">1.5.</span> <span class="nav-text">四、健康检查与故障摘除</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A2%AB%E5%8A%A8%E6%A3%80%E6%9F%A5%EF%BC%88%E5%BC%80%E6%BA%90%E7%89%88%E8%87%AA%E5%B8%A6%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">被动检查（开源版自带）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BB%E5%8A%A8%E6%A3%80%E6%9F%A5%E4%B8%8E%E6%B3%A8%E5%86%8C%E4%B8%AD%E5%BF%83"><span class="nav-number">1.5.2.</span> <span class="nav-text">主动检查与注册中心</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E9%9B%85%E4%B8%8B%E7%BA%BF%EF%BC%88drain%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">优雅下线（drain）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%B6%85%E6%97%B6%E3%80%81%E7%BC%93%E5%86%B2%E4%B8%8E%E5%A4%A7%E6%96%87%E4%BB%B6"><span class="nav-number">1.6.</span> <span class="nav-text">五、超时、缓冲与大文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E9%99%90%E6%B5%81%E4%B8%8E%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6"><span class="nav-number">1.7.</span> <span class="nav-text">六、限流与并发控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%9A%E8%AF%9D%E4%BF%9D%E6%8C%81%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-number">1.7.1.</span> <span class="nav-text">会话保持方案对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%AE%8C%E6%95%B4%E7%A4%BA%E4%BE%8B%EF%BC%9A%E5%89%8D%E5%90%8E%E7%AB%AF%E4%B8%80%E4%BD%93%E7%AB%99"><span class="nav-number">1.8.</span> <span class="nav-text">七、完整示例：前后端一体站</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.9.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/nginx/02-nginx-reverse-proxy-lb/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第二章：Nginx 反向代理与负载均衡 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第二章：Nginx 反向代理与负载均衡
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:31:51" itemprop="dateCreated datePublished" datetime="2026-05-01T13:31:51+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Nginx/" itemprop="url" rel="index"><span itemprop="name">Nginx</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.7k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第二章：Nginx-反向代理与负载均衡"><a href="#第二章：Nginx-反向代理与负载均衡" class="headerlink" title="第二章：Nginx 反向代理与负载均衡"></a>第二章：Nginx 反向代理与负载均衡</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>反向代理是系统入口</strong>：客户端只认识 Nginx，真实后端（Spring Boot&#x2F;Node&#x2F;Go）藏在 <code>upstream</code> 里——发布、扩缩容、灰度都对客户端无感。</li>
+<li><strong>upstream 是逻辑集群</strong>：多个后端实例组成一个名字，<code>proxy_pass http://集群名</code> 即完成负载均衡；默认轮询，还有权重、ip_hash、least_conn。</li>
+<li><strong>转发要补头</strong>：后端想拿到真实 IP、真实协议，必须配 <code>X-Real-IP</code>、<code>X-Forwarded-For</code>、<code>X-Forwarded-Proto</code>——漏配是日志全是 127.0.0.1 的元凶。</li>
+<li><strong>proxy_pass 末尾斜杠有语义</strong>：带 <code>/</code> 会<strong>替换 location 前缀</strong>，不带则<strong>原样拼接</strong>——路径多一层&#x2F;少一层的事故九成出在这。</li>
+<li><strong>连接也要调参</strong>：<code>proxy_http_version 1.1</code> + keepalive 复用连接，超时&#x2F;缓冲&#x2F;大文件上传各有专属参数。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/nginx/nginx-guide/">第一章：Nginx 入门与静态服务</a> 的 location 语法，配置基于 nginx 1.28&#x2F;1.29 官方语法书写（沙箱未装 nginx，未逐条运行验证）。</p>
+</blockquote>
+<hr>
+<h2 id="一、最小反向代理"><a href="#一、最小反向代理" class="headerlink" title="一、最小反向代理"></a>一、最小反向代理</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">80</span>;</span><br><span class="line">    <span class="attribute">server_name</span> api.example.com;</span><br><span class="line"></span><br><span class="line">    <span class="section">location</span> / &#123;</span><br><span class="line">        <span class="attribute">proxy_pass</span> http://127.0.0.1:8080;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> Host <span class="variable">$host</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Real-IP <span class="variable">$remote_addr</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Forwarded-For <span class="variable">$proxy_add_x_forwarded_for</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Forwarded-Proto <span class="variable">$scheme</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>头</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Host</code></td>
+<td>透传原域名，后端按域名路由&#x2F;生成绝对链接</td>
+</tr>
+<tr>
+<td><code>X-Real-IP</code></td>
+<td>客户端真实 IP（单层代理）</td>
+</tr>
+<tr>
+<td><code>X-Forwarded-For</code></td>
+<td>代理链 IP 列表，<code>$proxy_add_x_forwarded_for</code> 自动追加</td>
+</tr>
+<tr>
+<td><code>X-Forwarded-Proto</code></td>
+<td>客户端是 http 还是 https（后端生成 https 链接必需）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、proxy-pass-路径规则（高频坑）"><a href="#二、proxy-pass-路径规则（高频坑）" class="headerlink" title="二、proxy_pass 路径规则（高频坑）"></a>二、proxy_pass 路径规则（高频坑）</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> /api/ &#123;</span><br><span class="line">    <span class="attribute">proxy_pass</span> http://backend;              <span class="comment"># ① 不带路径：/api/users 原样转发 → 后端收到 /api/users</span></span><br><span class="line">    <span class="attribute">proxy_pass</span> http://backend/;             <span class="comment"># ② 带 /   ：/api/users → 后端收到 /users</span></span><br><span class="line">    <span class="attribute">proxy_pass</span> http://backend/v2/;          <span class="comment"># ③ 带路径：/api/users → 后端收到 /v2/users</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>记忆法</strong>：<code>proxy_pass</code> 的 URL 部分会<strong>替换掉 location 匹配的部分</strong>；不带路径（只有 host:port）则原样透传。改一条 proxy_pass 必跑 <code>nginx -t</code> + 抓包&#x2F;日志确认后端实际收到的路径。</p>
+<hr>
+<h2 id="三、upstream-与负载均衡策略"><a href="#三、upstream-与负载均衡策略" class="headerlink" title="三、upstream 与负载均衡策略"></a>三、upstream 与负载均衡策略</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">upstream</span> backend &#123;</span><br><span class="line">    <span class="attribute">server</span> <span class="number">10.0.0.1:8080</span> weight=<span class="number">3</span>;    <span class="comment"># 权重轮询：3/5 的请求</span></span><br><span class="line">    <span class="attribute">server</span> <span class="number">10.0.0.2:8080</span>;             <span class="comment"># weight=1</span></span><br><span class="line">    <span class="attribute">server</span> <span class="number">10.0.0.3:8080</span> down;        <span class="comment"># 不参与均衡（维护中）</span></span><br><span class="line">    <span class="attribute">server</span> <span class="number">10.0.0.4:8080</span> backup;      <span class="comment"># 备机：全挂时顶上</span></span><br><span class="line">    <span class="attribute">keepalive</span> <span class="number">32</span>;                     <span class="comment"># 与后端保持连接池</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="section">location</span> / &#123;</span><br><span class="line">        <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line">        <span class="attribute">proxy_http_version</span> <span class="number">1</span>.<span class="number">1</span>;               <span class="comment"># keepalive 必配 1.1</span></span><br><span class="line">        <span class="attribute">proxy_set_header</span> Connection <span class="string">&quot;&quot;</span>;       <span class="comment"># 清空 Connection 头启用长连接</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>策略对比（完整版）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>写法</th>
+<th>分发逻辑</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>轮询（默认）</td>
+<td>无参数</td>
+<td>按顺序逐个分发</td>
+<td>无状态服务</td>
+</tr>
+<tr>
+<td>加权轮询</td>
+<td><code>weight=n</code></td>
+<td>按权重比例分发</td>
+<td>机器配置不均</td>
+</tr>
+<tr>
+<td>ip_hash</td>
+<td><code>ip_hash;</code></td>
+<td>按客户端 IP 哈希固定实例</td>
+<td>会话粘性</td>
+</tr>
+<tr>
+<td>least_conn</td>
+<td><code>least_conn;</code></td>
+<td>打当前活跃连接最少者</td>
+<td>请求耗时不均</td>
+</tr>
+<tr>
+<td>一致性哈希</td>
+<td><code>hash $request_uri consistent;</code></td>
+<td>按任意键哈希，扩缩容漂移少</td>
+<td>缓存亲和（同 URL 打同实例）</td>
+</tr>
+<tr>
+<td>随机</td>
+<td><code>random two least_conn;</code></td>
+<td>随机抽两台取连接少者</td>
+<td>超大 upstream，避免全局扫描</td>
+</tr>
+<tr>
+<td>least_time</td>
+<td><code>least_time header;</code>（Plus）</td>
+<td>打平均响应最快者</td>
+<td>商业版，性能敏感场景</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>故障判定与摘除的完整机制（被动&#x2F;主动&#x2F;优雅排空）见下节「四、健康检查与故障摘除」。</p>
+</blockquote>
+<hr>
+<h2 id="四、健康检查与故障摘除"><a href="#四、健康检查与故障摘除" class="headerlink" title="四、健康检查与故障摘除"></a>四、健康检查与故障摘除</h2><h3 id="被动检查（开源版自带）"><a href="#被动检查（开源版自带）" class="headerlink" title="被动检查（开源版自带）"></a>被动检查（开源版自带）</h3><p>开源 Nginx 不主动探测后端，而是<strong>用真实请求的结果</strong>判定后端死活：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">upstream</span> backend &#123;</span><br><span class="line">    <span class="attribute">server</span> <span class="number">10.0.0.1:8080</span> max_fails=<span class="number">3</span> fail_timeout=<span class="number">30s</span>;   <span class="comment"># 30s 内失败 3 次 → 摘除 30s</span></span><br><span class="line">    <span class="attribute">server</span> <span class="number">10.0.0.2:8080</span> max_fails=<span class="number">3</span> fail_timeout=<span class="number">30s</span>;</span><br><span class="line">    <span class="attribute">server</span> <span class="number">10.0.0.3:8080</span> slow_start=<span class="number">20s</span>;                 <span class="comment"># 恢复后 20s 内流量线性爬升，防冷启动被打爆</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="section">location</span> / &#123;</span><br><span class="line">        <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line">        <span class="attribute">proxy_next_upstream</span> <span class="literal">error</span> timeout http_502 http_503;  <span class="comment"># 这些情况换下一台重试</span></span><br><span class="line">        <span class="attribute">proxy_next_upstream_tries</span> <span class="number">2</span>;                          <span class="comment"># 最多换 2 台</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>max_fails</code></td>
+<td>fail_timeout 窗口内失败次数达阈值即摘除</td>
+</tr>
+<tr>
+<td><code>fail_timeout</code></td>
+<td>既是统计窗口，也是被摘除后的「冷却时间」</td>
+</tr>
+<tr>
+<td><code>slow_start</code></td>
+<td>恢复节点缓慢放量，避免冷缓存&#x2F;冷 JIT 被瞬间打满</td>
+</tr>
+<tr>
+<td><code>proxy_next_upstream</code></td>
+<td>定义哪些失败场景换机重试（默认 error + timeout）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>非幂等请求慎用重试</strong>：POST 下单&#x2F;扣款请求可能已到达第一台，换机重试会造成重复下单——重试只开给幂等接口。</p>
+</blockquote>
+<h3 id="主动检查与注册中心"><a href="#主动检查与注册中心" class="headerlink" title="主动检查与注册中心"></a>主动检查与注册中心</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>商业版 <code>health_check</code></td>
+<td><code>health_check interval=5s uri=/health;</code> 定期主动探测，挂即摘除</td>
+</tr>
+<tr>
+<td><code>nginx_upstream_check_module</code></td>
+<td>淘宝开源补丁（Tengine 内置），主动心跳检查</td>
+</tr>
+<tr>
+<td>注册中心联动</td>
+<td>Consul&#x2F;Nacos 上下线时通过 API 动态改 upstream（或 ngx_dyups 模块）</td>
+</tr>
+</tbody></table>
+<h3 id="优雅下线（drain）"><a href="#优雅下线（drain）" class="headerlink" title="优雅下线（drain）"></a>优雅下线（drain）</h3><p>发布前先把节点「排空」：开源版把该 server 手动标记 <code>down</code>（存量 keepalive 连接服务完再断）；Plus 用 <code>drain</code> 参数只处理存量会话、不接新请求。排空后再重启，实现<strong>零请求丢失发布</strong>。</p>
+<hr>
+<h2 id="五、超时、缓冲与大文件"><a href="#五、超时、缓冲与大文件" class="headerlink" title="五、超时、缓冲与大文件"></a>五、超时、缓冲与大文件</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> /api/ &#123;</span><br><span class="line">    <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line"></span><br><span class="line">    <span class="attribute">proxy_connect_timeout</span> <span class="number">5s</span>;      <span class="comment"># 连后端 TCP 握手超时</span></span><br><span class="line">    <span class="attribute">proxy_send_timeout</span>    <span class="number">60s</span>;     <span class="comment"># 两次写后端的间隔超时</span></span><br><span class="line">    <span class="attribute">proxy_read_timeout</span>    <span class="number">60s</span>;     <span class="comment"># 两次读后端的间隔超时（慢接口重点）</span></span><br><span class="line"></span><br><span class="line">    <span class="attribute">proxy_buffering</span> <span class="literal">on</span>;            <span class="comment"># 响应缓冲：Nginx 收完再给客户端</span></span><br><span class="line">    <span class="attribute">proxy_buffer_size</span> <span class="number">16k</span>;</span><br><span class="line">    <span class="attribute">proxy_buffers</span> <span class="number">8</span> <span class="number">32k</span>;</span><br><span class="line"></span><br><span class="line">    <span class="attribute">client_max_body_size</span> <span class="number">20m</span>;      <span class="comment"># 上传体积上限（413 就找它）</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>SSE&#x2F;流式响应必须关缓冲</strong>：<code>proxy_buffering off;</code>（或后端发 <code>X-Accel-Buffering: no</code>），否则事件被攒着不吐。</p>
+<p><strong>WebSocket</strong>：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> /ws/ &#123;</span><br><span class="line">    <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line">    <span class="attribute">proxy_http_version</span> <span class="number">1</span>.<span class="number">1</span>;</span><br><span class="line">    <span class="attribute">proxy_set_header</span> Upgrade <span class="variable">$http_upgrade</span>;      <span class="comment"># 握手升级头</span></span><br><span class="line">    <span class="attribute">proxy_set_header</span> Connection <span class="string">&quot;upgrade&quot;</span>;</span><br><span class="line">    <span class="attribute">proxy_read_timeout</span> <span class="number">3600s</span>;                    <span class="comment"># 长连接防被掐</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>协议细节见 <a href="/network/11-websocket-protocol/">第十一章：WebSocket 详解：握手、帧与 Python 示例</a>。</p>
+<hr>
+<h2 id="六、限流与并发控制"><a href="#六、限流与并发控制" class="headerlink" title="六、限流与并发控制"></a>六、限流与并发控制</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">http</span> &#123;</span><br><span class="line">    <span class="comment"># 按客户端 IP 限流：10MB 共享内存存状态，每秒 10 个请求</span></span><br><span class="line">    <span class="attribute">limit_req_zone</span>  <span class="variable">$binary_remote_addr</span> zone=req_per_ip:<span class="number">10m</span>   rate=10r/s;</span><br><span class="line">    <span class="comment"># 按用户 ID 限流（如从 cookie 提取），防单用户刷接口</span></span><br><span class="line">    <span class="attribute">limit_req_zone</span>  <span class="variable">$cookie_uid</span>         zone=req_per_user:<span class="number">10m</span> rate=50r/s;</span><br><span class="line">    <span class="comment"># 单 IP 并发连接上限</span></span><br><span class="line">    <span class="attribute">limit_conn_zone</span> <span class="variable">$binary_remote_addr</span> zone=conn_per_ip:<span class="number">10m</span>;</span><br><span class="line"></span><br><span class="line">    <span class="section">server</span> &#123;</span><br><span class="line">        <span class="section">location</span> /api/ &#123;</span><br><span class="line">            <span class="attribute">limit_req</span>  zone=req_per_ip burst=<span class="number">20</span>;      <span class="comment"># 超速率排队，最多积压 20 个</span></span><br><span class="line">            <span class="attribute">limit_conn</span> conn_per_ip <span class="number">20</span>;</span><br><span class="line">            <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="section">location</span> /api/order/ &#123;</span><br><span class="line">            <span class="attribute">limit_req</span>  zone=req_per_user burst=<span class="number">5</span>;     <span class="comment"># 下单接口按用户限流</span></span><br><span class="line">            <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键取舍</strong>：</p>
+<ol>
+<li><strong><code>burst</code> 不带 <code>nodelay</code></strong>：超出速率的请求<strong>排队匀速放行</strong>——削峰填谷，后端不被突发打垮，代价是延迟上升；</li>
+<li><strong><code>burst nodelay</code></strong>：积压请求立即放行，超 burst 才拒绝——适合宁可后端扛、也不让用户等的场景；</li>
+<li>超限默认返回 <strong>503</strong>，用 <code>limit_req_status 429;</code> 改成更语义化的 429；</li>
+<li>10MB 共享内存约存 <strong>16 万个 IP 状态</strong>（每条约 64 字节），通常够用；</li>
+<li>被限流的请求会写 error.log（<code>limiting requests, excess: ...</code>），可据此做告警。</li>
+</ol>
+<h3 id="会话保持方案对比"><a href="#会话保持方案对比" class="headerlink" title="会话保持方案对比"></a>会话保持方案对比</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>实现</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ip_hash</code></td>
+<td>一行指令</td>
+<td>NAT 出口下大量用户同 IP，负载倾斜</td>
+</tr>
+<tr>
+<td><code>hash $cookie_xxx consistent</code></td>
+<td>按业务键一致性哈希</td>
+<td>需先种 cookie；扩缩容时漂移少</td>
+</tr>
+<tr>
+<td>应用外置会话（Redis）</td>
+<td>后端共享 session</td>
+<td>最推荐：Nginx 无感知，后端任意扩缩容</td>
+</tr>
+<tr>
+<td><code>sticky</code> 指令</td>
+<td>Nginx Plus</td>
+<td>商业版，cookie 路由、无需改应用</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="七、完整示例：前后端一体站"><a href="#七、完整示例：前后端一体站" class="headerlink" title="七、完整示例：前后端一体站"></a>七、完整示例：前后端一体站</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">upstream</span> appserver &#123;</span><br><span class="line">    <span class="attribute">server</span> <span class="number">127.0.0.1:8080</span>;</span><br><span class="line">    <span class="attribute">server</span> <span class="number">127.0.0.1:8081</span>;</span><br><span class="line">    <span class="attribute">keepalive</span> <span class="number">16</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">80</span>;</span><br><span class="line">    <span class="attribute">server_name</span> example.com;</span><br><span class="line">    <span class="attribute">root</span> /var/www/dist;</span><br><span class="line"></span><br><span class="line">    <span class="section">location</span> /api/ &#123;</span><br><span class="line">        <span class="attribute">proxy_pass</span> http://appserver;             <span class="comment"># /api/ 前缀原样透传</span></span><br><span class="line">        <span class="attribute">proxy_http_version</span> <span class="number">1</span>.<span class="number">1</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> Connection <span class="string">&quot;&quot;</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> Host <span class="variable">$host</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Real-IP <span class="variable">$remote_addr</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Forwarded-For <span class="variable">$proxy_add_x_forwarded_for</span>;</span><br><span class="line">        <span class="attribute">proxy_read_timeout</span> <span class="number">30s</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="section">location</span> <span class="regexp">~* \.(js|css|png|woff2)$</span> &#123;</span><br><span class="line">        <span class="attribute">expires</span> <span class="number">7d</span>;                              <span class="comment"># 静态资源走 Nginx 本地</span></span><br><span class="line">        <span class="attribute">access_log</span> <span class="literal">off</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="section">location</span> / &#123;</span><br><span class="line">        <span class="attribute">try_files</span> <span class="variable">$uri</span> <span class="variable">$uri</span>/ /index.html;        <span class="comment"># 其余回 SPA</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>架构示意：</p>
+<pre>
+<code class="mermaid">
+
+flowchart LR
+  U[用户] --&gt; N[Nginx :80]
+  N --&gt;|&#x2F;api&#x2F;| U1[app1 :8080]
+  N --&gt; U2[app2 :8081]
+  N --&gt;|静态| S[dist&#x2F;]
+</code>
+</pre>
+
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>代理头</td>
+<td><code>X-Real-IP</code>&#x2F;<code>X-Forwarded-For</code>&#x2F;<code>-Proto</code> 三件套必配</td>
+</tr>
+<tr>
+<td>路径规则</td>
+<td>proxy_pass 带路径&#x3D;替换前缀，不带&#x3D;原样透传</td>
+</tr>
+<tr>
+<td>负载均衡</td>
+<td>默认轮询；weight&#x2F;ip_hash&#x2F;least_conn 按需选；keepalive 复用连接</td>
+</tr>
+<tr>
+<td>超时缓冲</td>
+<td>read_timeout 治慢接口；<code>client_max_body_size</code> 治 413；SSE 要关 buffering</td>
+</tr>
+<tr>
+<td>WebSocket</td>
+<td><code>http_version 1.1</code> + <code>Upgrade</code>&#x2F;<code>Connection</code> 头 + 放宽 read_timeout</td>
+</tr>
+<tr>
+<td>健康检查</td>
+<td>被动：max_fails&#x2F;fail_timeout + proxy_next_upstream；主动检查需 Plus 或第三方模块</td>
+</tr>
+<tr>
+<td>限流</td>
+<td>limit_req 限速 + burst 排队削峰，limit_conn 控并发，超限默认 503（可改 429）</td>
+</tr>
+</tbody></table>
+<hr>
+<p>流量进来了，加密与防护紧随其后：<a href="/nginx/03-nginx-https-security/">第三章：Nginx HTTPS 与安全</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Nginx/" rel="tag"># Nginx</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/ai/04-pytorch-deployment-distributed/" rel="prev" title="第四章：PyTorch 部署与分布式">
+                  <i class="fa fa-angle-left"></i> 第四章：PyTorch 部署与分布式
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/nginx/03-nginx-https-security/" rel="next" title="第三章：Nginx HTTPS 与安全">
+                  第三章：Nginx HTTPS 与安全 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

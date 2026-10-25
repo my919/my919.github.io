@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：文本处理三剑客与管道概念基础 管道是 Unix 的组合器：每个工具只做一件事（grep 找行、sed 改流、awk 切列），用 | 把小工具拼成大数据流水线——这是 shell 至今未被完全取代的核心原因。 grep &#x3D; 过滤：按模式从文本中筛出符合条件的行，定位问题第一工具。 sed &#x3D; 流编辑：逐行读入、按脚本替换&#x2F;删除&#x2F;打印，批量改配置文件的首">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：文本处理三剑客与管道">
+<meta property="og:url" content="https://my919.github.io/linux/04-linux-text-processing/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：文本处理三剑客与管道概念基础 管道是 Unix 的组合器：每个工具只做一件事（grep 找行、sed 改流、awk 切列），用 | 把小工具拼成大数据流水线——这是 shell 至今未被完全取代的核心原因。 grep &#x3D; 过滤：按模式从文本中筛出符合条件的行，定位问题第一工具。 sed &#x3D; 流编辑：逐行读入、按脚本替换&#x2F;删除&#x2F;打印，批量改配置文件的首">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T12:40:28.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.581Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="awk">
+<meta property="article:tag" content="grep">
+<meta property="article:tag" content="sed">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/linux/04-linux-text-processing/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/linux/04-linux-text-processing/","path":"linux/04-linux-text-processing/","title":"第四章：文本处理三剑客与管道"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：文本处理三剑客与管道 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9A%E6%96%87%E6%9C%AC%E5%A4%84%E7%90%86%E4%B8%89%E5%89%91%E5%AE%A2%E4%B8%8E%E7%AE%A1%E9%81%93"><span class="nav-number">1.</span> <span class="nav-text">第四章：文本处理三剑客与管道</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81grep%EF%BC%9A%E6%89%BE%E8%A1%8C"><span class="nav-number">1.2.</span> <span class="nav-text">一、grep：找行</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81sed%EF%BC%9A%E6%B5%81%E7%BC%96%E8%BE%91"><span class="nav-number">1.3.</span> <span class="nav-text">二、sed：流编辑</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%9B%BF%E6%8D%A2-s-%E6%97%A7-%E6%96%B0-%E6%A0%87%E5%BF%97"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 替换 s&#x2F;旧&#x2F;新&#x2F;标志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%9C%B0%E5%9D%80%E4%B8%8E%E7%BC%96%E8%BE%91%E5%91%BD%E4%BB%A4"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 地址与编辑命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%8E%9F%E5%9C%B0%E4%BF%AE%E6%94%B9"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. 原地修改</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%A4%9A%E8%A1%8C%E5%A4%84%E7%90%86%EF%BC%88%E8%BF%9B%E9%98%B6%EF%BC%89"><span class="nav-number">1.3.4.</span> <span class="nav-text">4. 多行处理（进阶）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81awk%EF%BC%9A%E6%8C%89%E5%88%97%E7%BC%96%E7%A8%8B"><span class="nav-number">1.4.</span> <span class="nav-text">三、awk：按列编程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%AD%97%E6%AE%B5%E4%B8%8E%E5%86%85%E7%BD%AE%E5%8F%98%E9%87%8F"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. 字段与内置变量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%9D%A1%E4%BB%B6%E8%BF%87%E6%BB%A4%E4%B8%8E%E8%AE%A1%E7%AE%97"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 条件过滤与计算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%95%B0%E7%BB%84%E7%BB%9F%E8%AE%A1%EF%BC%9Aawk-%E7%9A%84%E6%9D%80%E6%89%8B%E9%94%8F"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 数组统计：awk 的杀手锏</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E6%A0%BC%E5%BC%8F%E5%8C%96%E8%BE%93%E5%87%BA"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. 格式化输出</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E6%A8%A1%E5%BC%8F%E5%8C%BA%E9%97%B4%E4%B8%8E-getline%EF%BC%88%E8%BF%9B%E9%98%B6%EF%BC%89"><span class="nav-number">1.4.5.</span> <span class="nav-text">5. 模式区间与 getline（进阶）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E7%AE%A1%E9%81%93%E7%BB%84%E5%90%88%EF%BC%9A%E6%8A%8A%E5%B0%8F%E5%B7%A5%E5%85%B7%E6%8B%BC%E6%88%90%E6%B5%81%E6%B0%B4%E7%BA%BF"><span class="nav-number">1.5.</span> <span class="nav-text">四、管道组合：把小工具拼成流水线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%AE%9E%E6%88%98%E7%BB%84%E5%90%88"><span class="nav-number">1.6.</span> <span class="nav-text">五、实战组合</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%97%A5%E5%BF%97%E6%8E%92%E9%9A%9C%E4%B8%80%E6%9D%A1%E9%BE%99%EF%BC%88%E5%B7%B2%E9%AA%8C%E8%AF%81%EF%BC%89"><span class="nav-number">1.6.1.</span> <span class="nav-text">1. 日志排障一条龙（已验证）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%BB%9F%E8%AE%A1%E4%BB%A3%E7%A0%81%E8%A1%8C%E6%95%B0"><span class="nav-number">1.6.2.</span> <span class="nav-text">2. 统计代码行数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%89%B9%E9%87%8F%E6%94%B9%E9%85%8D%E7%BD%AE%EF%BC%88%E7%AC%AC%E4%B8%89%E7%AB%A0%E8%84%9A%E6%9C%AC%E7%9A%84%E6%90%AD%E6%A1%A3%EF%BC%89"><span class="nav-number">1.6.3.</span> <span class="nav-text">3. 批量改配置（第三章脚本的搭档）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E7%8E%B0%E4%BB%A3%E5%B7%A5%E5%85%B7%E9%93%BE%EF%BC%88%E6%9B%B4%E5%BF%AB%E6%9B%B4%E5%8F%8B%E5%A5%BD%E7%9A%84%E6%9B%BF%E4%BB%A3%E5%93%81%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">六、现代工具链（更快更友好的替代品）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.8.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/linux/04-linux-text-processing/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：文本处理三剑客与管道 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：文本处理三剑客与管道
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 20:40:28" itemprop="dateCreated datePublished" datetime="2026-05-01T20:40:28+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Linux/" itemprop="url" rel="index"><span itemprop="name">Linux</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.9k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：文本处理三剑客与管道"><a href="#第四章：文本处理三剑客与管道" class="headerlink" title="第四章：文本处理三剑客与管道"></a>第四章：文本处理三剑客与管道</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>管道是 Unix 的组合器</strong>：每个工具只做一件事（grep 找行、sed 改流、awk 切列），用 <strong><code>|</code></strong> 把小工具拼成大数据流水线——这是 shell 至今未被完全取代的核心原因。</li>
+<li><strong>grep &#x3D; 过滤</strong>：按模式从文本中<strong>筛出符合条件的行</strong>，定位问题第一工具。</li>
+<li><strong>sed &#x3D; 流编辑</strong>：逐行读入、按脚本<strong>替换&#x2F;删除&#x2F;打印</strong>，批量改配置文件的首选。</li>
+<li><strong>awk &#x3D; 按列编程</strong>：把每行按分隔符<strong>切成字段</strong>，可做条件过滤、统计、格式化输出，接近一门微型语言。</li>
+<li><strong>正则是通用货币</strong>：三剑客的正则语法略有差异（grep -E &#x2F; sed -E &#x2F; awk 用 ERE），记熟 <code>^ $ . [] [^] * + ? () | {n,m}</code> 就能覆盖 90% 场景。</li>
+</ol>
+<blockquote>
+<p>本章示例统一使用下面这份迷你日志，所有命令与输出均在 gawk 5.3 &#x2F; GNU grep 3.x &#x2F; GNU sed 下验证：</p>
+</blockquote>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># access.log —— 字段：$1=IP  $6=路径  $8=状态码  $9=字节数</span><br><span class="line">10.0.0.1 - - [01/May/2026:10:00:01] &quot;GET /api/users HTTP/1.1&quot; 200 1234</span><br><span class="line">10.0.0.2 - - [01/May/2026:10:00:02] &quot;GET /api/users HTTP/1.1&quot; 200 4321</span><br><span class="line">10.0.0.1 - - [01/May/2026:10:00:03] &quot;POST /api/orders HTTP/1.1&quot; 500 987</span><br><span class="line">10.0.0.3 - - [01/May/2026:10:00:04] &quot;GET /index.html HTTP/1.1&quot; 200 6789</span><br><span class="line">10.0.0.2 - - [01/May/2026:10:00:05] &quot;GET /api/users HTTP/1.1&quot; 404 321</span><br><span class="line">10.0.0.1 - - [01/May/2026:10:00:06] &quot;GET /api/users HTTP/1.1&quot; 200 1234</span><br><span class="line">10.0.0.4 - - [01/May/2026:10:00:07] &quot;POST /api/orders HTTP/1.1&quot; 200 555</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="一、grep：找行"><a href="#一、grep：找行" class="headerlink" title="一、grep：找行"></a>一、grep：找行</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">grep <span class="string">&quot;500&quot;</span> access.log           <span class="comment"># 含 500 的行（附行号见下）</span></span><br><span class="line">grep -n <span class="string">&quot;500&quot;</span> access.log        <span class="comment"># -n 显示行号</span></span><br><span class="line">grep -c <span class="string">&quot;GET&quot;</span> access.log        <span class="comment"># -c 只统计匹配行数 → 5</span></span><br><span class="line">grep -v <span class="string">&quot;GET&quot;</span> access.log        <span class="comment"># -v 反选：不含 GET 的行</span></span><br><span class="line">grep -i <span class="string">&quot;error&quot;</span> app.log         <span class="comment"># -i 忽略大小写</span></span><br><span class="line">grep -rn <span class="string">&quot;TODO&quot;</span> src/            <span class="comment"># -r 递归目录 + 行号</span></span><br><span class="line">grep -rn --include=<span class="string">&quot;*.go&quot;</span> <span class="string">&quot;err&quot;</span> src/   <span class="comment"># 只搜指定后缀</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>正则与上下文</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">grep -E <span class="string">&quot;^(GET|POST)&quot;</span> method.txt        <span class="comment"># -E 扩展正则（| 或、+、() 无需转义）</span></span><br><span class="line">grep -B1 <span class="string">&quot;404&quot;</span> access.log               <span class="comment"># 匹配行 + 前 1 行（-A 后 n 行，-C 前后各 n 行）</span></span><br><span class="line">grep -oE <span class="string">&#x27;&quot;[A-Z]+ &#x27;</span> access.log          <span class="comment"># -o 只输出匹配部分（配合统计）</span></span><br><span class="line">grep -oE <span class="string">&#x27;&quot;[A-Z]+ &#x27;</span> access.log | <span class="built_in">sort</span> | <span class="built_in">uniq</span> -c</span><br><span class="line"><span class="comment">#    5 &quot;GET</span></span><br><span class="line"><span class="comment">#    2 &quot;POST</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>排障心法：先 <code>grep -c</code> 看规模，再 <code>grep -n -C2</code> 看上下文；目录搜索永远带 <code>--include</code> 限定后缀，避免翻到二进制与构建产物。</p>
+</blockquote>
+<hr>
+<h2 id="二、sed：流编辑"><a href="#二、sed：流编辑" class="headerlink" title="二、sed：流编辑"></a>二、sed：流编辑</h2><h3 id="1-替换-s-旧-新-标志"><a href="#1-替换-s-旧-新-标志" class="headerlink" title="1. 替换 s&#x2F;旧&#x2F;新&#x2F;标志"></a>1. 替换 s&#x2F;旧&#x2F;新&#x2F;标志</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sed <span class="string">&#x27;s/HTTP\/1.1/HTTP\/2/&#x27;</span> access.log        <span class="comment"># 每行替换第一个匹配</span></span><br><span class="line">sed <span class="string">&#x27;s/HTTP\/1.1/HTTP\/2/g&#x27;</span> access.log       <span class="comment"># g：替换行内所有匹配</span></span><br><span class="line">sed -E <span class="string">&#x27;s|HTTP/1.1|HTTP/2|g&#x27;</span> access.log      <span class="comment"># 换分隔符 |，少写转义</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>捕获组</strong>（<code>-E</code> 下 <code>\1</code> <code>\2</code> 引用括号内容）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&quot;user id=42 name=tom&quot;</span> | sed -E <span class="string">&#x27;s/id=([0-9]+) name=(\w+)/[\1:\2]/&#x27;</span></span><br><span class="line"><span class="comment"># user [42:tom]</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-地址与编辑命令"><a href="#2-地址与编辑命令" class="headerlink" title="2. 地址与编辑命令"></a>2. 地址与编辑命令</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sed -n <span class="string">&#x27;2,4p&#x27;</span> access.log          <span class="comment"># -n 抑制默认输出 + p：只打印 2~4 行</span></span><br><span class="line">sed <span class="string">&#x27;3d&#x27;</span> access.log               <span class="comment"># 删除第 3 行</span></span><br><span class="line">sed <span class="string">&#x27;/^\s*#|^\s*$/d&#x27;</span> access.log   <span class="comment"># 见下：删注释与空行要 -E</span></span><br><span class="line">sed -E <span class="string">&#x27;/^\s*#|^\s*$/d&#x27;</span> conf      <span class="comment"># 删除注释行和空行（查看配置常用）</span></span><br><span class="line">sed <span class="string">&#x27;/500/!d&#x27;</span> access.log          <span class="comment"># ! 反选：只保留含 500 的行</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-原地修改"><a href="#3-原地修改" class="headerlink" title="3. 原地修改"></a>3. 原地修改</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sed -i <span class="string">&#x27;s/port=8080/port=9090/&#x27;</span> app.conf          <span class="comment"># 直接改文件（危险：无备份）</span></span><br><span class="line">sed -i.bak <span class="string">&#x27;s/port=8080/port=9090/&#x27;</span> app.conf      <span class="comment"># 先存 app.conf.bak 再改</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong><code>-i</code> 是不可逆操作</strong>：批量改配置前先 <code>-i.bak</code> 留退路，或先跑一遍不带 <code>-i</code> 的预览确认输出。</p>
+</blockquote>
+<h3 id="4-多行处理（进阶）"><a href="#4-多行处理（进阶）" class="headerlink" title="4. 多行处理（进阶）"></a>4. 多行处理（进阶）</h3><p>sed 默认逐行处理，多行要靠<strong>模式空间叠加</strong>与<strong>保持空间</strong>两个缓冲：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># N：把下一行并入模式空间（行间以 \n 分隔），处理跨行匹配</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;a\nb\nc\nd\n&#x27;</span> | sed <span class="string">&#x27;N;s/\n/+/&#x27;</span>     <span class="comment"># a+b / c+d</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除空行及其上一行的尾注释（组合应用）</span></span><br><span class="line">sed -E <span class="string">&#x27;N;/\n\s*$/P;D&#x27;</span> file</span><br><span class="line"></span><br><span class="line"><span class="comment"># 保持空间 h/H（存入）与 g/G（取回）：把匹配行暂存，文末统一输出</span></span><br><span class="line">sed -n <span class="string">&#x27;/ERROR/&#123;h&#125;; $&#123;x;p&#125;&#x27;</span> app.log        <span class="comment"># 输出最后一个 ERROR 行</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>实话：多行 sed 可读性差，超过 2 行的上下文处理建议直接换 <strong>awk</strong>（模式区间天然支持）或 <strong>perl -0pe</strong>（<code>-0</code> 把整个文件当一个字符串）。</p>
+</blockquote>
+<hr>
+<h2 id="三、awk：按列编程"><a href="#三、awk：按列编程" class="headerlink" title="三、awk：按列编程"></a>三、awk：按列编程</h2><h3 id="1-字段与内置变量"><a href="#1-字段与内置变量" class="headerlink" title="1. 字段与内置变量"></a>1. 字段与内置变量</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;print $1, $8&#125;&#x27;</span> access.log    <span class="comment"># 第 1 列 IP、第 8 列状态码</span></span><br><span class="line">awk <span class="string">&#x27;&#123;print NF&#125;&#x27;</span> access.log        <span class="comment"># NF：当前行字段数</span></span><br><span class="line">awk <span class="string">&#x27;&#123;print NR, $0&#125;&#x27;</span> access.log    <span class="comment"># NR：行号；$0：整行</span></span><br><span class="line">awk -F<span class="string">&#x27;&quot;&#x27;</span> <span class="string">&#x27;&#123;print $2&#125;&#x27;</span> access.log  <span class="comment"># -F 指定分隔符：取引号内的请求行</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>变量</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>$0</code> &#x2F; <code>$1..$n</code></td>
+<td>整行 &#x2F; 各字段</td>
+</tr>
+<tr>
+<td><code>NF</code></td>
+<td>当前行字段数（<code>$NF</code> 是最后一列）</td>
+</tr>
+<tr>
+<td><code>NR</code> &#x2F; <code>FNR</code></td>
+<td>当前行号 &#x2F; 当前文件内行号</td>
+</tr>
+<tr>
+<td><code>FS</code> &#x2F; <code>OFS</code></td>
+<td>输入 &#x2F; 输出分隔符（<code>-F</code> 与 <code>BEGIN{FS=...}</code> 设置）</td>
+</tr>
+</tbody></table>
+<h3 id="2-条件过滤与计算"><a href="#2-条件过滤与计算" class="headerlink" title="2. 条件过滤与计算"></a>2. 条件过滤与计算</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;$8 &gt;= 400 &#123;print $1, $8&#125;&#x27;</span> access.log</span><br><span class="line"><span class="comment"># 10.0.0.1 500</span></span><br><span class="line"><span class="comment"># 10.0.0.2 404</span></span><br><span class="line"></span><br><span class="line">awk <span class="string">&#x27;BEGIN&#123;s=0&#125; &#123;s+=$9&#125; END&#123;print &quot;total bytes:&quot;, s, &quot;rows:&quot;, NR&#125;&#x27;</span> access.log</span><br><span class="line"><span class="comment"># total bytes: 15441 rows: 7</span></span><br><span class="line"></span><br><span class="line">awk <span class="string">&#x27;&#123;t++; if($8==500) e++&#125; END&#123;printf &quot;%.1f%%\n&quot;, e*100/t&#125;&#x27;</span> access.log</span><br><span class="line"><span class="comment"># 14.3%    ← 500 错误占比</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-数组统计：awk-的杀手锏"><a href="#3-数组统计：awk-的杀手锏" class="headerlink" title="3. 数组统计：awk 的杀手锏"></a>3. 数组统计：awk 的杀手锏</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Top 访问 IP</span></span><br><span class="line">awk <span class="string">&#x27;&#123;c[$1]++&#125; END&#123;for(ip in c) print c[ip], ip&#125;&#x27;</span> access.log | <span class="built_in">sort</span> -rn | <span class="built_in">head</span> -3</span><br><span class="line"><span class="comment"># 3 10.0.0.1</span></span><br><span class="line"><span class="comment"># 2 10.0.0.2</span></span><br><span class="line"><span class="comment"># 1 10.0.0.4</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 请求方法分布（-F&#x27;&quot;&#x27; 切出引号内 &quot;GET /path HTTP/1.1&quot; 再切空格）</span></span><br><span class="line">awk -F<span class="string">&#x27;&quot;&#x27;</span> <span class="string">&#x27;&#123;split($2, m, &quot; &quot;); c[m[1]]++&#125; END&#123;for(k in c) print c[k], k&#125;&#x27;</span> access.log</span><br><span class="line"><span class="comment"># 5 GET</span></span><br><span class="line"><span class="comment"># 2 POST</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-格式化输出"><a href="#4-格式化输出" class="headerlink" title="4. 格式化输出"></a>4. 格式化输出</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;printf &quot;%-9s %-13s status=%s\n&quot;, $1, $6, $8&#125;&#x27;</span> access.log</span><br><span class="line"><span class="comment"># 10.0.0.1  /api/users    status=200</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>心智模型</strong>：<code>模式{动作}</code> 对每行执行——<code>$8&gt;=400 {print}</code> 是过滤，<code>{c[$1]++}</code> 累加数组，<code>END{...}</code> 收尾输出；记住这三个位置，awk 就够用了。</p>
+</blockquote>
+<h3 id="5-模式区间与-getline（进阶）"><a href="#5-模式区间与-getline（进阶）" class="headerlink" title="5. 模式区间与 getline（进阶）"></a>5. 模式区间与 getline（进阶）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 区间模式：/start/,/end/ —— 打印两个标记之间的内容（含标记行）</span></span><br><span class="line">awk <span class="string">&#x27;/BEGIN CERTIFICATE/,/END CERTIFICATE/&#x27;</span> bundle.pem</span><br><span class="line"></span><br><span class="line"><span class="comment"># 行号区间：打印第 5~10 行（等价 sed -n &#x27;5,10p&#x27;）</span></span><br><span class="line">awk <span class="string">&#x27;NR&gt;=5 &amp;&amp; NR&lt;=10&#x27;</span> access.log</span><br><span class="line"></span><br><span class="line"><span class="comment"># getline：读入&quot;下一行&quot;继续处理——把多行记录拼成一行</span></span><br><span class="line"><span class="comment"># 日志里 &quot;stack trace:&quot; 后紧跟的一行是错误详情，合并输出</span></span><br><span class="line">awk <span class="string">&#x27;/stack trace:/ &#123;print; getline; print &quot;  -&gt;&quot;, $0; next&#125; &#123;print&#125;&#x27;</span> app.log</span><br></pre></td></tr></table></figure>
+
+<p><strong>多文件处理的两个常用变量</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">awk <span class="string">&#x27;&#123;print FILENAME, FNR, $0&#125;&#x27;</span> a.log b.log   <span class="comment"># FILENAME 当前文件、FNR 文件内行号</span></span><br><span class="line">awk <span class="string">&#x27;FNR==1 &#123;print &quot;=== &quot; FILENAME &quot; ===&quot;&#125; &#123;print&#125;&#x27;</span> *.<span class="built_in">log</span>   <span class="comment"># 给每个文件加分隔标题</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、管道组合：把小工具拼成流水线"><a href="#四、管道组合：把小工具拼成流水线" class="headerlink" title="四、管道组合：把小工具拼成流水线"></a>四、管道组合：把小工具拼成流水线</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 排行榜套路：提取 → 排序 → 计数 → 按次数倒排 → 取前 N</span></span><br><span class="line">awk <span class="string">&#x27;&#123;print $1&#125;&#x27;</span> access.log | <span class="built_in">sort</span> | <span class="built_in">uniq</span> -c | <span class="built_in">sort</span> -rn | <span class="built_in">head</span> -2</span><br><span class="line"><span class="comment">#       3 10.0.0.1</span></span><br><span class="line"><span class="comment">#       2 10.0.0.2</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># xargs：把输出变成下一条命令的参数</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;a.txt\nb.txt\n&#x27;</span> | xargs -I&#123;&#125; <span class="built_in">echo</span> <span class="string">&quot;file: &#123;&#125;&quot;</span></span><br><span class="line">find . -name <span class="string">&quot;*.tmp&quot;</span> -print0 | xargs -0 <span class="built_in">rm</span> -v       <span class="comment"># -print0/-0：文件名含空格也安全</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># tee：分流（落盘的同时继续往下看）</span></span><br><span class="line">grep <span class="string">&quot;500&quot;</span> access.log | <span class="built_in">tee</span> error.log | <span class="built_in">wc</span> -l</span><br><span class="line"></span><br><span class="line"><span class="comment"># 进程替换：把命令输出当文件用</span></span><br><span class="line"><span class="built_in">comm</span> -3 &lt;(<span class="built_in">sort</span> a.txt) &lt;(<span class="built_in">sort</span> b.txt)                 <span class="comment"># 求两文件差异</span></span><br><span class="line">diff &lt;(grep GET access.log) &lt;(grep POST access.log)</span><br></pre></td></tr></table></figure>
+
+<p><strong>常用辅助列命令</strong>：<code>cut -d&#39; &#39; -f1</code>（按分隔符切列）、<code>wc -l</code>（计数）、<code>head/tail -n</code>、<code>tr a-z A-Z</code>（字符转换）。</p>
+<p><strong>sort 排序深入</strong>（排行榜之外的高频需求）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sort</span> -t: -k3 -n /etc/passwd        <span class="comment"># 按分隔符 : 的第 3 列（UID）数值排序</span></span><br><span class="line"><span class="built_in">du</span> -sh */ | <span class="built_in">sort</span> -rh               <span class="comment"># -h 识别 K/M/G 单位，-r 倒序</span></span><br><span class="line"><span class="built_in">sort</span> -u names.txt                  <span class="comment"># 排序并去重（等价 sort | uniq，但更快）</span></span><br><span class="line"><span class="built_in">sort</span> -k2,2nr -k1,1 report.txt      <span class="comment"># 多键排序：先第 2 列数值倒序，再第 1 列字典序</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、实战组合"><a href="#五、实战组合" class="headerlink" title="五、实战组合"></a>五、实战组合</h2><h3 id="1-日志排障一条龙（已验证）"><a href="#1-日志排障一条龙（已验证）" class="headerlink" title="1. 日志排障一条龙（已验证）"></a>1. 日志排障一条龙（已验证）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 5 分钟内错误最多的 IP 及其访问路径</span></span><br><span class="line">awk <span class="string">&#x27;$8 &gt;= 500 &#123;print $1, $6&#125;&#x27;</span> access.log \</span><br><span class="line">  | <span class="built_in">sort</span> | <span class="built_in">uniq</span> -c | <span class="built_in">sort</span> -rn | <span class="built_in">head</span> -5</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-统计代码行数"><a href="#2-统计代码行数" class="headerlink" title="2. 统计代码行数"></a>2. 统计代码行数</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">find src -name <span class="string">&quot;*.go&quot;</span> -print0 | xargs -0 <span class="built_in">wc</span> -l | <span class="built_in">tail</span> -1</span><br><span class="line">grep -rc <span class="string">&quot;&quot;</span> src --include=<span class="string">&quot;*.go&quot;</span> | awk -F: <span class="string">&#x27;&#123;s+=$2&#125; END&#123;print s&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-批量改配置（第三章脚本的搭档）"><a href="#3-批量改配置（第三章脚本的搭档）" class="headerlink" title="3. 批量改配置（第三章脚本的搭档）"></a>3. 批量改配置（第三章脚本的搭档）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">grep -rl <span class="string">&quot;127.0.0.1&quot;</span> /etc/myapp/ | xargs -r sed -i.bak <span class="string">&#x27;s/127\.0\.0\.1/10.0.0.5/g&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、现代工具链（更快更友好的替代品）"><a href="#六、现代工具链（更快更友好的替代品）" class="headerlink" title="六、现代工具链（更快更友好的替代品）"></a>六、现代工具链（更快更友好的替代品）</h2><p>三剑客是”必考基础”，日常开发还有一批<strong>快一个数量级</strong>的现代工具，与三剑客不冲突、按需混用：</p>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>替代</th>
+<th>安装（Rocky）</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>ripgrep (<code>rg</code>)</strong></td>
+<td><code>grep -r</code></td>
+<td><code>dnf install ripgrep</code></td>
+<td>默认递归、跳 <code>.gitignore</code> 与二进制，速度秒杀</td>
+</tr>
+<tr>
+<td><strong>fd</strong></td>
+<td><code>find</code></td>
+<td><code>dnf install fd-find</code></td>
+<td><code>fd &#39;\.go$&#39;</code> 等价 <code>find . -name &#39;*.go&#39;</code>，语法零负担</td>
+</tr>
+<tr>
+<td><strong>jq</strong></td>
+<td>awk&#x2F;sed 处理 JSON</td>
+<td><code>dnf install jq</code></td>
+<td>JSON 的结构化查询&#x2F;修改&#x2F;格式化</td>
+</tr>
+<tr>
+<td><strong>yq</strong></td>
+<td>手工改 YAML</td>
+<td><code>dnf install yq</code></td>
+<td>YAML 版 jq，改 k8s 清单不手抖</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># rg：搜代码的正确姿势（自动忽略 target/、node_modules/）</span></span><br><span class="line">rg -n <span class="string">&quot;TODO|FIXME&quot;</span> --<span class="built_in">type</span> go</span><br><span class="line"></span><br><span class="line"><span class="comment"># jq：从 JSON 里取字段、过滤数组</span></span><br><span class="line">curl -s api.example.com/users | jq <span class="string">&#x27;.data[] | select(.age &gt; 18) | .name&#x27;</span></span><br><span class="line">kubectl get pods -o json | jq <span class="string">&#x27;.items[].metadata.name&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># yq：原地改 YAML 字段（CI 里改镜像 tag 常用）</span></span><br><span class="line">yq -i <span class="string">&#x27;.spec.template.spec.containers[0].image = &quot;myapp:1.2.3&quot;&#x27;</span> deploy.yaml</span><br><span class="line"></span><br><span class="line"><span class="comment"># fd + xargs：找文件后批量处理</span></span><br><span class="line">fd -e <span class="built_in">log</span> -x <span class="built_in">wc</span> -l</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>迁移建议：<strong>交互式探索用 rg&#x2F;fd&#x2F;jq</strong>（快），<strong>写进项目脚本用 grep&#x2F;find&#x2F;awk</strong>（目标机器必有，避免依赖）。</p>
+</blockquote>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>定位</th>
+<th>一句话记忆</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>grep</strong></td>
+<td>找行</td>
+<td><code>-n</code> 行号 <code>-E</code> 正则 <code>-C</code> 上下文 <code>-v</code> 反选 <code>-o</code> 只取匹配</td>
+</tr>
+<tr>
+<td><strong>sed</strong></td>
+<td>改流</td>
+<td><code>s/旧/新/g</code> 替换；<code>-n &#39;2,4p&#39;</code> 打印；<code>-i.bak</code> 原地改留备份；多行用 <code>N;D;P</code> &#x2F; <code>h;g</code></td>
+</tr>
+<tr>
+<td><strong>awk</strong></td>
+<td>切列</td>
+<td><code>$1 $8</code> 取列、<code>$8&gt;=400</code> 过滤、<code>{c[$1]++}END{}</code> 统计、<code>printf</code> 格式化；区间 <code>/a/,/b/</code>、跨行 <code>getline</code></td>
+</tr>
+<tr>
+<td><strong>管道</strong></td>
+<td>组合</td>
+<td>&#96;sort</td>
+</tr>
+<tr>
+<td><strong>xargs</strong></td>
+<td>参数化</td>
+<td>把标准输入变成命令参数；含空格文件名用 <code>-print0/-0</code></td>
+</tr>
+<tr>
+<td><strong>现代工具</strong></td>
+<td>提速</td>
+<td>交互用 <strong>rg&#x2F;fd&#x2F;jq&#x2F;yq</strong>，项目脚本保底用 POSIX 三剑客</td>
+</tr>
+</tbody></table>
+<hr>
+<p>三剑客到位后，脚本才算真正有了「数据处理」能力。下一章把命令、脚本与文本工具装进生产级运维框架：systemd 服务、日志、磁盘与 SSH，见 <a href="/linux/05-linux-ops-advanced/">第五章：系统运维进阶</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+              <a href="/tags/grep/" rel="tag"># grep</a>
+              <a href="/tags/sed/" rel="tag"># sed</a>
+              <a href="/tags/awk/" rel="tag"># awk</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/linux/03-linux-bash-scripting/" rel="prev" title="第三章：Bash 脚本编程">
+                  <i class="fa fa-angle-left"></i> 第三章：Bash 脚本编程
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/linux/05-linux-ops-advanced/" rel="next" title="第五章：系统运维进阶">
+                  第五章：系统运维进阶 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

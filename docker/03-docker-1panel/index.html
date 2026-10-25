@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：Docker 部署 1Panel概念基础 1Panel 是开源的 Linux 服务器运维管理面板：在网页上即可管理网站、数据库、容器、防火墙、定时任务等，替代繁琐的命令行运维。 为什么用 Docker 部署：面板本体与依赖全部封进镜像，一条 docker run 即可拉起，升级与重建都围绕镜像和数据卷进行，不污染宿主机。 两类典型环境：Windows + Docker Desktop +">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：Docker 部署 1Panel">
+<meta property="og:url" content="https://my919.github.io/docker/03-docker-1panel/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：Docker 部署 1Panel概念基础 1Panel 是开源的 Linux 服务器运维管理面板：在网页上即可管理网站、数据库、容器、防火墙、定时任务等，替代繁琐的命令行运维。 为什么用 Docker 部署：面板本体与依赖全部封进镜像，一条 docker run 即可拉起，升级与重建都围绕镜像和数据卷进行，不污染宿主机。 两类典型环境：Windows + Docker Desktop +">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T17:59:40.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.573Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="1Panel">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="Docker Desktop">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="WSL">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/docker/03-docker-1panel/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/docker/03-docker-1panel/","path":"docker/03-docker-1panel/","title":"第三章：Docker 部署 1Panel"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：Docker 部署 1Panel | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9ADocker-%E9%83%A8%E7%BD%B2-1Panel"><span class="nav-number">1.</span> <span class="nav-text">第三章：Docker 部署 1Panel</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B1%E7%94%A8%E5%89%8D%E6%8F%90"><span class="nav-number">1.2.</span> <span class="nav-text">共用前提</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E7%B1%BB%EF%BC%9AWindows-Docker-Desktop-WSL"><span class="nav-number">1.3.</span> <span class="nav-text">第一类：Windows + Docker Desktop + WSL</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#WSL-Git-Bash-macOS%EF%BC%88%E8%A1%8C%E6%9C%AB-%E7%BB%AD%E8%A1%8C%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">WSL &#x2F; Git Bash &#x2F; macOS（行末 \ 续行）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Windows-CMD%EF%BC%88%E8%A1%8C%E6%9C%AB-%E7%BB%AD%E8%A1%8C%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">Windows CMD（行末 ^ 续行）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E8%AE%BF%E9%97%AE%EF%BC%88%E6%9C%AC%E6%9C%BA%EF%BC%89"><span class="nav-number">1.3.3.</span> <span class="nav-text">浏览器访问（本机）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%AF%E9%80%89%EF%BC%9Adocker-compose%EF%BC%88%E7%AB%AF%E5%8F%A3%E6%98%A0%E5%B0%84%EF%BC%89"><span class="nav-number">1.3.4.</span> <span class="nav-text">可选：docker compose（端口映射）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E7%B1%BB%EF%BC%9ALinux-Docker-%E4%B8%BB%E6%9C%BA"><span class="nav-number">1.4.</span> <span class="nav-text">第二类：Linux Docker 主机</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%9A%E8%A1%8C-docker-run%EF%BC%88-network-host%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">多行 docker run（--network host）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%AF%E9%80%89%EF%BC%9Adocker-compose%EF%BC%88host-%E7%BD%91%E7%BB%9C%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">可选：docker compose（host 网络）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%EF%BC%88V2%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">常用环境变量（V2）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE%E4%B8%8E%E6%97%A5%E5%B8%B8%E5%91%BD%E4%BB%A4%EF%BC%88Linux-%E5%85%AC%E7%BD%91%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">访问与日常命令（Linux 公网）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%98%E6%96%B9%E8%84%9A%E6%9C%AC%E5%AE%89%E8%A3%85%EF%BC%88%E5%AF%B9%E7%85%A7%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">官方脚本安装（对照）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%9D%A2%E6%9D%BF%E6%A0%B8%E5%BF%83%E5%8A%9F%E8%83%BD%E9%80%9F%E8%A7%88"><span class="nav-number">1.8.</span> <span class="nav-text">面板核心功能速览</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BA%94%E7%94%A8%E5%95%86%E5%BA%97"><span class="nav-number">1.8.1.</span> <span class="nav-text">应用商店</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BD%91%E7%AB%99%E7%AE%A1%E7%90%86"><span class="nav-number">1.8.2.</span> <span class="nav-text">网站管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%87%E4%BB%BD%E4%B8%8E%E8%AE%A1%E5%88%92%E4%BB%BB%E5%8A%A1"><span class="nav-number">1.8.3.</span> <span class="nav-text">备份与计划任务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%8E%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86"><span class="nav-number">1.8.4.</span> <span class="nav-text">数据库与文件管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%B9%E5%99%A8%E4%B8%8E%E9%95%9C%E5%83%8F%E7%AE%A1%E7%90%86"><span class="nav-number">1.8.5.</span> <span class="nav-text">容器与镜像管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%91%E6%8E%A7%E4%B8%8E%E5%AE%A1%E8%AE%A1"><span class="nav-number">1.8.6.</span> <span class="nav-text">监控与审计</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E9%9D%A2%E6%9D%BF%E5%AF%B9%E6%AF%94"><span class="nav-number">1.9.</span> <span class="nav-text">与其他面板对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA%E6%B8%85%E5%8D%95"><span class="nav-number">1.10.</span> <span class="nav-text">安全加固清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%87%E7%BA%A7%E4%B8%8E%E6%97%A5%E5%B8%B8%E7%BB%B4%E6%8A%A4"><span class="nav-number">1.11.</span> <span class="nav-text">升级与日常维护</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="nav-number">1.12.</span> <span class="nav-text">常见问题排查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E9%98%B6%EF%BC%9A%E9%9D%A2%E6%9D%BF%E5%89%8D%E7%BD%AE%E5%8F%8D%E4%BB%A3%E4%B8%8E-HTTPS"><span class="nav-number">1.13.</span> <span class="nav-text">进阶：面板前置反代与 HTTPS</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.14.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/docker/03-docker-1panel/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：Docker 部署 1Panel | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：Docker 部署 1Panel
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-02 01:59:40" itemprop="dateCreated datePublished" datetime="2026-05-02T01:59:40+08:00">2026-05-02</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Docker-%E5%AE%B9%E5%99%A8%E5%8C%96/" itemprop="url" rel="index"><span itemprop="name">Docker 容器化</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>7.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：Docker-部署-1Panel"><a href="#第三章：Docker-部署-1Panel" class="headerlink" title="第三章：Docker 部署 1Panel"></a>第三章：Docker 部署 1Panel</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>1Panel</strong> 是开源的 <strong>Linux 服务器运维管理面板</strong>：在网页上即可管理<strong>网站、数据库、容器、防火墙、定时任务</strong>等，替代繁琐的命令行运维。</li>
+<li><strong>为什么用 Docker 部署</strong>：面板本体与依赖全部封进<strong>镜像</strong>，一条 <strong><code>docker run</code></strong> 即可拉起，升级与重建都围绕镜像和数据卷进行，<strong>不污染宿主机</strong>。</li>
+<li><strong>两类典型环境</strong>：<strong>Windows + Docker Desktop + WSL</strong>（必须端口映射 <strong><code>-p</code></strong>，勿用 <strong><code>--network host</code></strong>）与 <strong>Linux Docker 主机</strong>（可直接 <strong>host</strong> 网络）。</li>
+<li><strong>管理宿主机的关键</strong>：面板通过挂载 <strong><code>/var/run/docker.sock</code></strong> 获得管理宿主机 <strong>Docker</strong> 的能力，通过 <strong><code>/opt</code></strong> 与 <strong><code>BASE_DIR</code></strong> 约定数据目录。</li>
+<li><strong>安全底线</strong>：改强 <strong><code>PASSWORD</code></strong>、设 <strong><code>ENTRANCE</code></strong> 安全入口、按需放行安全组端口，避免面板暴露在公网被扫描。</li>
+</ol>
+<h2 id="共用前提"><a href="#共用前提" class="headerlink" title="共用前提"></a>共用前提</h2><ul>
+<li><strong><code>docker version</code></strong> 客户端与 <strong>Server</strong> 均正常，能拉取 <strong>Docker Hub</strong>（或已配置镜像加速）。  </li>
+<li>建议内存 <strong>≥ 1GB</strong>；多架构以 <strong>Hub</strong> 页为准。  </li>
+<li>将 <strong><code>PASSWORD</code></strong>、<strong><code>ENTRANCE</code></strong> 等换成自己的值；变量含义见文末 <strong>「常用环境变量」</strong>。</li>
+</ul>
+<hr>
+<h2 id="第一类：Windows-Docker-Desktop-WSL"><a href="#第一类：Windows-Docker-Desktop-WSL" class="headerlink" title="第一类：Windows + Docker Desktop + WSL"></a>第一类：Windows + Docker Desktop + WSL</h2><p><strong>场景</strong>：宿主机为 <strong>Windows</strong>，容器由 <strong>Docker Desktop</strong> 提供引擎；你在 <strong>WSL</strong> 里打开终端（发行版可为 <strong>Rocky Linux 10</strong>、<strong>Ubuntu</strong> 等），<strong><code>docker version</code></strong> 的 <strong>Server</strong> 往往显示 <strong>Docker Desktop</strong> 或上下文为 <strong>desktop-linux</strong>。此时容器里的 <strong><code>host</code></strong> 网络与你在 <strong>WSL</strong> 里访问的 <strong><code>localhost</code></strong> 不是同一概念，<strong>不要</strong>使用 <strong><code>--network host</code></strong>，应使用 <strong><code>-p &lt;PORT&gt;:&lt;PORT&gt;</code></strong>。</p>
+<p>若曾误用 <strong><code>host</code></strong> 建过同名容器，先 <strong><code>docker rm -f 1panel-v2</code></strong> 再按本节重建。</p>
+<h3 id="WSL-Git-Bash-macOS（行末-续行）"><a href="#WSL-Git-Bash-macOS（行末-续行）" class="headerlink" title="WSL &#x2F; Git Bash &#x2F; macOS（行末 \ 续行）"></a>WSL &#x2F; Git Bash &#x2F; macOS（行末 <code>\</code> 续行）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># wsl子系统rocky-10中执行不能正常访问，猜测子系统无ip</span></span><br><span class="line">docker run -d\</span><br><span class="line">  --name 1panel-v2\</span><br><span class="line">  --restart always\</span><br><span class="line">  -p 10086:10086\</span><br><span class="line">  -v /var/run/docker.sock:/var/run/docker.sock\</span><br><span class="line">  -v /opt:/opt\</span><br><span class="line">  -e TZ=Asia/Shanghai\</span><br><span class="line">  -e PORT=10086\</span><br><span class="line">  -e USERNAME=admin\</span><br><span class="line">  -e PASSWORD=<span class="string">&#x27;pi=3.1415&#x27;</span>\</span><br><span class="line">  -e ENTRANCE=<span class="string">&#x27;panel-v2&#x27;</span>\</span><br><span class="line">  -e BASE_DIR=/opt\</span><br><span class="line">  moelin/1panel:v2</span><br></pre></td></tr></table></figure>
+
+<h3 id="Windows-CMD（行末-续行）"><a href="#Windows-CMD（行末-续行）" class="headerlink" title="Windows CMD（行末 ^ 续行）"></a>Windows CMD（行末 <code>^</code> 续行）</h3><p><strong><code>^</code></strong> 须为行末最后一个字符（后无空格），末行不写 <strong><code>^</code></strong>。<strong><code>-e</code></strong> 的值在 <strong>CMD</strong> 里用双引号较稳妥。</p>
+<figure class="highlight bat"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">docker run -d^</span><br><span class="line">  --name <span class="number">1</span>panel-v2^</span><br><span class="line">  --restart always^</span><br><span class="line">  -p <span class="number">10086</span>:<span class="number">10086</span>^</span><br><span class="line">  -v /var/run/docker.sock:/var/run/docker.sock^</span><br><span class="line">  -v /opt:/opt^</span><br><span class="line">  -e TZ=Asia/Shanghai^</span><br><span class="line">  -e PORT=<span class="number">10086</span>^</span><br><span class="line">  -e USERNAME=admin^</span><br><span class="line">  -e PASSWORD=&quot;pi=<span class="number">3</span>.<span class="number">1415</span>&quot;^</span><br><span class="line">  -e ENTRANCE=&quot;panel-v2&quot;^</span><br><span class="line">  -e BASE_DIR=/opt^</span><br><span class="line">  moelin/<span class="number">1</span>panel:v2</span><br></pre></td></tr></table></figure>
+
+<p><strong>卷说明</strong>（与 <strong>Linux</strong> 类一致，路径在 <strong>Docker Desktop</strong> 下仍写 <strong><code>/var/run/docker.sock</code></strong>、<strong><code>/opt</code></strong>，由 <strong>Desktop</strong> 映射到引擎；异常时以当前 <strong>Desktop</strong> 文档为准。若 <strong><code>-v</code></strong> 与 <strong>WSL2 &#x2F; Linux 容器</strong> 后端要求不符，按 <strong>Docker Desktop</strong> 文档调整。）</p>
+<h3 id="浏览器访问（本机）"><a href="#浏览器访问（本机）" class="headerlink" title="浏览器访问（本机）"></a>浏览器访问（本机）</h3><p>多数情况：<strong><code>http://127.0.0.1:10086/&lt;ENTRANCE&gt;</code></strong>（与示例 <strong><code>ENTRANCE</code></strong> 一致时）。在 <strong>WSL</strong> 内若 <strong><code>localhost</code></strong> 仍不通，可试 <strong><code>http://$(grep -m1 &#39;^nameserver&#39; /etc/resolv.conf | awk &#39;{print $2}&#39;):10086/&lt;ENTRANCE&gt;</code></strong>（常为 <strong>WSL2</strong> 下可达的 <strong>Windows</strong> 主机 <strong>IP</strong>，以本机为准）。</p>
+<h3 id="可选：docker-compose（端口映射）"><a href="#可选：docker-compose（端口映射）" class="headerlink" title="可选：docker compose（端口映射）"></a>可选：<code>docker compose</code>（端口映射）</h3><p>将下文保存为同目录下的 <strong><code>compose.yaml</code></strong> 或 <strong><code>docker-compose.yml</code></strong>（二选一即可，<strong>Compose V2</strong> 默认会读取二者）。<strong>Docker Desktop &#x2F; WSL</strong> 使用 <strong><code>ports</code></strong>，<strong>不要</strong>写 <strong><code>network_mode: host</code></strong>。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># compose.yaml（或 docker-compose.yml）</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">1panel-v2:</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">1panel-v2</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">always</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">moelin/1panel:v2</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;10086:10086&quot;</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">/var/run/docker.sock:/var/run/docker.sock</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">/opt:/opt</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">Asia/Shanghai</span></span><br><span class="line">      <span class="attr">PORT:</span> <span class="string">&quot;10086&quot;</span></span><br><span class="line">      <span class="attr">USERNAME:</span> <span class="string">admin</span></span><br><span class="line">      <span class="attr">PASSWORD:</span> <span class="string">&quot;请改为强密码&quot;</span></span><br><span class="line">      <span class="attr">ENTRANCE:</span> <span class="string">&quot;请改为安全入口&quot;</span></span><br><span class="line">      <span class="attr">BASE_DIR:</span> <span class="string">/opt</span></span><br></pre></td></tr></table></figure>
+
+<p>在同目录执行 <strong><code>docker compose up -d</code></strong>。</p>
+<hr>
+<h2 id="第二类：Linux-Docker-主机"><a href="#第二类：Linux-Docker-主机" class="headerlink" title="第二类：Linux Docker 主机"></a>第二类：Linux Docker 主机</h2><p><strong>场景</strong>：<strong>Linux</strong> 云服务器、物理机或虚拟机内安装 <strong>Docker Engine</strong>（<strong>非 Docker Desktop</strong> 作为服务端）。可用 <strong><code>--network host</code></strong>，面板监听端口即宿主机端口，与安全组、防火墙规则一致。</p>
+<h3 id="多行-docker-run（-network-host）"><a href="#多行-docker-run（-network-host）" class="headerlink" title="多行 docker run（--network host）"></a>多行 <code>docker run</code>（<code>--network host</code>）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">docker run -d \</span><br><span class="line">  --name 1panel-v2 \</span><br><span class="line">  --restart always \</span><br><span class="line">  --network host \</span><br><span class="line">  -v /var/run/docker.sock:/var/run/docker.sock \</span><br><span class="line">  -v /opt:/opt \</span><br><span class="line">  -e TZ=Asia/Shanghai \</span><br><span class="line">  -e PORT=10086 \</span><br><span class="line">  -e USERNAME=admin \</span><br><span class="line">  -e PASSWORD=<span class="string">&#x27;pi=3.1415&#x27;</span> \</span><br><span class="line">  -e ENTRANCE=<span class="string">&#x27;panel-v2&#x27;</span> \</span><br><span class="line">  -e BASE_DIR=/opt \</span><br><span class="line">  moelin/1panel:v2</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>-v /var/run/docker.sock</code></strong>：面板管理宿主机 <strong>Docker</strong>。<br><strong><code>-v /opt:/opt</code></strong> 与 <strong><code>BASE_DIR=/opt</code></strong>：数据目录可改，须与挂载路径同步。<br><strong><code>moelin/1panel:v2</code></strong>：跟踪 <strong>V2</strong> 最新构建；生产建议改为 <strong>Hub</strong> 具体版本号。</p>
+<h3 id="可选：docker-compose（host-网络）"><a href="#可选：docker-compose（host-网络）" class="headerlink" title="可选：docker compose（host 网络）"></a>可选：<code>docker compose</code>（<code>host</code> 网络）</h3><p>将下文保存为同目录下的 <strong><code>compose.yaml</code></strong> 或 <strong><code>docker-compose.yml</code></strong>。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># compose.yaml（或 docker-compose.yml）</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">1panel-v2:</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">1panel-v2</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">always</span></span><br><span class="line">    <span class="attr">network_mode:</span> <span class="string">host</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">moelin/1panel:v2</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">/var/run/docker.sock:/var/run/docker.sock</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">/opt:/opt</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">Asia/Shanghai</span></span><br><span class="line">      <span class="attr">PORT:</span> <span class="string">&quot;10086&quot;</span></span><br><span class="line">      <span class="attr">USERNAME:</span> <span class="string">admin</span></span><br><span class="line">      <span class="attr">PASSWORD:</span> <span class="string">&quot;请改为强密码&quot;</span></span><br><span class="line">      <span class="attr">ENTRANCE:</span> <span class="string">&quot;请改为安全入口&quot;</span></span><br><span class="line">      <span class="attr">BASE_DIR:</span> <span class="string">/opt</span></span><br></pre></td></tr></table></figure>
+
+<p>在同目录执行 <strong><code>docker compose up -d</code></strong>。</p>
+<hr>
+<h2 id="常用环境变量（V2）"><a href="#常用环境变量（V2）" class="headerlink" title="常用环境变量（V2）"></a>常用环境变量（V2）</h2><table>
+<thead>
+<tr>
+<th>变量</th>
+<th>默认值（未设置时）</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>PORT</code></strong></td>
+<td><strong><code>10086</code></strong></td>
+<td>Web 端口</td>
+</tr>
+<tr>
+<td><strong><code>USERNAME</code></strong></td>
+<td><strong><code>1panel</code></strong></td>
+<td>管理员用户名</td>
+</tr>
+<tr>
+<td><strong><code>PASSWORD</code></strong></td>
+<td>随机或默认（见 <strong>Hub</strong>）</td>
+<td>登录控制台密码，务必改为强密码或从日志读取随机值</td>
+</tr>
+<tr>
+<td><strong><code>ENTRANCE</code></strong></td>
+<td><strong><code>entrance</code></strong></td>
+<td>安全入口的 <strong>URL 路径前缀</strong>（非第二端口），访问 <strong><code>http://IP:PORT/ENTRANCE</code></strong>，用于降低默认路径被扫的概率</td>
+</tr>
+<tr>
+<td><strong><code>BASE_DIR</code></strong></td>
+<td><strong><code>/opt</code></strong></td>
+<td>数据目录，需与 <strong><code>/opt</code></strong> 挂载一致</td>
+</tr>
+<tr>
+<td><strong><code>TZ</code></strong></td>
+<td>常见 <strong><code>Asia/Shanghai</code></strong></td>
+<td>时区</td>
+</tr>
+<tr>
+<td><strong><code>RESET</code></strong></td>
+<td><strong><code>false</code></strong></td>
+<td>置 <strong><code>true</code></strong> 可强制重置配置（慎用）</td>
+</tr>
+</tbody></table>
+<p>完整说明与 <strong>V1</strong>、<strong>Global</strong> 标签见 <strong>Hub</strong> 文档。</p>
+<hr>
+<h2 id="访问与日常命令（Linux-公网）"><a href="#访问与日常命令（Linux-公网）" class="headerlink" title="访问与日常命令（Linux 公网）"></a>访问与日常命令（Linux 公网）</h2><p>浏览器访问（云服务器需在安全组放行 <strong><code>PORT</code></strong>）：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://&lt;服务器 IP&gt;:&lt;PORT&gt;/&lt;ENTRANCE&gt;</span><br></pre></td></tr></table></figure>
+
+<p>首次未显式设置强密码时，镜像可能生成随机密码：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker logs 1panel-v2</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker logs -f 1panel-v2</span><br><span class="line">docker restart 1panel-v2</span><br><span class="line">docker <span class="built_in">exec</span> -it 1panel-v2 bash   <span class="comment"># 进入容器后可用 1pctl 等（以镜像内为准）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>禁止</strong>在容器内随意点面板「更新」覆盖社区镜像行为；升级应 <strong><code>docker pull</code> 新镜像 → 备份数据卷 → 按 <strong>Hub</strong> 说明重建容器</strong>。</p>
+<p><strong>V1 → V2</strong> 不可直接原地升级，须按官方迁移说明：<a target="_blank" rel="noopener" href="https://1panel.cn/docs/v2/installation/v1_migrate/">V1 迁移到 V2</a>。</p>
+<hr>
+<h2 id="官方脚本安装（对照）"><a href="#官方脚本安装（对照）" class="headerlink" title="官方脚本安装（对照）"></a>官方脚本安装（对照）</h2><p>若希望使用 <strong>FIT2CLOUD</strong> 官方脚本在<strong>宿主机</strong>安装（非本镜像）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">bash -c <span class="string">&quot;<span class="subst">$(curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh)</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>与 <strong>Docker</strong> 一键方案二选一，避免同一主机装两套面板。</p>
+<hr>
+<h2 id="面板核心功能速览"><a href="#面板核心功能速览" class="headerlink" title="面板核心功能速览"></a>面板核心功能速览</h2><p>部署完成后，1Panel 的能力远不止”装个面板”：</p>
+<h3 id="应用商店"><a href="#应用商店" class="headerlink" title="应用商店"></a>应用商店</h3><p>内置 <strong>OpenResty（Nginx）、MySQL、PostgreSQL、Redis、MongoDB、Halo、WordPress、Memos、Vaultwarden</strong> 等百余款应用，一键安装即自动完成容器编排、端口映射与反向代理挂载；支持<strong>自定义应用仓库</strong>（Git 仓库形式的第三方应用集）与<strong>本地应用</strong>（上传自有 docker-compose 模板），团队内部标准化交付常用中间件非常方便。安装时可选<strong>端口外部访问开关</strong>，默认仅本机暴露，安全默认做得比多数面板好。</p>
+<h3 id="网站管理"><a href="#网站管理" class="headerlink" title="网站管理"></a>网站管理</h3><ul>
+<li><strong>一键建站</strong>：静态站点 &#x2F; 反向代理 &#x2F; PHP 运行环境三类，自动生成 OpenResty 配置；</li>
+<li><strong>SSL 证书</strong>：集成 Let’s Encrypt &#x2F; ZeroSSL，支持 <strong>DNS 自动验证（泛域名）<strong>与</strong>自动续签</strong>，对接阿里云、腾讯云、Cloudflare 等 DNS 厂商；</li>
+<li><strong>WAF</strong>：基于 OpenResty 的 CC 防护、IP 黑白名单、UA 拦截，免费版可用基础规则；</li>
+<li><strong>防盗链、访问日志、错误日志</strong> 面板直查，省去上机 tail。</li>
+</ul>
+<h3 id="备份与计划任务"><a href="#备份与计划任务" class="headerlink" title="备份与计划任务"></a>备份与计划任务</h3><ul>
+<li><strong>备份账号</strong>：支持本地磁盘、<strong>S3 兼容对象存储、阿里云 OSS、腾讯 COS、七牛、WebDAV、SFTP</strong>，备份先落本地再推远端；</li>
+<li><strong>计划任务</strong>：按 cron 周期备份<strong>网站、数据库、目录、面板快照</strong>，保留份数可配，失败邮件&#x2F;Webhook 通知；</li>
+<li><strong>快照</strong>：升级前一键打面板快照，异常时整体回滚。</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 建议的最小备份策略（面板内配置即可，无需脚本）</span></span><br><span class="line"><span class="comment"># 每日 02:00 备份全部数据库 → OSS，保留 14 份</span></span><br><span class="line"><span class="comment"># 每周日 03:00 备份 /opt/1panel 目录 → 本地 + WebDAV，保留 8 份</span></span><br><span class="line"><span class="comment"># 每月 1 号打面板快照 → S3，保留 6 份</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="数据库与文件管理"><a href="#数据库与文件管理" class="headerlink" title="数据库与文件管理"></a>数据库与文件管理</h3><p>数据库页支持 <strong>MySQL&#x2F;PostgreSQL&#x2F;Redis</strong> 的建库、授权、远程访问开关与 <strong>phpMyAdmin&#x2F;Adminer</strong> 直达；文件管理器支持在线编辑、压缩解压、权限修改与批量上传，临时改个配置不必再开 SFTP 客户端。</p>
+<h3 id="容器与镜像管理"><a href="#容器与镜像管理" class="headerlink" title="容器与镜像管理"></a>容器与镜像管理</h3><p>容器页可直接<strong>创建&#x2F;启停&#x2F;重建容器、看日志、进终端、改 compose</strong>；镜像页支持拉取、清理 dangling、构建镜像；编排页以 docker-compose 文件管理整套栈，<strong>改动即 <code>docker compose up -d</code></strong>，与命令行操作完全一致、互不冲突。</p>
+<p><strong>本地应用示例</strong>：把团队的 <code>docker-compose.yml</code> + <code>.env</code> 模板放到 <code>/opt/1panel/resource/apps/local/&lt;name&gt;/</code> 下按约定组织，商店即出现”本地应用”，新同事装机从十分钟命令行变一分钟点选。</p>
+<h3 id="监控与审计"><a href="#监控与审计" class="headerlink" title="监控与审计"></a>监控与审计</h3><p><strong>概览页</strong>实时展示 CPU&#x2F;内存&#x2F;磁盘&#x2F;网络与负载趋势；<strong>进程守护（Supervisor）</strong>、<strong>防火墙（iptables&#x2F;firewalld 规则图形化）</strong>、<strong>SSH 登录日志与面板操作审计</strong>一应俱全，多人共用时可回溯”谁在什么时间改了什么”。</p>
+<hr>
+<h2 id="与其他面板对比"><a href="#与其他面板对比" class="headerlink" title="与其他面板对比"></a>与其他面板对比</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>1Panel</th>
+<th>宝塔</th>
+<th>aapanel</th>
+<th>CasaOS</th>
+<th>Portainer</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>开源协议</td>
+<td>GPL-3.0</td>
+<td>部分闭源</td>
+<td>GPL-3.0</td>
+<td>Apache-2.0</td>
+<td>商业+社区</td>
+</tr>
+<tr>
+<td>部署形态</td>
+<td>容器&#x2F;宿主脚本</td>
+<td>宿主脚本</td>
+<td>宿主脚本</td>
+<td>容器</td>
+<td>容器</td>
+</tr>
+<tr>
+<td>技术栈</td>
+<td>Go + Vue，现代前端</td>
+<td>Python，老牌</td>
+<td>宝塔海外版</td>
+<td>面向家庭 NAS</td>
+<td>专注容器管理</td>
+</tr>
+<tr>
+<td>应用商店</td>
+<td>百余款，容器化</td>
+<td>丰富，宿主安装</td>
+<td>同宝塔</td>
+<td>Docker 应用为主</td>
+<td>模板较弱</td>
+</tr>
+<tr>
+<td>网站&#x2F;SSL&#x2F;WAF</td>
+<td>内置，免费够用</td>
+<td>完整，部分收费</td>
+<td>完整</td>
+<td>弱</td>
+<td>无</td>
+</tr>
+<tr>
+<td>多机管理</td>
+<td>专业版节点管理</td>
+<td>面板+堡塔云</td>
+<td>—</td>
+<td>—</td>
+<td>Endpoint 强项</td>
+</tr>
+<tr>
+<td>适合场景</td>
+<td>个人&#x2F;小团队云主机</td>
+<td>国内站长生态</td>
+<td>海外用户</td>
+<td>家庭影音 NAS</td>
+<td>纯容器运维</td>
+</tr>
+</tbody></table>
+<p><strong>选型建议</strong>：个人云主机要”网站+数据库+容器”一体化选 <strong>1Panel</strong>；深度国内生态、习惯一键环境包选宝塔；只管容器编排选 Portainer；家庭存储影音选 CasaOS。</p>
+<hr>
+<h2 id="安全加固清单"><a href="#安全加固清单" class="headerlink" title="安全加固清单"></a>安全加固清单</h2><ol>
+<li><strong>改强密码 + 开双因素</strong>（面板设置 → 安全 → 2FA）；</li>
+<li><strong>ENTRANCE 安全入口</strong> 设为难猜路径，并开启<strong>授权 IP</strong> 白名单（仅公司&#x2F;家庭出口 IP 可访问）；</li>
+<li><strong>面板端口不进公网</strong>：云安全组只放行必要业务端口（80&#x2F;443），面板端口走白名单或 VPN&#x2F;跳板；</li>
+<li><strong>关闭面板默认的未使用服务端口</strong>（如 phpMyAdmin 用完即关）；</li>
+<li><strong>定期升级镜像并备份快照</strong>，升级前看 CHANGELOG 与社区反馈。</li>
+</ol>
+<hr>
+<h2 id="升级与日常维护"><a href="#升级与日常维护" class="headerlink" title="升级与日常维护"></a>升级与日常维护</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看当前容器与数据卷</span></span><br><span class="line">docker ps --filter name=1panel-v2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 标准升级流程：备份 → 拉新镜像 → 停旧 → 按原参数重建</span></span><br><span class="line">docker <span class="built_in">exec</span> 1panel-v2 1pctl version</span><br><span class="line">docker pull moelin/1panel:v2</span><br><span class="line">docker stop 1panel-v2 &amp;&amp; docker rename 1panel-v2 1panel-v2.bak</span><br><span class="line"><span class="comment"># 用与原 run 完全相同的 -v/-e 参数重建（compose 用户直接两条命令）</span></span><br><span class="line">docker compose pull &amp;&amp; docker compose up -d</span><br><span class="line"><span class="comment"># 验证无误后删除旧容器</span></span><br><span class="line">docker <span class="built_in">rm</span> 1panel-v2.bak</span><br></pre></td></tr></table></figure>
+
+<p><strong>数据位置</strong>：面板数据在 <code>BASE_DIR/1panel</code>（默认 <code>/opt/1panel</code>）下，含 <code>apps/</code>（应用）、<code>www/sites/</code>（网站）、<code>backup/</code>（本地备份）、<code>db/</code>（面板自身 SQLite）；迁移机器时整目录打包 + 面板快照即可。</p>
+<p><strong>常见端口约定</strong>：面板默认 <code>10086</code>，应用商店装的 MySQL&#x2F;Redis 默认不对外暴露，需远程访问时在应用设置里显式开启并在安全组放行。</p>
+<hr>
+<h2 id="常见问题排查"><a href="#常见问题排查" class="headerlink" title="常见问题排查"></a>常见问题排查</h2><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>排查路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>面板打不开</td>
+<td><code>docker logs 1panel-v2</code> 看启动日志；确认 <code>PORT</code> 与安全组放行；检查 <code>ENTRANCE</code> 路径是否带错</td>
+</tr>
+<tr>
+<td>忘记密码&#x2F;入口</td>
+<td><code>docker exec -it 1panel-v2 1pctl user-info</code> 查看；<code>1pctl reset password</code> 重置</td>
+</tr>
+<tr>
+<td>应用装完访问不通</td>
+<td>应用设置里是否开启”端口外部访问”；容器间走 <code>172.x</code> 内网 IP 而非 <code>127.0.0.1</code></td>
+</tr>
+<tr>
+<td>证书签发失败</td>
+<td>DNS 验证需 API Token 权限正确；HTTP 验证需 80 端口可达且无 CDN 回源拦截</td>
+</tr>
+<tr>
+<td>备份失败</td>
+<td>备份账号”测试连接”先过；本地磁盘水位 &gt; 90% 时先清理旧备份</td>
+</tr>
+<tr>
+<td>容器列表为空</td>
+<td>确认挂载了宿主机 <code>/var/run/docker.sock</code> 且无权限 SELinux 拦截</td>
+</tr>
+</tbody></table>
+<p><code>1pctl</code> 是镜像内置的运维命令集（<code>status</code>&#x2F;<code>restart</code>&#x2F;<code>update</code>&#x2F;<code>restore</code> 等），<code>docker exec -it 1panel-v2 1pctl --help</code> 查看全集，多数面板异常都能用它自助恢复。</p>
+<hr>
+<h2 id="进阶：面板前置反代与-HTTPS"><a href="#进阶：面板前置反代与-HTTPS" class="headerlink" title="进阶：面板前置反代与 HTTPS"></a>进阶：面板前置反代与 HTTPS</h2><p>面板自身监听 HTTP，公网环境建议前面套一层反代终结 TLS：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1Panel 内一键建站：反向代理到 127.0.0.1:10086，并勾选申请 SSL</span></span><br><span class="line"><span class="comment"># 关键点：</span></span><br><span class="line"><span class="comment"># 1. 反代目标用 127.0.0.1 而非容器 IP</span></span><br><span class="line"><span class="comment"># 2. 开启 WebSocket 支持（面板终端依赖）</span></span><br><span class="line"><span class="comment"># 3. 保留 ENTRANCE 入口路径，与域名形成双因子</span></span><br></pre></td></tr></table></figure>
+
+<p>Nginx Proxy Manager &#x2F; Caddy 用户同理：<code>proxy_pass http://127.0.0.1:10086</code> + WebSocket 头；此后安全组只需放行 80&#x2F;443，面板端口可完全收回本机。</p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>第一类（Windows + Docker Desktop + WSL）</strong></td>
+<td><strong><code>-p 10086:10086</code></strong>；<strong>WSL</strong> 内 <strong>Bash</strong> 或 <strong>Windows CMD</strong> 见上文；<strong>compose</strong> 用 <strong><code>ports</code></strong>，不用 <strong><code>network_mode: host</code></strong></td>
+</tr>
+<tr>
+<td><strong>第二类（Linux Docker 主机）</strong></td>
+<td><strong><code>--network host</code></strong> 或 <strong>compose</strong> 的 <strong><code>network_mode: host</code></strong>；一条命令见上文</td>
+</tr>
+<tr>
+<td>数据</td>
+<td><strong><code>/opt</code></strong> 与 <strong><code>BASE_DIR</code></strong> 一致；挂载 <strong><code>docker.sock</code></strong> 以便管 <strong>Docker</strong></td>
+</tr>
+<tr>
+<td>访问与安全</td>
+<td><strong><code>http://IP:PORT/ENTRANCE</code></strong>；随机密码 <strong><code>docker logs</code></strong></td>
+</tr>
+<tr>
+<td>参考</td>
+<td><strong><a target="_blank" rel="noopener" href="https://hub.docker.com/r/moelin/1panel">moelin&#x2F;1panel</a></strong>；官方宿主安装见 <strong>在线安装</strong></td>
+</tr>
+</tbody></table>
+<p>部署前阅读 <strong>Hub</strong> 注意事项与官方迁移文档；生产使用强密码、限制暴露面并做好备份。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Docker/" rel="tag"># Docker</a>
+              <a href="/tags/1Panel/" rel="tag"># 1Panel</a>
+              <a href="/tags/Docker-Desktop/" rel="tag"># Docker Desktop</a>
+              <a href="/tags/WSL/" rel="tag"># WSL</a>
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/python/13-python-selenium-automation/" rel="prev" title="第十三章：网页自动化：Python + Selenium 入门与实战">
+                  <i class="fa fa-angle-left"></i> 第十三章：网页自动化：Python + Selenium 入门与实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/mysql/03-mysql-locks-explained/" rel="next" title="第三章：MySQL 锁详解">
+                  第三章：MySQL 锁详解 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

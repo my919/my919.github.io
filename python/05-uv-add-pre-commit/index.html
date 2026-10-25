@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第五章：UV 项目开发添加 pre-commit：Git 提交钩子概念基础pre-commit 是一个 Git 提交钩子管理框架，在 git commit 前自动执行质量检查：  质量门禁前置：把 Ruff、BasedPyright、pytest 等检查放到提交时刻自动执行，不合格代码进不了仓库，避免「CI 跑一半才发现格式问题」。 配置即代码：所有钩子集中在 .pre-commit-config">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第五章：UV 项目开发添加 pre-commit：Git 提交钩子">
+<meta property="og:url" content="https://my919.github.io/python/05-uv-add-pre-commit/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第五章：UV 项目开发添加 pre-commit：Git 提交钩子概念基础pre-commit 是一个 Git 提交钩子管理框架，在 git commit 前自动执行质量检查：  质量门禁前置：把 Ruff、BasedPyright、pytest 等检查放到提交时刻自动执行，不合格代码进不了仓库，避免「CI 跑一半才发现格式问题」。 配置即代码：所有钩子集中在 .pre-commit-config">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T03:05:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.591Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Python">
+<meta property="article:tag" content="UV">
+<meta property="article:tag" content="pre-commit">
+<meta property="article:tag" content="代码规范">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/python/05-uv-add-pre-commit/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/python/05-uv-add-pre-commit/","path":"python/05-uv-add-pre-commit/","title":"第五章：UV 项目开发添加 pre-commit：Git 提交钩子"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第五章：UV 项目开发添加 pre-commit：Git 提交钩子 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%94%E7%AB%A0%EF%BC%9AUV-%E9%A1%B9%E7%9B%AE%E5%BC%80%E5%8F%91%E6%B7%BB%E5%8A%A0-pre-commit%EF%BC%9AGit-%E6%8F%90%E4%BA%A4%E9%92%A9%E5%AD%90"><span class="nav-number">1.</span> <span class="nav-text">第五章：UV 项目开发添加 pre-commit：Git 提交钩子</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%AE%89%E8%A3%85-pre-commit-%E4%B8%8E%E5%89%8D%E7%BD%AE%E5%B7%A5%E5%85%B7"><span class="nav-number">1.2.</span> <span class="nav-text">一、安装 pre-commit 与前置工具</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%BC%80%E5%8F%91%E4%BE%9D%E8%B5%96%EF%BC%88%E4%B8%80%E6%AC%A1%E8%A3%85%E9%BD%90%EF%BC%89"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 开发依赖（一次装齐）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%A1%AE%E8%AE%A4-pre-commit"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 确认 pre-commit</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%B7%BB%E5%8A%A0%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="nav-number">1.3.</span> <span class="nav-text">二、添加配置文件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%96%B0%E5%BB%BA-pre-commit-config-yaml%EF%BC%88%E5%90%AB-Ruff%E3%80%81Pyright%E3%80%81pytest-%E5%89%8D%E7%BD%AE%E9%93%BE%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 新建 .pre-commit-config.yaml（含 Ruff、Pyright、pytest 前置链）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E4%B8%8E-uv-lock-%E5%AF%B9%E9%BD%90"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 与 uv.lock 对齐</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%AE%89%E8%A3%85-Git-%E9%92%A9%E5%AD%90"><span class="nav-number">1.4.</span> <span class="nav-text">三、安装 Git 钩子</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%B8%80%E6%AC%A1%E6%80%A7%E5%AE%89%E8%A3%85%E5%88%B0%E5%BD%93%E5%89%8D%E4%BB%93%E5%BA%93"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. 一次性安装到当前仓库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%89%8B%E5%8A%A8%E8%B7%91%E4%B8%80%E9%81%8D%EF%BC%88%E4%B8%8D%E6%8F%90%E4%BA%A4%E4%B9%9F%E5%8F%AF%E6%B5%8B%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 手动跑一遍（不提交也可测）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81CI-%E4%B8%8E%E5%9B%A2%E9%98%9F%E5%8D%8F%E4%BD%9C"><span class="nav-number">1.5.</span> <span class="nav-text">四、CI 与团队协作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%9C%A8%E6%B5%81%E6%B0%B4%E7%BA%BF%E4%B8%AD%E5%A4%8D%E7%8E%B0"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 在流水线中复现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%B7%B3%E8%BF%87%E9%92%A9%E5%AD%90%EF%BC%88%E6%85%8E%E7%94%A8%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 跳过钩子（慎用）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E6%80%A7%E8%83%BD%E4%B8%8E%E6%8B%86%E5%88%86%E5%BB%BA%E8%AE%AE"><span class="nav-number">1.6.</span> <span class="nav-text">五、性能与拆分建议</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E9%92%A9%E5%AD%90%E8%BF%9B%E9%98%B6%E7%94%A8%E6%B3%95"><span class="nav-number">1.7.</span> <span class="nav-text">六、钩子进阶用法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E9%92%A9%E5%AD%90%E9%98%B6%E6%AE%B5%EF%BC%88stages%EF%BC%89%E6%8B%86%E5%88%86"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. 钩子阶段（stages）拆分</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%8F%AA%E8%B7%91%E6%8C%87%E5%AE%9A%E9%92%A9%E5%AD%90"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. 只跑指定钩子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E8%87%AA%E5%B8%A6%E9%92%A9%E5%AD%90%E6%B8%85%E7%90%86"><span class="nav-number">1.7.3.</span> <span class="nav-text">3. 自带钩子清理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81CI-%E9%9B%86%E6%88%90%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.8.</span> <span class="nav-text">七、CI 集成示例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E5%B8%B8%E8%A7%81%E5%9D%91-FAQ"><span class="nav-number">1.9.</span> <span class="nav-text">八、常见坑 FAQ</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5%E6%B8%85%E5%8D%95"><span class="nav-number">1.10.</span> <span class="nav-text">九、最佳实践清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E9%80%9F%E6%9F%A5"><span class="nav-number">1.11.</span> <span class="nav-text">十、常用命令速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.12.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/python/05-uv-add-pre-commit/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第五章：UV 项目开发添加 pre-commit：Git 提交钩子 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第五章：UV 项目开发添加 pre-commit：Git 提交钩子
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 11:05:00" itemprop="dateCreated datePublished" datetime="2026-05-01T11:05:00+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Python/" itemprop="url" rel="index"><span itemprop="name">Python</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>4.8k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第五章：UV-项目开发添加-pre-commit：Git-提交钩子"><a href="#第五章：UV-项目开发添加-pre-commit：Git-提交钩子" class="headerlink" title="第五章：UV 项目开发添加 pre-commit：Git 提交钩子"></a>第五章：UV 项目开发添加 pre-commit：Git 提交钩子</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>pre-commit</strong> 是一个 <strong>Git 提交钩子管理框架</strong>，在 <code>git commit</code> 前自动执行质量检查：</p>
+<ol>
+<li><strong>质量门禁前置</strong>：把 <strong>Ruff</strong>、<strong>BasedPyright</strong>、<strong>pytest</strong> 等检查放到<strong>提交时刻</strong>自动执行，不合格代码进不了仓库，避免「CI 跑一半才发现格式问题」。</li>
+<li><strong>配置即代码</strong>：所有钩子集中在 <strong><code>.pre-commit-config.yaml</code></strong>，团队成员克隆仓库后 <code>pre-commit install</code> 一次接入，执行同一套检查链。</li>
+<li><strong>钩子链有序执行</strong>：本站推荐顺序为<strong>通用清理（pre-commit-hooks）→ Ruff → BasedPyright → pytest</strong>，由轻到重、快速失败。</li>
+<li><strong>与 uv 协作</strong>：工具钩子用 <strong><code>repo: local</code> + <code>uv run</code></strong> 调用，版本与 <strong><code>uv.lock</code></strong> 完全一致，本地与 CI 行为统一。</li>
+</ol>
+<p>下面从安装、配置到接入 Git 钩子逐步实操：</p>
+<hr>
+<h2 id="一、安装-pre-commit-与前置工具"><a href="#一、安装-pre-commit-与前置工具" class="headerlink" title="一、安装 pre-commit 与前置工具"></a>一、安装 pre-commit 与前置工具</h2><h3 id="1-开发依赖（一次装齐）"><a href="#1-开发依赖（一次装齐）" class="headerlink" title="1. 开发依赖（一次装齐）"></a>1. 开发依赖（一次装齐）</h3><p>提交前若要跑 <strong>Ruff &#x2F; BasedPyright &#x2F; pytest</strong>，需先作为开发依赖安装（若已装可跳过对应包）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uv add --dev pre-commit ruff basedpyright pytest</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>Ruff</strong>：Lint 与格式化（见《第三章：UV 项目开发添加 Ruff：代码检查与格式化》）。  </li>
+<li><strong>BasedPyright</strong>：静态类型检查（见《第四章：UV 项目开发添加 Pyright：静态类型检查》）。  </li>
+<li><strong>pytest</strong>：单元测试（见《第六章：UV 项目开发添加 Pytest：单元测试》）。</li>
+</ul>
+<h3 id="2-确认-pre-commit"><a href="#2-确认-pre-commit" class="headerlink" title="2. 确认 pre-commit"></a>2. 确认 pre-commit</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uv run pre-commit --version</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、添加配置文件"><a href="#二、添加配置文件" class="headerlink" title="二、添加配置文件"></a>二、添加配置文件</h2><h3 id="1-新建-pre-commit-config-yaml（含-Ruff、Pyright、pytest-前置链）"><a href="#1-新建-pre-commit-config-yaml（含-Ruff、Pyright、pytest-前置链）" class="headerlink" title="1. 新建 .pre-commit-config.yaml（含 Ruff、Pyright、pytest 前置链）"></a>1. 新建 <code>.pre-commit-config.yaml</code>（含 Ruff、Pyright、pytest 前置链）</h3><p>在项目根创建 <strong><code>.pre-commit-config.yaml</code></strong>。下面示例顺序为：<strong>通用清理 → Ruff → BasedPyright → pytest</strong>（可按团队习惯删减或调整顺序）。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">repos:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">repo:</span> <span class="string">https://github.com/pre-commit/pre-commit-hooks</span></span><br><span class="line">    <span class="attr">rev:</span> <span class="string">v5.0.0</span></span><br><span class="line">    <span class="attr">hooks:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">id:</span> <span class="string">trailing-whitespace</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">id:</span> <span class="string">end-of-file-fixer</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">id:</span> <span class="string">check-yaml</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">id:</span> <span class="string">check-added-large-files</span></span><br><span class="line"></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">repo:</span> <span class="string">local</span></span><br><span class="line">    <span class="attr">hooks:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">id:</span> <span class="string">ruff-check</span></span><br><span class="line">        <span class="attr">name:</span> <span class="string">ruff</span> <span class="string">check</span> <span class="string">(uv)</span></span><br><span class="line">        <span class="attr">entry:</span> <span class="string">uv</span> <span class="string">run</span> <span class="string">ruff</span> <span class="string">check</span> <span class="string">--fix</span></span><br><span class="line">        <span class="attr">language:</span> <span class="string">system</span></span><br><span class="line">        <span class="attr">types_or:</span> [<span class="string">python</span>, <span class="string">pyi</span>]</span><br><span class="line">        <span class="attr">pass_filenames:</span> <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">id:</span> <span class="string">ruff-format</span></span><br><span class="line">        <span class="attr">name:</span> <span class="string">ruff</span> <span class="string">format</span> <span class="string">(uv)</span></span><br><span class="line">        <span class="attr">entry:</span> <span class="string">uv</span> <span class="string">run</span> <span class="string">ruff</span> <span class="string">format</span></span><br><span class="line">        <span class="attr">language:</span> <span class="string">system</span></span><br><span class="line">        <span class="attr">types_or:</span> [<span class="string">python</span>, <span class="string">pyi</span>]</span><br><span class="line">        <span class="attr">pass_filenames:</span> <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">id:</span> <span class="string">basedpyright</span></span><br><span class="line">        <span class="attr">name:</span> <span class="string">basedpyright</span> <span class="string">(uv)</span></span><br><span class="line">        <span class="attr">entry:</span> <span class="string">uv</span> <span class="string">run</span> <span class="string">basedpyright</span></span><br><span class="line">        <span class="attr">language:</span> <span class="string">system</span></span><br><span class="line">        <span class="attr">types_or:</span> [<span class="string">python</span>, <span class="string">pyi</span>]</span><br><span class="line">        <span class="attr">pass_filenames:</span> <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">id:</span> <span class="string">pytest</span></span><br><span class="line">        <span class="attr">name:</span> <span class="string">pytest</span> <span class="string">(uv)</span></span><br><span class="line">        <span class="attr">entry:</span> <span class="string">uv</span> <span class="string">run</span> <span class="string">pytest</span></span><br><span class="line">        <span class="attr">language:</span> <span class="string">system</span></span><br><span class="line">        <span class="attr">pass_filenames:</span> <span class="literal">false</span></span><br></pre></td></tr></table></figure>
+
+<p>说明：</p>
+<ul>
+<li><strong><code>pre-commit-hooks</code> 的 <code>rev</code></strong>：须与 <a target="_blank" rel="noopener" href="https://github.com/pre-commit/pre-commit-hooks/releases">Releases</a> 上 tag 一致，文中为示例，可用 <strong><code>uv run pre-commit autoupdate</code></strong> 或手动更新。  </li>
+<li><strong>Ruff</strong>：<strong><code>local</code> + <code>uv run</code></strong>，版本与 <strong><code>uv.lock</code></strong> 中 <strong><code>ruff</code></strong> 完全一致；<strong><code>pass_filenames: true</code></strong> 时仅对暂存 <strong><code>.py</code> &#x2F; <code>.pyi</code></strong> 跑 <strong><code>check --fix</code></strong> 与 <strong><code>format</code></strong>。建议顺序为先 <strong><code>ruff check --fix</code></strong> 再 <strong><code>ruff format</code></strong>（与常见习惯一致）。若某次提交未包含 Python 文件，这两个钩子会被跳过。  </li>
+<li><strong>BasedPyright</strong>：<strong><code>pass_filenames: true</code></strong> 时把暂存路径传给 <strong><code>uv run basedpyright</code></strong>（需与 <strong><code>pyproject.toml</code></strong> 里 <strong><code>[tool.pyright]</code></strong> 的 <strong><code>include</code></strong> 等不矛盾）；若要整仓与 CI 一致可改为 <strong><code>pass_filenames: false</code></strong>。  </li>
+<li><strong>pytest</strong>：示例为 <strong><code>pass_filenames: false</code></strong>，每次 <strong><code>uv run pytest</code></strong>（范围由 <strong><code>pyproject.toml</code></strong> 中 <strong><code>testpaths</code></strong> 等决定）；若需减负可改为 <strong><code>pass_filenames: true</code></strong> 并加 <strong><code>files: ^tests/</code></strong> 等。</li>
+</ul>
+<h3 id="2-与-uv-lock-对齐"><a href="#2-与-uv-lock-对齐" class="headerlink" title="2. 与 uv.lock 对齐"></a>2. 与 <code>uv.lock</code> 对齐</h3><p><strong>Ruff、BasedPyright、pytest</strong> 均通过 <strong><code>uv run</code></strong> 调用，<strong>与本地及 CI 的 <code>uv sync</code> 结果一致</strong>；仅 <strong><code>pre-commit-hooks</code></strong> 仍由 pre-commit 按 <strong><code>rev</code></strong> 拉取，与 Python 工具链版本无关。</p>
+<hr>
+<h2 id="三、安装-Git-钩子"><a href="#三、安装-Git-钩子" class="headerlink" title="三、安装 Git 钩子"></a>三、安装 Git 钩子</h2><h3 id="1-一次性安装到当前仓库"><a href="#1-一次性安装到当前仓库" class="headerlink" title="1. 一次性安装到当前仓库"></a>1. 一次性安装到当前仓库</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uv run pre-commit install</span><br></pre></td></tr></table></figure>
+
+<p>之后每次 <strong><code>git commit</code></strong> 会按配置<strong>自上而下</strong>执行：先通用钩子与 Ruff，再 <strong>BasedPyright</strong>，最后 <strong>pytest</strong>。</p>
+<h3 id="2-手动跑一遍（不提交也可测）"><a href="#2-手动跑一遍（不提交也可测）" class="headerlink" title="2. 手动跑一遍（不提交也可测）"></a>2. 手动跑一遍（不提交也可测）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uv run pre-commit run --all-files</span><br></pre></td></tr></table></figure>
+
+<p>首次运行主要拉取 <strong><code>pre-commit-hooks</code></strong> 指定 <strong><code>rev</code></strong>；<strong><code>local</code></strong> 钩子不另建虚拟环境，直接调用本机 <strong><code>uv</code></strong>。</p>
+<hr>
+<h2 id="四、CI-与团队协作"><a href="#四、CI-与团队协作" class="headerlink" title="四、CI 与团队协作"></a>四、CI 与团队协作</h2><h3 id="1-在流水线中复现"><a href="#1-在流水线中复现" class="headerlink" title="1. 在流水线中复现"></a>1. 在流水线中复现</h3><p>CI 在 <strong><code>uv sync</code></strong>（含 dev）之后执行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uv run pre-commit run --all-files</span><br></pre></td></tr></table></figure>
+
+<p>与本地同一套 <strong>Ruff → Pyright → pytest</strong> 前置链，减少环境漂移。</p>
+<h3 id="2-跳过钩子（慎用）"><a href="#2-跳过钩子（慎用）" class="headerlink" title="2. 跳过钩子（慎用）"></a>2. 跳过钩子（慎用）</h3><p>仅应急排障：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git commit --no-verify</span><br></pre></td></tr></table></figure>
+
+<p>勿作为常规绕过。</p>
+<hr>
+<h2 id="五、性能与拆分建议"><a href="#五、性能与拆分建议" class="headerlink" title="五、性能与拆分建议"></a>五、性能与拆分建议</h2><ul>
+<li><strong>pytest 全量</strong>放在每次 commit 可能偏慢：可只在 <strong>CI</strong> 跑全量，本地 pre-commit 保留 <strong>Ruff + BasedPyright</strong>，或给 <strong>pytest</strong> 加 <strong><code>stages: [manual]</code></strong> 改为手动 <strong><code>pre-commit run pytest</code></strong>。  </li>
+<li><strong>BasedPyright</strong> 对大仓库也偏慢：<strong><code>pass_filenames: true</code></strong> 只检查暂存文件通常更轻。详见《第四章：UV 项目开发添加 Pyright：静态类型检查》中配置说明。</li>
+</ul>
+<hr>
+<h2 id="六、钩子进阶用法"><a href="#六、钩子进阶用法" class="headerlink" title="六、钩子进阶用法"></a>六、钩子进阶用法</h2><h3 id="1-钩子阶段（stages）拆分"><a href="#1-钩子阶段（stages）拆分" class="headerlink" title="1. 钩子阶段（stages）拆分"></a>1. 钩子阶段（stages）拆分</h3><p>pre-commit 支持把钩子绑到不同 Git 阶段，常见拆法：<strong>commit 时跑快检查，push 前跑重检查</strong>：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="bullet">-</span> <span class="attr">id:</span> <span class="string">ruff-check</span></span><br><span class="line">  <span class="attr">entry:</span> <span class="string">uv</span> <span class="string">run</span> <span class="string">ruff</span> <span class="string">check</span> <span class="string">--fix</span></span><br><span class="line">  <span class="attr">language:</span> <span class="string">system</span></span><br><span class="line">  <span class="attr">stages:</span> [<span class="string">pre-commit</span>]</span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">id:</span> <span class="string">pytest</span></span><br><span class="line">  <span class="attr">entry:</span> <span class="string">uv</span> <span class="string">run</span> <span class="string">pytest</span></span><br><span class="line">  <span class="attr">language:</span> <span class="string">system</span></span><br><span class="line">  <span class="attr">pass_filenames:</span> <span class="literal">false</span></span><br><span class="line">  <span class="attr">stages:</span> [<span class="string">pre-push</span>]</span><br></pre></td></tr></table></figure>
+
+<p>装 push 钩子需额外执行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">uv run pre-commit install --hook-type pre-push</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-只跑指定钩子"><a href="#2-只跑指定钩子" class="headerlink" title="2. 只跑指定钩子"></a>2. 只跑指定钩子</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">uv run pre-commit run ruff-check --all-files</span><br><span class="line">uv run pre-commit run pytest            <span class="comment"># 只跑暂存区相关（按配置）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-自带钩子清理"><a href="#3-自带钩子清理" class="headerlink" title="3. 自带钩子清理"></a>3. 自带钩子清理</h3><p><code>pre-commit-hooks</code> 官方仓库常用条目速查：</p>
+<table>
+<thead>
+<tr>
+<th>钩子</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>trailing-whitespace</code></td>
+<td>去行尾空白</td>
+</tr>
+<tr>
+<td><code>end-of-file-fixer</code></td>
+<td>保证文件以换行结尾</td>
+</tr>
+<tr>
+<td><code>check-yaml</code> &#x2F; <code>check-toml</code> &#x2F; <code>check-json</code></td>
+<td>语法校验</td>
+</tr>
+<tr>
+<td><code>check-added-large-files</code></td>
+<td>拦截误提交的大文件</td>
+</tr>
+<tr>
+<td><code>check-merge-conflict</code></td>
+<td>拦截残留冲突标记 <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code></td>
+</tr>
+<tr>
+<td><code>detect-private-key</code></td>
+<td>拦截私钥文件入库</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="七、CI-集成示例"><a href="#七、CI-集成示例" class="headerlink" title="七、CI 集成示例"></a>七、CI 集成示例</h2><p>GitHub Actions 可直接复用同一套配置（<code>pre-commit</code> 官方也提供轻量 Action，但走 <code>uv run</code> 更一致）：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">name:</span> <span class="string">pre-commit</span></span><br><span class="line"><span class="attr">on:</span> [<span class="string">push</span>, <span class="string">pull_request</span>]</span><br><span class="line"><span class="attr">jobs:</span></span><br><span class="line">  <span class="attr">hooks:</span></span><br><span class="line">    <span class="attr">runs-on:</span> <span class="string">ubuntu-latest</span></span><br><span class="line">    <span class="attr">steps:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">uses:</span> <span class="string">actions/checkout@v4</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">uses:</span> <span class="string">astral-sh/setup-uv@v5</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">uv</span> <span class="string">sync</span> <span class="string">--frozen</span> <span class="string">--dev</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">run:</span> <span class="string">uv</span> <span class="string">run</span> <span class="string">pre-commit</span> <span class="string">run</span> <span class="string">--all-files</span></span><br></pre></td></tr></table></figure>
+
+<p>关键差异：<strong>CI 必须 <code>--all-files</code></strong>（CI 上没有「暂存区」概念），本地默认只跑暂存文件。</p>
+<hr>
+<h2 id="八、常见坑-FAQ"><a href="#八、常见坑-FAQ" class="headerlink" title="八、常见坑 FAQ"></a>八、常见坑 FAQ</h2><table>
+<thead>
+<tr>
+<th>坑</th>
+<th>现象</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>钩子把文件改了但提交仍成功</strong></td>
+<td><code>--fix</code> 修改了文件，提交内容其实未包含修复</td>
+<td>pre-commit 会判定失败并阻拦；<code>git add</code> 修复结果后重新提交即可——这是<strong>特性不是 bug</strong></td>
+</tr>
+<tr>
+<td><strong>首次运行卡很久</strong></td>
+<td>拉取远程 <code>rev</code> 仓库与依赖慢</td>
+<td>属正常；团队可统一 <code>uv run pre-commit autoupdate</code> 后锁版本</td>
+</tr>
+<tr>
+<td><strong><code>uv run</code> 在钩子里找不到 uv</strong></td>
+<td>钩子在极简 PATH 下执行</td>
+<td>确认 uv 装在用户级目录（默认安装即满足）；CI 里先 <code>setup-uv</code></td>
+</tr>
+<tr>
+<td><strong>大仓库 pytest 每次全量跑</strong></td>
+<td>commit 慢到无法忍受</td>
+<td>pytest 钩子改 <code>stages: [pre-push]</code> 或 <code>manual</code>，全量交给 CI</td>
+</tr>
+<tr>
+<td><strong><code>--no-verify</code> 被滥用</strong></td>
+<td>脏代码入库，CI 才暴雷</td>
+<td>团队约定禁止；可在 CI 用同一套钩子兜底</td>
+</tr>
+<tr>
+<td><strong>YAML 语法错导致钩子不生效</strong></td>
+<td>修改配置后钩子没变化</td>
+<td><code>uv run pre-commit run --all-files</code> 立即全量验证配置</td>
+</tr>
+<tr>
+<td><strong>Windows 上 <code>language: system</code> 路径问题</strong></td>
+<td>找不到可执行文件</td>
+<td>uv 在 PATH 即可；避免在 entry 里写绝对路径</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="九、最佳实践清单"><a href="#九、最佳实践清单" class="headerlink" title="九、最佳实践清单"></a>九、最佳实践清单</h2><ol>
+<li><strong>钩子链由轻到重</strong>：清理类 → Ruff → BasedPyright → pytest，快速失败省时间。  </li>
+<li><strong>工具钩子一律 <code>repo: local</code> + <code>uv run</code></strong>，版本跟着 <code>uv.lock</code> 走，杜绝「我本地是新版、CI 是旧版」。  </li>
+<li><strong>本地与 CI 同配置</strong>：CI 用 <code>--all-files</code> 跑同一 YAML，不做双份维护。  </li>
+<li><strong>重检查下沉</strong>：全量 pytest 放 pre-push 或 CI，commit 保持秒级反馈。  </li>
+<li><strong>定期 <code>autoupdate</code></strong>：每月更新 <code>pre-commit-hooks</code> 的 <code>rev</code> 并 review 变更。  </li>
+<li><strong><code>--no-verify</code> 视为事故通道</strong>：用了就要在 PR 描述里说明原因。</li>
+</ol>
+<hr>
+<h2 id="十、常用命令速查"><a href="#十、常用命令速查" class="headerlink" title="十、常用命令速查"></a>十、常用命令速查</h2><table>
+<thead>
+<tr>
+<th>目的</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>安装开发依赖</td>
+<td><code>uv add --dev pre-commit ruff basedpyright pytest</code></td>
+</tr>
+<tr>
+<td>安装 Git 钩子</td>
+<td><code>uv run pre-commit install</code></td>
+</tr>
+<tr>
+<td>全量跑 hooks</td>
+<td><code>uv run pre-commit run --all-files</code></td>
+</tr>
+<tr>
+<td>更新远程 rev</td>
+<td><code>uv run pre-commit autoupdate</code></td>
+</tr>
+</tbody></table>
+<p>官方文档：<a target="_blank" rel="noopener" href="https://pre-commit.com/">pre-commit.com</a>。</p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>工具定位</td>
+<td><strong>Git 提交钩子管理框架</strong>，把质量门禁前置到 <code>git commit</code> 时刻</td>
+</tr>
+<tr>
+<td>前置链顺序</td>
+<td>通用清理 → <strong>Ruff</strong> → <strong>BasedPyright</strong> → <strong>pytest</strong>，由轻到重快速失败</td>
+</tr>
+<tr>
+<td>核心配置</td>
+<td>钩子集中在 <strong><code>.pre-commit-config.yaml</code></strong>；工具钩子用 <code>repo: local</code> + <code>uv run</code> 与 <code>uv.lock</code> 对齐</td>
+</tr>
+<tr>
+<td>接入与验证</td>
+<td><code>pre-commit install</code> 安装钩子；<code>pre-commit run --all-files</code> 手动全量预演</td>
+</tr>
+<tr>
+<td>CI 协作</td>
+<td>流水线 <code>uv sync</code> 后跑同一套钩子链；<code>--no-verify</code> 仅限应急</td>
+</tr>
+<tr>
+<td>阶段拆分</td>
+<td>commit 跑轻检查、push&#x2F;CI 跑全量测试；CI 必须 <code>--all-files</code></td>
+</tr>
+</tbody></table>
+<hr>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Python/" rel="tag"># Python</a>
+              <a href="/tags/UV/" rel="tag"># UV</a>
+              <a href="/tags/%E4%BB%A3%E7%A0%81%E8%A7%84%E8%8C%83/" rel="tag"># 代码规范</a>
+              <a href="/tags/pre-commit/" rel="tag"># pre-commit</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/python/04-uv-add-pyright/" rel="prev" title="第四章：UV 项目开发添加 Pyright：静态类型检查">
+                  <i class="fa fa-angle-left"></i> 第四章：UV 项目开发添加 Pyright：静态类型检查
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/python/06-uv-add-pytest/" rel="next" title="第六章：UV 项目开发添加 Pytest：单元测试">
+                  第六章：UV 项目开发添加 Pytest：单元测试 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：Nginx 缓存与性能调优概念基础 缓存在网关层最划算：proxy_cache 让重复的后端响应停在 Nginx 本地磁盘&#x2F;内存，QPS 高峰被削平，后端直接减负。 压缩是免费带宽：gzip（文本）与 brotli（第三方模块）能把 JS&#x2F;CSS 压到原体积 20%~30%，首屏时间立竿见影。 静态路径靠 sendfile：sendfile + tcp_nopush 走">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：Nginx 缓存与性能调优">
+<meta property="og:url" content="https://my919.github.io/nginx/04-nginx-cache-tuning/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：Nginx 缓存与性能调优概念基础 缓存在网关层最划算：proxy_cache 让重复的后端响应停在 Nginx 本地磁盘&#x2F;内存，QPS 高峰被削平，后端直接减负。 压缩是免费带宽：gzip（文本）与 brotli（第三方模块）能把 JS&#x2F;CSS 压到原体积 20%~30%，首屏时间立竿见影。 静态路径靠 sendfile：sendfile + tcp_nopush 走">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:31:53.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.588Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Nginx">
+<meta property="article:tag" content="性能">
+<meta property="article:tag" content="缓存">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/nginx/04-nginx-cache-tuning/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/nginx/04-nginx-cache-tuning/","path":"nginx/04-nginx-cache-tuning/","title":"第四章：Nginx 缓存与性能调优"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：Nginx 缓存与性能调优 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9ANginx-%E7%BC%93%E5%AD%98%E4%B8%8E%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98"><span class="nav-number">1.</span> <span class="nav-text">第四章：Nginx 缓存与性能调优</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81proxy-cache%EF%BC%9A%E7%BD%91%E5%85%B3%E5%B1%82%E7%BC%93%E5%AD%98"><span class="nav-number">1.2.</span> <span class="nav-text">一、proxy_cache：网关层缓存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%B8%A4%E6%AE%B5%E5%BC%8F%E9%85%8D%E7%BD%AE%EF%BC%88http-%E5%AE%9A%E4%B9%89%E5%8C%BA%EF%BC%8Cserver-%E4%BD%BF%E7%94%A8%EF%BC%89"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 两段式配置（http 定义区，server 使用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%BC%93%E5%AD%98%E5%91%BD%E4%B8%AD%E6%8E%92%E6%9F%A5"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 缓存命中排查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%BC%93%E5%AD%98%E7%9B%AE%E5%BD%95%E5%88%86%E5%B1%82%E4%B8%8E%E9%94%AE%E8%AE%BE%E8%AE%A1"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. 缓存目录分层与键设计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E9%98%B2%E5%9B%9E%E6%BA%90%E5%87%BB%E7%A9%BF"><span class="nav-number">1.2.4.</span> <span class="nav-text">4. 防回源击穿</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E7%BC%93%E5%AD%98%E6%B8%85%E9%99%A4%E4%B8%89%E7%A7%8D%E8%B7%AF%E5%AD%90"><span class="nav-number">1.2.5.</span> <span class="nav-text">5. 缓存清除三种路子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E7%BC%93%E5%86%B2%E4%BC%B0%E7%AE%97%E4%B8%8E-Vary-%E9%99%B7%E9%98%B1"><span class="nav-number">1.2.6.</span> <span class="nav-text">6. 缓冲估算与 Vary 陷阱</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E9%9D%99%E6%80%81%E8%B5%84%E6%BA%90%EF%BC%9A%E7%BC%93%E5%AD%98%E5%A4%B4%E4%B8%8E%E9%9B%B6%E6%8B%B7%E8%B4%9D"><span class="nav-number">1.3.</span> <span class="nav-text">二、静态资源：缓存头与零拷贝</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%8E%8B%E7%BC%A9%EF%BC%9Agzip-%E4%B8%8E-brotli"><span class="nav-number">1.4.</span> <span class="nav-text">三、压缩：gzip 与 brotli</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9E%E6%8E%A5%E4%B8%8E%E5%B9%B6%E5%8F%91%E8%B0%83%E4%BC%98"><span class="nav-number">1.5.</span> <span class="nav-text">四、连接与并发调优</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#worker-%E7%BA%A7%E8%B5%84%E6%BA%90%E6%A0%B8%E5%AF%B9"><span class="nav-number">1.5.1.</span> <span class="nav-text">worker 级资源核对</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%8E%8B%E6%B5%8B%E4%B8%8E%E8%A7%82%E6%B5%8B"><span class="nav-number">1.6.</span> <span class="nav-text">五、压测与观测</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81OpenResty%EF%BC%9A%E4%BC%9A%E5%86%99-Lua-%E7%9A%84-Nginx"><span class="nav-number">1.7.</span> <span class="nav-text">六、OpenResty：会写 Lua 的 Nginx</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.8.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/nginx/04-nginx-cache-tuning/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：Nginx 缓存与性能调优 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：Nginx 缓存与性能调优
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:31:53" itemprop="dateCreated datePublished" datetime="2026-05-01T13:31:53+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Nginx/" itemprop="url" rel="index"><span itemprop="name">Nginx</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：Nginx-缓存与性能调优"><a href="#第四章：Nginx-缓存与性能调优" class="headerlink" title="第四章：Nginx 缓存与性能调优"></a>第四章：Nginx 缓存与性能调优</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>缓存在网关层最划算</strong>：<code>proxy_cache</code> 让重复的后端响应停在 Nginx 本地磁盘&#x2F;内存，QPS 高峰被削平，后端直接减负。</li>
+<li><strong>压缩是免费带宽</strong>：<code>gzip</code>（文本）与 <code>brotli</code>（第三方模块）能把 JS&#x2F;CSS 压到原体积 20%~30%，首屏时间立竿见影。</li>
+<li><strong>静态路径靠 sendfile</strong>：<code>sendfile</code> + <code>tcp_nopush</code> 走内核零拷贝，<code>open_file_cache</code> 缓存文件元数据——静态服务的三连优化。</li>
+<li><strong>容量公式要心里有数</strong>：最大连接 ≈ <code>worker_processes × worker_connections</code>；长连接 <code>keepalive</code> 减少握手次数。</li>
+<li><strong>调优先测量</strong>：改参数前先 <code>ab</code>&#x2F;<code>wrk</code> 压测拿基线，盯 <code>access_log</code> 的 <code>$request_time</code> 与系统 CPU&#x2F;内存，避免「凭感觉调参」。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/nginx/nginx-guide/">第一章：Nginx 入门与静态服务</a> 的配置结构，参数基于 nginx 1.28&#x2F;1.29 官方语法书写（沙箱未装 nginx，未逐条运行验证）。</p>
+</blockquote>
+<hr>
+<h2 id="一、proxy-cache：网关层缓存"><a href="#一、proxy-cache：网关层缓存" class="headerlink" title="一、proxy_cache：网关层缓存"></a>一、proxy_cache：网关层缓存</h2><h3 id="1-两段式配置（http-定义区，server-使用）"><a href="#1-两段式配置（http-定义区，server-使用）" class="headerlink" title="1. 两段式配置（http 定义区，server 使用）"></a>1. 两段式配置（http 定义区，server 使用）</h3><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># http 作用域：定义缓存区（keys_zone 名称:共享内存大小；磁盘上限 max_size）</span></span><br><span class="line"><span class="attribute">proxy_cache_path</span> /var/cache/nginx/app</span><br><span class="line">                 levels=<span class="number">1</span>:<span class="number">2</span></span><br><span class="line">                 keys_zone=app_cache:<span class="number">50m</span></span><br><span class="line">                 max_size=<span class="number">2g</span></span><br><span class="line">                 inactive=<span class="number">60m</span></span><br><span class="line">                 use_temp_path=<span class="literal">off</span>;</span><br><span class="line"></span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="section">location</span> /api/public/ &#123;</span><br><span class="line">        <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line"></span><br><span class="line">        <span class="attribute">proxy_cache</span> app_cache;</span><br><span class="line">        <span class="attribute">proxy_cache_key</span> <span class="string">&quot;<span class="variable">$scheme</span><span class="variable">$host</span><span class="variable">$request_uri</span>&quot;</span>;</span><br><span class="line">        <span class="attribute">proxy_cache_valid</span> <span class="number">200</span> <span class="number">301</span> <span class="number">10m</span>;     <span class="comment"># 200/301 缓存 10 分钟</span></span><br><span class="line">        <span class="attribute">proxy_cache_valid</span> <span class="number">404</span>      <span class="number">1m</span>;</span><br><span class="line">        <span class="attribute">proxy_cache_use_stale</span> <span class="literal">error</span> timeout updating;   <span class="comment"># 后端挂了发旧缓存</span></span><br><span class="line"></span><br><span class="line">        <span class="attribute">add_header</span> X-Cache-Status <span class="variable">$upstream_cache_status</span>;  <span class="comment"># 调试：HIT/MISS/EXPIRED</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-缓存命中排查"><a href="#2-缓存命中排查" class="headerlink" title="2. 缓存命中排查"></a>2. 缓存命中排查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -sI https://example.com/api/public/list | grep -i x-cache</span><br><span class="line"><span class="comment"># 第一次：X-Cache-Status: MISS</span></span><br><span class="line"><span class="comment"># 第二次：X-Cache-Status: HIT</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>动态接口慎缓存</strong>：带 Cookie&#x2F;Authorization 的响应默认不该缓存；必要时用 <code>proxy_cache_bypass $http_authorization;</code> + <code>proxy_no_cache $http_authorization;</code> 显式绕开。缓存清理的完整方案见下文「缓存清除三种路子」。</p>
+</blockquote>
+<h3 id="3-缓存目录分层与键设计"><a href="#3-缓存目录分层与键设计" class="headerlink" title="3. 缓存目录分层与键设计"></a>3. 缓存目录分层与键设计</h3><ol>
+<li><strong><code>levels=1:2</code></strong>：缓存文件按哈希建两级子目录（如 <code>/var/cache/nginx/app/c/29/</code>），避免单目录几十万文件拖垮文件系统查找；</li>
+<li><strong>keys_zone 容量</strong>：1MB 共享内存约存 <strong>8000 个 key</strong> 的元数据——50MB ≈ 40 万条缓存，据此估算规模；</li>
+<li><strong><code>proxy_cache_key</code> 默认值</strong>：<code>$scheme$proxy_host$request_uri</code>——注意不含任何请求头；</li>
+<li><strong>多语言&#x2F;多端站点</strong>：把差异维度加进 key，如 <code>proxy_cache_key &quot;$scheme$host$request_uri$http_accept_language&quot;;</code>，否则中文用户可能拿到英文缓存。</li>
+</ol>
+<h3 id="4-防回源击穿"><a href="#4-防回源击穿" class="headerlink" title="4. 防回源击穿"></a>4. 防回源击穿</h3><p>热点 key 过期瞬间，上万请求同时穿透到后端（缓存击穿）——四个参数按住：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> /api/public/ &#123;</span><br><span class="line">    <span class="attribute">proxy_cache</span> app_cache;</span><br><span class="line">    <span class="attribute">proxy_cache_lock</span> <span class="literal">on</span>;                              <span class="comment"># 同一 key 只放一个请求回源，其余排队</span></span><br><span class="line">    <span class="attribute">proxy_cache_lock_timeout</span> <span class="number">5s</span>;</span><br><span class="line">    <span class="attribute">proxy_cache_background_update</span> <span class="literal">on</span>;                 <span class="comment"># 过期缓存后台异步刷新</span></span><br><span class="line">    <span class="attribute">proxy_cache_use_stale</span> updating <span class="literal">error</span> timeout;     <span class="comment"># 刷新期间先发旧缓存</span></span><br><span class="line">    <span class="attribute">proxy_cache_min_uses</span> <span class="number">3</span>;                           <span class="comment"># 请求 3 次才缓存，滤掉一次性长尾</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>组合含义：<strong>lock 挡并发、stale 兜底、background_update 提前刷新、min_uses 防缓存被长尾污染</strong>。</p>
+<p>顺带区分两个易混概念：</p>
+<ol>
+<li><strong>缓存穿透</strong>：查询<strong>不存在</strong>的数据，缓存永不命中、请求直达后端——对空结果也缓存短 TTL（<code>proxy_cache_valid 404 1m;</code>）或前端布隆过滤器应对；</li>
+<li><strong>缓存雪崩</strong>：大量 key <strong>同时过期</strong>——给 TTL 加随机抖动（基础 10m ± 2m），避免齐刷刷同时失效。</li>
+</ol>
+<h3 id="5-缓存清除三种路子"><a href="#5-缓存清除三种路子" class="headerlink" title="5. 缓存清除三种路子"></a>5. 缓存清除三种路子</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>条件</th>
+<th>粒度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>proxy_cache_purge</code></td>
+<td>Nginx Plus</td>
+<td>按 key&#x2F;前缀精确清除</td>
+</tr>
+<tr>
+<td><code>ngx_cache_purge</code> 模块</td>
+<td>开源需自行编译</td>
+<td>按 URL 清除</td>
+</tr>
+<tr>
+<td>手删缓存目录 + reload</td>
+<td>无依赖</td>
+<td>全量，粗暴但有效</td>
+</tr>
+</tbody></table>
+<p>开源 + purge 模块的典型配置（只许内网调用）：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> <span class="regexp">~ /purge(/.*)</span> &#123;</span><br><span class="line">    <span class="attribute">allow</span> <span class="number">127.0.0.1</span>;</span><br><span class="line">    <span class="attribute">allow</span> <span class="number">10.0.0.0</span>/<span class="number">8</span>;</span><br><span class="line">    <span class="attribute">deny</span>  all;</span><br><span class="line">    <span class="attribute">proxy_cache_purge</span> app_cache <span class="string">&quot;<span class="variable">$scheme</span><span class="variable">$host</span><span class="variable">$1</span>&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>更省心的思路</strong>：key 里带版本号——<code>proxy_cache_key &quot;$scheme$host$request_uri|v3&quot;;</code>，发版时版本号 +1，旧缓存随 <code>inactive</code> 自然过期，根本不用清。</p>
+<h3 id="6-缓冲估算与-Vary-陷阱"><a href="#6-缓冲估算与-Vary-陷阱" class="headerlink" title="6. 缓冲估算与 Vary 陷阱"></a>6. 缓冲估算与 Vary 陷阱</h3><p><strong>proxy_buffers 怎么估</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>装什么</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>proxy_buffer_size</code></td>
+<td>响应<strong>头</strong></td>
+<td>4k~8k，带大 cookie 的场景调大</td>
+</tr>
+<tr>
+<td><code>proxy_buffers 8 32k</code></td>
+<td>响应<strong>体</strong></td>
+<td>单连接最多 8×32k&#x3D;256k 内存缓冲</td>
+</tr>
+<tr>
+<td><code>proxy_busy_buffers_size</code></td>
+<td>边收边发时允许占用的缓冲</td>
+<td>通常设为单 buffer 的 2 倍</td>
+</tr>
+</tbody></table>
+<p>并发 1000、每连接 256k 缓冲 → 峰值约 256MB 内存，按 <code>worker_connections × proxy_buffers</code> 估算总量。</p>
+<p><strong>Vary 陷阱</strong>：后端响应带 <code>Vary: User-Agent</code> 之类头时，每个 UA 一份缓存，命中率暴跌——非必要别让后端发 Vary；确认无差异内容后可 <code>proxy_ignore_headers Vary;</code> 显式忽略。</p>
+<hr>
+<h2 id="二、静态资源：缓存头与零拷贝"><a href="#二、静态资源：缓存头与零拷贝" class="headerlink" title="二、静态资源：缓存头与零拷贝"></a>二、静态资源：缓存头与零拷贝</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">http</span> &#123;</span><br><span class="line">    <span class="attribute">sendfile</span>        <span class="literal">on</span>;          <span class="comment"># 文件发送走内核零拷贝</span></span><br><span class="line">    <span class="attribute">tcp_nopush</span>      <span class="literal">on</span>;          <span class="comment"># 配合 sendfile 一次发包头+文件块</span></span><br><span class="line">    <span class="attribute">tcp_nodelay</span>     <span class="literal">on</span>;          <span class="comment"># keepalive 下禁用 Nagle，小包立刻发</span></span><br><span class="line"></span><br><span class="line">    <span class="attribute">open_file_cache</span>          max=<span class="number">10000</span> inactive=<span class="number">30s</span>;   <span class="comment"># 缓存 fd 与元数据</span></span><br><span class="line">    <span class="attribute">open_file_cache_valid</span>    <span class="number">60s</span>;</span><br><span class="line">    <span class="attribute">open_file_cache_min_uses</span> <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line">    <span class="section">server</span> &#123;</span><br><span class="line">        <span class="section">location</span> <span class="regexp">~* \.(js|css|png|jpg|woff2)$</span> &#123;</span><br><span class="line">            <span class="attribute">expires</span> <span class="number">7d</span>;                                    <span class="comment"># 强缓存头</span></span><br><span class="line">            <span class="attribute">add_header</span> Cache-Control <span class="string">&quot;public, max-age=604800&quot;</span>;</span><br><span class="line">            <span class="attribute">access_log</span> <span class="literal">off</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>前端配合</strong>：构建产物带内容指纹（<code>app.3f9d2c.js</code>，由 <a href="/frontend/02-vite-guide/">第二章：Vite 工程化构建与部署</a> 产出），才能放心把 <code>expires</code> 拉到 7 天以上。</p>
+<hr>
+<h2 id="三、压缩：gzip-与-brotli"><a href="#三、压缩：gzip-与-brotli" class="headerlink" title="三、压缩：gzip 与 brotli"></a>三、压缩：gzip 与 brotli</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">http</span> &#123;</span><br><span class="line">    <span class="attribute">gzip</span>               <span class="literal">on</span>;</span><br><span class="line">    <span class="attribute">gzip_comp_level</span>    <span class="number">5</span>;            <span class="comment"># 1~9：5 是性价比拐点</span></span><br><span class="line">    <span class="attribute">gzip_min_length</span>    <span class="number">1k</span>;           <span class="comment"># 小于 1KB 不压（越压越大）</span></span><br><span class="line">    <span class="attribute">gzip_vary</span>          <span class="literal">on</span>;           <span class="comment"># 告知 CDN/代理按 Accept-Encoding 区分</span></span><br><span class="line">    <span class="attribute">gzip_proxied</span>       any;</span><br><span class="line">    <span class="attribute">gzip_types</span> text/plain text/css application/javascript</span><br><span class="line">               application/json image/svg+xml;   <span class="comment"># 默认只有 text/html！</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># brotli 为官方第三方模块（nginx.org 包默认不含），此处仅作参考</span></span><br><span class="line">    <span class="comment"># brotli on; brotli_comp_level 5; brotli_types &lt;同 gzip_types&gt;;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">curl -sI -H <span class="string">&quot;Accept-Encoding: gzip&quot;</span> https://example.com/ | grep -i content-encoding</span><br><span class="line"><span class="comment"># Content-Encoding: gzip</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>图片&#x2F;视频&#x2F;WOFF2 不要进 gzip_types</strong>：它们自身已压缩，二次压缩只费 CPU 不省流量。</p>
+</blockquote>
+<hr>
+<h2 id="四、连接与并发调优"><a href="#四、连接与并发调优" class="headerlink" title="四、连接与并发调优"></a>四、连接与并发调优</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">main</span> / events 作用域：</span><br><span class="line"></span><br><span class="line">worker_processes  auto;              <span class="comment"># = CPU 核数</span></span><br><span class="line"><span class="attribute">worker_rlimit_nofile</span> <span class="number">65535</span>;          <span class="comment"># worker 可打开文件数（≥ connections）</span></span><br><span class="line"></span><br><span class="line"><span class="section">events</span> &#123;</span><br><span class="line">    <span class="attribute">worker_connections</span>  <span class="number">10240</span>;       <span class="comment"># 单 worker 最大连接</span></span><br><span class="line">    <span class="attribute">use</span> <span class="literal">epoll</span>;                       <span class="comment"># Linux 默认即是，显式写明</span></span><br><span class="line">    <span class="attribute">multi_accept</span> <span class="literal">on</span>;                 <span class="comment"># 一次 accept 尽量收完等待队列</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="section">http</span> &#123;</span><br><span class="line">    <span class="attribute">keepalive_timeout</span>  <span class="number">65</span>;           <span class="comment"># 客户端长连接</span></span><br><span class="line">    <span class="attribute">keepalive_requests</span> <span class="number">1000</span>;         <span class="comment"># 一条连接最多处理请求数</span></span><br><span class="line"></span><br><span class="line">    <span class="attribute">server_tokens</span> <span class="literal">off</span>;               <span class="comment"># 隐藏版本号，减少指纹</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>容量心算</strong>：最大并发连接 &#x3D; <code>worker_processes × worker_connections</code>（如 8 核 × 10240 ≈ 8 万），再除以平均每用户连接数估算承载规模。</p>
+<h3 id="worker-级资源核对"><a href="#worker-级资源核对" class="headerlink" title="worker 级资源核对"></a>worker 级资源核对</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /proc/$(pgrep -o nginx)/limits | grep <span class="string">&quot;open files&quot;</span>   <span class="comment"># 确认 rlimit 生效</span></span><br><span class="line"><span class="built_in">ulimit</span> -n                          <span class="comment"># 当前 shell 的句柄上限（对照第五章）</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、压测与观测"><a href="#五、压测与观测" class="headerlink" title="五、压测与观测"></a>五、压测与观测</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 基线压测（ab 随 httpd/httpd-tools 提供；wrk 更现代）</span></span><br><span class="line">ab -n 10000 -c 200 https://example.com/api/public/list</span><br><span class="line">wrk -t4 -c500 -d30s https://example.com/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志看耗时分布（第一章的 log_format 含 $request_time）</span></span><br><span class="line">awk <span class="string">&#x27;$request_time &gt; 0.5 &#123;c++&#125; END&#123;print c, &quot;slow requests&quot;&#125;&#x27;</span> /var/log/nginx/access.log</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>异常信号</th>
+<th>第一嫌疑</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>request_time 高</td>
+<td>P99 &gt; 1s</td>
+<td>后端慢（见 <a href="/nginx/02-nginx-reverse-proxy-lb/">第二章</a> 超时配置）</td>
+</tr>
+<tr>
+<td>CPU 高、load 高</td>
+<td>worker 吃满</td>
+<td>压缩级别&#x2F;SSL 握手&#x2F;缓存未命中</td>
+</tr>
+<tr>
+<td>499&#x2F;504 多</td>
+<td>客户端等不及</td>
+<td>read_timeout、后端阻塞</td>
+</tr>
+<tr>
+<td>连接数逼近上限</td>
+<td>error.log worker_connections 不够</td>
+<td>调 connections&#x2F;keepalive</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="六、OpenResty：会写-Lua-的-Nginx"><a href="#六、OpenResty：会写-Lua-的-Nginx" class="headerlink" title="六、OpenResty：会写 Lua 的 Nginx"></a>六、OpenResty：会写 Lua 的 Nginx</h2><p>OpenResty 把 <strong>LuaJIT</strong> 嵌进 Nginx 事件循环（<code>lua-nginx-module</code>），在请求各阶段执行 Lua 脚本——不用编译 C 模块就能获得可编程网关。<strong>Kong、APISIX 等知名 API 网关都是 OpenResty 之上的产物</strong>。Lua 可挂载的阶段：<code>rewrite_by_lua</code>（改写）、<code>access_by_lua</code>（鉴权）、<code>content_by_lua</code>（产出响应）、<code>log_by_lua</code>（日志），网关类逻辑大多落在 access 阶段。</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> /hello &#123;</span><br><span class="line">    <span class="section">content_by_lua_block</span> &#123;</span><br><span class="line">        ngx.say(&quot;<span class="attribute">hello</span> from lua, uri=<span class="string">&quot;, ngx.var.uri)</span></span><br><span class="line"><span class="string">    &#125;</span></span><br><span class="line"><span class="string">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>适用场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>动态限流&#x2F;鉴权</td>
+<td>查 Redis 令牌桶、验 JWT，毫秒级、不引入额外服务</td>
+</tr>
+<tr>
+<td>请求改写</td>
+<td>A&#x2F;B 分流、灰度按 Header 打标转发</td>
+</tr>
+<tr>
+<td>边缘计算</td>
+<td>CDN 节点上就近处理简单逻辑</td>
+</tr>
+<tr>
+<td>缓存增强</td>
+<td>共享字典（lua_shared_dict）做进程内热点缓存</td>
+</tr>
+<tr>
+<td>自定义监控</td>
+<td>log 阶段把指标上报 Prometheus</td>
+</tr>
+</tbody></table>
+<p>普通反向代理不需要它；当你开始幻想「在 Nginx 里写业务逻辑」时，就是 OpenResty 的出场时机。</p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>proxy_cache</td>
+<td>keys_zone 两段式；<code>X-Cache-Status</code> 验证 HIT&#x2F;MISS；带鉴权的接口别缓存</td>
+</tr>
+<tr>
+<td>静态资源</td>
+<td>sendfile&#x2F;tcp_nopush&#x2F;open_file_cache 三连 + expires 强缓存 + 指纹文件名</td>
+</tr>
+<tr>
+<td>压缩</td>
+<td>gzip_types 必须显式列 JSON&#x2F;JS；图片与 WOFF2 不压</td>
+</tr>
+<tr>
+<td>连接</td>
+<td>容量 &#x3D; workers × connections；keepalive 复用；server_tokens off</td>
+</tr>
+<tr>
+<td>方法论</td>
+<td>先压测拿基线，再改参数复测；盯 request_time 与错误日志</td>
+</tr>
+<tr>
+<td>防击穿</td>
+<td>cache_lock 挡并发回源 + use_stale 发旧缓存 + background_update 异步刷新</td>
+</tr>
+<tr>
+<td>OpenResty</td>
+<td>Nginx + LuaJIT &#x3D; 可编程网关，Kong&#x2F;APISIX 的地基</td>
+</tr>
+</tbody></table>
+<hr>
+<p>至此 Nginx 系列四章完结：</p>
+<ol>
+<li><a href="/nginx/nginx-guide/">第一章：Nginx 入门与静态服务</a>——架构、配置结构、location、日志</li>
+<li><a href="/nginx/02-nginx-reverse-proxy-lb/">第二章：Nginx 反向代理与负载均衡</a>——proxy_pass、upstream、超时与 WebSocket</li>
+<li><a href="/nginx/03-nginx-https-security/">第三章：Nginx HTTPS 与安全</a>——TLS、限流、访问控制、安全头</li>
+<li><a href="/nginx/04-nginx-cache-tuning/">第四章：Nginx 缓存与性能调优</a>——proxy_cache、压缩、连接模型、压测</li>
+</ol>
+<p>延伸阅读：容器化部署见 <a href="/docker/docker-guide/">第一章：Docker 容器基础</a>，K8s 流量入口见 <a href="/kubernetes/kubernetes-guide/">第二章：Kubernetes 容器编排入门</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%80%A7%E8%83%BD/" rel="tag"># 性能</a>
+              <a href="/tags/Nginx/" rel="tag"># Nginx</a>
+              <a href="/tags/%E7%BC%93%E5%AD%98/" rel="tag"># 缓存</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/nginx/03-nginx-https-security/" rel="prev" title="第三章：Nginx HTTPS 与安全">
+                  <i class="fa fa-angle-left"></i> 第三章：Nginx HTTPS 与安全
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/frontend/03-frontend-engineering-practice/" rel="next" title="第三章：前端工程化实战">
+                  第三章：前端工程化实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

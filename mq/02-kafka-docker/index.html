@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第二章：Docker 部署 Kafka 实践概念基础 KRaft 让单进程成为可能：旧版 Kafka 需要 ZooKeeper + Kafka 两个进程；KRaft 模式下一个容器同时扮演 controller + broker，单机一条命令即可起集群（本章单容器示例的核心）。 监听器与 advertised.listeners 是第一坑：Kafka 会把 advertised.listeners">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第二章：Docker 部署 Kafka 实践">
+<meta property="og:url" content="https://my919.github.io/mq/02-kafka-docker/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第二章：Docker 部署 Kafka 实践概念基础 KRaft 让单进程成为可能：旧版 Kafka 需要 ZooKeeper + Kafka 两个进程；KRaft 模式下一个容器同时扮演 controller + broker，单机一条命令即可起集群（本章单容器示例的核心）。 监听器与 advertised.listeners 是第一坑：Kafka 会把 advertised.listeners">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T12:35:17.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.581Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="Docker Compose">
+<meta property="article:tag" content="Kafka">
+<meta property="article:tag" content="Kubernetes">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/mq/02-kafka-docker/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/mq/02-kafka-docker/","path":"mq/02-kafka-docker/","title":"第二章：Docker 部署 Kafka 实践"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第二章：Docker 部署 Kafka 实践 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E7%AB%A0%EF%BC%9ADocker-%E9%83%A8%E7%BD%B2-Kafka-%E5%AE%9E%E8%B7%B5"><span class="nav-number">1.</span> <span class="nav-text">第二章：Docker 部署 Kafka 实践</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#KRaft-%E6%9E%B6%E6%9E%84%E9%80%9F%E8%A7%88%EF%BC%9A%E6%B2%A1%E6%9C%89-ZooKeeper-%E4%B9%8B%E5%90%8E"><span class="nav-number">1.2.</span> <span class="nav-text">KRaft 架构速览：没有 ZooKeeper 之后</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.3.</span> <span class="nav-text">前置条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kafka-%E9%95%9C%E5%83%8F%E9%80%89%E6%8B%A9"><span class="nav-number">1.4.</span> <span class="nav-text">Kafka 镜像选择</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%B8%B8%E7%94%A8%E9%95%9C%E5%83%8F"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. 常用镜像</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E7%89%88%E6%9C%AC%E4%B8%8E%E6%A0%87%E7%AD%BE"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 版本与标签</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%9B%91%E5%90%AC%E5%99%A8%E4%B8%8E-ADVERTISED-LISTENERS"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 监听器与 ADVERTISED_LISTENERS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%B5%84%E6%BA%90%E4%B8%8E%E6%8C%81%E4%B9%85%E5%8C%96"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. 资源与持久化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%95%E5%AE%B9%E5%99%A8%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2%EF%BC%88docker-run%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">单容器一键部署（docker run）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker-Compose-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2"><span class="nav-number">1.6.</span> <span class="nav-text">Docker Compose 一键部署</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kubernetes-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2%EF%BC%88%E5%8D%95%E6%96%87%E4%BB%B6%E5%AE%8C%E6%95%B4%E6%B8%85%E5%8D%95%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">Kubernetes 一键部署（单文件完整清单）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%83%A8%E7%BD%B2%E5%90%8E%E9%AA%8C%E8%AF%81%EF%BC%9A%E6%94%B6%E5%8F%91%E7%AC%AC%E4%B8%80%E6%9D%A1%E6%B6%88%E6%81%AF"><span class="nav-number">1.8.</span> <span class="nav-text">部署后验证：收发第一条消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%86%E5%8C%BA%E3%80%81%E5%89%AF%E6%9C%AC%E4%B8%8E-ISR%EF%BC%9A%E5%8F%AF%E9%9D%A0%E6%80%A7%E7%9A%84%E4%B8%89%E4%B8%AA%E6%97%8B%E9%92%AE"><span class="nav-number">1.9.</span> <span class="nav-text">分区、副本与 ISR：可靠性的三个旋钮</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8A%E7%94%9F%E4%BA%A7%E5%89%8D%E7%9A%84%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="nav-number">1.10.</span> <span class="nav-text">上生产前的检查清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E8%BF%90%E7%BB%B4%E5%91%BD%E4%BB%A4%E9%80%9F%E6%9F%A5"><span class="nav-number">1.11.</span> <span class="nav-text">常用运维命令速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E4%BF%9D%E7%95%99%E4%B8%8E%E7%A3%81%E7%9B%98%E9%98%B2%E7%BA%BF"><span class="nav-number">1.12.</span> <span class="nav-text">数据保留与磁盘防线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.13.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/mq/02-kafka-docker/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第二章：Docker 部署 Kafka 实践 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第二章：Docker 部署 Kafka 实践
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 20:35:17" itemprop="dateCreated datePublished" datetime="2026-05-01T20:35:17+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" itemprop="url" rel="index"><span itemprop="name">消息队列</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>11k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>10 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第二章：Docker-部署-Kafka-实践"><a href="#第二章：Docker-部署-Kafka-实践" class="headerlink" title="第二章：Docker 部署 Kafka 实践"></a>第二章：Docker 部署 Kafka 实践</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>KRaft 让单进程成为可能</strong>：旧版 Kafka 需要 ZooKeeper + Kafka 两个进程；<strong>KRaft 模式</strong>下一个容器同时扮演 <strong>controller + broker</strong>，单机一条命令即可起集群（本章单容器示例的核心）。</li>
+<li><strong>监听器与 advertised.listeners 是第一坑</strong>：Kafka 会把 <strong><code>advertised.listeners</code></strong> 里的地址<strong>返回给客户端</strong>——容器内监听 <code>0.0.0.0</code> 没用，客户端拿到的是这个「广告地址」。<strong>本机访问写 <code>127.0.0.1</code>、Compose 内服务访问写服务名、跨网段要双监听</strong>，本章三种部署形态的差异全在这一个参数上。</li>
+<li><strong>数据目录与 page cache</strong>：数据在 <strong><code>/bitnami/kafka</code></strong>（Bitnami 镜像），必须挂卷；Kafka 依赖磁盘顺序写与 page cache，内存不宜压得过低。</li>
+<li><strong>边界要清楚</strong>：单容器 &#x2F; Compose &#x2F; 单副本 Deployment 都面向<strong>开发验证</strong>；生产多 Broker 应使用 <strong>Strimzi 等 Operator 或 StatefulSet</strong>，不要把单实例 Deployment 当集群扩。</li>
+</ol>
+<h2 id="KRaft-架构速览：没有-ZooKeeper-之后"><a href="#KRaft-架构速览：没有-ZooKeeper-之后" class="headerlink" title="KRaft 架构速览：没有 ZooKeeper 之后"></a>KRaft 架构速览：没有 ZooKeeper 之后</h2><p>Kafka 4.x 已<strong>彻底移除 ZooKeeper</strong>（3.x 是过渡双模期），集群元数据由一组 <strong>Controller</strong> 节点用 <strong>Raft 协议</strong>自管理：</p>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>职责</th>
+<th>在本章配置里的位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Controller</strong></td>
+<td>维护元数据日志 <strong><code>__cluster_metadata</code></strong>（Topic、分区、ACL、配置），处理分区选主</td>
+<td><code>KAFKA_CFG_PROCESS_ROLES=controller</code> + <code>KAFKA_CFG_CONTROLLER_QUORUM_VOTERS</code></td>
+</tr>
+<tr>
+<td><strong>Broker</strong></td>
+<td>存数据、服务读写</td>
+<td><code>KAFKA_CFG_PROCESS_ROLES=broker</code></td>
+</tr>
+<tr>
+<td><strong>Combined</strong></td>
+<td>单进程同时扮演两者</td>
+<td><code>controller,broker</code>（本章单容器正是此形态）</td>
+</tr>
+</tbody></table>
+<p>关键点：</p>
+<ul>
+<li><strong><code>controller.quorum.voters</code></strong> 格式为 <code>id@host:port[,...]</code>，生产取<strong>奇数个</strong>（3 或 5）并把 Controller 与 Broker <strong>分开部署</strong>；开发环境单节点写 <code>0@...</code> 即可。</li>
+<li>元数据变更先写 Raft 日志再生效，Broker <strong>增量拉取</strong>元数据——不再有 ZK Watcher 风暴，重启大集群的元数据同步也快了一个量级。</li>
+<li><strong><code>node.id</code> 必须唯一且稳定</strong>：挂卷重启不能变，Bitnami 镜像由 <code>KAFKA_CFG_NODE_ID</code> 指定；首次启动镜像会自动格式化元数据目录，<strong>换数据卷不换 NODE_ID（或反向）会导致 cluster.id 冲突</strong>，此时需清空数据目录重来。</li>
+<li>Controller 端口（示例 <strong><code>9093</code></strong>）只做仲裁通信，<strong>永远不要映射给客户端</strong>。</li>
+</ul>
+<h2 id="前置条件"><a href="#前置条件" class="headerlink" title="前置条件"></a>前置条件</h2><p>本机已安装 <strong><code>docker</code></strong>，并能使用 <strong><code>docker compose</code></strong>（<strong>Compose V2</strong> 插件，命令为 <strong><code>docker compose</code></strong>；若仍使用旧版独立程序，则将下文中的 <strong><code>docker compose</code></strong> 换成 <strong><code>docker-compose</code></strong>）。</p>
+<p>验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker version</span><br><span class="line">docker compose version</span><br></pre></td></tr></table></figure>
+
+<p>满足即可，与宿主机操作系统无关。</p>
+<h2 id="Kafka-镜像选择"><a href="#Kafka-镜像选择" class="headerlink" title="Kafka 镜像选择"></a>Kafka 镜像选择</h2><h3 id="1-常用镜像"><a href="#1-常用镜像" class="headerlink" title="1. 常用镜像"></a>1. 常用镜像</h3><table>
+<thead>
+<tr>
+<th>镜像</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>apache/kafka</code></strong></td>
+<td><strong>Apache</strong> 官方维护（<strong>Docker Hub</strong>：<a target="_blank" rel="noopener" href="https://hub.docker.com/r/apache/kafka">https://hub.docker.com/r/apache/kafka</a>），参数前缀多为 <strong><code>KAFKA_</code></strong>，与发行包行为贴近。</td>
+</tr>
+<tr>
+<td><strong><code>bitnami/kafka</code></strong></td>
+<td><strong>Bitnami</strong> 打包（<a target="_blank" rel="noopener" href="https://hub.docker.com/r/bitnami/kafka">https://hub.docker.com/r/bitnami/kafka</a>），参数前缀多为 <strong><code>KAFKA_CFG_</code></strong>，文档与示例丰富，下文默认采用。</td>
+</tr>
+</tbody></table>
+<h3 id="2-版本与标签"><a href="#2-版本与标签" class="headerlink" title="2. 版本与标签"></a>2. 版本与标签</h3><ul>
+<li><strong>开发&#x2F;学习</strong>：固定大版本标签（如 <strong><code>bitnami/kafka:4.0</code></strong>、<strong><code>apache/kafka:4.0.0</code></strong>），避免 <strong><code>latest</code></strong> 漂移。  </li>
+<li><strong>生产</strong>：固定补丁级标签或 <strong>digest</strong>，并阅读对应镜像的发行说明与安全更新。</li>
+<li><strong>4.x 与 3.x 的差异</strong>：4.x 彻底移除 ZK 模式与过期客户端协议，存量 3.x 集群升级需先升到 3.9 再跨到 4.x，不可跳级。</li>
+</ul>
+<h3 id="3-监听器与-ADVERTISED-LISTENERS"><a href="#3-监听器与-ADVERTISED-LISTENERS" class="headerlink" title="3. 监听器与 ADVERTISED_LISTENERS"></a>3. 监听器与 <code>ADVERTISED_LISTENERS</code></h3><p>客户端使用的 <strong><code>bootstrap.servers</code></strong> 必须落在 <strong><code>advertised.listeners</code></strong> 可解析的地址上：</p>
+<ul>
+<li><strong>仅本机</strong>连 <strong><code>localhost:9092</code></strong>：可把 <strong><code>KAFKA_CFG_ADVERTISED_LISTENERS</code></strong> 设为 <strong><code>PLAINTEXT://127.0.0.1:9092</code></strong>（与下文 <strong>「单容器一键部署」</strong> 单行示例一致）。  </li>
+<li><strong>Compose 内其它服务</strong>连 <strong><code>kafka:9092</code></strong>，同时<strong>宿主机</strong>还要连：需<strong>双监听</strong>（下文 <strong>「Docker Compose 一键部署」</strong>），例如内部 <strong><code>PLAINTEXT://kafka:9092</code></strong>、外部 <strong><code>PLAINTEXT://localhost:9094</code></strong>，并映射两个端口。</li>
+</ul>
+<h3 id="4-资源与持久化"><a href="#4-资源与持久化" class="headerlink" title="4. 资源与持久化"></a>4. 资源与持久化</h3><p><strong>Kafka</strong> 依赖磁盘顺序写与充足 <strong>page cache</strong>；<strong>Bitnami</strong> 数据目录一般为 <strong><code>/bitnami/kafka</code></strong>。单机开发可适当降低 <strong><code>heap</code></strong>，生产请按吞吐与副本单独规划。</p>
+<p><strong>1Panel（推荐）</strong>：在 <strong>Linux</strong> 宿主机上若希望少手写命令、仍以容器方式跑 <strong>Apache Kafka</strong>，可先安装 <a target="_blank" rel="noopener" href="https://1panel.cn/"><strong>1Panel</strong></a>（开源 <strong>Linux</strong> 运维面板），在 <strong>「应用商店」</strong> 中选择 <strong>Kafka</strong> 一键部署：由面板管理镜像版本、数据卷、监听端口与 <strong>KRaft</strong> 相关环境变量（以当前上架镜像与模板为准）。与下文 <strong><code>docker run</code> &#x2F; Compose &#x2F; K8s<code>** 中的 **</code>KAFKA_CFG_ADVERTISED_LISTENERS<code>**、双监听、数据目录与 **</code>heap&#96;</strong> 对齐或排障时，自「单容器一键部署」起各节仍可作对照。适合单台 <strong>VPS</strong>、家庭服务器等「快速起消息流」的场景。</p>
+<h2 id="单容器一键部署（docker-run）"><a href="#单容器一键部署（docker-run）" class="headerlink" title="单容器一键部署（docker run）"></a>单容器一键部署（docker run）</h2><p>仅适合<strong>宿主机上的客户端</strong>访问（<strong><code>ADVERTISED_LISTENERS</code></strong> 指向 <strong><code>127.0.0.1</code></strong>）。先建数据目录（仅首次）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p ./kafka-data</span><br></pre></td></tr></table></figure>
+
+<p><strong>一条命令</strong>启动（<strong>KRaft</strong> 单进程；请按需改端口与卷路径；示例仅供本地）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name kafka-dev -p 9092:9092 -e ALLOW_PLAINTEXT_LISTENER=<span class="built_in">yes</span> -e KAFKA_CFG_NODE_ID=0 -e KAFKA_CFG_PROCESS_ROLES=controller,broker -e KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093 -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092 -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@127.0.0.1:9093 -v <span class="string">&quot;<span class="subst">$(pwd)</span>/kafka-data:/bitnami/kafka&quot;</span> docker.io/bitnami/kafka:4.0</span><br></pre></td></tr></table></figure>
+
+<p>常用运维一条命令：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker logs -f kafka-dev</span><br><span class="line">docker stop kafka-dev &amp;&amp; docker <span class="built_in">rm</span> kafka-dev</span><br></pre></td></tr></table></figure>
+
+<p>本机探测（需本机已安装 <strong><code>kafka</code></strong> 客户端或进入容器执行）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker <span class="built_in">exec</span> kafka-dev kafka-broker-api-versions.sh --bootstrap-server 127.0.0.1:9092</span><br></pre></td></tr></table></figure>
+
+<h2 id="Docker-Compose-一键部署"><a href="#Docker-Compose-一键部署" class="headerlink" title="Docker Compose 一键部署"></a>Docker Compose 一键部署</h2><p>将下面内容保存为 <strong><code>docker-compose.kafka.yml</code></strong>。<strong>双监听</strong>：<strong>Compose</strong> 网内用 <strong><code>kafka:9092</code></strong>，宿主机用 <strong><code>localhost:9094</code></strong>。</p>
+<p><strong>一条命令</strong>启动：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.kafka.yml up -d</span><br></pre></td></tr></table></figure>
+
+<p>以下为 <strong><code>docker-compose.kafka.yml</code></strong> 全文：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">&quot;3.8&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">name:</span> <span class="string">kafka-stack</span></span><br><span class="line"></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">kafka:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">docker.io/bitnami/kafka:4.0</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">kafka-3</span></span><br><span class="line">    <span class="attr">hostname:</span> <span class="string">kafka</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">unless-stopped</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;9092:9092&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;9094:9094&quot;</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">ALLOW_PLAINTEXT_LISTENER:</span> <span class="string">&quot;yes&quot;</span></span><br><span class="line">      <span class="attr">KAFKA_CFG_NODE_ID:</span> <span class="string">&quot;0&quot;</span></span><br><span class="line">      <span class="attr">KAFKA_CFG_PROCESS_ROLES:</span> <span class="string">controller,broker</span></span><br><span class="line">      <span class="attr">KAFKA_CFG_CONTROLLER_LISTENER_NAMES:</span> <span class="string">CONTROLLER</span></span><br><span class="line">      <span class="attr">KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP:</span> <span class="string">CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT</span></span><br><span class="line">      <span class="attr">KAFKA_CFG_LISTENERS:</span> <span class="string">PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094</span></span><br><span class="line">      <span class="attr">KAFKA_CFG_ADVERTISED_LISTENERS:</span> <span class="string">PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094</span></span><br><span class="line">      <span class="attr">KAFKA_CFG_CONTROLLER_QUORUM_VOTERS:</span> <span class="number">0</span><span class="string">@kafka:9093</span></span><br><span class="line">      <span class="attr">KAFKA_CFG_INTER_BROKER_LISTENER_NAME:</span> <span class="string">PLAINTEXT</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">Asia/Shanghai</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">kafka_data:/bitnami/kafka</span></span><br><span class="line">    <span class="attr">healthcheck:</span></span><br><span class="line">      <span class="attr">test:</span> [<span class="string">&quot;CMD-SHELL&quot;</span>, <span class="string">&quot;kafka-broker-api-versions.sh --bootstrap-server kafka:9092 || exit 1&quot;</span>]</span><br><span class="line">      <span class="attr">interval:</span> <span class="string">10s</span></span><br><span class="line">      <span class="attr">timeout:</span> <span class="string">10s</span></span><br><span class="line">      <span class="attr">retries:</span> <span class="number">12</span></span><br><span class="line">      <span class="attr">start_period:</span> <span class="string">60s</span></span><br><span class="line"></span><br><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="attr">kafka_data:</span></span><br><span class="line">    <span class="attr">driver:</span> <span class="string">local</span></span><br></pre></td></tr></table></figure>
+
+<p>查看状态、日志、停止并删除容器（保留数据卷）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.kafka.yml ps</span><br><span class="line">docker compose -f docker-compose.kafka.yml logs -f kafka</span><br><span class="line">docker compose -f docker-compose.kafka.yml down</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>down</code></strong> 默认保留 <strong><code>kafka_data</code></strong>；清空数据使用 <strong><code>docker compose -f docker-compose.kafka.yml down -v</code></strong>（<strong>会删主题与消息</strong>）。</p>
+<h2 id="Kubernetes-一键部署（单文件完整清单）"><a href="#Kubernetes-一键部署（单文件完整清单）" class="headerlink" title="Kubernetes 一键部署（单文件完整清单）"></a>Kubernetes 一键部署（单文件完整清单）</h2><p>将下面内容保存为 <strong><code>kafka-k8s.yaml</code></strong> 后执行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl apply -f kafka-k8s.yaml</span><br></pre></td></tr></table></figure>
+
+<p>以下为 <strong>单副本</strong> <strong>Deployment</strong> + <strong>PVC</strong> + <strong>Service</strong>（<strong>ClusterIP 9092</strong>）。<strong><code>KAFKA_CFG_ADVERTISED_LISTENERS</code></strong> 使用 <strong>Service DNS</strong>，供集群内 <strong>Pod</strong> 访问；集群外请 <strong><code>Ingress</code></strong>、<strong><code>NodePort</code></strong> 或 <strong><code>kubectl port-forward</code></strong> 另行暴露，并同步修改 <strong><code>ADVERTISED</code></strong> 与监听。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">PersistentVolumeClaim</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">kafka-data</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">accessModes:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ReadWriteOnce</span></span><br><span class="line">  <span class="attr">resources:</span></span><br><span class="line">    <span class="attr">requests:</span></span><br><span class="line">      <span class="attr">storage:</span> <span class="string">20Gi</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">kafka</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">kafka</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">replicas:</span> <span class="number">1</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">kafka</span></span><br><span class="line">  <span class="attr">strategy:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">Recreate</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">metadata:</span></span><br><span class="line">      <span class="attr">labels:</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">kafka</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">hostname:</span> <span class="string">kafka</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">kafka</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">docker.io/bitnami/kafka:4.0</span></span><br><span class="line">          <span class="attr">ports:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">9092</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">plaintext</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">9093</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">controller</span></span><br><span class="line">          <span class="attr">env:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">ALLOW_PLAINTEXT_LISTENER</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">&quot;yes&quot;</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">KAFKA_CFG_NODE_ID</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">&quot;0&quot;</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">KAFKA_CFG_PROCESS_ROLES</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">controller,broker</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">KAFKA_CFG_CONTROLLER_LISTENER_NAMES</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">CONTROLLER</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">KAFKA_CFG_LISTENERS</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">PLAINTEXT://:9092,CONTROLLER://:9093</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">KAFKA_CFG_ADVERTISED_LISTENERS</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">PLAINTEXT://kafka.default.svc.cluster.local:9092</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">KAFKA_CFG_CONTROLLER_QUORUM_VOTERS</span></span><br><span class="line">              <span class="attr">value:</span> <span class="number">0</span><span class="string">@127.0.0.1:9093</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">KAFKA_CFG_INTER_BROKER_LISTENER_NAME</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">PLAINTEXT</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">TZ</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">Asia/Shanghai</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> <span class="string">/bitnami/kafka</span></span><br><span class="line">          <span class="attr">readinessProbe:</span></span><br><span class="line">            <span class="attr">exec:</span></span><br><span class="line">              <span class="attr">command:</span></span><br><span class="line">                <span class="bullet">-</span> <span class="string">/bin/sh</span></span><br><span class="line">                <span class="bullet">-</span> <span class="string">-c</span></span><br><span class="line">                <span class="bullet">-</span> <span class="string">kafka-broker-api-versions.sh</span> <span class="string">--bootstrap-server</span> <span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span><span class="string">:9092</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">30</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">10</span></span><br><span class="line">            <span class="attr">timeoutSeconds:</span> <span class="number">10</span></span><br><span class="line">            <span class="attr">failureThreshold:</span> <span class="number">18</span></span><br><span class="line">          <span class="attr">livenessProbe:</span></span><br><span class="line">            <span class="attr">tcpSocket:</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">9092</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">90</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">20</span></span><br><span class="line">            <span class="attr">timeoutSeconds:</span> <span class="number">5</span></span><br><span class="line">            <span class="attr">failureThreshold:</span> <span class="number">6</span></span><br><span class="line">          <span class="attr">resources:</span></span><br><span class="line">            <span class="attr">requests:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;1Gi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;500m&quot;</span></span><br><span class="line">            <span class="attr">limits:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;2Gi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;2000m&quot;</span></span><br><span class="line">      <span class="attr">volumes:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">          <span class="attr">persistentVolumeClaim:</span></span><br><span class="line">            <span class="attr">claimName:</span> <span class="string">kafka-data</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Service</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">kafka</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">kafka</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">ClusterIP</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">kafka</span></span><br><span class="line">  <span class="attr">ports:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">plaintext</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">9092</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">9092</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">controller</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">9093</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">9093</span></span><br></pre></td></tr></table></figure>
+
+<p>当前示例为 <strong>单副本 Deployment</strong> + <strong>ClusterIP</strong>，仅作<strong>集群内连通性验证</strong>；与 <strong>StatefulSet + Headless</strong> 的典型生产拓扑不同。查看资源：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get deploy,svc,pvc -l app=kafka</span><br></pre></td></tr></table></figure>
+
+<p>集群内 <strong>bootstrap</strong> 示例：<strong><code>kafka.default.svc.cluster.local:9092</code></strong>（与 <strong><code>KAFKA_CFG_ADVERTISED_LISTENERS</code></strong> 一致）。</p>
+<p><strong>说明</strong>：<strong><code>strategy: Recreate</code></strong> 避免 <strong>RWO</strong> 卷被多副本同时挂载；<strong>多 broker、跨 AZ、滚动升级</strong> 请使用 <strong>Strimzi</strong>、<strong>Confluent for Kubernetes</strong> 等 <strong>Operator</strong> 或官方推荐的 <strong>StatefulSet</strong> 拓扑，勿直接水平扩展上述 <strong>Deployment</strong>。</p>
+<h2 id="部署后验证：收发第一条消息"><a href="#部署后验证：收发第一条消息" class="headerlink" title="部署后验证：收发第一条消息"></a>部署后验证：收发第一条消息</h2><p>进入容器执行自带脚本（Compose 示例容器名为 <strong><code>kafka-3</code></strong>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建 3 分区 1 副本的测试 Topic</span></span><br><span class="line">docker <span class="built_in">exec</span> kafka-3 kafka-topics.sh --bootstrap-server kafka:9092 \</span><br><span class="line">  --create --topic smoke-test --partitions 3 --replication-factor 1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看分区与副本分布（重点看 Leader / Replicas / ISR 三列）</span></span><br><span class="line">docker <span class="built_in">exec</span> kafka-3 kafka-topics.sh --bootstrap-server kafka:9092 \</span><br><span class="line">  --describe --topic smoke-test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 起控制台生产者，Ctrl+C 结束</span></span><br><span class="line">docker <span class="built_in">exec</span> -it kafka-3 kafka-console-producer.sh --bootstrap-server kafka:9092 --topic smoke-test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 另开终端从头消费</span></span><br><span class="line">docker <span class="built_in">exec</span> -it kafka-3 kafka-console-consumer.sh --bootstrap-server kafka:9092 \</span><br><span class="line">  --topic smoke-test --from-beginning</span><br></pre></td></tr></table></figure>
+
+<p><code>--describe</code> 输出示例解读：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Topic: smoke-test  Partition: 0  Leader: 0  Replicas: 0  Isr: 0</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>Replicas</strong>：该分区所有副本所在的 <code>node.id</code> 列表（含 Leader）；</li>
+<li><strong>ISR（In-Sync Replicas）</strong>：当前<strong>追得上 Leader</strong> 的副本集合——副本掉出 ISR 说明同步滞后或宕机，是可用性告警的第一信号。</li>
+</ul>
+<p>启动阶段常见报错速查：</p>
+<table>
+<thead>
+<tr>
+<th>报错</th>
+<th>根因与处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>InconsistentClusterIdException</code></td>
+<td>数据卷里残留旧 cluster.id，与当前 <code>node.id</code> 对不上——开发环境直接清空 <code>kafka-data</code> 重来</td>
+</tr>
+<tr>
+<td>客户端 <code>Connection refused</code> &#x2F; <code>TimeoutException</code></td>
+<td>九成是 <strong><code>advertised.listeners</code></strong> 写错（客户端拿到了容器内地址），对照「双监听」一节核对</td>
+</tr>
+<tr>
+<td>健康检查反复失败</td>
+<td>首启要格式化元数据，适当放大 <code>start_period</code>；再看 <code>docker logs</code> 定位</td>
+</tr>
+</tbody></table>
+<h2 id="分区、副本与-ISR：可靠性的三个旋钮"><a href="#分区、副本与-ISR：可靠性的三个旋钮" class="headerlink" title="分区、副本与 ISR：可靠性的三个旋钮"></a>分区、副本与 ISR：可靠性的三个旋钮</h2><table>
+<thead>
+<tr>
+<th>旋钮</th>
+<th>作用域</th>
+<th>含义与建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>分区数（partitions）</strong></td>
+<td>Topic</td>
+<td>决定并行度上限（消费组内同分区最多 1 个消费者）；<strong>创建后只能增不能减</strong>，按峰值吞吐估算后留余量</td>
+</tr>
+<tr>
+<td><strong>副本因子（replication-factor）</strong></td>
+<td>Topic</td>
+<td>副本总数（含 Leader）；生产至少 <strong>3</strong>，单机开发用 1</td>
+</tr>
+<tr>
+<td><strong><code>min.insync.replicas</code></strong></td>
+<td>Topic &#x2F; Broker</td>
+<td>配合 <code>acks=all</code> 时 ISR 中至少要有这么多副本才确认写入；副本 3 时常设 <strong>2</strong>，牺牲一点可用性换不丢数据</td>
+</tr>
+</tbody></table>
+<p>ISR 是动态集合：Follower 落后超过 <strong><code>replica.lag.time.max.ms</code></strong>（默认 30s 无追平进展）即被踢出，追上后自动回归。<strong><code>unclean.leader.election.enable</code></strong> 默认 <code>false</code>：Leader 宕机只从 ISR 里选新 Leader，宁可分区暂不可用也<strong>不让落后副本当选而丢数据</strong>——除非业务明确接受丢消息，否则不要为可用性打开它。</p>
+<p>多 Broker 集群（多 Compose service 或 K8s 多副本）就绪后，用 <code>--replication-factor 3</code> 建 Topic 再 <code>--describe</code> 观察 Leader 是否均摊，是验证数据面正确性的最快方式。</p>
+<h2 id="上生产前的检查清单"><a href="#上生产前的检查清单" class="headerlink" title="上生产前的检查清单"></a>上生产前的检查清单</h2><p>本章形态面向开发验证，上生产至少补齐：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>开发态（本章）</th>
+<th>生产态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>拓扑</td>
+<td>单容器 Combined</td>
+<td>3 Controller（独立）+ 3+ Broker，跨机架&#x2F;AZ</td>
+</tr>
+<tr>
+<td>认证加密</td>
+<td>PLAINTEXT</td>
+<td><strong>SASL_SSL（SCRAM 或 mTLS）+ ACL</strong></td>
+</tr>
+<tr>
+<td>数据保留</td>
+<td>默认 7 天（<code>log.retention.hours</code>）</td>
+<td>按磁盘与合规显式设置；审计场景考虑 <code>compact</code> 或分层存储</td>
+</tr>
+<tr>
+<td>堆内存</td>
+<td>镜像默认</td>
+<td><code>KAFKA_HEAP_OPTS</code> 一般 5~6G，其余内存留给 page cache</td>
+</tr>
+<tr>
+<td>监控</td>
+<td>无</td>
+<td><strong>JMX Exporter + Prometheus</strong>：盯 <code>UnderReplicatedPartitions</code>、<code>ActiveControllerCount</code>、ISR 收缩、请求队列深度</td>
+</tr>
+<tr>
+<td>多机编排</td>
+<td>—</td>
+<td><strong>Strimzi Operator</strong> 管滚动升级与配置漂移</td>
+</tr>
+<tr>
+<td>容量规划</td>
+<td>单盘混放</td>
+<td>日志目录与系统盘分离；按「峰值写入 × 保留期 × 副本数 ÷ 80% 水位」反推磁盘</td>
+</tr>
+<tr>
+<td>备份演练</td>
+<td>无</td>
+<td>Topic 配置&#x2F;ACL 可导出重建；数据层靠副本与分层存储，而非文件备份</td>
+</tr>
+</tbody></table>
+<p>两个最常用告警阈值：<strong><code>UnderReplicatedPartitions &gt; 0</code></strong>（有副本掉队）与 <strong><code>ActiveControllerCount != 1</code></strong>（控制面异常）。</p>
+<h2 id="常用运维命令速查"><a href="#常用运维命令速查" class="headerlink" title="常用运维命令速查"></a>常用运维命令速查</h2><p>容器内自带全套 CLI，日常排障高频用法：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Topic 列表</span></span><br><span class="line">docker <span class="built_in">exec</span> kafka-3 kafka-topics.sh --bootstrap-server kafka:9092 --list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在线调整 Topic 配置（例：保留期改 72 小时）</span></span><br><span class="line">docker <span class="built_in">exec</span> kafka-3 kafka-configs.sh --bootstrap-server kafka:9092 \</span><br><span class="line">  --entity-type topics --entity-name smoke-test --alter --add-config retention.ms=259200000</span><br><span class="line"></span><br><span class="line"><span class="comment"># 消费组列表 / 某组积压详情</span></span><br><span class="line">docker <span class="built_in">exec</span> kafka-3 kafka-consumer-groups.sh --bootstrap-server kafka:9092 --list</span><br><span class="line">docker <span class="built_in">exec</span> kafka-3 kafka-consumer-groups.sh --bootstrap-server kafka:9092 \</span><br><span class="line">  --describe --group demo-consumer-group</span><br><span class="line"></span><br><span class="line"><span class="comment"># 各日志目录磁盘占用（排查磁盘打满）</span></span><br><span class="line">docker <span class="built_in">exec</span> kafka-3 kafka-log-dirs.sh --bootstrap-server kafka:9092 --describe</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>K8s 环境等价写法：<code>kubectl exec deploy/kafka -- kafka-topics.sh ...</code>；上述脚本名与参数在 4.x 保持一致。</p>
+</blockquote>
+<h2 id="数据保留与磁盘防线"><a href="#数据保留与磁盘防线" class="headerlink" title="数据保留与磁盘防线"></a>数据保留与磁盘防线</h2><ul>
+<li><strong>清理策略</strong>：<code>cleanup.policy=delete</code>（默认，按 <code>retention.ms</code> &#x2F; <code>retention.bytes</code> 删旧段）或 <code>compact</code>（按键保留最新值，适合做变更日志）；两者可同时启用。</li>
+<li><strong>滚动与检查</strong>：日志按 <code>log.segment.bytes</code>（默认 1G）切段，只有<strong>非活跃段</strong>才会被删——保留期设了不生效，先查是不是段还没滚动。</li>
+<li><strong>磁盘水位</strong>：Kafka 最经典的「自残」是磁盘写满导致 Broker 宕机。保留策略要按 <code>磁盘容量 × 安全系数（≤80%）</code> 反推，而不是按业务愿望设置。</li>
+<li><strong>冷数据</strong>：Topic 大且保留期长时评估<strong>分层存储（Tiered Storage）</strong>，把旧段卸载到对象存储，本地只留热段。</li>
+<li><strong>检查节奏</strong>：<code>log.retention.check.interval.ms</code> 默认 5 分钟，保留配置变更最长一个周期后才生效。</li>
+</ul>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>前置</strong></td>
+<td>已安装 <strong><code>docker</code></strong> 与 <strong><code>docker compose</code></strong>（或 <strong><code>docker-compose</code></strong>）</td>
+</tr>
+<tr>
+<td><strong>镜像</strong></td>
+<td>文内默认 <strong><code>bitnami/kafka:4.0</code></strong>（<strong><code>KAFKA_CFG_*</code></strong>）；可选用 <strong><code>apache/kafka</code></strong>（<strong><code>KAFKA_*</code></strong>）</td>
+</tr>
+<tr>
+<td><strong>单容器</strong></td>
+<td><strong><code>mkdir</code></strong> 后一条 <strong><code>docker run ...</code></strong>（<strong><code>ADVERTISED</code></strong> 指向 <strong><code>127.0.0.1</code></strong>，仅本机客户端）</td>
+</tr>
+<tr>
+<td><strong>Compose</strong></td>
+<td><strong><code>docker-compose.kafka.yml</code></strong> 双监听：<strong><code>kafka:9092</code></strong> + <strong><code>localhost:9094</code></strong></td>
+</tr>
+<tr>
+<td><strong>Kubernetes</strong></td>
+<td><strong><code>kafka-k8s.yaml</code></strong>：<strong>PVC + Deployment + Headless Service</strong>；<strong><code>ADVERTISED</code></strong> 与 <strong>Service</strong> 名一致</td>
+</tr>
+<tr>
+<td><strong>验证</strong></td>
+<td><strong><code>kafka-topics.sh --describe</code></strong> 看 Leader &#x2F; Replicas &#x2F; ISR 三列；控制台收发冒烟</td>
+</tr>
+<tr>
+<td><strong>可靠性</strong></td>
+<td>生产副本 ≥3 + <strong><code>min.insync.replicas=2</code></strong>；监控盯 <strong><code>UnderReplicatedPartitions</code></strong></td>
+</tr>
+</tbody></table>
+<p>生产环境请启用 <strong>SASL&#x2F;TLS</strong>、<strong>ACL</strong>、监控与备份；<strong>KRaft</strong> 与 <strong>ZooKeeper</strong> 迁移、<strong>Controller</strong> 仲裁数等以 <strong>Apache Kafka</strong> 官方文档为准。</p>
+<p>集群就绪后，用 Java 客户端收发第一条消息 → <a href="/mq/03-kafka-java-producer-consumer/">第三章：Kafka Java 发布与消费实战</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Docker/" rel="tag"># Docker</a>
+              <a href="/tags/Docker-Compose/" rel="tag"># Docker Compose</a>
+              <a href="/tags/Kubernetes/" rel="tag"># Kubernetes</a>
+              <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/mysql/02-mysql-docker/" rel="prev" title="第二章：Docker 部署 MySQL 实践">
+                  <i class="fa fa-angle-left"></i> 第二章：Docker 部署 MySQL 实践
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/distributed/02-zookeeper-docker/" rel="next" title="第二章：Docker 部署 ZooKeeper 实践">
+                  第二章：Docker 部署 ZooKeeper 实践 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

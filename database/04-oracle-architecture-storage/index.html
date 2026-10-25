@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：体系结构与存储管理概念基础 内存 + 进程 + 文件三件套：Oracle 实例由 SGA（共享内存）+ PGA（私有内存）+ 后台进程构成，操作 Database 物理文件——理解三者的协作就抓住了 Oracle 运行的本质。 日志先行是命脉：事务提交时 LGWR 先把 redo 写联机日志才算「提交成功」，脏块由 DBWn 延迟批量落盘。这套 WAL 机制保证了实例崩溃后可恢复，是 Or">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：体系结构与存储管理">
+<meta property="og:url" content="https://my919.github.io/database/04-oracle-architecture-storage/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：体系结构与存储管理概念基础 内存 + 进程 + 文件三件套：Oracle 实例由 SGA（共享内存）+ PGA（私有内存）+ 后台进程构成，操作 Database 物理文件——理解三者的协作就抓住了 Oracle 运行的本质。 日志先行是命脉：事务提交时 LGWR 先把 redo 写联机日志才算「提交成功」，脏块由 DBWn 延迟批量落盘。这套 WAL 机制保证了实例崩溃后可恢复，是 Or">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:28:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.571Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Oracle">
+<meta property="article:tag" content="体系结构">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/database/04-oracle-architecture-storage/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/database/04-oracle-architecture-storage/","path":"database/04-oracle-architecture-storage/","title":"第四章：体系结构与存储管理"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：体系结构与存储管理 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9A%E4%BD%93%E7%B3%BB%E7%BB%93%E6%9E%84%E4%B8%8E%E5%AD%98%E5%82%A8%E7%AE%A1%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">第四章：体系结构与存储管理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%86%85%E5%AD%98%E7%BB%93%E6%9E%84"><span class="nav-number">1.2.</span> <span class="nav-text">一、内存结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-SGA%EF%BC%88System-Global-Area%EF%BC%8C%E5%85%B1%E4%BA%AB%E5%85%A8%E5%B1%80%E5%8C%BA%EF%BC%89"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. SGA（System Global Area，共享全局区）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-PGA%EF%BC%88Program-Global-Area%EF%BC%8C%E7%A7%81%E6%9C%89%E5%8C%BA%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. PGA（Program Global Area，私有区）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%BC%94%E8%BF%9B"><span class="nav-number">1.2.3.</span> <span class="nav-text">3. 内存管理演进</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%90%8E%E5%8F%B0%E8%BF%9B%E7%A8%8B"><span class="nav-number">1.3.</span> <span class="nav-text">二、后台进程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9B%E7%A8%8B%E5%8D%8F%E4%BD%9C%E5%9B%BE"><span class="nav-number">1.3.1.</span> <span class="nav-text">进程协作图</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E8%BF%9B%E7%A8%8B%E8%AF%A6%E8%A7%A3"><span class="nav-number">1.3.2.</span> <span class="nav-text">核心进程详解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E4%BE%8B%E6%81%A2%E5%A4%8D%EF%BC%88Crash-Recovery%EF%BC%89%E6%B5%81%E7%A8%8B"><span class="nav-number">1.3.3.</span> <span class="nav-text">实例恢复（Crash Recovery）流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E7%89%A9%E7%90%86%E6%96%87%E4%BB%B6"><span class="nav-number">1.4.</span> <span class="nav-text">三、物理文件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%95%B0%E6%8D%AE%E6%96%87%E4%BB%B6"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. 数据文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%8E%A7%E5%88%B6%E6%96%87%E4%BB%B6"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 控制文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E8%81%94%E6%9C%BA%E9%87%8D%E5%81%9A%E6%97%A5%E5%BF%97"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 联机重做日志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%BD%92%E6%A1%A3%E6%97%A5%E5%BF%97"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. 归档日志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%8F%82%E6%95%B0%E6%96%87%E4%BB%B6"><span class="nav-number">1.4.5.</span> <span class="nav-text">5. 参数文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E4%B8%B4%E6%97%B6%E6%96%87%E4%BB%B6%E4%B8%8E%E5%9C%A8%E7%BA%BF%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86"><span class="nav-number">1.4.6.</span> <span class="nav-text">6. 临时文件与在线文件管理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E9%80%BB%E8%BE%91%E5%AD%98%E5%82%A8%E5%88%86%E5%B1%82"><span class="nav-number">1.5.</span> <span class="nav-text">四、逻辑存储分层</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%95%B0%E6%8D%AE%E5%9D%97%E5%86%85%E9%83%A8"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 数据块内部</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%A1%8C%E8%BF%81%E7%A7%BB%E4%B8%8E%E8%A1%8C%E9%93%BE%E6%8E%A5"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 行迁移与行链接</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%A1%A8%E7%A9%BA%E9%97%B4%E7%AE%A1%E7%90%86"><span class="nav-number">1.6.</span> <span class="nav-text">五、表空间管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%A1%A8%E7%A9%BA%E9%97%B4%E5%88%86%E7%B1%BB"><span class="nav-number">1.6.1.</span> <span class="nav-text">1. 表空间分类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%88%9B%E5%BB%BA%E4%B8%8E%E7%AE%A1%E7%90%86"><span class="nav-number">1.6.2.</span> <span class="nav-text">2. 创建与管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%A9%BA%E9%97%B4%E4%BD%BF%E7%94%A8%E7%9B%91%E6%8E%A7"><span class="nav-number">1.6.3.</span> <span class="nav-text">3. 空间使用监控</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E7%A9%BA%E9%97%B4%E7%AE%A1%E7%90%86%E6%96%B9%E5%BC%8F"><span class="nav-number">1.6.4.</span> <span class="nav-text">4. 空间管理方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E6%AE%B5%E6%94%B6%E7%BC%A9%E4%B8%8E%E7%A2%8E%E7%89%87%E6%B2%BB%E7%90%86"><span class="nav-number">1.6.5.</span> <span class="nav-text">5. 段收缩与碎片治理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81UNDO-%E4%B8%8E%E8%AF%BB%E4%B8%80%E8%87%B4%E6%80%A7"><span class="nav-number">1.7.</span> <span class="nav-text">六、UNDO 与读一致性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-UNDO-%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. UNDO 的作用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%A4%9A%E7%89%88%E6%9C%AC%E8%AF%BB%E4%B8%80%E8%87%B4%E6%80%A7"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. 多版本读一致性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81REDO-%E4%B8%8E%E5%BD%92%E6%A1%A3"><span class="nav-number">1.8.</span> <span class="nav-text">七、REDO 与归档</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-REDO-%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B"><span class="nav-number">1.8.1.</span> <span class="nav-text">1. REDO 的写入流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-NOARCHIVELOG-vs-ARCHIVELOG"><span class="nav-number">1.8.2.</span> <span class="nav-text">2. NOARCHIVELOG vs ARCHIVELOG</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81ASM%EF%BC%88%E8%87%AA%E5%8A%A8%E5%AD%98%E5%82%A8%E7%AE%A1%E7%90%86%EF%BC%89"><span class="nav-number">1.9.</span> <span class="nav-text">八、ASM（自动存储管理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81CDB-PDB-%E5%A4%9A%E7%A7%9F%E6%88%B7%E6%9E%B6%E6%9E%84"><span class="nav-number">1.10.</span> <span class="nav-text">九、CDB&#x2F;PDB 多租户架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%AC%E5%85%B1%E7%94%A8%E6%88%B7%E4%B8%8E%E6%9C%AC%E5%9C%B0%E7%94%A8%E6%88%B7"><span class="nav-number">1.10.1.</span> <span class="nav-text">公共用户与本地用户</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PDB-%E8%B5%84%E6%BA%90%E9%9A%94%E7%A6%BB%E4%B8%8E%E8%BF%90%E7%BB%B4"><span class="nav-number">1.10.2.</span> <span class="nav-text">PDB 资源隔离与运维</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%B8%B8%E7%94%A8%E8%AF%8A%E6%96%AD%E8%A7%86%E5%9B%BE%E9%80%9F%E6%9F%A5"><span class="nav-number">1.11.</span> <span class="nav-text">十、常用诊断视图速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1"><span class="nav-number">1.12.</span> <span class="nav-text">十一、常见陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.13.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/database/04-oracle-architecture-storage/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：体系结构与存储管理 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：体系结构与存储管理
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:28:00" itemprop="dateCreated datePublished" datetime="2026-05-01T12:28:00+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/" itemprop="url" rel="index"><span itemprop="name">数据库</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>12k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>11 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：体系结构与存储管理"><a href="#第四章：体系结构与存储管理" class="headerlink" title="第四章：体系结构与存储管理"></a>第四章：体系结构与存储管理</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>内存 + 进程 + 文件三件套</strong>：Oracle 实例由 <strong>SGA（共享内存）+ PGA（私有内存）+ 后台进程</strong>构成，操作 <strong>Database 物理文件</strong>——理解三者的协作就抓住了 Oracle 运行的本质。</li>
+<li><strong>日志先行是命脉</strong>：事务提交时 <strong>LGWR</strong> 先把 redo 写联机日志才算「提交成功」，脏块由 <strong>DBWn</strong> 延迟批量落盘。这套 WAL 机制保证了实例崩溃后可恢复，是 Oracle 可靠性的根基。</li>
+<li><strong>逻辑&#x2F;物理存储两层映射</strong>：逻辑上「表空间→段→区→块」，物理上「数据文件→操作系统块」——<code>段</code>对应表&#x2F;索引、<code>区</code>是分配单位、<code>块</code>是最小 IO 单元。</li>
+<li><strong>多版本读一致性靠 UNDO</strong>：查询看到的是「查询开始时点」的数据快照，靠 UNDO 表空间的撤销数据回构——这是 Oracle 实现「读不阻塞写、写不阻塞读」的核心。</li>
+<li><strong>本章目标</strong>：从内存、进程、文件到存储分层与 ASM，建立完整的 Oracle 内部运行图景，为高可用与调优打基础。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/database/03-oracle-plsql/">第三章：PL&#x2F;SQL 程序设计</a>。体系结构是 DBA 与架构师的必修课，也是后续高可用、调优章节的底层依据。</p>
+</blockquote>
+<hr>
+<h2 id="一、内存结构"><a href="#一、内存结构" class="headerlink" title="一、内存结构"></a>一、内存结构</h2><h3 id="1-SGA（System-Global-Area，共享全局区）"><a href="#1-SGA（System-Global-Area，共享全局区）" class="headerlink" title="1. SGA（System Global Area，共享全局区）"></a>1. SGA（System Global Area，共享全局区）</h3><p>SGA 是所有服务进程共享的内存大区，由若干子池组成：</p>
+<table>
+<thead>
+<tr>
+<th>子池</th>
+<th>职责</th>
+<th>调优要点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Buffer Cache</strong></td>
+<td>缓存数据块，减少物理读</td>
+<td><code>DB_CACHE_SIZE</code>，命中率核心</td>
+</tr>
+<tr>
+<td><strong>Shared Pool</strong></td>
+<td>库缓存（SQL&#x2F;PL&#x2F;SQL 解析结果）+ 数据字典缓存</td>
+<td><code>SHARED_POOL_SIZE</code>，绑定变量缓解</td>
+</tr>
+<tr>
+<td><strong>Redo Log Buffer</strong></td>
+<td>缓存 redo 条目，LGWR 异步写盘</td>
+<td><code>LOG_BUFFER</code>，通常较小</td>
+</tr>
+<tr>
+<td><strong>Large Pool</strong></td>
+<td>RMAN 备份、并行查询、共享服务器会话</td>
+<td>可选，避免挤占 Shared Pool</td>
+</tr>
+<tr>
+<td><strong>Java Pool &#x2F; Streams Pool</strong></td>
+<td>JVM、GoldenGate&#x2F;Streams</td>
+<td>按需</td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看 SGA 各区大小</span></span><br><span class="line"><span class="keyword">SELECT</span> pool, name, bytes<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span> mb <span class="keyword">FROM</span> v$sgastat</span><br><span class="line"><span class="keyword">WHERE</span> pool <span class="keyword">IS</span> <span class="keyword">NOT NULL</span> <span class="keyword">GROUP</span> <span class="keyword">BY</span> pool, name, bytes <span class="keyword">ORDER</span> <span class="keyword">BY</span> pool;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- SGA 目标自动管理（推荐）</span></span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">PARAMETER</span> sga_target;</span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">PARAMETER</span> memory_target;   <span class="comment">-- 11g+ 自动内存管理</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Buffer Cache 内部</strong>：默认缓存 8KB 数据块，可细分三个池——</p>
+<table>
+<thead>
+<tr>
+<th>池</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>DEFAULT</strong></td>
+<td>默认池，未指定的对象进这里</td>
+</tr>
+<tr>
+<td><strong>KEEP</strong></td>
+<td>钉住热表（<code>STORAGE(BUFFER_POOL KEEP)</code>），防被挤出</td>
+</tr>
+<tr>
+<td><strong>RECYCLE</strong></td>
+<td>放大表全扫的块，快进快出防污染</td>
+</tr>
+</tbody></table>
+<p>脏块通过<strong>检查点队列</strong>等待 DBWn 落盘，干净块按 LRU 变冷淘汰。</p>
+<p><strong>Shared Pool 内部</strong>：库缓存（SQL 文本&#x2F;执行计划，按 SQL_ID 哈希存放）+ 数据字典缓存（row cache，表&#x2F;列定义）+ 结果缓存（11g+，<code>RESULT_CACHE</code>）。硬解析频繁时 <code>library cache</code> 闩锁争用会成为瓶颈——绑定变量是根治手段（见第六章）。</p>
+<h3 id="2-PGA（Program-Global-Area，私有区）"><a href="#2-PGA（Program-Global-Area，私有区）" class="headerlink" title="2. PGA（Program Global Area，私有区）"></a>2. PGA（Program Global Area，私有区）</h3><p>PGA 是<strong>每个会话私有</strong>的内存，存放排序区、会话状态、游标：</p>
+<table>
+<thead>
+<tr>
+<th>区域</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Sort Area</strong></td>
+<td>排序中间结果，不足则写临时段</td>
+</tr>
+<tr>
+<td><strong>Hash Area</strong></td>
+<td>哈希连接用</td>
+</tr>
+<tr>
+<td><strong>Session Memory</strong></td>
+<td>会话变量、游标状态</td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- PGA 自动管理（推荐）</span></span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">PARAMETER</span> pga_aggregate_target;</span><br><span class="line"><span class="comment">-- 单进程 PGA 上限</span></span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">PARAMETER</span> pga_aggregate_limit;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看各会话 PGA 占用</span></span><br><span class="line"><span class="keyword">SELECT</span> sid, program, pga_used_mem<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span> mb</span><br><span class="line"><span class="keyword">FROM</span> v$session <span class="keyword">ORDER</span> <span class="keyword">BY</span> pga_used_mem <span class="keyword">DESC</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- PGA 工作区是否溢出到 TEMP（onepass/multipass 增长 = 性能告警）</span></span><br><span class="line"><span class="keyword">SELECT</span> name, <span class="keyword">value</span> <span class="keyword">FROM</span> v$sysstat</span><br><span class="line"><span class="keyword">WHERE</span> name <span class="keyword">LIKE</span> <span class="string">&#x27;workarea executions%&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong><code>workarea executions - onepass / multipass</code> 持续增长</strong>说明排序&#x2F;哈希内存不足、溢出到 TEMP 磁盘，需调大 <code>PGA_AGGREGATE_TARGET</code> 或优化 SQL（减少排序、加索引消除 ORDER BY）。理想状态是 <code>optimal</code> 占绝对多数。</p>
+</blockquote>
+<blockquote>
+<p><strong>SGA 是共享、PGA 是私有</strong>——这是内存模型的核心区分。排序&#x2F;哈希在 PGA 跑，超限溢出到 TEMP 表空间（磁盘），是慢查询的常见元凶。</p>
+</blockquote>
+<h3 id="3-内存管理演进"><a href="#3-内存管理演进" class="headerlink" title="3. 内存管理演进"></a>3. 内存管理演进</h3><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>机制</th>
+<th>参数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>手动</strong></td>
+<td>各池手动设固定值</td>
+<td><code>DB_CACHE_SIZE</code> 等逐个设</td>
+</tr>
+<tr>
+<td><strong>ASMM</strong>（10g+）</td>
+<td>SGA 内自动分配</td>
+<td><code>SGA_TARGET</code> + <code>PGA_AGGREGATE_TARGET</code></td>
+</tr>
+<tr>
+<td><strong>AMM</strong>（11g+）</td>
+<td>SGA+PGA 全自动</td>
+<td><code>MEMORY_TARGET</code>（含 PGA）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>生产推荐 ASMM</strong>（<code>SGA_TARGET</code>+<code>PGA_AGGREGATE_TARGET</code>）。AMM 在大内存&#x2F;RAC&#x2F;巨页场景有兼容问题，慎用。</p>
+</blockquote>
+<hr>
+<h2 id="二、后台进程"><a href="#二、后台进程" class="headerlink" title="二、后台进程"></a>二、后台进程</h2><h3 id="进程协作图"><a href="#进程协作图" class="headerlink" title="进程协作图"></a>进程协作图</h3><pre>
+<code class="mermaid">
+
+flowchart LR
+  SESS[服务进程 Server] --&gt;|修改块| BC[Buffer Cache 脏块]
+  SESS --&gt;|生成 redo| RLB[Redo Log Buffer]
+  SESS --&gt;|提交| LGWR
+  RLB --&gt; LGWR[LGWR 写盘]
+  LGWR --&gt; REDO[(联机重做日志)]
+  BC --&gt; DBWn[DBWn 异步落盘]
+  DBWn --&gt; DF[(数据文件)]
+  REDO -.写满.-&gt; ARCn[ARCn 归档]
+  ARCn --&gt; ARC[(归档日志)]
+  CKPT[CKPT] --&gt;|更新文件头| DF
+  CKPT --&gt;|更新控制文件| CTL[(控制文件)]
+</code>
+</pre>
+
+<h3 id="核心进程详解"><a href="#核心进程详解" class="headerlink" title="核心进程详解"></a>核心进程详解</h3><table>
+<thead>
+<tr>
+<th>进程</th>
+<th>触发时机</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SMON</strong></td>
+<td>实例启动 &#x2F; 定期</td>
+<td>系统监控：实例恢复（前滚未落盘的 redo、回滚未提交事务）、合并空闲空间</td>
+</tr>
+<tr>
+<td><strong>PMON</strong></td>
+<td>会话异常退出</td>
+<td>进程监控：清理死会话、释放锁与 PGA、注册服务到监听器</td>
+</tr>
+<tr>
+<td><strong>DBWn</strong></td>
+<td>脏块过多 &#x2F; 检查点</td>
+<td>把 Buffer Cache 脏块写数据文件，<strong>延迟批量</strong>，可多个（DBW0~DBW9）</td>
+</tr>
+<tr>
+<td><strong>LGWR</strong></td>
+<td>提交 &#x2F; 1&#x2F;3 满 &#x2F; 每3秒</td>
+<td>把 Redo Buffer 写联机日志，<strong>日志先行</strong>，提交的命脉</td>
+</tr>
+<tr>
+<td><strong>CKPT</strong></td>
+<td>检查点</td>
+<td>同步数据文件头与控制文件的 SCN，触发 DBWn</td>
+</tr>
+<tr>
+<td><strong>ARCn</strong></td>
+<td>联机日志切换</td>
+<td>归档模式才启用，把写满的联机日志拷贝到归档目录</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>LGWR 写顺序、DBWn 写数据</strong>：理解这点就懂了「为什么实例崩了数据不丢」——redo 已落盘，恢复时重放 redo + 回滚未提交。这也解释了归档模式为何是时点恢复的前提。</p>
+</blockquote>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看后台进程</span></span><br><span class="line"><span class="keyword">SELECT</span> name, description <span class="keyword">FROM</span> v$bgprocess <span class="keyword">WHERE</span> paddr <span class="operator">&lt;&gt;</span> <span class="string">&#x27;00&#x27;</span>;</span><br><span class="line"><span class="comment">-- 查看日志切换与归档</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="keyword">group</span>#, sequence#, bytes<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span> mb, status, archived <span class="keyword">FROM</span> v$log;</span><br><span class="line"><span class="keyword">SELECT</span> triggering_type, status <span class="keyword">FROM</span> v$instance_recovery;</span><br></pre></td></tr></table></figure>
+
+<h3 id="实例恢复（Crash-Recovery）流程"><a href="#实例恢复（Crash-Recovery）流程" class="headerlink" title="实例恢复（Crash Recovery）流程"></a>实例恢复（Crash Recovery）流程</h3><p>实例异常宕机（断电、<code>SHUTDOWN ABORT</code>）后再次启动时，SMON 自动执行实例恢复，<strong>无需人工干预</strong>：</p>
+<pre>
+<code class="mermaid">
+
+flowchart LR
+  A[启动 MOUNT] --&gt; B[OPEN 前: 前滚 Roll Forward]
+  B --&gt; C[重放 redo 恢复脏块]
+  C --&gt; D[库可 OPEN 提供服务]
+  D --&gt; E[SMON 回滚未提交事务]
+</code>
+</pre>
+
+<ol>
+<li><strong>前滚（Roll Forward）</strong>：用联机 redo 把最后一次检查点之后的所有变更重放到数据文件，包括<strong>未提交事务的脏块</strong>——先把「磁盘状态」追平到宕机瞬间。</li>
+<li><strong>打开数据库</strong>：此时库中尚有未提交事务的数据，但已可对外服务。</li>
+<li><strong>回滚（Roll Back）</strong>：SMON 用 UNDO 回滚所有未提交事务，恢复一致性；新事务碰到未回滚的行时会触发<strong>事务恢复</strong>自动清理。</li>
+</ol>
+<blockquote>
+<p><strong>「先追平、再清理」</strong>：前滚依赖 redo（已落盘的变更），回滚依赖 UNDO（未提交的旧值）。这解释了为什么实例崩溃不丢已提交数据（redo 已写盘），也不留未提交数据（UNDO 回滚）。<code>FAST_START_MTTR_TARGET</code> 控制前滚时间上限。</p>
+</blockquote>
+<hr>
+<h2 id="三、物理文件"><a href="#三、物理文件" class="headerlink" title="三、物理文件"></a>三、物理文件</h2><h3 id="1-数据文件"><a href="#1-数据文件" class="headerlink" title="1. 数据文件"></a>1. 数据文件</h3><p>存放表&#x2F;索引实际数据，属于表空间：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看数据文件</span></span><br><span class="line"><span class="keyword">SELECT</span> file_id, file_name, bytes<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span> mb, autoextensible, maxbytes<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span> max_mb</span><br><span class="line"><span class="keyword">FROM</span> dba_data_files <span class="keyword">ORDER</span> <span class="keyword">BY</span> file_id;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-控制文件"><a href="#2-控制文件" class="headerlink" title="2. 控制文件"></a>2. 控制文件</h3><p>记录数据库物理结构的<strong>小而关键</strong>的二进制文件——包含数据文件、联机日志、SCN、检查点信息。<strong>多路复用</strong>是基本要求：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="keyword">PARAMETER</span> control_files;</span><br><span class="line"><span class="keyword">SELECT</span> name, status <span class="keyword">FROM</span> v$controlfile;</span><br><span class="line"><span class="comment">-- 至少 2~3 份，分布在不同磁盘</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>控制文件自动备份</strong>：RMAN 中 <code>CONFIGURE CONTROLFILE AUTOBACKUP ON</code>（见第五章），每次结构变更或备份后自动生成控制文件副本——否则控制文件丢失且无二进制副本时，恢复要靠 <code>CREATE CONTROLFILE</code> 重建，代价高昂。</p>
+</blockquote>
+<h3 id="3-联机重做日志"><a href="#3-联机重做日志" class="headerlink" title="3. 联机重做日志"></a>3. 联机重做日志</h3><p>记录所有变更，循环写入。<strong>至少两组、每组多成员</strong>是规范：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="keyword">group</span>#, thread#, sequence#, members, status <span class="keyword">FROM</span> v$log;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="keyword">group</span>#, <span class="keyword">member</span>, status <span class="keyword">FROM</span> v$logfile;</span><br><span class="line"><span class="comment">-- status: CURRENT 当前写、ACTIVE 恢复需要、INACTIVE 可覆盖</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>日志组与成员</strong>：一个组内多成员互为镜像（不同磁盘），单文件损坏不丢日志。日志切换（<code>ALTER SYSTEM SWITCH LOGFILE</code>）时 ARCn 归档写满组。</p>
+</blockquote>
+<h3 id="4-归档日志"><a href="#4-归档日志" class="headerlink" title="4. 归档日志"></a>4. 归档日志</h3><p>ARCHIVELOG 模式下，联机日志写满后归档保留，是<strong>时点恢复</strong>的依据。</p>
+<p>归档路径由 <code>LOG_ARCHIVE_DEST_n</code> 或快速恢复区（<code>DB_RECOVERY_FILE_DEST</code>）指定；恢复区写满会导致数据库挂起，必须纳入容量监控。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ARCHIVE LOG LIST;    <span class="comment">-- 查看归档模式与序列</span></span><br><span class="line"><span class="keyword">SELECT</span> sequence#, name, completion_time <span class="keyword">FROM</span> v$archived_log <span class="keyword">ORDER</span> <span class="keyword">BY</span> sequence# <span class="keyword">DESC</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-参数文件"><a href="#5-参数文件" class="headerlink" title="5. 参数文件"></a>5. 参数文件</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>性质</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>spfile.ora</code></strong></td>
+<td>二进制、动态</td>
+<td><code>ALTER SYSTEM SET</code> 在线改，重启生效，推荐</td>
+</tr>
+<tr>
+<td><strong><code>init.ora</code></strong></td>
+<td>文本、静态</td>
+<td>手动改需重启，<code>CREATE PFILE FROM SPFILE</code> 互转</td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="keyword">PARAMETER</span> spfile;    <span class="comment">-- 有值说明用 spfile 启动</span></span><br><span class="line"><span class="keyword">CREATE</span> PFILE<span class="operator">=</span><span class="string">&#x27;init.ora.bak&#x27;</span> <span class="keyword">FROM</span> SPFILE;   <span class="comment">-- 备份为文本</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-临时文件与在线文件管理"><a href="#6-临时文件与在线文件管理" class="headerlink" title="6. 临时文件与在线文件管理"></a>6. 临时文件与在线文件管理</h3><p>**临时文件（tempfile）**属于 TEMP 表空间，存放排序&#x2F;哈希溢出与全局临时表数据，<strong>不产生 redo、RMAN 不备份</strong>：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> file_name, bytes<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span> mb <span class="keyword">FROM</span> dba_temp_files;</span><br><span class="line"><span class="keyword">ALTER</span> TABLESPACE temp <span class="keyword">ADD</span> TEMPFILE <span class="string">&#x27;/u01/oradata/orcl/temp02.dbf&#x27;</span> SIZE <span class="number">2</span>G;</span><br></pre></td></tr></table></figure>
+
+<p>12c+ 支持<strong>在线移动&#x2F;重命名数据文件</strong>，无需停业务：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ALTER</span> DATABASE MOVE DATAFILE <span class="string">&#x27;/u01/oradata/orcl/apps01.dbf&#x27;</span></span><br><span class="line">  <span class="keyword">TO</span> <span class="string">&#x27;/u02/oradata/orcl/apps01.dbf&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>临时文件损坏不影响库启动——删掉重建即可；数据文件在线迁移是换存储&#x2F;扩容场景的利器，比 RMAN 拷贝省事。</p>
+</blockquote>
+<hr>
+<h2 id="四、逻辑存储分层"><a href="#四、逻辑存储分层" class="headerlink" title="四、逻辑存储分层"></a>四、逻辑存储分层</h2><p>Oracle 逻辑存储自上而下四层：</p>
+<pre>
+<code class="mermaid">
+
+flowchart TB
+  TS[表空间 Tablespace] --&gt;|包含| SEG[段 Segment]
+  SEG --&gt;|由| EXT[区 Extent] --&gt;|组成| BLK[数据块 Block]
+  BLK -.对应.-&gt; OS[OS 块&#x2F;扇区]
+</code>
+</pre>
+
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>说明</th>
+<th>关键点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>表空间</strong></td>
+<td>逻辑容器，对应多个数据文件</td>
+<td>业务隔离单位</td>
+</tr>
+<tr>
+<td><strong>段 Segment</strong></td>
+<td>一个表&#x2F;索引一个段</td>
+<td>占空间的对象</td>
+</tr>
+<tr>
+<td><strong>区 Extent</strong></td>
+<td>连续块的分配单位</td>
+<td>扩展时按区分配</td>
+</tr>
+<tr>
+<td><strong>块 Block</strong></td>
+<td>最小 IO&#x2F;分配单元</td>
+<td>默认 8KB，<code>DB_BLOCK_SIZE</code></td>
+</tr>
+</tbody></table>
+<h3 id="1-数据块内部"><a href="#1-数据块内部" class="headerlink" title="1. 数据块内部"></a>1. 数据块内部</h3><p>一个数据块（默认 8KB）内部结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">+------------------+</span><br><span class="line">| 块头 Block Header |  ← SCN、ITL（事务槽）、表目录</span><br><span class="line">+------------------+</span><br><span class="line">| 空闲空间 Free Space|</span><br><span class="line">+------------------+</span><br><span class="line">| 数据行 Row Data    |  ← 实际行</span><br><span class="line">+------------------+</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>ITL（Interested Transaction List）</strong>：块内事务槽，记录哪些事务在改本块。<code>INITRANS</code> 初始事务数（默认 1），<code>MAXTRANS</code> 上限。</li>
+<li><strong>PCTFREE</strong>：预留空闲比例（默认 10%），给 UPDATE 留空间，避免行迁移。</li>
+<li><strong>高水位线 HWM</strong>：段曾用到的最高块位置，<code>SELECT</code> 全表扫到 HWM 即止。<code>TRUNCATE</code> 重置 HWM，<code>DELETE</code> 不重置。</li>
+</ul>
+<h3 id="2-行迁移与行链接"><a href="#2-行迁移与行链接" class="headerlink" title="2. 行迁移与行链接"></a>2. 行迁移与行链接</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 检测行迁移/链接</span></span><br><span class="line">ANALYZE <span class="keyword">TABLE</span> emp COMPUTE STATISTICS;</span><br><span class="line"><span class="keyword">SELECT</span> chain_cnt <span class="keyword">FROM</span> user_tables <span class="keyword">WHERE</span> table_name<span class="operator">=</span><span class="string">&#x27;EMP&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>原因</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>行迁移 Row Migration</strong></td>
+<td>UPDATE 后行变长，块 PCTFREE 不够，整行移到新块，原块留指针</td>
+<td>多一次 IO</td>
+</tr>
+<tr>
+<td><strong>行链接 Row Chaining</strong></td>
+<td>行本身超一个块（大字段），跨块存储</td>
+<td>不可避免</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>PCTFREE 调高</strong>可减少行迁移（留更多更新空间），代价是空间利用率下降。大字段用 LOB 单独存。</p>
+</blockquote>
+<hr>
+<h2 id="五、表空间管理"><a href="#五、表空间管理" class="headerlink" title="五、表空间管理"></a>五、表空间管理</h2><h3 id="1-表空间分类"><a href="#1-表空间分类" class="headerlink" title="1. 表空间分类"></a>1. 表空间分类</h3><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+<th>典型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SYSTEM</strong></td>
+<td>数据字典</td>
+<td>禁放业务</td>
+</tr>
+<tr>
+<td><strong>SYSAUX</strong></td>
+<td>SYSTEM 辅助（AWR、Oracle Text）</td>
+<td>禁放业务</td>
+</tr>
+<tr>
+<td><strong>UNDO</strong></td>
+<td>撤销数据，支持读一致性与回滚</td>
+<td>自动管理</td>
+</tr>
+<tr>
+<td><strong>TEMP</strong></td>
+<td>排序&#x2F;哈希溢出临时段</td>
+<td>全局临时表</td>
+</tr>
+<tr>
+<td><strong>USERS&#x2F;业务表空间</strong></td>
+<td>业务数据</td>
+<td>自定义</td>
+</tr>
+</tbody></table>
+<h3 id="2-创建与管理"><a href="#2-创建与管理" class="headerlink" title="2. 创建与管理"></a>2. 创建与管理</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 创建小文件表空间</span></span><br><span class="line"><span class="keyword">CREATE</span> TABLESPACE apps_ts</span><br><span class="line">DATAFILE <span class="string">&#x27;/u01/oradata/orcl/apps01.dbf&#x27;</span> SIZE <span class="number">1</span>G</span><br><span class="line">  AUTOEXTEND <span class="keyword">ON</span> NEXT <span class="number">100</span>M MAXSIZE <span class="number">10</span>G</span><br><span class="line">EXTENT MANAGEMENT <span class="keyword">LOCAL</span> AUTOALLOCATE    <span class="comment">-- 本地管理（推荐）</span></span><br><span class="line">SEGMENT SPACE MANAGEMENT AUTO;          <span class="comment">-- ASSM 自动段空间管理</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 大文件表空间（单文件可达 32TB，简化管理）</span></span><br><span class="line"><span class="keyword">CREATE</span> BIGFILE TABLESPACE big_ts DATAFILE <span class="string">&#x27;/u01/oradata/orcl/big01.dbf&#x27;</span> SIZE <span class="number">100</span>G;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 扩容</span></span><br><span class="line"><span class="keyword">ALTER</span> TABLESPACE apps_ts <span class="keyword">ADD</span> DATAFILE <span class="string">&#x27;/u01/oradata/orcl/apps02.dbf&#x27;</span> SIZE <span class="number">1</span>G;</span><br><span class="line"><span class="keyword">ALTER</span> DATABASE DATAFILE <span class="string">&#x27;.../apps01.dbf&#x27;</span> RESIZE <span class="number">2</span>G;</span><br><span class="line"><span class="keyword">ALTER</span> DATABASE DATAFILE <span class="string">&#x27;.../apps01.dbf&#x27;</span> AUTOEXTEND <span class="keyword">ON</span> MAXSIZE <span class="number">20</span>G;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 在线/离线/只读</span></span><br><span class="line"><span class="keyword">ALTER</span> TABLESPACE apps_ts OFFLINE;</span><br><span class="line"><span class="keyword">ALTER</span> TABLESPACE apps_ts READ <span class="keyword">ONLY</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-空间使用监控"><a href="#3-空间使用监控" class="headerlink" title="3. 空间使用监控"></a>3. 空间使用监控</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 表空间使用率（含自动扩展上限）</span></span><br><span class="line"><span class="keyword">SELECT</span> tablespace_name,</span><br><span class="line">       ROUND(<span class="built_in">SUM</span>(bytes)<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span>, <span class="number">2</span>) used_gb,</span><br><span class="line">       ROUND(<span class="built_in">SUM</span>(maxbytes)<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span>, <span class="number">2</span>) max_gb,</span><br><span class="line">       ROUND(<span class="built_in">SUM</span>(bytes)<span class="operator">/</span><span class="built_in">NULLIF</span>(<span class="built_in">SUM</span>(maxbytes),<span class="number">0</span>)<span class="operator">*</span><span class="number">100</span>, <span class="number">2</span>) pct</span><br><span class="line"><span class="keyword">FROM</span> dba_data_files <span class="keyword">GROUP</span> <span class="keyword">BY</span> tablespace_name <span class="keyword">ORDER</span> <span class="keyword">BY</span> pct <span class="keyword">DESC</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 占用最大的段 Top 10</span></span><br><span class="line"><span class="keyword">SELECT</span> owner, segment_name, segment_type, bytes<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span> mb</span><br><span class="line"><span class="keyword">FROM</span> dba_segments <span class="keyword">ORDER</span> <span class="keyword">BY</span> bytes <span class="keyword">DESC</span> <span class="keyword">FETCH</span> <span class="keyword">FIRST</span> <span class="number">10</span> <span class="keyword">ROWS</span> <span class="keyword">ONLY</span>;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>表空间使用率纳入日常监控告警（如 &gt;85% 预警），配合 <code>AUTOEXTEND MAXSIZE</code> 上限防止无限扩张打满磁盘。</p>
+</blockquote>
+<h3 id="4-空间管理方式"><a href="#4-空间管理方式" class="headerlink" title="4. 空间管理方式"></a>4. 空间管理方式</h3><table>
+<thead>
+<tr>
+<th>方式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>本地管理 LMT</strong>（推荐）</td>
+<td>位图管理区分配，避免字典争用</td>
+</tr>
+<tr>
+<td><strong>字典管理 DMT</strong></td>
+<td>旧式，已废弃</td>
+</tr>
+<tr>
+<td><strong>ASSM</strong>（推荐）</td>
+<td>自动段空间管理，位图管理块空闲</td>
+</tr>
+<tr>
+<td><strong>MSSM</strong></td>
+<td>手动段空间管理，用 FREELIST，高并发可能争用</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>生产一律 LMT + ASSM</strong>，避免字典管理与 FREELIST 争用。建库时设默认表空间类型 <code>SET DEFAULT SMALLFILE TABLESPACE</code>。</p>
+</blockquote>
+<h3 id="5-段收缩与碎片治理"><a href="#5-段收缩与碎片治理" class="headerlink" title="5. 段收缩与碎片治理"></a>5. 段收缩与碎片治理</h3><p>大批量 <code>DELETE</code> 后空间不释放（HWM 不降），全表扫描仍会扫到空块：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 开启行迁移后在线收缩：压缩数据 + 重置 HWM</span></span><br><span class="line"><span class="keyword">ALTER TABLE</span> emp ENABLE <span class="type">ROW</span> MOVEMENT;</span><br><span class="line"><span class="keyword">ALTER TABLE</span> emp SHRINK SPACE;           <span class="comment">-- 压缩段并降 HWM</span></span><br><span class="line"><span class="keyword">ALTER TABLE</span> emp SHRINK SPACE COMPACT;   <span class="comment">-- 只压缩不移动 HWM（持锁更短）</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看段实际占用</span></span><br><span class="line"><span class="keyword">SELECT</span> segment_name, bytes<span class="operator">/</span><span class="number">1024</span><span class="operator">/</span><span class="number">1024</span> mb <span class="keyword">FROM</span> user_segments</span><br><span class="line"><span class="keyword">WHERE</span> segment_name <span class="operator">=</span> <span class="string">&#x27;EMP&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>SHRINK SPACE</code> 会产生大量 redo 并短暂持锁，生产选低峰执行；依赖索引默认随收缩自动维护（可用 <code>CASCADE</code> 显式指定）。</p>
+</blockquote>
+<hr>
+<h2 id="六、UNDO-与读一致性"><a href="#六、UNDO-与读一致性" class="headerlink" title="六、UNDO 与读一致性"></a>六、UNDO 与读一致性</h2><h3 id="1-UNDO-的作用"><a href="#1-UNDO-的作用" class="headerlink" title="1. UNDO 的作用"></a>1. UNDO 的作用</h3><p>UNDO 表空间存放「改之前」的旧值，支撑三大机制：</p>
+<ol>
+<li><strong>事务回滚</strong>：<code>ROLLBACK</code> 时用 UNDO 恢复原值。</li>
+<li><strong>读一致性</strong>：查询看到查询开始时点的数据，靠 UNDO 回构已被改的块。</li>
+<li><strong>闪回查询</strong>：<code>AS OF TIMESTAMP</code> 利用 UNDO 看历史数据。</li>
+</ol>
+<h3 id="2-多版本读一致性"><a href="#2-多版本读一致性" class="headerlink" title="2. 多版本读一致性"></a>2. 多版本读一致性</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 长查询不会被写阻塞：写新值到数据块，旧值入 UNDO，查询读旧版本</span></span><br><span class="line"><span class="comment">-- 但若 UNDO 数据已被覆盖（ORA-01555 快照太旧），查询会失败</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> emp <span class="keyword">AS</span> <span class="keyword">OF</span> <span class="type">TIMESTAMP</span> (SYSTIMESTAMP <span class="operator">-</span> <span class="type">INTERVAL</span> <span class="string">&#x27;1&#x27;</span> <span class="keyword">HOUR</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看事务占用的 UNDO</span></span><br><span class="line"><span class="keyword">SELECT</span> s.sid, s.username, t.used_ublk, t.start_time</span><br><span class="line"><span class="keyword">FROM</span> v$session s, v$transaction t <span class="keyword">WHERE</span> s.taddr <span class="operator">=</span> t.addr;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>UNDO_RETENTION</code></strong></td>
+<td>UNDO 保留时间（秒），降低 ORA-01555</td>
+</tr>
+<tr>
+<td><strong><code>UNDO_TABLESPACE</code></strong></td>
+<td>指定 UNDO 表空间</td>
+</tr>
+<tr>
+<td><strong><code>TEMP_UNDO_ENABLED</code></strong></td>
+<td>12c+ 临时表 UNDO 独立</td>
+</tr>
+</tbody></table>
+<p><strong>自动 UNDO 管理（AUM）要点</strong>：</p>
+<ul>
+<li>表空间自动扩展（<code>AUTOEXTEND ON</code>）时，<code>UNDO_RETENTION</code> 是「努力目标」，空间紧张时保留时间可能被压缩。</li>
+<li><code>RETENTION GUARANTEE</code> 强制保留（宁可 DML 报错也不覆盖未过期 UNDO），代价是影响并发事务。</li>
+<li>估算所需 UNDO 大小：<strong>峰值每秒 undo 生成量 × UNDO_RETENTION</strong>，生成速率查 <code>V$UNDOSTAT</code> 的 <code>UNDOBLKS</code>。</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 最近各时段的 UNDO 生成量、事务数、最长查询、空间不足次数</span></span><br><span class="line"><span class="keyword">SELECT</span> begin_time, undoblks, txncount, maxquerylen, nospaceerrcnt</span><br><span class="line"><span class="keyword">FROM</span> v$undostat <span class="keyword">ORDER</span> <span class="keyword">BY</span> begin_time <span class="keyword">DESC</span> <span class="keyword">FETCH</span> <span class="keyword">FIRST</span> <span class="number">10</span> <span class="keyword">ROWS</span> <span class="keyword">ONLY</span>;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>ORA-01555 快照太旧</strong>是长查询经典错误：UNDO 数据被新事务覆盖，旧版本回构不出来。调大 <code>UNDO_RETENTION</code> 与 UNDO 表空间、避免长查询跨大事务可缓解。</p>
+</blockquote>
+<hr>
+<h2 id="七、REDO-与归档"><a href="#七、REDO-与归档" class="headerlink" title="七、REDO 与归档"></a>七、REDO 与归档</h2><h3 id="1-REDO-的写入流程"><a href="#1-REDO-的写入流程" class="headerlink" title="1. REDO 的写入流程"></a>1. REDO 的写入流程</h3><ol>
+<li>会话修改块，生成 redo 条目入 <strong>Redo Log Buffer</strong>。</li>
+<li>提交时 <strong>LGWR</strong> 把 redo 写联机日志（同步），提交返回。</li>
+<li><strong>DBWn</strong> 延迟把脏块写数据文件（异步批量）。</li>
+<li>联机日志写满切换，<strong>ARCn</strong> 归档（ARCHIVELOG 模式）。</li>
+</ol>
+<p><strong>LGWR 触发写的时机</strong>（满足任一即写）：</p>
+<ul>
+<li>事务 <code>COMMIT</code>（同步等待，这是「提交成功」的定义）。</li>
+<li>Redo Log Buffer 达到 1&#x2F;3 满。</li>
+<li>每 3 秒超时。</li>
+<li>DBWn 写脏块之前（对应 redo 必须先落盘）。</li>
+</ul>
+<blockquote>
+<p><strong>redo 先行的严格性</strong>：DBWn 写任何脏块前，该块对应的 redo 必须已落盘——否则实例崩溃后无法前滚这个块。COMMIT 的 <code>log file sync</code> 等待即等 LGWR 落盘，是 OLTP 提交延迟的关键指标（见第六章）。</p>
+</blockquote>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 强制日志切换</span></span><br><span class="line"><span class="keyword">ALTER</span> <span class="keyword">SYSTEM</span> SWITCH LOGFILE;</span><br><span class="line"><span class="comment">-- 强制检查点（同步脏块）</span></span><br><span class="line"><span class="keyword">ALTER</span> <span class="keyword">SYSTEM</span> CHECKPOINT;</span><br><span class="line"><span class="comment">-- 调整联机日志大小（需新增大组、删除旧组）</span></span><br><span class="line"><span class="keyword">ALTER</span> DATABASE <span class="keyword">ADD</span> LOGFILE <span class="keyword">GROUP</span> <span class="number">4</span> (<span class="string">&#x27;/u01/redo04a.log&#x27;</span>) SIZE <span class="number">500</span>M;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-NOARCHIVELOG-vs-ARCHIVELOG"><a href="#2-NOARCHIVELOG-vs-ARCHIVELOG" class="headerlink" title="2. NOARCHIVELOG vs ARCHIVELOG"></a>2. NOARCHIVELOG vs ARCHIVELOG</h3><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>联机日志</th>
+<th>能力</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>NOARCHIVELOG</strong></td>
+<td>写满即覆盖</td>
+<td>只能恢复到上次冷备</td>
+<td>开发&#x2F;测试</td>
+</tr>
+<tr>
+<td><strong>ARCHIVELOG</strong></td>
+<td>归档保留</td>
+<td>可时点恢复（PITR）</td>
+<td><strong>生产必须</strong></td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看模式</span></span><br><span class="line">ARCHIVE LOG LIST;</span><br><span class="line"><span class="comment">-- 切换到归档模式（需 mount 状态）</span></span><br><span class="line">SHUTDOWN IMMEDIATE;</span><br><span class="line">STARTUP MOUNT;</span><br><span class="line"><span class="keyword">ALTER</span> DATABASE ARCHIVELOG;</span><br><span class="line"><span class="keyword">ALTER</span> DATABASE <span class="keyword">OPEN</span>;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>生产必须 ARCHIVELOG</strong>——否则磁盘损坏只能恢复到上次备份点，丢失期间所有数据。归档目录要监控空间，写满会挂起数据库。</p>
+</blockquote>
+<hr>
+<h2 id="八、ASM（自动存储管理）"><a href="#八、ASM（自动存储管理）" class="headerlink" title="八、ASM（自动存储管理）"></a>八、ASM（自动存储管理）</h2><p>ASM 是 Oracle 提供的<strong>卷管理器</strong>，直接管理裸磁盘，免去文件系统层：</p>
+<pre>
+<code class="mermaid">
+
+flowchart TB
+  DG[磁盘组 Disk Group] --&gt; D1[磁盘 1]
+  DG --&gt; D2[磁盘 2]
+  DG --&gt; D3[磁盘 3]
+  DG --&gt;|条带&#x2F;镜像| AU[分配单元 AU 1~64MB]
+  AU --&gt; FILE[ASM 文件 .dbf]
+  DB[Oracle 实例] --&gt;|直接 IO| FILE
+</code>
+</pre>
+
+<table>
+<thead>
+<tr>
+<th>概念</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>磁盘组 Disk Group</strong></td>
+<td>一组磁盘的逻辑集合</td>
+</tr>
+<tr>
+<td><strong>AU</strong></td>
+<td>分配单元，1~64MB（大库建议 4MB+）</td>
+</tr>
+<tr>
+<td><strong>冗余</strong></td>
+<td>External（外部 RAID）&#x2F; Normal（2 镜像）&#x2F; High（3 镜像）</td>
+</tr>
+<tr>
+<td><strong>条带化</strong></td>
+<td>跨磁盘条带，提升吞吐</td>
+</tr>
+</tbody></table>
+<p><strong>ASM 的优势</strong>：</p>
+<ol>
+<li>自动条带与镜像，I&#x2F;O 均衡。</li>
+<li>在线增减磁盘、自动重平衡（<code>ASM_POWER_LIMIT</code> 控制速度）。</li>
+<li>与 RAC 共享存储天然契合。</li>
+<li>避开文件系统开销，裸设备级性能。</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- ASM 实例中查看磁盘组</span></span><br><span class="line"><span class="keyword">SELECT</span> group_number, name, state, type, total_mb, free_mb <span class="keyword">FROM</span> v$asm_diskgroup;</span><br><span class="line"><span class="comment">-- 平衡速度</span></span><br><span class="line"><span class="keyword">ALTER</span> DISKGROUP data REBALANCE POWER <span class="number">5</span>;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>RAC + ASM</strong> 是 Oracle 推荐的共享存储组合。单实例也可用 ASM，但运维门槛高于文件系统，小库用文件系统更简单。</p>
+</blockquote>
+<hr>
+<h2 id="九、CDB-PDB-多租户架构"><a href="#九、CDB-PDB-多租户架构" class="headerlink" title="九、CDB&#x2F;PDB 多租户架构"></a>九、CDB&#x2F;PDB 多租户架构</h2><p>12c 引入的多租户架构，一个 CDB 容器承载多个 PDB：</p>
+<pre>
+<code class="mermaid">
+
+flowchart TB
+  CDB[CDB 根容器] --&gt; ROOT[CDB$ROOT 根 - 元数据&#x2F;公共用户]
+  CDB --&gt; SEED[PDB$SEED 种子 - 建库模板]
+  CDB --&gt; PDB1[业务 PDB 1]
+  CDB --&gt; PDB2[业务 PDB 2]
+</code>
+</pre>
+
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>CDB$ROOT</strong></td>
+<td>系统级元数据、公共用户（C##）</td>
+</tr>
+<tr>
+<td><strong>PDB$SEED</strong></td>
+<td>创建 PDB 的只读模板</td>
+</tr>
+<tr>
+<td><strong>PDB</strong></td>
+<td>可插拔数据库，业务隔离单位</td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看 PDB</span></span><br><span class="line"><span class="keyword">SELECT</span> con_id, name, open_mode <span class="keyword">FROM</span> v$pdbs;</span><br><span class="line"><span class="comment">-- 切换容器</span></span><br><span class="line"><span class="keyword">ALTER</span> SESSION <span class="keyword">SET</span> CONTAINER <span class="operator">=</span> orclpdb;</span><br><span class="line"><span class="comment">-- 克隆 PDB</span></span><br><span class="line"><span class="keyword">CREATE</span> PLUGGABLE DATABASE newpdb <span class="keyword">FROM</span> orclpdb;</span><br><span class="line"><span class="comment">-- 拔出/插入</span></span><br><span class="line"><span class="keyword">ALTER</span> PLUGGABLE DATABASE orclpdb <span class="keyword">CLOSE</span>;</span><br><span class="line"><span class="keyword">ALTER</span> PLUGGABLE DATABASE orclpdb UNPLUG <span class="keyword">INTO</span> <span class="string">&#x27;/tmp/orclpdb.xml&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="公共用户与本地用户"><a href="#公共用户与本地用户" class="headerlink" title="公共用户与本地用户"></a>公共用户与本地用户</h3><table>
+<thead>
+<tr>
+<th>用户类型</th>
+<th>命名</th>
+<th>可见范围</th>
+<th>典型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>公共用户</strong></td>
+<td>必须 <code>C##</code> 前缀</td>
+<td>所有容器</td>
+<td><code>C##ADMIN</code></td>
+</tr>
+<tr>
+<td><strong>本地用户</strong></td>
+<td>无限制</td>
+<td>单个 PDB</td>
+<td>业务账号 <code>SCOTT</code></td>
+</tr>
+</tbody></table>
+<h3 id="PDB-资源隔离与运维"><a href="#PDB-资源隔离与运维" class="headerlink" title="PDB 资源隔离与运维"></a>PDB 资源隔离与运维</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 限制 PDB 的 CPU/内存份额（Resource Manager）</span></span><br><span class="line"><span class="keyword">BEGIN</span></span><br><span class="line">  DBMS_RESOURCE_MANAGER.CREATE_CDB_PLAN_DIRECTIVE(</span><br><span class="line">    plan <span class="operator">=</span><span class="operator">&gt;</span> <span class="string">&#x27;DEFAULT_MAINTENANCE_PLAN&#x27;</span>,</span><br><span class="line">    pluggable_database <span class="operator">=</span><span class="operator">&gt;</span> <span class="string">&#x27;orclpdb&#x27;</span>,</span><br><span class="line">    shares <span class="operator">=</span><span class="operator">&gt;</span> <span class="number">2</span>, memory_limit <span class="operator">=</span><span class="operator">&gt;</span> <span class="number">50</span>, parallel_server_limit <span class="operator">=</span><span class="operator">&gt;</span> <span class="number">50</span>);</span><br><span class="line"><span class="keyword">END</span>;</span><br><span class="line"><span class="operator">/</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- PDB 快照克隆（可定时刷新，23ai 增强）</span></span><br><span class="line"><span class="keyword">CREATE</span> PLUGGABLE DATABASE pdb_snap <span class="keyword">FROM</span> orclpdb SNAPSHOT MODE <span class="keyword">EVERY</span> <span class="number">24</span> HOURS;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- PDB 级打开/关闭不影响其他租户</span></span><br><span class="line"><span class="keyword">ALTER</span> PLUGGABLE DATABASE orclpdb <span class="keyword">CLOSE</span>;</span><br><span class="line"><span class="keyword">ALTER</span> PLUGGABLE DATABASE orclpdb <span class="keyword">OPEN</span> READ <span class="keyword">ONLY</span>;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>多租户价值</strong>： consolidation（多库合一降运维）、资源隔离、快速克隆（克隆开发库）、可拔插迁移。19c 后多租户成为默认架构，单 PDB 免费；<strong>23ai 单 CDB 支持最多 4096 个 PDB</strong>，并提供可自动刷新的快照克隆，适合 CI&#x2F;CD 测试库场景。</p>
+</blockquote>
+<hr>
+<h2 id="十、常用诊断视图速查"><a href="#十、常用诊断视图速查" class="headerlink" title="十、常用诊断视图速查"></a>十、常用诊断视图速查</h2><table>
+<thead>
+<tr>
+<th>视图</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>v$database</code></strong></td>
+<td>数据库状态、SCN、日志模式</td>
+</tr>
+<tr>
+<td><strong><code>v$instance</code></strong></td>
+<td>实例状态、启动时间</td>
+</tr>
+<tr>
+<td><strong><code>v$sgastat / v$pgastat</code></strong></td>
+<td>SGA&#x2F;PGA 内存明细</td>
+</tr>
+<tr>
+<td><strong><code>v$session</code></strong></td>
+<td>会话信息（含 SQL、等待事件）</td>
+</tr>
+<tr>
+<td><strong><code>v$session_wait</code></strong></td>
+<td>会话当前等待</td>
+</tr>
+<tr>
+<td><strong><code>v$bgprocess</code></strong></td>
+<td>后台进程</td>
+</tr>
+<tr>
+<td><strong><code>v$log / v$logfile</code></strong></td>
+<td>联机日志</td>
+</tr>
+<tr>
+<td><strong><code>v$archived_log</code></strong></td>
+<td>归档日志</td>
+</tr>
+<tr>
+<td><strong><code>v$datafile / dba_data_files</code></strong></td>
+<td>数据文件</td>
+</tr>
+<tr>
+<td><strong><code>v$tablespace / dba_tablespaces</code></strong></td>
+<td>表空间</td>
+</tr>
+<tr>
+<td><strong><code>dba_free_space</code></strong></td>
+<td>表空间空闲空间</td>
+</tr>
+<tr>
+<td><strong><code>v$asm_diskgroup</code></strong></td>
+<td>ASM 磁盘组</td>
+</tr>
+<tr>
+<td><strong><code>v$undostat</code></strong></td>
+<td>UNDO 生成速率与最长查询</td>
+</tr>
+<tr>
+<td><strong><code>dba_temp_files</code></strong></td>
+<td>临时文件</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="十一、常见陷阱"><a href="#十一、常见陷阱" class="headerlink" title="十一、常见陷阱"></a>十一、常见陷阱</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>NOARCHIVELOG 上生产</strong></td>
+<td>磁盘损坏丢数据，生产必须归档模式</td>
+</tr>
+<tr>
+<td><strong>控制文件单副本</strong></td>
+<td>单点故障，须多路复用分布不同磁盘</td>
+</tr>
+<tr>
+<td><strong>UNDO 过小</strong></td>
+<td>长查询 ORA-01555 快照太旧</td>
+</tr>
+<tr>
+<td><strong>归档目录写满</strong></td>
+<td>数据库挂起，须监控 + 自动清理策略</td>
+</tr>
+<tr>
+<td><strong>业务表建在 SYSTEM</strong></td>
+<td>系统表空间膨胀难维护，业务用 USERS</td>
+</tr>
+<tr>
+<td><strong><code>DELETE</code> 不降 HWM</strong></td>
+<td>全表扫仍扫到高水位，大批删后用 <code>SHRINK SPACE</code> 或 <code>TRUNCATE</code></td>
+</tr>
+<tr>
+<td><strong>PCTFREE 过低</strong></td>
+<td>UPDATE 频繁行迁移，IO 翻倍</td>
+</tr>
+<tr>
+<td><strong>日志组过少&#x2F;过小</strong></td>
+<td>频繁切换、检查点抖动，影响性能</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内存</td>
+<td>SGA 共享（Buffer&#x2F;Shared Pool&#x2F;Redo Buffer）+ PGA 私有（排序&#x2F;哈希）；ASMM 推荐</td>
+</tr>
+<tr>
+<td>进程</td>
+<td>LGWR 日志先行保提交、DBWn 延迟落盘、ARCn 归档、SMON 实例恢复</td>
+</tr>
+<tr>
+<td>文件</td>
+<td>数据&#x2F;控制&#x2F;联机日志&#x2F;归档；控制文件与日志多路复用</td>
+</tr>
+<tr>
+<td>存储分层</td>
+<td>表空间→段→区→块；最小 IO 单元是块（默认 8KB）</td>
+</tr>
+<tr>
+<td>表空间</td>
+<td>生产用 LMT + ASSM；SYSTEM&#x2F;SYSAUX 禁放业务</td>
+</tr>
+<tr>
+<td>UNDO</td>
+<td>支撑回滚、读一致性、闪回；调 <code>UNDO_RETENTION</code> 防 ORA-01555</td>
+</tr>
+<tr>
+<td>REDO</td>
+<td>日志先行；ARCHIVELOG 是时点恢复前提，生产必须开</td>
+</tr>
+<tr>
+<td>ASM</td>
+<td>卷管理器，自动条带&#x2F;镜像&#x2F;重平衡，RAC 推荐组合</td>
+</tr>
+<tr>
+<td>多租户</td>
+<td>CDB&#x2F;PDB 隔离业务，19c 默认架构；23ai 支持可刷新快照克隆</td>
+</tr>
+<tr>
+<td>实例恢复</td>
+<td>SMON 宕机重启后自动前滚 redo + 回滚未提交事务，无需人工干预</td>
+</tr>
+</tbody></table>
+<p>进入 <a href="/database/05-oracle-ha-backup-recovery/">第五章：高可用与备份恢复</a>，学习 RAC、Data Guard、RMAN 与闪回如何构建企业级容灾。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Oracle/" rel="tag"># Oracle</a>
+              <a href="/tags/%E4%BD%93%E7%B3%BB%E7%BB%93%E6%9E%84/" rel="tag"># 体系结构</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/database/01-clickhouse-guide/" rel="prev" title="第一章：ClickHouse 列式存储入门">
+                  <i class="fa fa-angle-left"></i> 第一章：ClickHouse 列式存储入门
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/golang/02-golang-concurrency/" rel="next" title="第二章：Golang 并发编程">
+                  第二章：Golang 并发编程 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：Bash 脚本编程概念基础 脚本 &#x3D; 运维自动化的最小单元：把第一章的命令按逻辑串起来（变量、分支、循环、函数），批量操作从「人肉重复」变成「一键执行」。 退出码是通用语言：每个命令都返回 0~255，0 表示成功、非 0 表示失败；&amp;&amp;&#x2F;||、if、set -e 全部建立在退出码之上。 文本流是通用接口：脚本的核心工作是「读文本 → 加工 → 写文本」">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：Bash 脚本编程">
+<meta property="og:url" content="https://my919.github.io/linux/03-linux-bash-scripting/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：Bash 脚本编程概念基础 脚本 &#x3D; 运维自动化的最小单元：把第一章的命令按逻辑串起来（变量、分支、循环、函数），批量操作从「人肉重复」变成「一键执行」。 退出码是通用语言：每个命令都返回 0~255，0 表示成功、非 0 表示失败；&amp;&amp;&#x2F;||、if、set -e 全部建立在退出码之上。 文本流是通用接口：脚本的核心工作是「读文本 → 加工 → 写文本」">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T12:40:27.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.581Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Bash">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="Shell">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/linux/03-linux-bash-scripting/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/linux/03-linux-bash-scripting/","path":"linux/03-linux-bash-scripting/","title":"第三章：Bash 脚本编程"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：Bash 脚本编程 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9ABash-%E8%84%9A%E6%9C%AC%E7%BC%96%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">第三章：Bash 脚本编程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E8%84%9A%E6%9C%AC%E7%BB%93%E6%9E%84%E4%B8%8E%E6%89%A7%E8%A1%8C%E6%96%B9%E5%BC%8F"><span class="nav-number">1.2.</span> <span class="nav-text">一、脚本结构与执行方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%8F%98%E9%87%8F%E4%B8%8E%E5%BC%95%E5%8F%B7%E8%A7%84%E5%88%99"><span class="nav-number">1.3.</span> <span class="nav-text">二、变量与引号规则</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%9D%A1%E4%BB%B6%E5%88%A4%E6%96%AD"><span class="nav-number">1.4.</span> <span class="nav-text">三、条件判断</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-if-%E4%B8%8E"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. if 与 [[ ]]</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%96%87%E4%BB%B6%E5%88%A4%E6%96%AD%E9%80%9F%E6%9F%A5"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 文件判断速查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%95%B0%E5%80%BC%E4%B8%8E-case"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 数值与 case</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%BE%AA%E7%8E%AF%E4%B8%8E%E5%87%BD%E6%95%B0"><span class="nav-number">1.5.</span> <span class="nav-text">四、循环与函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E4%B8%89%E7%A7%8D%E5%BE%AA%E7%8E%AF"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 三种循环</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%87%BD%E6%95%B0"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 函数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E6%95%B0%E7%BB%84%E4%B8%8E%E6%89%B9%E9%87%8F%E6%93%8D%E4%BD%9C"><span class="nav-number">1.6.</span> <span class="nav-text">五、数组与批量操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%B7%A5%E7%A8%8B%E5%8C%96%EF%BC%9A%E9%98%B2%E5%91%86%E3%80%81%E6%B8%85%E7%90%86%E4%B8%8E%E5%8F%82%E6%95%B0%E8%A7%A3%E6%9E%90"><span class="nav-number">1.7.</span> <span class="nav-text">六、工程化：防呆、清理与参数解析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-set-%E4%B8%89%E4%BB%B6%E5%A5%97"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. set 三件套</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-trap%EF%BC%9A%E9%80%80%E5%87%BA%E6%97%B6%E8%87%AA%E5%8A%A8%E6%B8%85%E7%90%86"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. trap：退出时自动清理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%AB%9E%E6%80%81%E4%B8%8E%E5%B9%B6%E5%8F%91%E5%AE%89%E5%85%A8"><span class="nav-number">1.7.3.</span> <span class="nav-text">3. 竞态与并发安全</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%87%BD%E6%95%B0%E5%BA%93%E7%BB%84%E7%BB%87"><span class="nav-number">1.7.4.</span> <span class="nav-text">4. 函数库组织</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-getopts%EF%BC%9A%E6%A0%87%E5%87%86%E5%8F%82%E6%95%B0%E8%A7%A3%E6%9E%90"><span class="nav-number">1.7.5.</span> <span class="nav-text">5. getopts：标准参数解析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E5%AE%8C%E6%95%B4%E7%A4%BA%E4%BE%8B%EF%BC%9A%E5%B8%A6%E4%BF%9D%E7%95%99%E7%AD%96%E7%95%A5%E7%9A%84%E5%A4%87%E4%BB%BD%E8%84%9A%E6%9C%AC%EF%BC%88%E5%B7%B2%E9%AA%8C%E8%AF%81%EF%BC%89"><span class="nav-number">1.7.6.</span> <span class="nav-text">6. 完整示例：带保留策略的备份脚本（已验证）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E8%B0%83%E8%AF%95%E6%8A%80%E5%B7%A7"><span class="nav-number">1.8.</span> <span class="nav-text">七、调试技巧</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81ShellCheck%EF%BC%9A%E8%84%9A%E6%9C%AC%E7%9A%84%E3%80%8C%E7%BC%96%E8%AF%91%E5%99%A8%E3%80%8D"><span class="nav-number">1.9.</span> <span class="nav-text">八、ShellCheck：脚本的「编译器」</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/linux/03-linux-bash-scripting/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：Bash 脚本编程 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：Bash 脚本编程
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 20:40:27" itemprop="dateCreated datePublished" datetime="2026-05-01T20:40:27+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Linux/" itemprop="url" rel="index"><span itemprop="name">Linux</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>8.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：Bash-脚本编程"><a href="#第三章：Bash-脚本编程" class="headerlink" title="第三章：Bash 脚本编程"></a>第三章：Bash 脚本编程</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>脚本 &#x3D; 运维自动化的最小单元</strong>：把第一章的命令按逻辑串起来（变量、分支、循环、函数），批量操作从「人肉重复」变成「一键执行」。</li>
+<li><strong>退出码是通用语言</strong>：每个命令都返回 0~255，<strong><code>0</code> 表示成功</strong>、非 0 表示失败；<code>&amp;&amp;</code>&#x2F;<code>||</code>、<code>if</code>、<code>set -e</code> 全部建立在退出码之上。</li>
+<li><strong>文本流是通用接口</strong>：脚本的核心工作是「读文本 → 加工 → 写文本」，与 <a href="/linux/03-linux-bash-scripting/">第四章：文本处理三剑客与管道</a> 的 grep&#x2F;sed&#x2F;awk 天然配套。</li>
+<li><strong>引号规则决定一切</strong>：双引号允许变量展开、单引号完全字面量、不加引号会被空格分词——<strong>空格路径事故</strong>九成源于此。</li>
+<li><strong>防呆三件套</strong>：<code>set -euo pipefail</code>（出错即停、未定义变量报错、管道错误不被吞）+ <code>trap</code> 清理 + ShellCheck 静态检查，是脚本进工程的前提。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/linux/02-wsl-rocky-docker/">第二章：Windows 上 WSL（Rocky Linux）与 Docker Desktop</a> 的环境，代码在 bash 5.x 下全部验证通过。</p>
+</blockquote>
+<hr>
+<h2 id="一、脚本结构与执行方式"><a href="#一、脚本结构与执行方式" class="headerlink" title="一、脚本结构与执行方式"></a>一、脚本结构与执行方式</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/usr/bin/env bash   # shebang：指定解释器，env 写法比写死 /bin/bash 更可移植</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;hello, script&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">chmod</span> +x deploy.sh    <span class="comment"># 赋予执行权限</span></span><br><span class="line">./deploy.sh           <span class="comment"># 方式一：按 shebang 执行（推荐）</span></span><br><span class="line">bash deploy.sh        <span class="comment"># 方式二：显式指定解释器（shebang 失效）</span></span><br><span class="line"><span class="built_in">source</span> deploy.sh      <span class="comment"># 方式三：当前 shell 内执行（变量会污染当前会话）</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>方式</th>
+<th>子进程</th>
+<th>变量影响当前 shell</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>./a.sh</code> &#x2F; <code>bash a.sh</code></td>
+<td>是</td>
+<td>否</td>
+<td>绝大多数场景</td>
+</tr>
+<tr>
+<td><code>source a.sh</code> &#x2F; <code>. a.sh</code></td>
+<td>否</td>
+<td><strong>是</strong></td>
+<td>加载环境变量、函数库</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、变量与引号规则"><a href="#二、变量与引号规则" class="headerlink" title="二、变量与引号规则"></a>二、变量与引号规则</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">name=<span class="string">&quot;world&quot;</span>          <span class="comment"># 等号两侧不能有空格！</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;hello, <span class="variable">$name</span>&quot;</span>   <span class="comment"># 双引号：变量展开</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;hello, $name&#x27;</span>   <span class="comment"># 单引号：完全字面量，输出 hello, $name</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;path: <span class="variable">$&#123;name&#125;</span>ly&quot;</span> <span class="comment"># 花括号定界：避免与后续字符粘连</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 命令替换：一律用 $()，不要用反引号（无法嵌套、易看错）</span></span><br><span class="line">current=$(<span class="built_in">date</span> +%F)</span><br><span class="line">files=$(<span class="built_in">ls</span> | <span class="built_in">wc</span> -l)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 只读与导出</span></span><br><span class="line"><span class="built_in">readonly</span> APP_ENV=<span class="string">&quot;prod&quot;</span></span><br><span class="line"><span class="built_in">export</span> PATH=<span class="string">&quot;<span class="variable">$PATH</span>:/opt/tools/bin&quot;</span>   <span class="comment"># 追加环境变量</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>特殊变量速查</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>变量</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>$1 $2 ...</code></td>
+<td>位置参数（第 10 个起要写 <code>${10}</code>）</td>
+</tr>
+<tr>
+<td><code>$#</code></td>
+<td>参数个数</td>
+</tr>
+<tr>
+<td><code>&quot;$@&quot;</code></td>
+<td>所有参数（各自独立，<strong>循环用它</strong>）</td>
+</tr>
+<tr>
+<td><code>&quot;$*&quot;</code></td>
+<td>所有参数（拼成一个字符串）</td>
+</tr>
+<tr>
+<td><code>$?</code></td>
+<td>上一条命令退出码</td>
+</tr>
+<tr>
+<td><code>$$</code></td>
+<td>当前 shell PID</td>
+</tr>
+<tr>
+<td><code>${1:-default}</code></td>
+<td>参数缺省值</td>
+</tr>
+<tr>
+<td><code>${1:?msg}</code></td>
+<td>参数缺失则报错退出</td>
+</tr>
+</tbody></table>
+<p><strong>参数展开四板斧</strong>（改文件名最常用）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">name=<span class="string">&quot;app.tar.gz&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$&#123;name##*.&#125;</span>&quot;</span>    <span class="comment"># gz       ：去掉最长前缀（贪婪），取扩展名</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$&#123;name#*.&#125;</span>&quot;</span>     <span class="comment"># tar.gz   ：去掉最短前缀</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$&#123;name%.tar.gz&#125;</span>&quot;</span> <span class="comment"># app     ：去掉最长后缀，取文件主名</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$&#123;name/./-&#125;</span>&quot;</span>    <span class="comment"># app-tar.gz：替换第一个匹配</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$&#123;name//./-&#125;</span>&quot;</span>   <span class="comment"># app-tar-gz：替换全部匹配</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$&#123;name:0:3&#125;</span>&quot;</span>    <span class="comment"># app      ：子串截取</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>here-doc 生成多行内容</strong>（写配置模板的标准姿势）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 变量会展开：适合模板</span></span><br><span class="line"><span class="built_in">cat</span> &gt; /etc/myapp.conf &lt;&lt;<span class="string">EOF</span></span><br><span class="line"><span class="string">listen = $&#123;PORT:-8080&#125;</span></span><br><span class="line"><span class="string">env    = $&#123;APP_ENV&#125;</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 定界符加引号：完全字面量（变量不展开），适合原样输出脚本</span></span><br><span class="line"><span class="built_in">cat</span> &gt; /opt/run.sh &lt;&lt;<span class="string">&#x27;EOF&#x27;</span></span><br><span class="line"><span class="comment">#!/usr/bin/env bash</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$HOME</span>&quot;</span>   <span class="comment"># 这里的 $HOME 会被原样写入文件</span></span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. &lt;&lt;- 允许前导 Tab 缩进（写进函数体时保持美观）</span></span><br><span class="line"><span class="function"><span class="title">print_usage</span></span>() &#123;</span><br><span class="line">    <span class="built_in">cat</span> &lt;&lt;-<span class="string">USAGE</span></span><br><span class="line"><span class="string">        用法: $0 &#123;start|stop&#125;</span></span><br><span class="line"><span class="string">        USAGE</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="三、条件判断"><a href="#三、条件判断" class="headerlink" title="三、条件判断"></a>三、条件判断</h2><h3 id="1-if-与"><a href="#1-if-与" class="headerlink" title="1. if 与 [[ ]]"></a>1. if 与 [[ ]]</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 字符串比较</span></span><br><span class="line"><span class="keyword">if</span> [[ <span class="string">&quot;<span class="variable">$env</span>&quot;</span> == <span class="string">&quot;prod&quot;</span> ]]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;production&quot;</span></span><br><span class="line"><span class="keyword">elif</span> [[ <span class="string">&quot;<span class="variable">$env</span>&quot;</span> == <span class="string">&quot;staging&quot;</span> ]]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;staging&quot;</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;unknown&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 通配匹配与正则</span></span><br><span class="line"><span class="keyword">if</span> [[ <span class="string">&quot;<span class="variable">$file</span>&quot;</span> == *.<span class="built_in">log</span> ]]; <span class="keyword">then</span> <span class="built_in">echo</span> <span class="string">&quot;log file&quot;</span>; <span class="keyword">fi</span></span><br><span class="line"><span class="keyword">if</span> [[ <span class="string">&quot;<span class="variable">$port</span>&quot;</span> =~ ^[0-9]+$ ]]; <span class="keyword">then</span> <span class="built_in">echo</span> <span class="string">&quot;port is number&quot;</span>; <span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 组合条件</span></span><br><span class="line"><span class="keyword">if</span> [[ -f <span class="string">&quot;<span class="variable">$cfg</span>&quot;</span> &amp;&amp; -r <span class="string">&quot;<span class="variable">$cfg</span>&quot;</span> ]]; <span class="keyword">then</span> <span class="built_in">echo</span> <span class="string">&quot;readable config&quot;</span>; <span class="keyword">fi</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-文件判断速查"><a href="#2-文件判断速查" class="headerlink" title="2. 文件判断速查"></a>2. 文件判断速查</h3><table>
+<thead>
+<tr>
+<th>操作符</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>-e</code></td>
+<td>存在</td>
+</tr>
+<tr>
+<td><code>-f</code></td>
+<td>是普通文件</td>
+</tr>
+<tr>
+<td><code>-d</code></td>
+<td>是目录</td>
+</tr>
+<tr>
+<td><code>-r</code> &#x2F; <code>-w</code> &#x2F; <code>-x</code></td>
+<td>可读 &#x2F; 可写 &#x2F; 可执行</td>
+</tr>
+<tr>
+<td><code>-s</code></td>
+<td>存在且非空</td>
+</tr>
+<tr>
+<td><code>f1 -nt f2</code></td>
+<td>f1 比 f2 新</td>
+</tr>
+</tbody></table>
+<h3 id="3-数值与-case"><a href="#3-数值与-case" class="headerlink" title="3. 数值与 case"></a>3. 数值与 case</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">count=3</span><br><span class="line"><span class="keyword">if</span> (( count &gt; <span class="number">2</span> )); <span class="keyword">then</span> <span class="built_in">echo</span> <span class="string">&quot;gt 2&quot;</span>; <span class="keyword">fi</span>   <span class="comment"># 算术上下文：(( ))</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">case</span> <span class="string">&quot;<span class="variable">$&#123;1:-&#125;</span>&quot;</span> <span class="keyword">in</span></span><br><span class="line">    start) <span class="built_in">echo</span> <span class="string">&quot;starting&quot;</span> ;;</span><br><span class="line">    stop)  <span class="built_in">echo</span> <span class="string">&quot;stopping&quot;</span> ;;</span><br><span class="line">    -h|--<span class="built_in">help</span>) <span class="built_in">echo</span> <span class="string">&quot;usage: <span class="variable">$0</span> &#123;start|stop&#125;&quot;</span> ;;</span><br><span class="line">    *)     <span class="built_in">echo</span> <span class="string">&quot;unknown: <span class="variable">$1</span>&quot;</span>; <span class="built_in">exit</span> 1 ;;</span><br><span class="line"><span class="keyword">esac</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong><code>[[ ]]</code> 是 bash 关键字，<code>[ ]</code> 是外部 test 命令</strong>：<code>[[ ]]</code> 支持通配、正则、<code>&amp;&amp;</code>&#x2F;<code>||</code>，且变量不加引号也不会分词——统一用 <code>[[ ]]</code>，少踩一半的坑。</p>
+</blockquote>
+<hr>
+<h2 id="四、循环与函数"><a href="#四、循环与函数" class="headerlink" title="四、循环与函数"></a>四、循环与函数</h2><h3 id="1-三种循环"><a href="#1-三种循环" class="headerlink" title="1. 三种循环"></a>1. 三种循环</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 列表 for</span></span><br><span class="line"><span class="keyword">for</span> f <span class="keyword">in</span> /var/log/*.<span class="built_in">log</span>; <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$f</span> : <span class="subst">$(wc -l &lt; <span class="string">&quot;<span class="variable">$f</span>&quot;</span>)</span> lines&quot;</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># C 风格 for</span></span><br><span class="line"><span class="keyword">for</span> ((i = <span class="number">0</span>; i &lt; <span class="number">5</span>; i++)); <span class="keyword">do</span> <span class="built_in">echo</span> <span class="string">&quot;round <span class="variable">$i</span>&quot;</span>; <span class="keyword">done</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># while read：逐行处理的标准姿势（-r 保留反斜杠）</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;one\ntwo\n&#x27;</span> | <span class="keyword">while</span> IFS= <span class="built_in">read</span> -r line; <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;line: <span class="variable">$line</span>&quot;</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-函数"><a href="#2-函数" class="headerlink" title="2. 函数"></a>2. 函数</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">log</span></span>() &#123;</span><br><span class="line">    <span class="built_in">printf</span> <span class="string">&#x27;[%s] %s\n&#x27;</span> <span class="string">&quot;<span class="subst">$(date &#x27;+%F %T&#x27;)</span>&quot;</span> <span class="string">&quot;$*&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="title">deploy</span></span>() &#123;</span><br><span class="line">    <span class="built_in">local</span> target=<span class="string">&quot;<span class="variable">$&#123;1:?缺少目标&#125;</span>&quot;</span>      <span class="comment"># local：变量不外泄</span></span><br><span class="line">    <span class="built_in">log</span> <span class="string">&quot;deploying to <span class="variable">$target</span>&quot;</span></span><br><span class="line">    <span class="comment"># ... 实际逻辑</span></span><br><span class="line">    <span class="built_in">return</span> 0                           <span class="comment"># return 只能返回退出码 0~255</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">deploy prod</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>函数内<strong>必须用 <code>local</code></strong>，否则变量会泄漏到全局；函数没有「返回值」概念，结果靠 <code>echo</code> 输出后用命令替换接住：<code>result=$(deploy prod)</code>。</p>
+</blockquote>
+<hr>
+<h2 id="五、数组与批量操作"><a href="#五、数组与批量操作" class="headerlink" title="五、数组与批量操作"></a>五、数组与批量操作</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 索引数组（bash 4.0+ 还有关联数组 declare -A）</span></span><br><span class="line">files=(<span class="string">&quot;a.txt&quot;</span> <span class="string">&quot;b c.txt&quot;</span> <span class="string">&quot;d.log&quot;</span>)     <span class="comment"># 含空格的元素也安全</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;共 <span class="variable">$&#123;#files[@]&#125;</span> 个文件&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;第二个: <span class="variable">$&#123;files[1]&#125;</span>&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 遍历必须加引号：&quot;$&#123;files[@]&#125;&quot;</span></span><br><span class="line"><span class="keyword">for</span> f <span class="keyword">in</span> <span class="string">&quot;<span class="variable">$&#123;files[@]&#125;</span>&quot;</span>; <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;[<span class="variable">$f</span>]&quot;</span>       <span class="comment"># 输出 [b c.txt] 而不是拆成 [b] [c.txt]</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>批量重命名</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 把 *.jpeg 改成 *.jpg</span></span><br><span class="line"><span class="keyword">for</span> f <span class="keyword">in</span> *.jpeg; <span class="keyword">do</span></span><br><span class="line">    [[ -e <span class="string">&quot;<span class="variable">$f</span>&quot;</span> ]] || <span class="built_in">continue</span>          <span class="comment"># 目录为空时防止字面量 *.jpeg</span></span><br><span class="line">    <span class="built_in">mv</span> -v <span class="string">&quot;<span class="variable">$f</span>&quot;</span> <span class="string">&quot;<span class="variable">$&#123;f%.jpeg&#125;</span>.jpg&quot;</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、工程化：防呆、清理与参数解析"><a href="#六、工程化：防呆、清理与参数解析" class="headerlink" title="六、工程化：防呆、清理与参数解析"></a>六、工程化：防呆、清理与参数解析</h2><h3 id="1-set-三件套"><a href="#1-set-三件套" class="headerlink" title="1. set 三件套"></a>1. set 三件套</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/usr/bin/env bash</span></span><br><span class="line"><span class="built_in">set</span> -euo pipefail</span><br><span class="line"><span class="comment"># -e：任何命令失败立即退出（除 if/&amp;&amp;/|| 上下文）</span></span><br><span class="line"><span class="comment"># -u：引用未定义变量直接报错（拼错变量名当场暴露）</span></span><br><span class="line"><span class="comment"># -o pipefail：管道返回第一个非零退出码</span></span><br></pre></td></tr></table></figure>
+
+<p>pipefail 的价值（已验证）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">ls</span> /not-exist 2&gt;/dev/null | <span class="built_in">wc</span> -l    <span class="comment"># $? = 0  ← 无 pipefail，ls 的失败被 wc 吞掉</span></span><br><span class="line"><span class="built_in">set</span> -o pipefail</span><br><span class="line"><span class="built_in">ls</span> /not-exist 2&gt;/dev/null | <span class="built_in">wc</span> -l    <span class="comment"># $? = 2  ← 错误如实上抛</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>set -e 的豁免清单</strong>（知道这些才不会被”为什么不退出”搞懵）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 条件上下文里失败不退出——这是特性，判断就是要容忍失败</span></span><br><span class="line"><span class="keyword">if</span> grep -q <span class="string">&quot;error&quot;</span> app.log; <span class="keyword">then</span> <span class="built_in">echo</span> <span class="string">&quot;found&quot;</span>; <span class="keyword">fi</span>   <span class="comment"># grep 找不到返回 1，脚本继续</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. &amp;&amp; || 链条中最后一个命令之外的失败不退出</span></span><br><span class="line"><span class="literal">false</span> &amp;&amp; <span class="built_in">echo</span> <span class="string">&quot;never&quot;</span>      <span class="comment"># false 失败但不退出（它是条件的一部分）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 命令替换里的失败不影响外层（但赋值语句本身会以命令替换的退出码结束）</span></span><br><span class="line">out=$(<span class="literal">false</span>)               <span class="comment"># set -e 下会退出！赋值语句的退出码 = $() 的退出码</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 想显式忽略某条命令的失败：追加 || true</span></span><br><span class="line">some_flaky_cmd || <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>set -u 与安全缺省</strong>：引用可能未定义的变量时写 <code>&quot;${VAR:-default}&quot;</code>，而不是关掉 <code>-u</code>——拼写错误的变量名（<code>$DSET</code> vs <code>$DEST</code>）只有 <code>-u</code> 能当场抓住。</p>
+<h3 id="2-trap：退出时自动清理"><a href="#2-trap：退出时自动清理" class="headerlink" title="2. trap：退出时自动清理"></a>2. trap：退出时自动清理</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">tmpfile=$(<span class="built_in">mktemp</span>)</span><br><span class="line"><span class="built_in">trap</span> <span class="string">&#x27;rm -f &quot;$tmpfile&quot;; echo &quot;cleaned&quot;&#x27;</span> EXIT   <span class="comment"># 无论正常结束还是出错，都会执行</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;working with <span class="variable">$tmpfile</span>&quot;</span> &gt; <span class="string">&quot;<span class="variable">$tmpfile</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>多信号与错误定位</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="title">cleanup</span></span>() &#123; <span class="built_in">rm</span> -rf <span class="string">&quot;<span class="variable">$tmpdir</span>&quot;</span>; &#125;</span><br><span class="line"><span class="function"><span class="title">on_err</span></span>()  &#123; <span class="built_in">echo</span> <span class="string">&quot;ERROR 在第 <span class="variable">$1</span> 行，退出码 <span class="variable">$2</span>&quot;</span> &gt;&amp;2; &#125;</span><br><span class="line"></span><br><span class="line">tmpdir=$(<span class="built_in">mktemp</span> -d)</span><br><span class="line"><span class="built_in">trap</span> cleanup EXIT                      <span class="comment"># 兜底：正常/异常退出都清理</span></span><br><span class="line"><span class="built_in">trap</span> <span class="string">&#x27;on_err $LINENO $?&#x27;</span> ERR           <span class="comment"># 仅在命令失败时触发（配合 set -e）</span></span><br><span class="line"><span class="built_in">trap</span> <span class="string">&#x27;echo &quot;收到 Ctrl+C，已取消&quot;; exit 130&#x27;</span> INT   <span class="comment"># 手动中断也给个体面的收尾</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>注意：<code>trap ... EXIT</code> 一个脚本只生效<strong>最后一次设置</strong>；多个清理动作放进同一个函数里统一注册。</p>
+</blockquote>
+<h3 id="3-竞态与并发安全"><a href="#3-竞态与并发安全" class="headerlink" title="3. 竞态与并发安全"></a>3. 竞态与并发安全</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 临时文件：永远用 mktemp，不要自己拼 /tmp/xxx.$$（可预测 = 可被符号链接攻击）</span></span><br><span class="line">tmp=$(<span class="built_in">mktemp</span>)            <span class="comment"># 文件</span></span><br><span class="line">tmpdir=$(<span class="built_in">mktemp</span> -d)      <span class="comment"># 目录</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 防止脚本重入：flock 加锁（同一脚本被 cron 重叠触发时最常用）</span></span><br><span class="line"><span class="built_in">exec</span> 200&gt;/var/lock/myapp.lock</span><br><span class="line">flock -n 200 || &#123; <span class="built_in">echo</span> <span class="string">&quot;另一个实例在运行，退出&quot;</span>; <span class="built_in">exit</span> 1; &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 原子写文件：先写临时文件再 mv（mv 在同一文件系统内是原子操作）</span></span><br><span class="line">generate_config &gt; <span class="string">&quot;<span class="variable">$conf</span>.tmp&quot;</span> &amp;&amp; <span class="built_in">mv</span> <span class="string">&quot;<span class="variable">$conf</span>.tmp&quot;</span> <span class="string">&quot;<span class="variable">$conf</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-函数库组织"><a href="#4-函数库组织" class="headerlink" title="4. 函数库组织"></a>4. 函数库组织</h3><p>脚本多了以后，把通用函数抽到库文件，主脚本 <code>source</code> 进来：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># lib/common.sh —— 只定义函数与常量，不执行动作</span></span><br><span class="line"><span class="function"><span class="title">log</span></span>()  &#123; <span class="built_in">printf</span> <span class="string">&#x27;[%s] %s\n&#x27;</span> <span class="string">&quot;<span class="subst">$(date &#x27;+%F %T&#x27;)</span>&quot;</span> <span class="string">&quot;$*&quot;</span>; &#125;</span><br><span class="line"><span class="function"><span class="title">die</span></span>()  &#123; <span class="built_in">log</span> <span class="string">&quot;ERROR: $*&quot;</span>; <span class="built_in">exit</span> 1; &#125;</span><br><span class="line"><span class="function"><span class="title">require_cmd</span></span>() &#123; <span class="built_in">command</span> -v <span class="string">&quot;<span class="variable">$1</span>&quot;</span> &gt;/dev/null || die <span class="string">&quot;缺少命令: <span class="variable">$1</span>&quot;</span>; &#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/usr/bin/env bash</span></span><br><span class="line"><span class="built_in">set</span> -euo pipefail</span><br><span class="line"><span class="comment"># 用脚本自身位置定位库，保证从任何目录调用都能找到</span></span><br><span class="line"><span class="built_in">source</span> <span class="string">&quot;<span class="subst">$(dirname <span class="string">&quot;<span class="subst">$(readlink -f <span class="string">&quot;<span class="variable">$0</span>&quot;</span>)</span>&quot;</span>)</span>/lib/common.sh&quot;</span></span><br><span class="line"></span><br><span class="line">require_cmd rsync</span><br><span class="line"><span class="built_in">log</span> <span class="string">&quot;start deploy&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-getopts：标准参数解析"><a href="#5-getopts：标准参数解析" class="headerlink" title="5. getopts：标准参数解析"></a>5. getopts：标准参数解析</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/usr/bin/env bash</span></span><br><span class="line"><span class="built_in">set</span> -euo pipefail</span><br><span class="line"><span class="function"><span class="title">usage</span></span>() &#123; <span class="built_in">echo</span> <span class="string">&quot;用法: <span class="variable">$0</span> [-v] [-o 输出文件] &lt;输入&gt;&quot;</span>; <span class="built_in">exit</span> 1; &#125;</span><br><span class="line"></span><br><span class="line">verbose=0; output=<span class="string">&quot;&quot;</span></span><br><span class="line"><span class="keyword">while</span> <span class="built_in">getopts</span> <span class="string">&quot;vo:h&quot;</span> opt; <span class="keyword">do</span></span><br><span class="line">    <span class="keyword">case</span> <span class="string">&quot;<span class="variable">$opt</span>&quot;</span> <span class="keyword">in</span></span><br><span class="line">        v) verbose=1 ;;</span><br><span class="line">        o) output=<span class="string">&quot;<span class="variable">$OPTARG</span>&quot;</span> ;;</span><br><span class="line">        h) usage ;;</span><br><span class="line">        *) usage ;;</span><br><span class="line">    <span class="keyword">esac</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"><span class="built_in">shift</span> $((OPTIND - <span class="number">1</span>))              <span class="comment"># 跳过已解析的选项</span></span><br><span class="line">[[ <span class="variable">$#</span> -ge 1 ]] || usage</span><br><span class="line">input=<span class="string">&quot;<span class="variable">$1</span>&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;input=<span class="variable">$input</span> output=<span class="variable">$output</span> verbose=<span class="variable">$verbose</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-完整示例：带保留策略的备份脚本（已验证）"><a href="#6-完整示例：带保留策略的备份脚本（已验证）" class="headerlink" title="6. 完整示例：带保留策略的备份脚本（已验证）"></a>6. 完整示例：带保留策略的备份脚本（已验证）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/usr/bin/env bash</span></span><br><span class="line"><span class="built_in">set</span> -euo pipefail</span><br><span class="line"></span><br><span class="line">SRC=<span class="string">&quot;<span class="variable">$&#123;1:?用法: $0 &lt;源目录&gt;&#125;</span>&quot;</span></span><br><span class="line">DEST=<span class="string">&quot;<span class="variable">$&#123;2:-/tmp/backup&#125;</span>&quot;</span></span><br><span class="line">STAMP=$(<span class="built_in">date</span> +%Y%m%d-%H%M%S)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="title">log</span></span>() &#123; <span class="built_in">printf</span> <span class="string">&#x27;[%s] %s\n&#x27;</span> <span class="string">&quot;<span class="subst">$(date &#x27;+%F %T&#x27;)</span>&quot;</span> <span class="string">&quot;$*&quot;</span>; &#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="title">main</span></span>() &#123;</span><br><span class="line">    <span class="built_in">mkdir</span> -p <span class="string">&quot;<span class="variable">$DEST</span>&quot;</span></span><br><span class="line">    <span class="built_in">local</span> tarball=<span class="string">&quot;<span class="variable">$DEST</span>/app-<span class="variable">$STAMP</span>.tar.gz&quot;</span></span><br><span class="line">    tar -czf <span class="string">&quot;<span class="variable">$tarball</span>&quot;</span> -C <span class="string">&quot;<span class="subst">$(dirname <span class="string">&quot;<span class="variable">$SRC</span>&quot;</span>)</span>&quot;</span> <span class="string">&quot;<span class="subst">$(basename <span class="string">&quot;<span class="variable">$SRC</span>&quot;</span>)</span>&quot;</span></span><br><span class="line">    <span class="built_in">log</span> <span class="string">&quot;备份完成: <span class="variable">$tarball</span> (<span class="subst">$(du -h <span class="string">&quot;<span class="variable">$tarball</span>&quot;</span> | cut -f1)</span>)&quot;</span></span><br><span class="line">    <span class="built_in">ls</span> -1t <span class="string">&quot;<span class="variable">$DEST</span>&quot;</span>/app-*.tar.gz | <span class="built_in">tail</span> -n +6 | xargs -r <span class="built_in">rm</span> -v   <span class="comment"># 只留最近 5 份</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">main <span class="string">&quot;<span class="variable">$@</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="七、调试技巧"><a href="#七、调试技巧" class="headerlink" title="七、调试技巧"></a>七、调试技巧</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 全量执行跟踪：脚本内 set -x（或 bash -x script.sh）</span></span><br><span class="line"><span class="built_in">set</span> -x</span><br><span class="line">rsync -avz src/ dst/</span><br><span class="line"><span class="built_in">set</span> +x        <span class="comment"># 关闭，敏感命令（如含口令）前后用它包起来</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 2. 带行号与函数名的跟踪：定制 PS4</span></span><br><span class="line"><span class="built_in">export</span> PS4=<span class="string">&#x27;+ $&#123;BASH_SOURCE&#125;:$&#123;LINENO&#125; $&#123;FUNCNAME[0]:+$&#123;FUNCNAME[0]&#125;(): &#125;&#x27;</span></span><br><span class="line"><span class="built_in">set</span> -x</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 3. 语法预检：不执行也能发现括号/引号没闭合</span></span><br><span class="line">bash -n deploy.sh</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 单步交互调试（可选安装 bashdb）</span></span><br><span class="line"><span class="built_in">sudo</span> dnf install -y bashdb &amp;&amp; bashdb deploy.sh</span><br></pre></td></tr></table></figure>
+
+<p>排障顺序建议：先 <code>bash -n</code> 排语法 → 再 <code>set -x</code> 看实际展开的命令 → 最后 ShellCheck 找隐藏坑。</p>
+<hr>
+<h2 id="八、ShellCheck：脚本的「编译器」"><a href="#八、ShellCheck：脚本的「编译器」" class="headerlink" title="八、ShellCheck：脚本的「编译器」"></a>八、ShellCheck：脚本的「编译器」</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Rocky: sudo dnf install -y ShellCheck</span></span><br><span class="line">shellcheck deploy.sh    <span class="comment"># 逐条给出 SC 编号、原因与修复建议</span></span><br></pre></td></tr></table></figure>
+
+<p>高频告警：<code>SC2086</code>（变量未加引号）、<code>SC2046</code>（命令替换未加引号）、<code>SC2034</code>（变量未使用）。<strong>CI 里把 <code>shellcheck</code> 当 lint 跑</strong>，比线上炸了再查值钱得多。</p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>退出码</td>
+<td>0 成功非 0 失败；<code>&amp;&amp;</code>&#x2F;&#96;</td>
+</tr>
+<tr>
+<td>引号规则</td>
+<td>双引号展开、单引号字面量；变量一律 <code>&quot;${var}&quot;</code> 包起来</td>
+</tr>
+<tr>
+<td>判断</td>
+<td><code>[[ ]]</code> 优先，支持通配与正则；数值用 <code>(( ))</code></td>
+</tr>
+<tr>
+<td>函数</td>
+<td><code>local</code> 防泄漏；返回值靠 <code>$( )</code> 接输出，<code>return</code> 只表示成败</td>
+</tr>
+<tr>
+<td>防呆三件套</td>
+<td><code>set -euo pipefail</code> + <code>trap EXIT</code> 清理 + ShellCheck 静态检查</td>
+</tr>
+<tr>
+<td>set -e 豁免</td>
+<td>条件&#x2F;<code>&amp;&amp;</code>&#x2F;&#96;</td>
+</tr>
+<tr>
+<td>trap</td>
+<td><code>EXIT</code> 兜底清理、<code>ERR</code> 报行号、<code>INT</code> 体面收尾；同名 trap 只留最后一个</td>
+</tr>
+<tr>
+<td>并发安全</td>
+<td>临时文件用 <code>mktemp</code>；防重入用 <code>flock</code>；写配置先 tmp 再 <code>mv</code> 原子替换</td>
+</tr>
+<tr>
+<td>调试</td>
+<td><code>bash -n</code> 预检 → <code>set -x</code>&#x2F;<code>PS4</code> 跟踪 → ShellCheck 兜底</td>
+</tr>
+<tr>
+<td>批量操作</td>
+<td>遍历用 <code>&quot;${arr[@]}&quot;</code>；<code>for f in *.ext</code> 前先 <code>[[ -e ]]</code> 防空目录</td>
+</tr>
+</tbody></table>
+<hr>
+<p>至此 Linux 系列已完成三章：第一章的命令基本功、第二章的 Windows 开发环境、本章的脚本自动化。文本处理是脚本的另一半灵魂，见 <a href="/linux/04-linux-text-processing/">第四章：文本处理三剑客与管道</a>；把脚本升级为 systemd 服务与定时任务见 <a href="/linux/05-linux-ops-advanced/">第五章：系统运维进阶</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+              <a href="/tags/Bash/" rel="tag"># Bash</a>
+              <a href="/tags/Shell/" rel="tag"># Shell</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/linux/02-wsl-rocky-docker/" rel="prev" title="第二章：Windows 上 WSL（Rocky Linux）与 Docker Desktop">
+                  <i class="fa fa-angle-left"></i> 第二章：Windows 上 WSL（Rocky Linux）与 Docker Desktop
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/linux/04-linux-text-processing/" rel="next" title="第四章：文本处理三剑客与管道">
+                  第四章：文本处理三剑客与管道 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

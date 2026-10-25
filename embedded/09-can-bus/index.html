@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第九章：CAN 总线：帧结构、多主仲裁与 CAN FD概念基础 CAN（Controller Area Network，控制器局域网）是 Bosch 为汽车电子设计的多主串行总线：所有 ECU 节点挂在一对差分线（CAN_H &#x2F; CAN_L）上，以广播帧通信，各节点按 ID 自行过滤收帧。 为什么抗干扰：差分传输让共模噪声相互抵消，配合总线两端的 120Ω 终端电阻抑制信号反射，适合发动">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第九章：CAN 总线：帧结构、多主仲裁与 CAN FD">
+<meta property="og:url" content="https://my919.github.io/embedded/09-can-bus/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第九章：CAN 总线：帧结构、多主仲裁与 CAN FD概念基础 CAN（Controller Area Network，控制器局域网）是 Bosch 为汽车电子设计的多主串行总线：所有 ECU 节点挂在一对差分线（CAN_H &#x2F; CAN_L）上，以广播帧通信，各节点按 ID 自行过滤收帧。 为什么抗干扰：差分传输让共模噪声相互抵消，配合总线两端的 120Ω 终端电阻抑制信号反射，适合发动">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:12:23.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.575Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Embedded">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/embedded/09-can-bus/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/embedded/09-can-bus/","path":"embedded/09-can-bus/","title":"第九章：CAN 总线：帧结构、多主仲裁与 CAN FD"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第九章：CAN 总线：帧结构、多主仲裁与 CAN FD | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B9%9D%E7%AB%A0%EF%BC%9ACAN-%E6%80%BB%E7%BA%BF%EF%BC%9A%E5%B8%A7%E7%BB%93%E6%9E%84%E3%80%81%E5%A4%9A%E4%B8%BB%E4%BB%B2%E8%A3%81%E4%B8%8E-CAN-FD"><span class="nav-number">1.</span> <span class="nav-text">第九章：CAN 总线：帧结构、多主仲裁与 CAN FD</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BA%BF%E6%8B%93%E6%89%91"><span class="nav-number">1.2.</span> <span class="nav-text">总线拓扑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E7%BB%8F%E5%85%B8-CAN-%E5%B8%A7%EF%BC%88%E6%A6%82%E5%BF%B5%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">一、经典 CAN 帧（概念）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%B8%A7%E9%80%90%E6%AE%B5%E5%89%96%E6%9E%90%EF%BC%88%E6%A0%87%E5%87%86%E5%B8%A7%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">数据帧逐段剖析（标准帧）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9C%E7%A8%8B%E5%B8%A7%E4%B8%8E%E9%94%99%E8%AF%AF%E5%B8%A7"><span class="nav-number">1.3.2.</span> <span class="nav-text">远程帧与错误帧</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%A4%9A%E4%B8%BB%E4%BB%B2%E8%A3%81"><span class="nav-number">1.4.</span> <span class="nav-text">二、多主仲裁</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%B2%E8%A3%81%E8%BF%87%E7%A8%8B%E5%AE%9E%E4%BE%8B"><span class="nav-number">1.4.1.</span> <span class="nav-text">仲裁过程实例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E9%80%9F%E7%8E%87%E4%B8%8E%E9%95%BF%E5%BA%A6"><span class="nav-number">1.5.</span> <span class="nav-text">三、速率与长度</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81STM32-bxCAN-%E6%94%B6%E5%8F%91%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.6.</span> <span class="nav-text">四、STM32 bxCAN 收发示例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81CAN-FD"><span class="nav-number">1.7.</span> <span class="nav-text">五、CAN FD</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CAN-FD-%E4%B8%8E%E7%BB%8F%E5%85%B8-CAN-%E5%AF%B9%E7%85%A7"><span class="nav-number">1.7.1.</span> <span class="nav-text">CAN FD 与经典 CAN 对照</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86%E4%B8%8E-bus-off"><span class="nav-number">1.8.</span> <span class="nav-text">六、错误处理与 bus-off</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E6%8A%93%E5%8C%85%E4%B8%8E%E8%B0%83%E8%AF%95"><span class="nav-number">1.9.</span> <span class="nav-text">七、抓包与调试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95"><span class="nav-number">1.9.1.</span> <span class="nav-text">常见问题清单</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E4%B8%8E%E5%85%B6%E5%AE%83%E6%80%BB%E7%BA%BF"><span class="nav-number">1.10.</span> <span class="nav-text">八、与其它总线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/embedded/09-can-bus/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第九章：CAN 总线：帧结构、多主仲裁与 CAN FD | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第九章：CAN 总线：帧结构、多主仲裁与 CAN FD
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:12:23" itemprop="dateCreated datePublished" datetime="2026-05-01T13:12:23+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">嵌入式</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>4.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第九章：CAN-总线：帧结构、多主仲裁与-CAN-FD"><a href="#第九章：CAN-总线：帧结构、多主仲裁与-CAN-FD" class="headerlink" title="第九章：CAN 总线：帧结构、多主仲裁与 CAN FD"></a>第九章：CAN 总线：帧结构、多主仲裁与 CAN FD</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>CAN</strong>（<strong>Controller Area Network</strong>，控制器局域网）是 <strong>Bosch</strong> 为汽车电子设计的<strong>多主串行总线</strong>：所有 <strong>ECU</strong> 节点挂在一对<strong>差分线</strong>（<strong>CAN_H &#x2F; CAN_L</strong>）上，以<strong>广播帧</strong>通信，各节点按 ID 自行过滤收帧。</li>
+<li><strong>为什么抗干扰</strong>：<strong>差分传输</strong>让共模噪声相互抵消，配合总线两端的 <strong>120Ω 终端电阻</strong>抑制信号反射，适合发动机舱等<strong>电磁环境恶劣</strong>的场景——这与单端电平的 RS232 是本质差别。</li>
+<li><strong>多主无损仲裁</strong>：总线空闲时<strong>任意节点都可发送</strong>，逐 bit 仲裁中<strong>发显性 0 的胜出</strong>、<strong>ID 越小优先级越高</strong>，败者自动退为接收方，<strong>既不丢帧也不需要中心主站</strong>。</li>
+<li><strong>硬件级可靠性</strong>：帧尾 <strong>CRC + ACK</strong> 硬件检错与确认，出错自动重发；故障节点经<strong>错误计数</strong>进入 <strong>bus-off</strong> 主动离线，不会拖垮整条总线。</li>
+<li><strong>定位</strong>：汽车<strong>动力、底盘、网关</strong>等<strong>实时、安全相关</strong>场景的主力总线，速率 125 kbps ~ 1 Mbps；<strong>CAN FD</strong> 把数据段扩到 64 字节并提升数据段速率；车身低成本传感器则交给 LIN（见 <a href="/embedded/10-lin-bus/">第十章：LIN 总线：单主多从与调度表</a>）。</li>
+</ol>
+<p>先看整体拓扑：</p>
+<h2 id="总线拓扑"><a href="#总线拓扑" class="headerlink" title="总线拓扑"></a>总线拓扑</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  ECU1[ECU 节点 1] --- BUS[CAN_H &#x2F; CAN_L 总线]
+  ECU2[ECU 节点 2] --- BUS
+  ECU3[ECU 节点 3] --- BUS
+</code>
+</pre>
+
+<hr>
+<h2 id="一、经典-CAN-帧（概念）"><a href="#一、经典-CAN-帧（概念）" class="headerlink" title="一、经典 CAN 帧（概念）"></a>一、经典 CAN 帧（概念）</h2><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>仲裁 ID</strong></td>
+<td>11 位（标准）或 29 位（扩展），越小优先级越高</td>
+</tr>
+<tr>
+<td><strong>RTR</strong></td>
+<td>远程帧（较少用）</td>
+</tr>
+<tr>
+<td><strong>DLC</strong></td>
+<td>数据长度 0~8 字节</td>
+</tr>
+<tr>
+<td><strong>Data</strong></td>
+<td>载荷</td>
+</tr>
+<tr>
+<td><strong>CRC + ACK</strong></td>
+<td>硬件检错与确认</td>
+</tr>
+</tbody></table>
+<h3 id="数据帧逐段剖析（标准帧）"><a href="#数据帧逐段剖析（标准帧）" class="headerlink" title="数据帧逐段剖析（标准帧）"></a>数据帧逐段剖析（标准帧）</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">SOF | 11位ID | RTR | IDE | r0 | DLC | Data 0~8B | CRC15 | ACK | EOF 7bit | IFS</span><br><span class="line">1bit  └─仲裁段─┘ └──控制段──┘  └─数据段─┘  └─校验段─┘ └确认┘</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>SOF</strong>：1 个显性位，标志帧开始，所有节点据此硬同步。</li>
+<li><strong>仲裁段</strong>：标准帧 11 位 ID；扩展帧拆为 11 位基本 ID + SRR + IDE + 18 位扩展 ID。</li>
+<li><strong>IDE 位</strong>：区分标准（显性）与扩展（隐性）帧。</li>
+<li><strong>ACK 槽</strong>：发送方发隐性，<strong>任一</strong>正确接收的节点拉显性——发送方只知道「至少有人收到」，不知道是谁。</li>
+<li><strong>位填充（Bit Stuffing）</strong>：连续 5 个相同电平后强制插入反相位，保证时钟同步；计算帧长时要计入。</li>
+</ul>
+<h3 id="远程帧与错误帧"><a href="#远程帧与错误帧" class="headerlink" title="远程帧与错误帧"></a>远程帧与错误帧</h3><ul>
+<li><strong>远程帧（RTR&#x3D;1）</strong>：请求对方发送某个 ID 的数据帧，无数据段；现代设计多用周期发送替代。</li>
+<li><strong>错误帧</strong>：任一节点检出错误立即发送 6 个显性位「打破」当前帧，所有节点丢弃该帧，发送方稍后自动重发。</li>
+<li><strong>过载帧</strong>：接收方来不及处理时请求延时，极少使用。</li>
+</ul>
+<hr>
+<h2 id="二、多主仲裁"><a href="#二、多主仲裁" class="headerlink" title="二、多主仲裁"></a>二、多主仲裁</h2><p>总线空闲时多个节点可同时发送；<strong>ID 仲裁</strong>时逐 bit 比较，<strong>发显性 0 的胜出</strong>，失败者自动退为接收方，<strong>无中心主站</strong>。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">CAN_H / CAN_L 差分（ISO 11898）</span><br><span class="line">终端电阻 120Ω 于总线两端</span><br></pre></td></tr></table></figure>
+
+<h3 id="仲裁过程实例"><a href="#仲裁过程实例" class="headerlink" title="仲裁过程实例"></a>仲裁过程实例</h3><p>三个节点同时发送 ID &#x3D; 0x0A5、0x0B2、0x098：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">节点A: 000 1010 0101</span><br><span class="line">节点B: 000 1011 0010   ← 第 7 位发 1（隐性），总线为 0，发现自己败退</span><br><span class="line">节点C: 000 1001 1000   ← 第 6 位发 1，败退</span><br><span class="line">              ↑</span><br><span class="line">        逐位比较，发隐性位但监听到显性位的节点立即停发转接收</span><br><span class="line">最终：0x098 胜出，报文完整发出，无任何数据损坏</span><br></pre></td></tr></table></figure>
+
+<p>要点：</p>
+<ul>
+<li><strong>非破坏性</strong>：赢家的帧不受任何影响，无需重发，总线利用率因此可以很高。</li>
+<li><strong>ID 即优先级</strong>：设计报文 ID 分配表就是设计系统的实时性——越关键的信号 ID 越小。</li>
+<li><strong>饥饿风险</strong>：低优先级帧在总线持续繁忙时可能长期发不出去，调度设计要留带宽裕量。</li>
+</ul>
+<hr>
+<h2 id="三、速率与长度"><a href="#三、速率与长度" class="headerlink" title="三、速率与长度"></a>三、速率与长度</h2><table>
+<thead>
+<tr>
+<th>速率</th>
+<th>典型最大总线长度（粗估）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1 Mbps</strong></td>
+<td>数十米</td>
+</tr>
+<tr>
+<td><strong>500 kbps</strong></td>
+<td>~100m</td>
+</tr>
+<tr>
+<td><strong>125 kbps</strong></td>
+<td>更长</td>
+</tr>
+</tbody></table>
+<p>实际以收发器、电缆与拓扑仿真为准。</p>
+<p>工程经验：<strong>1 Mbps ≤ 40 m；500 kbps ≤ 100 m；125 kbps ≤ 500 m</strong>。限制本质是<strong>信号传播延迟</strong>——仲裁要求发送位在总线最远端往返后仍能正确采样，位时间越短允许的距离越小。支线（stub）长度建议 ≤ 0.3 m。</p>
+<hr>
+<h2 id="四、STM32-bxCAN-收发示例"><a href="#四、STM32-bxCAN-收发示例" class="headerlink" title="四、STM32 bxCAN 收发示例"></a>四、STM32 bxCAN 收发示例</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 发送：填 TxHeader 后入发送邮箱</span></span><br><span class="line">CAN_TxHeaderTypeDef tx = &#123;</span><br><span class="line">    .StdId = <span class="number">0x123</span>, .IDE = CAN_ID_STD,</span><br><span class="line">    .RTR = CAN_RTR_DATA, .DLC = <span class="number">2</span>,</span><br><span class="line">&#125;;</span><br><span class="line"><span class="type">uint8_t</span> payload[<span class="number">2</span>] = &#123; <span class="number">0x11</span>, <span class="number">0x22</span> &#125;;</span><br><span class="line"><span class="type">uint32_t</span> mailbox;</span><br><span class="line">HAL_CAN_AddTxMessage(&amp;hcan, &amp;tx, payload, &amp;mailbox);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 接收：配置过滤器 + FIFO 中断</span></span><br><span class="line">CAN_FilterTypeDef f = &#123;</span><br><span class="line">    .FilterIdHigh = <span class="number">0x100</span> &lt;&lt; <span class="number">5</span>,       <span class="comment">// 只收 0x100~0x17F</span></span><br><span class="line">    .FilterMaskIdHigh = <span class="number">0x780</span> &lt;&lt; <span class="number">5</span>,</span><br><span class="line">    .FilterFIFOAssignment = CAN_RX_FIFO0,</span><br><span class="line">    .FilterBank = <span class="number">0</span>, .FilterMode = CAN_FILTERMODE_IDMASK,</span><br><span class="line">    .FilterScale = CAN_FILTERSCALE_32BIT,</span><br><span class="line">    .FilterActivation = ENABLE,</span><br><span class="line">&#125;;</span><br><span class="line">HAL_CAN_ConfigFilter(&amp;hcan, &amp;f);</span><br><span class="line">HAL_CAN_ActivateNotification(&amp;hcan, CAN_IT_RX_FIFO0_MSG_PENDING);</span><br><span class="line">HAL_CAN_Start(&amp;hcan);</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">HAL_CAN_RxFifo0MsgPendingCallback</span><span class="params">(CAN_HandleTypeDef *h)</span></span><br><span class="line">&#123;</span><br><span class="line">    CAN_RxHeaderTypeDef rx;</span><br><span class="line">    <span class="type">uint8_t</span> data[<span class="number">8</span>];</span><br><span class="line">    HAL_CAN_GetRxMessage(h, CAN_RX_FIFO0, &amp;rx, data);</span><br><span class="line">    <span class="comment">// rx.StdId / rx.DLC / data[] 即报文内容</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>过滤器是关键</strong>：总线上所有帧广播，不过滤会让 MCU 被无关报文淹没；掩码模式按位筛选 ID 范围。</p>
+<hr>
+<h2 id="五、CAN-FD"><a href="#五、CAN-FD" class="headerlink" title="五、CAN FD"></a>五、CAN FD</h2><ul>
+<li><strong>数据段</strong>可 &gt; 8 字节（最高 64），<strong>数据段波特率</strong>可高于仲裁段。  </li>
+<li>新车载网络大量采用 <strong>CAN FD</strong>；旧 ECU 可能仅 <strong>Classic CAN</strong>。</li>
+</ul>
+<p>MCU 侧：<strong>bxCAN</strong>、<strong>FDCAN</strong> 外设 + 收发器（<strong>TJA1050</strong> 等）。</p>
+<h3 id="CAN-FD-与经典-CAN-对照"><a href="#CAN-FD-与经典-CAN-对照" class="headerlink" title="CAN FD 与经典 CAN 对照"></a>CAN FD 与经典 CAN 对照</h3><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>Classic CAN</th>
+<th>CAN FD</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数据段长度</td>
+<td>0~8 B</td>
+<td>0~64 B（DLC 编码到 64）</td>
+</tr>
+<tr>
+<td>波特率</td>
+<td>全程同一速率</td>
+<td>仲裁段 ≤1M，<strong>数据段可达 5~8 Mbps</strong></td>
+</tr>
+<tr>
+<td>CRC</td>
+<td>15 位</td>
+<td>17&#x2F;21 位（随数据长度）</td>
+</tr>
+<tr>
+<td>兼容性</td>
+<td>—</td>
+<td>FD 帧与经典帧<strong>不能混在同一直通总线</strong>（经典节点会把 FD 帧当错误）</td>
+</tr>
+</tbody></table>
+<p>混合网络需经网关隔离两种总线段。选型时注意收发器也要支持 FD（如 TJA1051 不行，需 TJA1044&#x2F;TJA1462 等 FD 型号）。</p>
+<hr>
+<h2 id="六、错误处理与-bus-off"><a href="#六、错误处理与-bus-off" class="headerlink" title="六、错误处理与 bus-off"></a>六、错误处理与 bus-off</h2><p>每个节点维护 <strong>TEC（发送错误计数）&#x2F; REC（接收错误计数）</strong>：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">TEC/REC &lt; 128        → Error Active（正常，可发主动错误帧）</span><br><span class="line">128 ≤ TEC/REC &lt; 256  → Error Passive（只发隐性错误帧，发送前需等待）</span><br><span class="line">TEC ≥ 256            → Bus-Off（脱离总线，需恢复流程）</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>自动重发</strong>：发送失败硬件自动重试，应用层无感；但持续故障会让 TEC 累积。</li>
+<li><strong>bus-off 恢复</strong>：监测到 128 次 × 11 个隐性位后可重新上线；应用层应记录 bus-off 事件用于诊断。</li>
+<li><strong>常见诱因</strong>：终端电阻缺失、波特率不一致、收发器未供电——「自己能发但全网报错」多半是该节点参数错了。</li>
+</ul>
+<hr>
+<h2 id="七、抓包与调试"><a href="#七、抓包与调试" class="headerlink" title="七、抓包与调试"></a>七、抓包与调试</h2><ul>
+<li><strong>PCAN &#x2F; Kvaser &#x2F; CANable（candleLight）</strong>：USB-CAN 适配器接入总线。</li>
+<li><strong>SocketCAN</strong>（Linux）：<code>ip link set can0 up type can bitrate 500000</code> 后，总线变网卡：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">candump can0                 <span class="comment"># 实时看帧</span></span><br><span class="line">cansend can0 123#11223344    <span class="comment"># 发帧</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>python-can</strong>：</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> can</span><br><span class="line">bus = can.interface.Bus(channel=<span class="string">&quot;can0&quot;</span>, bustype=<span class="string">&quot;socketcan&quot;</span>)</span><br><span class="line">bus.send(can.Message(arbitration_id=<span class="number">0x123</span>, data=[<span class="number">0x11</span>, <span class="number">0x22</span>], is_extended_id=<span class="literal">False</span>))</span><br><span class="line"><span class="keyword">for</span> msg <span class="keyword">in</span> bus:</span><br><span class="line">    <span class="built_in">print</span>(<span class="built_in">hex</span>(msg.arbitration_id), msg.data.<span class="built_in">hex</span>())</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>Wireshark</strong>：可直接解析 SocketCAN 捕获文件，配合 candump -L 的日志。</li>
+</ul>
+<h3 id="常见问题清单"><a href="#常见问题清单" class="headerlink" title="常见问题清单"></a>常见问题清单</h3><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>可能原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>发出去的帧全网报错</td>
+<td>波特率不匹配；采样点配置差异</td>
+</tr>
+<tr>
+<td>完全收不到</td>
+<td>过滤器放行了错误 ID；未 HAL_CAN_Start；收发器 standby 引脚未拉低</td>
+</tr>
+<tr>
+<td>总线电平异常</td>
+<td>终端电阻不是 60Ω（两个 120Ω 并联）；节点收发器损坏</td>
+</tr>
+<tr>
+<td>偶发 bus-off</td>
+<td>线缆&#x2F;屏蔽问题引入干扰；支线过长</td>
+</tr>
+<tr>
+<td>只收不发或反之</td>
+<td>TX&#x2F;RX 到收发器接线错误；模式配成 Loopback</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="八、与其它总线"><a href="#八、与其它总线" class="headerlink" title="八、与其它总线"></a>八、与其它总线</h2><table>
+<thead>
+<tr>
+<th>总线</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><a href="/embedded/10-lin-bus/">第十章：LIN 总线：单主多从与调度表</a></strong></td>
+<td>车身低成本传感器，单主</td>
+</tr>
+<tr>
+<td><strong><a href="/embedded/06-rs485/">第六章：RS485</a></strong> + <a href="/embedded/01-modbus-rtu/">第一章：Modbus RTU</a></td>
+<td>工业 PLC</td>
+</tr>
+<tr>
+<td><strong>CAN</strong></td>
+<td>汽车、机器人关节、安全相关</td>
+</tr>
+</tbody></table>
+<p>上层协议：<strong>CANopen</strong>、<strong>J1939</strong>、<strong>UDS</strong>（诊断）等建立在 CAN 帧之上。</p>
+<p>再细化一下与 RS485+Modbus 的对比维度：CAN 是<strong>事件驱动 + 多主广播</strong>，适合「状态变了立刻广播」的实时信号；Modbus 是<strong>主从轮询</strong>，适合「定期采集」的工控场景。CAN 把冲突处理、检错、重发都做进了硬件；RS485 上这一切都要协议与软件自己兜底。</p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>物理层</td>
+<td>CAN_H &#x2F; CAN_L 差分 + 两端 120Ω 终端电阻，抗干扰强</td>
+</tr>
+<tr>
+<td>仲裁</td>
+<td>多主、逐 bit 非破坏性仲裁，ID 越小优先级越高</td>
+</tr>
+<tr>
+<td>可靠性</td>
+<td>CRC + ACK + 错误计数 bus-off，硬件级容错</td>
+</tr>
+<tr>
+<td>速率与距离</td>
+<td>125 kbps ~ 1 Mbps，速率越高可用距离越短</td>
+</tr>
+<tr>
+<td>演进</td>
+<td>CAN FD 数据段最大 64 字节，数据段波特率可独立提高</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Embedded/" rel="tag"># Embedded</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/embedded/08-spi/" rel="prev" title="第八章：SPI">
+                  <i class="fa fa-angle-left"></i> 第八章：SPI
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/embedded/10-lin-bus/" rel="next" title="第十章：LIN 总线：单主多从与调度表">
+                  第十章：LIN 总线：单主多从与调度表 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

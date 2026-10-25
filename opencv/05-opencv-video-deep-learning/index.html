@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第五章：视频与深度学习概念基础 视频 &#x3D; 时序帧序列：在单图处理之上多了「帧间关系」——运动检测、光流、跟踪都依赖相邻帧对比，是视频理解的核心。 背景建模分离运动：固定摄像头下，建立背景模型后，当前帧与背景之差即运动前景，是安防检测的经典思路。 cv2.dnn 是推理不是训练：OpenCV 能加载 ONNX&#x2F;Caffe&#x2F;部分 TF 模型做前向推理，跨平台部署轻量模型；">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第五章：视频与深度学习">
+<meta property="og:url" content="https://my919.github.io/opencv/05-opencv-video-deep-learning/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第五章：视频与深度学习概念基础 视频 &#x3D; 时序帧序列：在单图处理之上多了「帧间关系」——运动检测、光流、跟踪都依赖相邻帧对比，是视频理解的核心。 背景建模分离运动：固定摄像头下，建立背景模型后，当前帧与背景之差即运动前景，是安防检测的经典思路。 cv2.dnn 是推理不是训练：OpenCV 能加载 ONNX&#x2F;Caffe&#x2F;部分 TF 模型做前向推理，跨平台部署轻量模型；">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:42:38.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.590Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="OpenCV">
+<meta property="article:tag" content="Python">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/opencv/05-opencv-video-deep-learning/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/opencv/05-opencv-video-deep-learning/","path":"opencv/05-opencv-video-deep-learning/","title":"第五章：视频与深度学习"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第五章：视频与深度学习 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%94%E7%AB%A0%EF%BC%9A%E8%A7%86%E9%A2%91%E4%B8%8E%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0"><span class="nav-number">1.</span> <span class="nav-text">第五章：视频与深度学习</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E8%A7%86%E9%A2%91%E8%AF%BB%E5%86%99"><span class="nav-number">1.2.</span> <span class="nav-text">一、视频读写</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-VideoCapture-%E8%AF%BB%E5%8F%96"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. VideoCapture 读取</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-VideoWriter-%E5%86%99%E5%87%BA"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. VideoWriter 写出</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%BB%E7%BD%91%E7%BB%9C%E6%B5%81%E4%B8%8E%E4%B8%A2%E5%B8%A7%E7%AD%96%E7%95%A5"><span class="nav-number">1.2.3.</span> <span class="nav-text">读网络流与丢帧策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%89%E5%B8%A7%E7%8E%87%E4%B8%8E%E6%97%B6%E9%95%BF%E5%AE%9A%E4%BD%8D"><span class="nav-number">1.2.4.</span> <span class="nav-text">按帧率与时长定位</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%B8%A7%E5%B7%AE%E6%B3%95%E4%B8%8E%E8%83%8C%E6%99%AF%E5%87%8F%E9%99%A4%EF%BC%88%E8%BF%90%E5%8A%A8%E6%A3%80%E6%B5%8B%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">二、帧差法与背景减除（运动检测）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#MOG2-%E4%B8%8E-KNN-%E5%AF%B9%E6%AF%94%E5%8F%8A%E6%8E%A9%E8%86%9C%E5%90%8E%E5%A4%84%E7%90%86"><span class="nav-number">1.3.1.</span> <span class="nav-text">MOG2 与 KNN 对比及掩膜后处理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%85%89%E6%B5%81%EF%BC%88%E5%AF%86%E9%9B%86%E4%B8%8E%E7%A8%80%E7%96%8F%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">三、光流（密集与稀疏）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%86%E9%9B%86%E5%85%89%E6%B5%81%E5%8F%AF%E8%A7%86%E5%8C%96%EF%BC%88HSV-%E7%BC%96%E7%A0%81%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">密集光流可视化（HSV 编码）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81cv2-dnn-%E6%8E%A8%E7%90%86%EF%BC%88%E5%8A%A0%E8%BD%BD-ONNX%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">四、cv2.dnn 推理（加载 ONNX）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%8A%A0%E8%BD%BD%E6%A8%A1%E5%9E%8B%E4%B8%8E%E9%A2%84%E5%A4%84%E7%90%86"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 加载模型与预处理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-YOLO-%E9%A3%8E%E6%A0%BC%E5%90%8E%E5%A4%84%E7%90%86%EF%BC%88NMS%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. YOLO 风格后处理（NMS）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#C-%E4%BE%A7-dnn-%E6%8E%A8%E7%90%86%E5%AF%B9%E7%85%A7"><span class="nav-number">1.5.3.</span> <span class="nav-text">C++ 侧 dnn 推理对照</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#blobFromImage-%E5%8F%98%E4%BD%93"><span class="nav-number">1.5.4.</span> <span class="nav-text">blobFromImage 变体</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%A4%9A%E7%9B%AE%E6%A0%87%E8%B7%9F%E8%B8%AA%EF%BC%9AByteTrack-%E6%80%9D%E8%B7%AF%EF%BC%88%E7%AE%80%E8%BF%B0%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">五、多目标跟踪：ByteTrack 思路（简述）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E7%BD%AE%E5%8D%95%E7%9B%AE%E6%A0%87%E8%B7%9F%E8%B8%AA%E5%99%A8%E9%80%89%E5%9E%8B"><span class="nav-number">1.6.1.</span> <span class="nav-text">内置单目标跟踪器选型</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%C2%B7%E8%A1%A5%E5%85%85%E3%80%81%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%B8%85%E5%8D%95"><span class="nav-number">1.7.</span> <span class="nav-text">五·补充、性能优化清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%AE%8C%E6%95%B4%E6%B5%81%E6%B0%B4%E7%BA%BF%EF%BC%9A%E8%A7%86%E9%A2%91%E6%A3%80%E6%B5%8B%E5%8F%AF%E8%A7%86%E5%8C%96"><span class="nav-number">1.8.</span> <span class="nav-text">六、完整流水线：视频检测可视化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1"><span class="nav-number">1.9.</span> <span class="nav-text">七、常见陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/opencv/05-opencv-video-deep-learning/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第五章：视频与深度学习 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第五章：视频与深度学习
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:42:38" itemprop="dateCreated datePublished" datetime="2026-05-01T13:42:38+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/OpenCV/" itemprop="url" rel="index"><span itemprop="name">OpenCV</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>8.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>8 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第五章：视频与深度学习"><a href="#第五章：视频与深度学习" class="headerlink" title="第五章：视频与深度学习"></a>第五章：视频与深度学习</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>视频 &#x3D; 时序帧序列</strong>：在单图处理之上多了「帧间关系」——运动检测、光流、跟踪都依赖相邻帧对比，是视频理解的核心。</li>
+<li><strong>背景建模分离运动</strong>：固定摄像头下，建立背景模型后，当前帧与背景之差即运动前景，是安防检测的经典思路。</li>
+<li><strong><code>cv2.dnn</code> 是推理不是训练</strong>：OpenCV 能加载 ONNX&#x2F;Caffe&#x2F;部分 TF 模型做前向推理，跨平台部署轻量模型；训练仍在 PyTorch 等框架完成。</li>
+<li><strong>前后处理是 OpenCV 的主场</strong>：深度模型要的 resize、归一化、BGR&#x2F;RGB 转换、NMS、画框，全是 OpenCV 擅长的数组操作。</li>
+<li><strong>本章目标</strong>：掌握视频读写、光流、背景减除、dnn 推理与后处理，把前四章能力串成完整 CV 流水线。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/opencv/04-opencv-features-geometry/">第四章：特征与几何</a>，面向时序与深度模型衔接。视频编解码底层见 <a href="/audio/audio-ffmpeg-advanced-guide/">第一章：FFmpeg 音视频处理入门</a>。</p>
+</blockquote>
+<hr>
+<h2 id="一、视频读写"><a href="#一、视频读写" class="headerlink" title="一、视频读写"></a>一、视频读写</h2><h3 id="1-VideoCapture-读取"><a href="#1-VideoCapture-读取" class="headerlink" title="1. VideoCapture 读取"></a>1. VideoCapture 读取</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> cv2</span><br><span class="line"></span><br><span class="line">cap = cv2.VideoCapture(<span class="string">&quot;input.mp4&quot;</span>)     <span class="comment"># 文件；或 0/1 摄像头；或 RTSP URL</span></span><br><span class="line">fps = cap.get(cv2.CAP_PROP_FPS)</span><br><span class="line">w   = cap.get(cv2.CAP_PROP_FRAME_WIDTH)</span><br><span class="line">h   = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)</span><br><span class="line">n   = cap.get(cv2.CAP_PROP_FRAME_COUNT)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;<span class="subst">&#123;w&#125;</span>x<span class="subst">&#123;h&#125;</span> @ <span class="subst">&#123;fps&#125;</span>fps, 共 <span class="subst">&#123;n&#125;</span> 帧&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    ok, frame = cap.read()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> ok:</span><br><span class="line">        <span class="keyword">break</span></span><br><span class="line">    <span class="comment"># 处理 frame ...</span></span><br><span class="line">cap.release()</span><br></pre></td></tr></table></figure>
+
+<p>摄像头&#x2F;网络流 <code>CAP_PROP_FRAME_COUNT</code> 不可用；网络流用 <code>cv2.CAP_FFMPEG</code> 后端读 RTMP&#x2F;RTSP。</p>
+<h3 id="2-VideoWriter-写出"><a href="#2-VideoWriter-写出" class="headerlink" title="2. VideoWriter 写出"></a>2. VideoWriter 写出</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">fourcc = cv2.VideoWriter_fourcc(*<span class="string">&quot;mp4v&quot;</span>)       <span class="comment"># 编码四字符码</span></span><br><span class="line">out = cv2.VideoWriter(<span class="string">&quot;out.mp4&quot;</span>, fourcc, fps, (<span class="built_in">int</span>(w), <span class="built_in">int</span>(h)))</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    ok, frame = cap.read()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> ok:</span><br><span class="line">        <span class="keyword">break</span></span><br><span class="line">    processed = ...  <span class="comment"># 处理</span></span><br><span class="line">    out.write(processed)</span><br><span class="line">out.release()</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>fourcc</strong>：<code>mp4v</code>&#x2F;<code>avc1</code>&#x2F;<code>X264</code> 等，依后端可用编码；写不出时先换 fourcc。</li>
+<li><strong>尺寸必须与帧一致</strong>，否则写空。</li>
+<li>底层依赖 FFmpeg 编解码——这就是 OpenCV 与 <a href="/audio/audio-ffmpeg-advanced-guide/">第一章：FFmpeg 音视频处理入门</a> 的联系。</li>
+</ul>
+<h3 id="读网络流与丢帧策略"><a href="#读网络流与丢帧策略" class="headerlink" title="读网络流与丢帧策略"></a>读网络流与丢帧策略</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># RTSP 摄像头：显式指定 FFMPEG 后端，开小缓冲降延迟</span></span><br><span class="line">cap = cv2.VideoCapture(<span class="string">&quot;rtsp://192.168.1.10:554/stream&quot;</span>, cv2.CAP_FFMPEG)</span><br><span class="line">cap.<span class="built_in">set</span>(cv2.CAP_PROP_BUFFERSIZE, <span class="number">1</span>)      <span class="comment"># 只留最新帧，避免队列堆积延迟</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>实时流的核心矛盾是「处理慢于产出」</strong>：缓冲默认会堆积旧帧，表现为画面越来越滞后。对策：缓冲设 1、或独立线程读帧只留最新、处理线程按需取（生产者-消费者模式）。GStreamer 管线也可经 <code>cv2.CAP_GSTREAMER</code> 接入，适合硬解码（如 Jetson 的 <code>nvv4l2decoder</code>）。</p>
+<h3 id="按帧率与时长定位"><a href="#按帧率与时长定位" class="headerlink" title="按帧率与时长定位"></a>按帧率与时长定位</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cap.<span class="built_in">set</span>(cv2.CAP_PROP_POS_MSEC, <span class="number">5000</span>)     <span class="comment"># 跳到第 5 秒</span></span><br><span class="line">cap.<span class="built_in">set</span>(cv2.CAP_PROP_POS_FRAMES, <span class="number">150</span>)    <span class="comment"># 或跳到第 150 帧</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、帧差法与背景减除（运动检测）"><a href="#二、帧差法与背景减除（运动检测）" class="headerlink" title="二、帧差法与背景减除（运动检测）"></a>二、帧差法与背景减除（运动检测）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 帧差法：相邻帧相减找运动</span></span><br><span class="line">ret, prev = cap.read()</span><br><span class="line">prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)</span><br><span class="line"><span class="keyword">while</span> cap.isOpened():</span><br><span class="line">    ret, frame = cap.read()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> ret: <span class="keyword">break</span></span><br><span class="line">    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)</span><br><span class="line">    diff = cv2.absdiff(prev_gray, gray)</span><br><span class="line">    _, mask = cv2.threshold(diff, <span class="number">25</span>, <span class="number">255</span>, cv2.THRESH_BINARY)</span><br><span class="line">    <span class="comment"># mask 即运动区域</span></span><br><span class="line">    prev_gray = gray</span><br></pre></td></tr></table></figure>
+
+<p>更鲁棒的背景建模（自动更新背景）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># MOG2 高斯混合背景减除</span></span><br><span class="line">bg = cv2.createBackgroundSubtractorMOG2(history=<span class="number">500</span>, varThreshold=<span class="number">16</span>, detectShadows=<span class="literal">True</span>)</span><br><span class="line"><span class="keyword">while</span> cap.isOpened():</span><br><span class="line">    ok, frame = cap.read()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> ok: <span class="keyword">break</span></span><br><span class="line">    mask = bg.apply(frame)            <span class="comment"># 输出前景掩膜</span></span><br><span class="line">    <span class="comment"># 去阴影（detectShadows 把阴影标为 127）</span></span><br><span class="line">    _, mask = cv2.threshold(mask, <span class="number">200</span>, <span class="number">255</span>, cv2.THRESH_BINARY)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>帧差法</strong>：简单但对静止目标失效。</li>
+<li><strong>MOG2&#x2F;KNN</strong>：自适应背景，相机轻微抖动也能用，<code>detectShadows</code> 标阴影需二次阈值过滤。</li>
+</ul>
+<h3 id="MOG2-与-KNN-对比及掩膜后处理"><a href="#MOG2-与-KNN-对比及掩膜后处理" class="headerlink" title="MOG2 与 KNN 对比及掩膜后处理"></a>MOG2 与 KNN 对比及掩膜后处理</h3><table>
+<thead>
+<tr>
+<th>减除器</th>
+<th>特点</th>
+<th>参数要点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>MOG2</strong></td>
+<td>高斯混合模型，多模态背景（摇曳树叶）</td>
+<td><code>history</code> 学习窗口、<code>varThreshold</code> 灵敏度</td>
+</tr>
+<tr>
+<td><strong>KNN</strong></td>
+<td>K 近邻背景统计，前景存在久后纳入背景快</td>
+<td><code>dist2Threshold</code></td>
+</tr>
+</tbody></table>
+<p>原始掩膜必带噪点，标准后处理三件套：<strong>开运算去碎点 → 闭运算连断块 → 轮廓面积过滤</strong>：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">mask = bg.apply(frame)</span><br><span class="line">_, mask = cv2.threshold(mask, <span class="number">200</span>, <span class="number">255</span>, cv2.THRESH_BINARY)</span><br><span class="line">k3 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (<span class="number">3</span>, <span class="number">3</span>))</span><br><span class="line">k9 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (<span class="number">9</span>, <span class="number">9</span>))</span><br><span class="line">mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, k3)</span><br><span class="line">mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, k9)</span><br><span class="line">cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)</span><br><span class="line"><span class="keyword">for</span> c <span class="keyword">in</span> cnts:</span><br><span class="line">    <span class="keyword">if</span> cv2.contourArea(c) &lt; <span class="number">500</span>:    <span class="comment"># 滤小目标</span></span><br><span class="line">        <span class="keyword">continue</span></span><br><span class="line">    x, y, w, h = cv2.boundingRect(c)</span><br><span class="line">    cv2.rectangle(frame, (x, y), (x+w, y+h), (<span class="number">0</span>, <span class="number">255</span>, <span class="number">0</span>), <span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+
+<p>这套「减除 → 形态学 → 轮廓过滤 → 画框」就是无深度模型的轻量安防检测流水线。</p>
+<hr>
+<h2 id="三、光流（密集与稀疏）"><a href="#三、光流（密集与稀疏）" class="headerlink" title="三、光流（密集与稀疏）"></a>三、光流（密集与稀疏）</h2><p>光流估计像素运动场，用于跟踪与运动分析：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 稀疏光流 Lucas-Kanade（跟踪 goodFeaturesToTrack 的点）</span></span><br><span class="line">prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)</span><br><span class="line">p0 = cv2.goodFeaturesToTrack(prev_gray, <span class="number">100</span>, <span class="number">0.3</span>, <span class="number">7</span>)</span><br><span class="line">next_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)</span><br><span class="line">p1, st, err = cv2.calcOpticalPyrLK(prev_gray, next_gray, p0, <span class="literal">None</span>)</span><br><span class="line">good = p1[st == <span class="number">1</span>]   <span class="comment"># st=1 表示跟踪成功</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 密集光流 Farneback（全图运动场）</span></span><br><span class="line">flow = cv2.calcOpticalFlowFarneback(prev_gray, next_gray, <span class="literal">None</span>,</span><br><span class="line">                                    <span class="number">0.5</span>, <span class="number">3</span>, <span class="number">15</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">1.2</span>, <span class="number">0</span>)</span><br><span class="line"><span class="comment"># flow 形状 (H, W, 2)，每像素 (dx, dy) 运动向量</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>稀疏 LK</strong>：跟踪特定角点，快，适合实时跟踪。</li>
+<li><strong>密集 Farneback</strong>：全图运动，慢但信息全，可视化运动方向。</li>
+</ul>
+<h3 id="密集光流可视化（HSV-编码）"><a href="#密集光流可视化（HSV-编码）" class="headerlink" title="密集光流可视化（HSV 编码）"></a>密集光流可视化（HSV 编码）</h3><p>经典可视化技巧：把运动向量的大小&#x2F;方向编码到 HSV 的 V&#x2F;H 通道：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flow = cv2.calcOpticalFlowFarneback(prev_gray, next_gray, <span class="literal">None</span>,</span><br><span class="line">                                    <span class="number">0.5</span>, <span class="number">3</span>, <span class="number">15</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">1.2</span>, <span class="number">0</span>)</span><br><span class="line">mag, ang = cv2.cartToPolar(flow[..., <span class="number">0</span>], flow[..., <span class="number">1</span>])</span><br><span class="line">hsv = np.zeros((*mag.shape, <span class="number">3</span>), np.uint8)</span><br><span class="line">hsv[..., <span class="number">0</span>] = ang * <span class="number">180</span> / np.pi / <span class="number">2</span>          <span class="comment"># 方向 → 色相</span></span><br><span class="line">hsv[..., <span class="number">1</span>] = <span class="number">255</span></span><br><span class="line">hsv[..., <span class="number">2</span>] = cv2.normalize(mag, <span class="literal">None</span>, <span class="number">0</span>, <span class="number">255</span>, cv2.NORM_MINMAX)  <span class="comment"># 幅值 → 亮度</span></span><br><span class="line">flow_rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)</span><br></pre></td></tr></table></figure>
+
+<p>LK 金字塔的实际用法是「三级金字塔 + 双向校验」：<code>calcOpticalPyrLK</code> 内部已做多尺度，再在反向跑一次筛掉往返不一致的点，能显著提升跟踪稳定性。</p>
+<hr>
+<h2 id="四、cv2-dnn-推理（加载-ONNX）"><a href="#四、cv2-dnn-推理（加载-ONNX）" class="headerlink" title="四、cv2.dnn 推理（加载 ONNX）"></a>四、cv2.dnn 推理（加载 ONNX）</h2><h3 id="1-加载模型与预处理"><a href="#1-加载模型与预处理" class="headerlink" title="1. 加载模型与预处理"></a>1. 加载模型与预处理</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> cv2</span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">net = cv2.dnn.readNetFromONNX(<span class="string">&quot;model.onnx&quot;</span>)      <span class="comment"># 或 readNetFromCaffe/TensorFlow</span></span><br><span class="line"><span class="comment"># 可选切换后端：DNN_BACKEND_OPENCV / OPENCV_CUDA</span></span><br><span class="line">net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)</span><br><span class="line">net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)  <span class="comment"># 或 CUDA</span></span><br><span class="line"></span><br><span class="line">img = cv2.imread(<span class="string">&quot;input.jpg&quot;</span>)</span><br><span class="line"><span class="comment"># blobFromImage 一步完成 resize+归一化+通道交换+批维</span></span><br><span class="line">blob = cv2.dnn.blobFromImage(img, <span class="number">1</span>/<span class="number">255.0</span>, (<span class="number">640</span>, <span class="number">640</span>), swapRB=<span class="literal">True</span>, crop=<span class="literal">False</span>)</span><br><span class="line">net.setInput(blob)</span><br><span class="line">outs = net.forward([<span class="string">&quot;output0&quot;</span>])   <span class="comment"># 多输出用 forward([&quot;n0&quot;,&quot;n1&quot;])</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>blobFromImage</code></strong>：<code>scalefactor</code> 缩放、<code>size</code> 目标尺寸、<code>swapRB</code> BGR→RGB、<code>crop</code> 是否中心裁剪。</li>
+<li><strong><code>swapRB=True</code></strong>：模型多按 RGB 训练，OpenCV 读的是 BGR，需交换。</li>
+<li><strong>GPU</strong>：编译时启用 CUDA 后端可 <code>DNN_TARGET_CUDA</code> 加速。</li>
+</ul>
+<h3 id="2-YOLO-风格后处理（NMS）"><a href="#2-YOLO-风格后处理（NMS）" class="headerlink" title="2. YOLO 风格后处理（NMS）"></a>2. YOLO 风格后处理（NMS）</h3><p>深度检测模型输出需后处理成最终框——解码框 + 置信度过滤 + NMS：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 假设 outs 为 (1, N, 5+nc) 的检测张量</span></span><br><span class="line">boxes, confs = [], []</span><br><span class="line"><span class="keyword">for</span> det <span class="keyword">in</span> outs[<span class="number">0</span>]:</span><br><span class="line">    scores = det[<span class="number">5</span>:]</span><br><span class="line">    class_id = np.argmax(scores)</span><br><span class="line">    conf = scores[class_id]</span><br><span class="line">    <span class="keyword">if</span> conf &lt; <span class="number">0.5</span>:                       <span class="comment"># 置信度阈值</span></span><br><span class="line">        <span class="keyword">continue</span></span><br><span class="line">    cx, cy, w, h = det[:<span class="number">4</span>]</span><br><span class="line">    <span class="comment"># 还原到原图坐标（按缩放比）</span></span><br><span class="line">    boxes.append([<span class="built_in">int</span>(cx - w/<span class="number">2</span>), <span class="built_in">int</span>(cy - h/<span class="number">2</span>), <span class="built_in">int</span>(w), <span class="built_in">int</span>(h)])</span><br><span class="line">    confs.append(<span class="built_in">float</span>(conf))</span><br><span class="line"></span><br><span class="line">idxs = cv2.dnn.NMSBoxes(boxes, confs, <span class="number">0.5</span>, <span class="number">0.4</span>)   <span class="comment"># 置信度阈值、IoU 阈值</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> idxs:</span><br><span class="line">    x, y, w, h = boxes[i]</span><br><span class="line">    cv2.rectangle(img, (x, y), (x+w, y+h), (<span class="number">0</span>,<span class="number">255</span>,<span class="number">0</span>), <span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>NMS（非极大值抑制）</strong>：重叠框只保留置信度最高的，<code>0.4</code> 是 IoU 阈值。</li>
+<li>训练用 <a href="/ai/01-pytorch-guide/">第一章：PyTorch 入门与张量</a>，导出 ONNX 后用 OpenCV 部署，是常见的轻量推理链路。</li>
+</ul>
+<h3 id="C-侧-dnn-推理对照"><a href="#C-侧-dnn-推理对照" class="headerlink" title="C++ 侧 dnn 推理对照"></a>C++ 侧 dnn 推理对照</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">cv::dnn::Net net = cv::dnn::<span class="built_in">readNetFromONNX</span>(<span class="string">&quot;yolov8n.onnx&quot;</span>);</span><br><span class="line">net.<span class="built_in">setPreferableBackend</span>(cv::dnn::DNN_BACKEND_OPENCV);</span><br><span class="line">net.<span class="built_in">setPreferableTarget</span>(cv::dnn::DNN_TARGET_CPU);</span><br><span class="line"></span><br><span class="line">cv::Mat blob;</span><br><span class="line">cv::dnn::<span class="built_in">blobFromImage</span>(img, blob, <span class="number">1.0</span>/<span class="number">255.0</span>, &#123;<span class="number">640</span>, <span class="number">640</span>&#125;,</span><br><span class="line">                       cv::<span class="built_in">Scalar</span>(), <span class="literal">true</span>, <span class="literal">false</span>);   <span class="comment">// swapRB=true</span></span><br><span class="line">net.<span class="built_in">setInput</span>(blob);</span><br><span class="line">std::vector&lt;cv::Mat&gt; outs;</span><br><span class="line">net.forward(outs, net.<span class="built_in">getUnconnectedOutLayersNames</span>());</span><br><span class="line"><span class="comment">// outs[0] 形状 (1, 84, 8400)：YOLOv8 输出是 (cx,cy,w,h,80类) 转置，需 outs[0].t()</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>YOLOv8 输出布局注意</strong>：<code>output0</code> 为 <code>(1, 4+nc, 8400)</code>，每<strong>列</strong>是一个候选框（Python 侧 <code>outs[0][0].T</code> 转成 (8400, 84) 再按行解析），且无 objectness 通道（v5 的 <code>det[4]</code> 在 v8 已并入类别分）。解析错布局是 YOLO 后处理最常见的坑。</p>
+<h3 id="blobFromImage-变体"><a href="#blobFromImage-变体" class="headerlink" title="blobFromImage 变体"></a>blobFromImage 变体</h3><ul>
+<li><strong><code>blobFromImages</code></strong>：批量输入多张图，一次 forward 多帧，吞吐更高。</li>
+<li><strong><code>mean=(...)</code></strong>：减均值（ImageNet 模型常用 <code>(104, 117, 123)</code> 或按模型训练配置）。</li>
+<li><strong><code>crop=True</code></strong>：先按长边等比缩放到目标尺寸的短边再中心裁——分类模型的标准预处理；<strong>检测模型必须 <code>crop=False</code></strong> 并自己记录缩放系数做坐标还原（letterbox 需另加 padding 补偿）。</li>
+</ul>
+<hr>
+<h2 id="五、多目标跟踪：ByteTrack-思路（简述）"><a href="#五、多目标跟踪：ByteTrack-思路（简述）" class="headerlink" title="五、多目标跟踪：ByteTrack 思路（简述）"></a>五、多目标跟踪：ByteTrack 思路（简述）</h2><p>检测 + 关联是跟踪的通用框架：</p>
+<ol>
+<li>每帧用检测器（YOLO&#x2F;dnn）出框。</li>
+<li>用 IoU 或卡尔曼预测把当前框与上一帧轨迹关联。</li>
+<li>未匹配的检测开新轨迹，未匹配的轨迹保留若干帧后删除。</li>
+</ol>
+<p>OpenCV 自带轻量跟踪器（单目标）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">tracker = cv2.TrackerCSRT_create()       <span class="comment"># 或 TrackerKCF_create</span></span><br><span class="line">ok = tracker.init(frame, bbox)</span><br><span class="line"><span class="keyword">while</span> cap.isOpened():</span><br><span class="line">    ok, frame = cap.read()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> ok: <span class="keyword">break</span></span><br><span class="line">    ok, bbox = tracker.update(frame)</span><br><span class="line">    <span class="keyword">if</span> ok:</span><br><span class="line">        x,y,w,h = [<span class="built_in">int</span>(v) <span class="keyword">for</span> v <span class="keyword">in</span> bbox]</span><br><span class="line">        cv2.rectangle(frame, (x,y), (x+w,y+h), (<span class="number">0</span>,<span class="number">255</span>,<span class="number">0</span>), <span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>多目标跟踪生产级多用 ByteTrack&#x2F; SORT + 深度检测器组合，OpenCV 负责检测前后处理与可视化。</p>
+</blockquote>
+<h3 id="内置单目标跟踪器选型"><a href="#内置单目标跟踪器选型" class="headerlink" title="内置单目标跟踪器选型"></a>内置单目标跟踪器选型</h3><table>
+<thead>
+<tr>
+<th>跟踪器</th>
+<th>速度</th>
+<th>精度</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>TrackerCSRT</strong></td>
+<td>慢</td>
+<td>高</td>
+<td>判别相关滤波+可靠性，精度优先场景</td>
+</tr>
+<tr>
+<td><strong>TrackerKCF</strong></td>
+<td>快</td>
+<td>中</td>
+<td>核相关滤波，速度与精度平衡，最常用</td>
+</tr>
+<tr>
+<td><strong>TrackerMOSSE</strong></td>
+<td>极快</td>
+<td>低</td>
+<td>纯速度场景，遮挡即丢</td>
+</tr>
+</tbody></table>
+<p>注意：<strong>TrackerCSRT&#x2F;KCF&#x2F;MOSSE 在 contrib 包</strong>（<code>opencv-contrib-python</code>）；4.10+ 主包提供 <code>TrackerNano</code>&#x2F;<code>TrackerVit</code>（深度轻量跟踪器，需另下模型文件）。通用建议：先用 KCF 打底，精度不够再换 CSRT 或 Nano。</p>
+<hr>
+<h2 id="五·补充、性能优化清单"><a href="#五·补充、性能优化清单" class="headerlink" title="五·补充、性能优化清单"></a>五·补充、性能优化清单</h2><p>CV 流水线提速按收益排序：</p>
+<ol>
+<li><strong>降分辨率</strong>：处理前 <code>resize</code> 到够用即可（检测常 640 宽）——像素数减半耗时约减四分之三。</li>
+<li><strong>向量化与算子</strong>：消灭 Python 像素循环（第二章）；批量 <code>blobFromImages</code> 一次推理多帧。</li>
+<li><strong>ROI 先行</strong>：只处理感兴趣区域，跳过整图运算。</li>
+<li><strong>UMat&#x2F;OpenCL</strong>：<code>cv2.UMat</code> 让支持算子自动走 GPU（第一章），大图大核收益明显。</li>
+<li><strong>CUDA 模块</strong>：源码编译 <code>WITH_CUDA=ON</code> 后用 <code>cv2.cuda_GpuMat</code> &#x2F; <code>cv::cuda::*</code>，含专用滤波、dnn 后端。</li>
+<li><strong>多线程读解</strong>：读帧（IO 瓶颈）与处理（CPU 瓶颈）分线程，队列缓冲。</li>
+<li><strong>dnn 后端</strong>：有 NPU&#x2F;OpenVINO 设备时 <code>DNN_BACKEND_INFERENCE_ENGINE</code> 等专用后端。</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 快速计时范式</span></span><br><span class="line">t0 = cv2.getTickCount()</span><br><span class="line"><span class="comment"># ... 待测代码 ...</span></span><br><span class="line">ms = (cv2.getTickCount() - t0) / cv2.getTickFrequency() * <span class="number">1000</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;<span class="subst">&#123;ms:<span class="number">.1</span>f&#125;</span> ms&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、完整流水线：视频检测可视化"><a href="#六、完整流水线：视频检测可视化" class="headerlink" title="六、完整流水线：视频检测可视化"></a>六、完整流水线：视频检测可视化</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> cv2</span><br><span class="line"></span><br><span class="line">cap = cv2.VideoCapture(<span class="string">&quot;input.mp4&quot;</span>)</span><br><span class="line">net = cv2.dnn.readNetFromONNX(<span class="string">&quot;yolov8.onnx&quot;</span>)</span><br><span class="line">out = cv2.VideoWriter(<span class="string">&quot;out.mp4&quot;</span>, cv2.VideoWriter_fourcc(*<span class="string">&quot;mp4v&quot;</span>),</span><br><span class="line">                      cap.get(cv2.CAP_PROP_FPS),</span><br><span class="line">                      (<span class="built_in">int</span>(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),</span><br><span class="line">                       <span class="built_in">int</span>(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> cap.isOpened():</span><br><span class="line">    ok, frame = cap.read()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> ok: <span class="keyword">break</span></span><br><span class="line">    blob = cv2.dnn.blobFromImage(frame, <span class="number">1</span>/<span class="number">255.0</span>, (<span class="number">640</span>,<span class="number">640</span>), swapRB=<span class="literal">True</span>, crop=<span class="literal">False</span>)</span><br><span class="line">    net.setInput(blob)</span><br><span class="line">    outs = net.forward([<span class="string">&quot;output0&quot;</span>])</span><br><span class="line">    <span class="comment"># ... NMS 后处理，画框 ...</span></span><br><span class="line">    out.write(frame)</span><br><span class="line">cap.release(); out.release()</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="七、常见陷阱"><a href="#七、常见陷阱" class="headerlink" title="七、常见陷阱"></a>七、常见陷阱</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>VideoWriter 尺寸不符</strong></td>
+<td>帧尺寸与构造参数不一致，写出空文件</td>
+</tr>
+<tr>
+<td><strong>fourcc 不支持</strong></td>
+<td>某些编码依赖后端，写失败先换 <code>mp4v</code></td>
+</tr>
+<tr>
+<td><strong>blobFromImage 漏 swapRB</strong></td>
+<td>BGR 送进 RGB 模型致检测错乱</td>
+</tr>
+<tr>
+<td><strong>忘归一化</strong></td>
+<td>不除 255 送 0-255 像素进模型，结果全错</td>
+</tr>
+<tr>
+<td><strong>NMS 阈值不当</strong></td>
+<td>IoU 阈值过小漏框、过大残留重复框</td>
+</tr>
+<tr>
+<td><strong>背景减除不去阴影</strong></td>
+<td><code>detectShadows</code> 阴影为 127，需二次阈值</td>
+</tr>
+<tr>
+<td><strong>光流用彩色图</strong></td>
+<td>LK&#x2F;Farneback 需灰度单通道输入</td>
+</tr>
+<tr>
+<td><strong>dnn 后端未编译 CUDA</strong></td>
+<td>设了 CUDA 后端但 OpenCV 未编译支持会回退或报错</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>视频读写</td>
+<td><code>VideoCapture</code> 逐帧读、<code>VideoWriter</code> fourcc+尺寸写出；底层靠 FFmpeg</td>
+</tr>
+<tr>
+<td>网络流</td>
+<td>RTSP 配 <code>CAP_FFMPEG</code>；缓冲设 1 防延迟堆积；读写分线程</td>
+</tr>
+<tr>
+<td>运动检测</td>
+<td>帧差法简单、MOG2&#x2F;KNN 背景减除自适应</td>
+</tr>
+<tr>
+<td>光流</td>
+<td>稀疏 LK 跟踪角点（双向校验提质）、密集 Farneback 全图运动场，HSV 编码可视化</td>
+</tr>
+<tr>
+<td>dnn 推理</td>
+<td><code>readNetFromONNX</code> + <code>blobFromImage</code> 预处理 + <code>forward</code>；非训练</td>
+</tr>
+<tr>
+<td>YOLO 后处理</td>
+<td>v8 输出 (1,4+nc,8400) 需转置；置信度过滤 + <code>NMSBoxes</code></td>
+</tr>
+<tr>
+<td>跟踪器</td>
+<td>KCF 均衡常用、CSRT 高精度、MOSSE 极速（均在 contrib）；4.10+ 主包有 Nano&#x2F;Vit</td>
+</tr>
+<tr>
+<td>性能</td>
+<td>降分辨率 &gt; 向量化 &gt; ROI &gt; UMat&#x2F;CUDA &gt; 多线程；<code>getTickCount</code> 计时</td>
+</tr>
+<tr>
+<td>流水线</td>
+<td>读帧→dnn 检测→NMS→画框→写帧，串联前四章能力</td>
+</tr>
+</tbody></table>
+<p>至此 OpenCV 系列五章完结：</p>
+<ol>
+<li><a href="/opencv/01-opencv-guide/">第一章：OpenCV 计算机视觉入门</a></li>
+<li><a href="/opencv/02-opencv-image-basics/">第二章：图像基础操作</a></li>
+<li><a href="/opencv/03-opencv-filter-transform/">第三章：滤波与几何变换</a></li>
+<li><a href="/opencv/04-opencv-features-geometry/">第四章：特征与几何</a></li>
+<li><a href="/opencv/05-opencv-video-deep-learning/">第五章：视频与深度学习</a></li>
+</ol>
+<p>视频编解码延伸到 <a href="/audio/audio-ffmpeg-advanced-guide/">第一章：FFmpeg 音视频处理入门</a> 系列；深度学习原理与训练见 <a href="/ai/01-pytorch-guide/">第一章：PyTorch 入门与张量</a> 与 <a href="/ai/ai-ml-dl-guide/">第二章：DL 深度学习基础</a>。进阶推荐官方教程与《Learning OpenCV》。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Python/" rel="tag"># Python</a>
+              <a href="/tags/OpenCV/" rel="tag"># OpenCV</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/graphql/02-graphql-server-practice/" rel="prev" title="第二章：GraphQL 服务端实战">
+                  <i class="fa fa-angle-left"></i> 第二章：GraphQL 服务端实战
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/opencv/04-opencv-features-geometry/" rel="next" title="第四章：特征与几何">
+                  第四章：特征与几何 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

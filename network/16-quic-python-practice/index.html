@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十六章：QUIC 实践：自签名证书与 HTTP&#x2F;3 服务端、客户端（Python）概念基础本章把第十五章的 QUIC &#x2F; HTTP&#x2F;3 概念落地为可运行的最小工程：  为什么需要自签名证书：QUIC 强制加密（TLS 1.3），本地实验没有域名与 CA，用 OpenSSL 一行生成自签名证书即可起步；SAN 决定浏览器与客户端的 SNI 校验能否通过。 服务端为什么">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十六章：QUIC 实践：自签名证书与 HTTP&#x2F;3 服务端、客户端（Python）">
+<meta property="og:url" content="https://my919.github.io/network/16-quic-python-practice/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十六章：QUIC 实践：自签名证书与 HTTP&#x2F;3 服务端、客户端（Python）概念基础本章把第十五章的 QUIC &#x2F; HTTP&#x2F;3 概念落地为可运行的最小工程：  为什么需要自签名证书：QUIC 强制加密（TLS 1.3），本地实验没有域名与 CA，用 OpenSSL 一行生成自签名证书即可起步；SAN 决定浏览器与客户端的 SNI 校验能否通过。 服务端为什么">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-04T12:45:15.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.586Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Protocol">
+<meta property="article:tag" content="QUIC">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/network/16-quic-python-practice/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/network/16-quic-python-practice/","path":"network/16-quic-python-practice/","title":"第十六章：QUIC 实践：自签名证书与 HTTP/3 服务端、客户端（Python）"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十六章：QUIC 实践：自签名证书与 HTTP/3 服务端、客户端（Python） | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E5%85%AD%E7%AB%A0%EF%BC%9AQUIC-%E5%AE%9E%E8%B7%B5%EF%BC%9A%E8%87%AA%E7%AD%BE%E5%90%8D%E8%AF%81%E4%B9%A6%E4%B8%8E-HTTP-3-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E3%80%81%E5%AE%A2%E6%88%B7%E7%AB%AF%EF%BC%88Python%EF%BC%89"><span class="nav-number">1.</span> <span class="nav-text">第十六章：QUIC 实践：自签名证书与 HTTP&#x2F;3 服务端、客户端（Python）</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E7%8E%AF%E5%A2%83%E4%B8%8E%E4%BE%9D%E8%B5%96"><span class="nav-number">1.2.</span> <span class="nav-text">一、环境与依赖</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E7%94%9F%E6%88%90%E8%87%AA%E7%AD%BE%E5%90%8D%E8%AF%81%E4%B9%A6%EF%BC%88OpenSSL%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">二、生成自签名证书（OpenSSL）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81HTTP-3-%E6%9C%8D%E5%8A%A1%E7%AB%AF%EF%BC%88Hypercorn-Starlette%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">三、HTTP&#x2F;3 服务端（Hypercorn + Starlette）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BD%95%E6%B5%8F%E8%A7%88%E5%99%A8%E8%BF%98%E5%B8%B8%E8%A6%81-TCP%E3%80%81%E5%92%8C-QUIC-%E8%AE%BE%E8%AE%A1%E6%98%AF%E5%90%A6%E5%86%B2%E7%AA%81"><span class="nav-number">1.4.1.</span> <span class="nav-text">为何浏览器还常要 TCP、和 QUIC 设计是否冲突</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%A8%E6%B5%8F%E8%A7%88%E5%99%A8%E9%87%8C%E6%89%93%E5%BC%80%E6%97%B6%E7%9A%84%E8%AF%81%E4%B9%A6%E6%8F%90%E7%A4%BA"><span class="nav-number">1.4.2.</span> <span class="nav-text">在浏览器里打开时的证书提示</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81HTTP-3-%E5%AE%A2%E6%88%B7%E7%AB%AF%EF%BC%88aioquic%EF%BC%8C%E6%A0%A1%E9%AA%8C%E8%87%AA%E7%AD%BE%E5%90%8D%E8%AF%81%E4%B9%A6%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">四、HTTP&#x2F;3 客户端（aioquic，校验自签名证书）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.6.</span> <span class="nav-text">五、运行步骤</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E7%94%A8-curl-%E5%A4%8D%E6%B5%8B%EF%BC%88%E5%8F%AF%E9%80%89%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">六、用 curl 复测（可选）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81aioquic-%E5%8E%9F%E7%94%9F-QUIC-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E4%B8%8E%E5%AE%A2%E6%88%B7%E7%AB%AF%EF%BC%88%E4%B8%8D%E8%B5%B0-HTTP-3%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">七、aioquic 原生 QUIC 服务端与客户端（不走 HTTP&#x2F;3）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%9C%8D%E5%8A%A1%E7%AB%AF-quic-echo-server-py"><span class="nav-number">1.8.1.</span> <span class="nav-text">1. 服务端 quic_echo_server.py</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%AE%A2%E6%88%B7%E7%AB%AF-quic-echo-client-py"><span class="nav-number">1.8.2.</span> <span class="nav-text">2. 客户端 quic_echo_client.py</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%810-RTT-%E4%B8%8E%E4%BC%9A%E8%AF%9D%E6%81%A2%E5%A4%8D"><span class="nav-number">1.9.</span> <span class="nav-text">八、0-RTT 与会话恢复</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%BF%9D%E5%AD%98%E4%B8%8E%E9%87%8D%E6%94%BE%E7%A5%A8%E6%8D%AE"><span class="nav-number">1.9.1.</span> <span class="nav-text">1. 客户端保存与重放票据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E9%AA%8C%E8%AF%81-0-RTT-%E7%94%9F%E6%95%88%E7%9A%84%E4%B8%A4%E6%9D%A1%E8%B7%AF%E5%BE%84"><span class="nav-number">1.9.2.</span> <span class="nav-text">2. 验证 0-RTT 生效的两条路径</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E8%BF%9E%E6%8E%A5%E8%BF%81%E7%A7%BB%E5%AE%9E%E9%AA%8C"><span class="nav-number">1.10.</span> <span class="nav-text">九、连接迁移实验</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%8E%9F%E7%90%86"><span class="nav-number">1.10.1.</span> <span class="nav-text">1. 原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%8A%A8%E6%89%8B%E5%AE%9E%E9%AA%8C"><span class="nav-number">1.10.2.</span> <span class="nav-text">2. 动手实验</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E6%8E%92%E9%9A%9C%E4%B8%8E%E8%B0%83%E8%AF%95%EF%BC%88%E5%AF%86%E9%92%A5%E6%97%A5%E5%BF%97%E4%B8%8E-qlog%EF%BC%89"><span class="nav-number">1.11.</span> <span class="nav-text">十、排障与调试（密钥日志与 qlog）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-SSLKEYLOGFILE%EF%BC%9A%E8%AE%A9-Wireshark-%E8%A7%A3%E5%AF%86"><span class="nav-number">1.11.1.</span> <span class="nav-text">1. SSLKEYLOGFILE：让 Wireshark 解密</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-qlog%EF%BC%9A%E7%BB%93%E6%9E%84%E5%8C%96%E4%BA%8B%E4%BB%B6%E6%97%A5%E5%BF%97"><span class="nav-number">1.11.2.</span> <span class="nav-text">2. qlog：结构化事件日志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.12.</span> <span class="nav-text">本章小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E8%AF%AD"><span class="nav-number">1.13.</span> <span class="nav-text">结语</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/network/16-quic-python-practice/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十六章：QUIC 实践：自签名证书与 HTTP&#x2F;3 服务端、客户端（Python） | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十六章：QUIC 实践：自签名证书与 HTTP/3 服务端、客户端（Python）
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-04 20:45:15" itemprop="dateCreated datePublished" datetime="2026-05-04T20:45:15+08:00">2026-05-04</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" itemprop="url" rel="index"><span itemprop="name">计算机网络</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>13k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>11 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十六章：QUIC-实践：自签名证书与-HTTP-3-服务端、客户端（Python）"><a href="#第十六章：QUIC-实践：自签名证书与-HTTP-3-服务端、客户端（Python）" class="headerlink" title="第十六章：QUIC 实践：自签名证书与 HTTP&#x2F;3 服务端、客户端（Python）"></a>第十六章：QUIC 实践：自签名证书与 HTTP&#x2F;3 服务端、客户端（Python）</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p>本章把第十五章的 <strong>QUIC &#x2F; HTTP&#x2F;3</strong> 概念落地为<strong>可运行的最小工程</strong>：</p>
+<ol>
+<li><strong>为什么需要自签名证书</strong>：<strong>QUIC</strong> 强制加密（<strong>TLS 1.3</strong>），本地实验没有域名与 <strong>CA</strong>，用 <strong>OpenSSL</strong> 一行生成自签名证书即可起步；<strong>SAN</strong> 决定浏览器与客户端的 <strong>SNI</strong> 校验能否通过。</li>
+<li><strong>服务端为什么选 Hypercorn</strong>：基于 <strong>aioquic</strong> 的 <strong>ASGI</strong> 服务器，<strong><code>bind</code>（TCP TLS）+ <code>quic_bind</code>（UDP）</strong> 同端口并存，兼顾浏览器「先 TCP 后 HTTP&#x2F;3」的建连习惯。</li>
+<li><strong>客户端为什么手写 aioquic</strong>：官方栈直接暴露 <strong>QUIC + HTTP&#x2F;3</strong> 事件，能看清「头插帧、流、证书校验」；用 <strong><code>load_verify_locations</code></strong> 显式信任自签名证书而不是跳过校验。</li>
+<li><strong>验证路径</strong>：先 <strong>Python 客户端</strong>打通 <strong>UDP&#x2F;QUIC</strong>，再用支持 <strong>HTTP&#x2F;3</strong> 的 <strong><code>curl</code></strong> 复测——两条独立证据链确认 <strong>HTTP&#x2F;3</strong> 真正生效。</li>
+</ol>
+<p>先准备环境与依赖：</p>
+<h2 id="一、环境与依赖"><a href="#一、环境与依赖" class="headerlink" title="一、环境与依赖"></a>一、环境与依赖</h2><ul>
+<li><strong>Python</strong> 3.10+（示例使用 <strong>asyncio</strong>）。  </li>
+<li><strong>OpenSSL</strong>（生成 <strong>TLS</strong> 证书）。  </li>
+<li><strong>Hypercorn</strong>：内置 <strong>HTTP&#x2F;3</strong>（<strong>QUIC</strong>）服务端（依赖 <strong>aioquic</strong> 等）。  </li>
+<li><strong>aioquic</strong>：本示例客户端用其 <strong>QUIC + HTTP&#x2F;3</strong> 栈发请求。  </li>
+<li><strong>Starlette</strong>：<strong>ASGI</strong> 应用框架（与 <strong>Hypercorn</strong> 搭配）。</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python3 -m pip install --upgrade <span class="string">&quot;hypercorn[h3]&quot;</span> starlette aioquic</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、生成自签名证书（OpenSSL）"><a href="#二、生成自签名证书（OpenSSL）" class="headerlink" title="二、生成自签名证书（OpenSSL）"></a>二、生成自签名证书（<strong>OpenSSL</strong>）</h2><p>在放服务端脚本的目录执行（<strong>CN</strong> 与 <strong>SAN</strong> 含 <strong>localhost</strong>、<strong>127.0.0.1</strong>，便于本机 <strong><code>https://127.0.0.1:端口</code></strong> 与 <strong>SNI</strong> 校验）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">openssl req -x509 -newkey rsa:2048 -nodes \</span><br><span class="line">  -keyout key.pem -out cert.pem -days 365 \</span><br><span class="line">  -subj <span class="string">&quot;/CN=localhost&quot;</span> \</span><br><span class="line">  -addext <span class="string">&quot;subjectAltName=DNS:localhost,IP:127.0.0.1&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>得到 <strong><code>cert.pem</code></strong>（公钥证书，可同时给客户端做<strong>信任锚</strong>）与 <strong><code>key.pem</code></strong>（私钥，仅服务端持有）。自签名仅用于开发&#x2F;实验；生产环境应使用企业 <strong>CA</strong> 或 <strong>ACME</strong>（如 <strong>Let’s Encrypt</strong>）签发的证书。</p>
+<hr>
+<h2 id="三、HTTP-3-服务端（Hypercorn-Starlette）"><a href="#三、HTTP-3-服务端（Hypercorn-Starlette）" class="headerlink" title="三、HTTP&#x2F;3 服务端（Hypercorn + Starlette）"></a>三、<strong>HTTP&#x2F;3</strong> 服务端（<strong>Hypercorn</strong> + <strong>Starlette</strong>）</h2><p>将下列内容保存为 <strong><code>main.py</code></strong>，与 <strong><code>cert.pem</code></strong>、<strong><code>key.pem</code></strong> 放在同一目录。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> asyncio</span><br><span class="line"><span class="keyword">from</span> pathlib <span class="keyword">import</span> Path</span><br><span class="line"><span class="keyword">from</span> hypercorn.asyncio <span class="keyword">import</span> serve</span><br><span class="line"><span class="keyword">from</span> hypercorn.config <span class="keyword">import</span> Config</span><br><span class="line"><span class="keyword">from</span> starlette.applications <span class="keyword">import</span> Starlette</span><br><span class="line"><span class="keyword">from</span> starlette.responses <span class="keyword">import</span> PlainTextResponse</span><br><span class="line"><span class="keyword">from</span> starlette.routing <span class="keyword">import</span> Route</span><br><span class="line">ROOT = Path(__file__).resolve().parent</span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">root</span>(<span class="params">_</span>):</span><br><span class="line">    <span class="keyword">return</span> PlainTextResponse(<span class="string">&quot;ok from HTTP/3 over QUIC\n&quot;</span>, media_type=<span class="string">&quot;text/plain&quot;</span>)</span><br><span class="line"></span><br><span class="line">app = Starlette(routes=[Route(<span class="string">&quot;/&quot;</span>, root)])</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">main</span>() -&gt; <span class="literal">None</span>:</span><br><span class="line">    cert = ROOT/<span class="string">&quot;cert.pem&quot;</span></span><br><span class="line">    key = ROOT/<span class="string">&quot;key.pem&quot;</span></span><br><span class="line">    <span class="built_in">print</span>(cert,key)</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> cert.is_file() <span class="keyword">or</span> <span class="keyword">not</span> key.is_file():</span><br><span class="line">        <span class="keyword">raise</span> SystemExit(<span class="string">f&quot;缺少 <span class="subst">&#123;cert.name&#125;</span> 或 <span class="subst">&#123;key.name&#125;</span>，请先运行第二节 openssl 命令&quot;</span>)</span><br><span class="line">    cfg = Config()</span><br><span class="line">    cfg.bind = [<span class="string">&quot;192.168.1.22:4433&quot;</span>]  <span class="comment"># 同时监听 **TCP** 与 **QUIC**</span></span><br><span class="line">    cfg.quic_bind = [<span class="string">&quot;192.168.1.22:4433&quot;</span>]</span><br><span class="line">    cfg.certfile = <span class="built_in">str</span>(cert)</span><br><span class="line">    cfg.keyfile = <span class="built_in">str</span>(key)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;HTTP/3 (QUIC)   https://192.168.1.22:4433/  (Ctrl+C 停止)&quot;</span>)</span><br><span class="line">    <span class="keyword">await</span> serve(app, cfg)</span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&quot;__main__&quot;</span>:</span><br><span class="line">    asyncio.run(main())</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>启动</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">uv run main.py</span><br><span class="line">/home/gitee/quic_code/cert.pem /home/gitee/quic_code/key.pem</span><br><span class="line">HTTP/3 (QUIC)   https://192.168.1.22:4433/  (Ctrl+C 停止)</span><br><span class="line">[2026-05-04 21:56:38 +0800] [2009834] [INFO] Running on https://192.168.1.22:4433 (CTRL + C to quit)</span><br><span class="line">[2026-05-04 21:56:38 +0800] [2009834] [INFO] Running on https://192.168.1.22:4433 (QUIC) (CTRL + C to quit)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>说明：<strong><code>bind</code></strong> 与 <strong><code>quic_bind</code></strong> 都写 <strong><code>127.0.0.1:4433</code></strong> 时，在 <strong>Linux</strong> 上可同时监听 <strong>TCP</strong> 与 <strong>UDP</strong>（端口号相同、协议不同）。这样 <strong>Chrome</strong> &#x2F; <strong>Firefox</strong> &#x2F; <strong>Edge</strong> 打开 <strong><code>https://127.0.0.1:4433/</code></strong> 会先走 <strong>TCP</strong> <strong>TLS</strong> 拿到页面；支持 <strong>HTTP&#x2F;3</strong> 的浏览器还可能通过 <strong><code>Alt-Svc</code></strong> 等机制再尝试 <strong>QUIC</strong>。若坚持<strong>只开 UDP</strong>（例如 <code>cfg.bind = []</code>），多数浏览器无法仅靠 <strong><code>https://</code></strong> 完成首次加载，因为常见实现会先做 <strong>TCP</strong> 连接。</p>
+<h3 id="为何浏览器还常要-TCP、和-QUIC-设计是否冲突"><a href="#为何浏览器还常要-TCP、和-QUIC-设计是否冲突" class="headerlink" title="为何浏览器还常要 TCP、和 QUIC 设计是否冲突"></a>为何浏览器还常要 <strong>TCP</strong>、和 <strong>QUIC</strong> 设计是否冲突</h3><p><strong>不冲突。</strong> <strong>QUIC</strong>（<strong>RFC 9000</strong>）只规定跑在 <strong>UDP</strong> 上；<strong>HTTP&#x2F;3</strong> 也完全可以在<strong>只有 UDP</strong> 的情况下工作（例如本节的 <strong>aioquic</strong> 客户端直连 <strong><code>quic_bind</code></strong>）。</p>
+<p>浏览器在地址栏输入 <strong><code>https://主机:端口/</code></strong> 时，多数实现仍沿用历史习惯：先按「<strong>TLS over TCP</strong>」去建<strong>第一条</strong>连接，再通过响应里的 <strong><code>Alt-Svc</code></strong>、或 <strong>DNS HTTPS&#x2F;SVCB</strong> 等线索，得知同一站点也可用 <strong>HTTP&#x2F;3</strong>，之后才发起 <strong>QUIC</strong>。这是<strong>浏览器与 Web 生态的部署&#x2F;发现策略</strong>，不是 <strong>QUIC</strong> 协议里「必须先有 <strong>TCP</strong>」的要求。本地演示若没有 <strong>DNS</strong>、没有事先缓存的 <strong><code>Alt-Svc</code></strong>，<strong>只监听 UDP</strong> 时，用户只输入 <strong><code>https://</code></strong> 就容易连不上，因此示例里<strong>同时开同端口的 TCP TLS</strong> 是为了<strong>兼容这种建连路径</strong>，属于工程上的折中，与 <strong>QUIC</strong> 规范无矛盾。</p>
+<h3 id="在浏览器里打开时的证书提示"><a href="#在浏览器里打开时的证书提示" class="headerlink" title="在浏览器里打开时的证书提示"></a>在浏览器里打开时的证书提示</h3><p>自签名证书会触发「不安全」或「您的连接不是私密连接」：本地实验可在 <strong>高级</strong> 中选择继续访问（<strong>Chrome</strong>），或把 <strong><code>cert.pem</code></strong> 导入系统&#x2F;浏览器的<strong>受信任根</strong>（更安全、少打扰）。不要用这种方式处理公网真实用户流量。</p>
+<hr>
+<h2 id="四、HTTP-3-客户端（aioquic，校验自签名证书）"><a href="#四、HTTP-3-客户端（aioquic，校验自签名证书）" class="headerlink" title="四、HTTP&#x2F;3 客户端（aioquic，校验自签名证书）"></a>四、<strong>HTTP&#x2F;3</strong> 客户端（<strong>aioquic</strong>，校验自签名证书）</h2><p>将下列内容保存为 <strong><code>client.py</code></strong>。用 <strong><code>--ca-certs cert.pem</code></strong> 指定信任的自签名证书（与第二节生成的 <strong><code>cert.pem</code></strong> 一致）；连接 <strong><code>127.0.0.1</code></strong> 时默认 <strong><code>server_name=localhost</code></strong>，以匹配证书 <strong>CN&#x2F;SAN</strong> 与 <strong>TLS</strong> <strong>SNI</strong>。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> argparse</span><br><span class="line"><span class="keyword">import</span> asyncio</span><br><span class="line"><span class="keyword">from</span> collections <span class="keyword">import</span> deque</span><br><span class="line"><span class="keyword">from</span> aioquic.asyncio.client <span class="keyword">import</span> connect</span><br><span class="line"><span class="keyword">from</span> aioquic.asyncio.protocol <span class="keyword">import</span> QuicConnectionProtocol</span><br><span class="line"><span class="keyword">from</span> aioquic.h3.connection <span class="keyword">import</span> H3_ALPN, H3Connection</span><br><span class="line"><span class="keyword">from</span> aioquic.h3.events <span class="keyword">import</span> DataReceived, HeadersReceived, H3Event</span><br><span class="line"><span class="keyword">from</span> aioquic.quic.configuration <span class="keyword">import</span> QuicConfiguration</span><br><span class="line"><span class="keyword">from</span> aioquic.quic.events <span class="keyword">import</span> QuicEvent</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">MiniH3Client</span>(<span class="title class_ inherited__">QuicConnectionProtocol</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;最小 HTTP/3 客户端：发 GET，收齐响应体后返回。&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, *args, **kwargs</span>):</span><br><span class="line">        <span class="built_in">super</span>().__init__(*args, **kwargs)</span><br><span class="line">        <span class="variable language_">self</span>._h3 = H3Connection(<span class="variable language_">self</span>._quic)</span><br><span class="line">        <span class="variable language_">self</span>._events: <span class="built_in">dict</span>[<span class="built_in">int</span>, deque[H3Event]] = &#123;&#125;</span><br><span class="line">        <span class="variable language_">self</span>._waiters: <span class="built_in">dict</span>[<span class="built_in">int</span>, asyncio.Future[<span class="literal">None</span>]] = &#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">quic_event_received</span>(<span class="params">self, event: QuicEvent</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">for</span> he <span class="keyword">in</span> <span class="variable language_">self</span>._h3.handle_event(event):</span><br><span class="line">            <span class="variable language_">self</span>._h3_event(he)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_h3_event</span>(<span class="params">self, event: H3Event</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        sid = event.stream_id</span><br><span class="line">        <span class="variable language_">self</span>._events.setdefault(sid, deque()).append(event)</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">isinstance</span>(event, DataReceived) <span class="keyword">and</span> event.stream_ended:</span><br><span class="line">            w = <span class="variable language_">self</span>._waiters.pop(sid, <span class="literal">None</span>)</span><br><span class="line">            <span class="keyword">if</span> w <span class="keyword">and</span> <span class="keyword">not</span> w.done():</span><br><span class="line">                w.set_result(<span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">get</span>(<span class="params">self, authority: <span class="built_in">str</span>, path: <span class="built_in">str</span> = <span class="string">&quot;/&quot;</span></span>) -&gt; <span class="built_in">tuple</span>[<span class="built_in">int</span>, <span class="built_in">bytes</span>]:</span><br><span class="line">        stream_id = <span class="variable language_">self</span>._quic.get_next_available_stream_id()</span><br><span class="line">        <span class="variable language_">self</span>._events[stream_id] = deque()</span><br><span class="line">        fut = asyncio.get_running_loop().create_future()</span><br><span class="line">        <span class="variable language_">self</span>._waiters[stream_id] = fut</span><br><span class="line"></span><br><span class="line">        <span class="variable language_">self</span>._h3.send_headers(</span><br><span class="line">            stream_id=stream_id,</span><br><span class="line">            headers=[</span><br><span class="line">                (<span class="string">b&quot;:method&quot;</span>, <span class="string">b&quot;GET&quot;</span>),</span><br><span class="line">                (<span class="string">b&quot;:scheme&quot;</span>, <span class="string">b&quot;https&quot;</span>),</span><br><span class="line">                (<span class="string">b&quot;:authority&quot;</span>, authority.encode()),</span><br><span class="line">                (<span class="string">b&quot;:path&quot;</span>, path.encode()),</span><br><span class="line">            ],</span><br><span class="line">            end_stream=<span class="literal">True</span>,</span><br><span class="line">        )</span><br><span class="line">        <span class="variable language_">self</span>.transmit()</span><br><span class="line">        <span class="keyword">await</span> fut</span><br><span class="line"></span><br><span class="line">        status = <span class="number">0</span></span><br><span class="line">        body = <span class="string">b&quot;&quot;</span></span><br><span class="line">        <span class="keyword">for</span> ev <span class="keyword">in</span> <span class="variable language_">self</span>._events.pop(stream_id, deque()):</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">isinstance</span>(ev, HeadersReceived):</span><br><span class="line">                <span class="keyword">for</span> k, v <span class="keyword">in</span> ev.headers:</span><br><span class="line">                    <span class="keyword">if</span> k == <span class="string">b&quot;:status&quot;</span>:</span><br><span class="line">                        status = <span class="built_in">int</span>(v.decode())</span><br><span class="line">            <span class="keyword">elif</span> <span class="built_in">isinstance</span>(ev, DataReceived):</span><br><span class="line">                body += ev.data</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> status, body</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">run</span>(<span class="params">args: argparse.Namespace</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">    configuration = QuicConfiguration(is_client=<span class="literal">True</span>, alpn_protocols=H3_ALPN)</span><br><span class="line">    configuration.load_verify_locations(cafile=args.ca_certs)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 设置 SNI</span></span><br><span class="line">    <span class="keyword">if</span> args.sni:</span><br><span class="line">        sni = args.sni</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        sni = <span class="string">&quot;localhost&quot;</span> <span class="keyword">if</span> args.host == <span class="string">&quot;127.0.0.1&quot;</span> <span class="keyword">else</span> args.host</span><br><span class="line">    configuration.server_name = sni</span><br><span class="line"></span><br><span class="line">    <span class="keyword">async</span> <span class="keyword">with</span> connect(</span><br><span class="line">        args.host,</span><br><span class="line">        args.port,</span><br><span class="line">        configuration=configuration,</span><br><span class="line">        create_protocol=MiniH3Client,</span><br><span class="line">    ) <span class="keyword">as</span> proto:</span><br><span class="line">        client = proto  <span class="comment"># type: MiniH3Client</span></span><br><span class="line">        authority = <span class="string">f&quot;<span class="subst">&#123;args.host&#125;</span>:<span class="subst">&#123;args.port&#125;</span>&quot;</span></span><br><span class="line">        status, body = <span class="keyword">await</span> client.get(authority, args.path)</span><br><span class="line"></span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;HTTP status:&quot;</span>, status)</span><br><span class="line">        <span class="built_in">print</span>(body.decode(errors=<span class="string">&quot;replace&quot;</span>), end=<span class="string">&quot;&quot;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">main</span>() -&gt; <span class="literal">None</span>:</span><br><span class="line">    parser = argparse.ArgumentParser(description=<span class="string">&quot;HTTP/3 client with custom CA (self-signed)&quot;</span>)</span><br><span class="line">    parser.add_argument(<span class="string">&quot;--ca-certs&quot;</span>, default=<span class="string">&quot;cert.pem&quot;</span>, <span class="built_in">help</span>=<span class="string">&quot;信任的服务器证书（自签名时即 cert.pem）&quot;</span>)</span><br><span class="line">    parser.add_argument(<span class="string">&quot;--host&quot;</span>, default=<span class="string">&quot;127.0.0.1&quot;</span>)</span><br><span class="line">    parser.add_argument(<span class="string">&quot;--port&quot;</span>, <span class="built_in">type</span>=<span class="built_in">int</span>, default=<span class="number">4433</span>)</span><br><span class="line">    parser.add_argument(<span class="string">&quot;--path&quot;</span>, default=<span class="string">&quot;/&quot;</span>)</span><br><span class="line">    parser.add_argument(</span><br><span class="line">        <span class="string">&quot;--sni&quot;</span>,</span><br><span class="line">        default=<span class="literal">None</span>,</span><br><span class="line">        <span class="built_in">help</span>=<span class="string">&quot;TLS SNI 主机名；默认对 127.0.0.1 使用 localhost 以匹配自签名证书&quot;</span>,</span><br><span class="line">    )</span><br><span class="line">    args = parser.parse_args()</span><br><span class="line">    asyncio.run(run(args))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&quot;__main__&quot;</span>:</span><br><span class="line">    main()</span><br></pre></td></tr></table></figure>
+
+<p>要点：<strong><code>load_verify_locations(cafile=...)</code></strong> 等价于把该自签名证书当作<strong>信任锚</strong>；<strong><code>verify_mode</code></strong> 保持默认（校验证书链），<strong>不</strong>使用跳过校验的 <strong><code>CERT_NONE</code></strong>，从而真正验证 <strong>QUIC</strong> 上的 <strong>TLS</strong>。</p>
+<hr>
+<h2 id="五、运行步骤"><a href="#五、运行步骤" class="headerlink" title="五、运行步骤"></a>五、运行步骤</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 生成证书（第二节）</span></span><br><span class="line">openssl req -x509 -newkey rsa:2048 -nodes \</span><br><span class="line">  -keyout key.pem -out cert.pem -days 365 \</span><br><span class="line">  -subj <span class="string">&quot;/CN=192.168.1.22&quot;</span> \</span><br><span class="line">  -addext <span class="string">&quot;subjectAltName=DNS:192.168.1.22,IP:127.0.0.1&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 启动服务端（第三节脚本与 cert.pem、key.pem 同目录）</span></span><br><span class="line">python3 main.py</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 另开终端，运行客户端</span></span><br><span class="line">python3 client.py --ca-certs cert.pem --host 192.168.1.22 --port 4433 --path /</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">uv run client.py --ca-certs cert.pem --host 192.168.1.22 --port 4433 --path /</span><br><span class="line">HTTP status: 200</span><br><span class="line">ok from HTTP/3 over QUIC</span><br></pre></td></tr></table></figure>
+
+<p>期望输出含 <strong><code>HTTP status: 200</code></strong> 与正文 <strong><code>ok from HTTP/3 over QUIC</code></strong>。</p>
+<hr>
+<h2 id="六、用-curl-复测（可选）"><a href="#六、用-curl-复测（可选）" class="headerlink" title="六、用 curl 复测（可选）"></a>六、用 <strong><code>curl</code></strong> 复测（可选）</h2><p>若本机 <strong><code>curl</code></strong> 已启用 <strong>HTTP&#x2F;3</strong>（<strong><code>curl -V</code></strong> 可见 <strong>ngtcp2</strong> &#x2F; <strong>quiche</strong> 等），可再执行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -sS --http3-only --cacert cert.pem https://192.168.1.22:4433/</span><br></pre></td></tr></table></figure>
+
+<p>未编译 <strong>HTTP&#x2F;3</strong> 的 <strong><code>curl</code></strong> 会报错，可仅用第四节 <strong>Python</strong> 客户端验证。</p>
+<hr>
+<h2 id="七、aioquic-原生-QUIC-服务端与客户端（不走-HTTP-3）"><a href="#七、aioquic-原生-QUIC-服务端与客户端（不走-HTTP-3）" class="headerlink" title="七、aioquic 原生 QUIC 服务端与客户端（不走 HTTP&#x2F;3）"></a>七、aioquic 原生 QUIC 服务端与客户端（不走 HTTP&#x2F;3）</h2><p><strong>Hypercorn</strong> 是完整 <strong>HTTP&#x2F;3</strong> 栈；若想看清 <strong>QUIC 传输层本身</strong>（流、连接事件），可抛开 HTTP，直接用 <strong>aioquic</strong> 写一个<strong>裸流回显服务</strong>：</p>
+<h3 id="1-服务端-quic-echo-server-py"><a href="#1-服务端-quic-echo-server-py" class="headerlink" title="1. 服务端 quic_echo_server.py"></a>1. 服务端 <code>quic_echo_server.py</code></h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> asyncio</span><br><span class="line"><span class="keyword">from</span> aioquic.asyncio <span class="keyword">import</span> serve</span><br><span class="line"><span class="keyword">from</span> aioquic.asyncio.protocol <span class="keyword">import</span> QuicConnectionProtocol</span><br><span class="line"><span class="keyword">from</span> aioquic.quic.configuration <span class="keyword">import</span> QuicConfiguration</span><br><span class="line"><span class="keyword">from</span> aioquic.quic.events <span class="keyword">import</span> QuicEvent, StreamDataReceived, HandshakeCompleted</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">EchoProtocol</span>(<span class="title class_ inherited__">QuicConnectionProtocol</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;裸 QUIC 流回显：每条流上收到的数据原样加前缀写回。&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">quic_event_received</span>(<span class="params">self, event: QuicEvent</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">isinstance</span>(event, HandshakeCompleted):</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">&quot;握手完成，ALPN =&quot;</span>, event.alpn_protocol)</span><br><span class="line">        <span class="keyword">elif</span> <span class="built_in">isinstance</span>(event, StreamDataReceived):</span><br><span class="line">            <span class="variable language_">self</span>._quic.send_stream_data(</span><br><span class="line">                event.stream_id,</span><br><span class="line">                <span class="string">b&quot;echo: &quot;</span> + event.data,</span><br><span class="line">                end_stream=event.end_stream,</span><br><span class="line">            )</span><br><span class="line">            <span class="variable language_">self</span>.transmit()  <span class="comment"># 真正把报文发出</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">main</span>() -&gt; <span class="literal">None</span>:</span><br><span class="line">    cfg = QuicConfiguration(is_client=<span class="literal">False</span>, alpn_protocols=[<span class="string">&quot;echo-demo&quot;</span>])</span><br><span class="line">    cfg.load_cert_chain(<span class="string">&quot;cert.pem&quot;</span>, <span class="string">&quot;key.pem&quot;</span>)</span><br><span class="line">    <span class="keyword">await</span> serve(<span class="string">&quot;127.0.0.1&quot;</span>, <span class="number">4434</span>, configuration=cfg, create_protocol=EchoProtocol)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;QUIC echo on 127.0.0.1:4434&quot;</span>)</span><br><span class="line">    <span class="keyword">await</span> asyncio.Future()  <span class="comment"># 永久运行</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&quot;__main__&quot;</span>:</span><br><span class="line">    asyncio.run(main())</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-客户端-quic-echo-client-py"><a href="#2-客户端-quic-echo-client-py" class="headerlink" title="2. 客户端 quic_echo_client.py"></a>2. 客户端 <code>quic_echo_client.py</code></h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> asyncio</span><br><span class="line"><span class="keyword">from</span> aioquic.asyncio.client <span class="keyword">import</span> connect</span><br><span class="line"><span class="keyword">from</span> aioquic.asyncio.protocol <span class="keyword">import</span> QuicConnectionProtocol</span><br><span class="line"><span class="keyword">from</span> aioquic.quic.configuration <span class="keyword">import</span> QuicConfiguration</span><br><span class="line"><span class="keyword">from</span> aioquic.quic.events <span class="keyword">import</span> QuicEvent, StreamDataReceived</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">EchoClientProtocol</span>(<span class="title class_ inherited__">QuicConnectionProtocol</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, *args, **kwargs</span>):</span><br><span class="line">        <span class="built_in">super</span>().__init__(*args, **kwargs)</span><br><span class="line">        <span class="variable language_">self</span>.done = asyncio.get_event_loop().create_future()</span><br><span class="line">        <span class="variable language_">self</span>.body = <span class="string">b&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">quic_event_received</span>(<span class="params">self, event: QuicEvent</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">isinstance</span>(event, StreamDataReceived):</span><br><span class="line">            <span class="variable language_">self</span>.body += event.data</span><br><span class="line">            <span class="keyword">if</span> event.stream_ended <span class="keyword">and</span> <span class="keyword">not</span> <span class="variable language_">self</span>.done.done():</span><br><span class="line">                <span class="variable language_">self</span>.done.set_result(<span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">main</span>() -&gt; <span class="literal">None</span>:</span><br><span class="line">    cfg = QuicConfiguration(is_client=<span class="literal">True</span>, alpn_protocols=[<span class="string">&quot;echo-demo&quot;</span>])</span><br><span class="line">    cfg.load_verify_locations(cafile=<span class="string">&quot;cert.pem&quot;</span>)  <span class="comment"># 信任自签名证书</span></span><br><span class="line">    cfg.server_name = <span class="string">&quot;localhost&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">async</span> <span class="keyword">with</span> connect(<span class="string">&quot;127.0.0.1&quot;</span>, <span class="number">4434</span>, configuration=cfg,</span><br><span class="line">                       create_protocol=EchoClientProtocol) <span class="keyword">as</span> proto:</span><br><span class="line">        stream_id = proto._quic.get_next_available_stream_id()</span><br><span class="line">        proto._quic.send_stream_data(stream_id, <span class="string">b&quot;hello QUIC&quot;</span>, end_stream=<span class="literal">True</span>)</span><br><span class="line">        proto.transmit()</span><br><span class="line">        <span class="keyword">await</span> proto.done</span><br><span class="line">        <span class="built_in">print</span>(proto.body.decode())</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&quot;__main__&quot;</span>:</span><br><span class="line">    asyncio.run(main())</span><br></pre></td></tr></table></figure>
+
+<p>要点：<strong>ALPN 必须两端一致</strong>（这里是自定义的 <code>echo-demo</code>）；<strong><code>transmit()</code></strong> 才把排队的报文真正发出去；流分<strong>双向&#x2F;单向</strong>（<code>is_unidirectional</code>），HTTP&#x2F;3 的控制流、推送流就是单向流。</p>
+<hr>
+<h2 id="八、0-RTT-与会话恢复"><a href="#八、0-RTT-与会话恢复" class="headerlink" title="八、0-RTT 与会话恢复"></a>八、0-RTT 与会话恢复</h2><p><strong>QUIC</strong> 复用 <strong>TLS 1.3</strong> 的会话票据机制：首次握手成功后，服务端下发 <strong>NewSessionTicket</strong>；客户端保存后，下次连接在<strong>首个报文</strong>里就可携带应用数据（<strong>0-RTT</strong>），省掉整个握手往返。</p>
+<h3 id="1-客户端保存与重放票据"><a href="#1-客户端保存与重放票据" class="headerlink" title="1. 客户端保存与重放票据"></a>1. 客户端保存与重放票据</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> aioquic.asyncio.client <span class="keyword">import</span> connect</span><br><span class="line"><span class="keyword">from</span> aioquic.quic.configuration <span class="keyword">import</span> QuicConfiguration</span><br><span class="line"><span class="keyword">from</span> aioquic.h3.connection <span class="keyword">import</span> H3_ALPN</span><br><span class="line"></span><br><span class="line">tickets = &#123;&#125;  <span class="comment"># server_name -&gt; SessionTicket</span></span><br><span class="line"></span><br><span class="line">cfg = QuicConfiguration(is_client=<span class="literal">True</span>, alpn_protocols=H3_ALPN)</span><br><span class="line">cfg.load_verify_locations(cafile=<span class="string">&quot;cert.pem&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 收到会话票据即保存（首次 1-RTT 握手后触发）</span></span><br><span class="line">cfg.session_ticket_handler = <span class="keyword">lambda</span> t: tickets.__setitem__(t.server_name, t)</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">fetch</span>(<span class="params">host, port</span>):</span><br><span class="line">    <span class="comment"># 二次连接带上票据 → 0-RTT；无票则退化为普通 1-RTT</span></span><br><span class="line">    <span class="keyword">async</span> <span class="keyword">with</span> connect(host, port, configuration=cfg,</span><br><span class="line">                       session_ticket=tickets.get(host)) <span class="keyword">as</span> proto:</span><br><span class="line">        status, body = <span class="keyword">await</span> proto.get(<span class="string">f&quot;<span class="subst">&#123;host&#125;</span>:<span class="subst">&#123;port&#125;</span>&quot;</span>, <span class="string">&quot;/&quot;</span>)</span><br><span class="line">        <span class="built_in">print</span>(status, body[:<span class="number">40</span>])</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-验证-0-RTT-生效的两条路径"><a href="#2-验证-0-RTT-生效的两条路径" class="headerlink" title="2. 验证 0-RTT 生效的两条路径"></a>2. 验证 0-RTT 生效的两条路径</h3><ol>
+<li><strong>抓包看报文</strong>：第二次连接的<strong>首个客户端报文</strong>就带 <strong>0-RTT &#x2F; Early Data</strong>（Wireshark 需先加载密钥日志解密，见第十节）。</li>
+<li><strong>看 qlog</strong>：启用 <code>QuicDirectoryLogger</code> 后，在 <a target="_blank" rel="noopener" href="https://qvis.quictools.info/">qvis</a> 中可看到 early-data 包时间线与 1-RTT 的差异。</li>
+</ol>
+<blockquote>
+<p><strong>注意</strong>：0-RTT 数据<strong>不具备前向安全性、可被重放</strong>——只允许放<strong>幂等</strong>请求（GET）；POST&#x2F;支付类务必等握手完成。</p>
+</blockquote>
+<hr>
+<h2 id="九、连接迁移实验"><a href="#九、连接迁移实验" class="headerlink" title="九、连接迁移实验"></a>九、连接迁移实验</h2><p><strong>TCP</strong> 的连接绑定四元组，Wi-Fi 切到蜂窝即断；<strong>QUIC</strong> 用 <strong>Connection ID（CID）</strong> 标识连接，<strong>网络切换后连接继续</strong>，这是它为移动端设计的核心卖点。</p>
+<h3 id="1-原理"><a href="#1-原理" class="headerlink" title="1. 原理"></a>1. 原理</h3><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant C as 客户端
+  participant S as 服务端
+  Note over C: 源地址 10.0.0.2:5000
+  C-&gt;&gt;S: DCID&#x3D;abc123（握手 + 数据）
+  Note over C: 切网，源地址变为 192.168.1.5:6000
+  C-&gt;&gt;S: DCID&#x3D;abc123（同一条连接，仅源四元组变化）
+  S--&gt;&gt;C: 按 CID 找到连接，正常续传，无新握手
+</code>
+</pre>
+
+<p>服务端只认 <strong>CID</strong> 不认地址；出于安全，服务端会先做**路径验证（PATH_CHALLENGE&#x2F;PATH_RESPONSE）**再向新地址发数据，防止连接被劫持到第三方地址。</p>
+<h3 id="2-动手实验"><a href="#2-动手实验" class="headerlink" title="2. 动手实验"></a>2. 动手实验</h3><ol>
+<li>用第七节（或第四节）客户端改成「每秒发一次请求」的循环长连接，先跑在 Wi-Fi 下。</li>
+<li>运行中<strong>切换网络</strong>（关 Wi-Fi 走热点；或在虚拟机里切换网卡）。</li>
+<li>观察：应用层<strong>无重连日志</strong>、流数据继续到达；<code>tcpdump -n udp port 4434</code> 可看到<strong>源地址变了但报文继续</strong>。</li>
+</ol>
+<p>也可在代码里主动轮换本端 CID（验证对端按 CID 路由而非地址）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">proto.change_connection_id()  <span class="comment"># 向对端发 NEW_CONNECTION_ID 并启用新 CID</span></span><br></pre></td></tr></table></figure>
+
+<p>对比实验：同样切网动作对 <strong>TCP</strong> 连接（如 <code>nc</code> 长连）会立即断开——这就是 <strong>QUIC 连接迁移</strong> 的直观差异。</p>
+<hr>
+<h2 id="十、排障与调试（密钥日志与-qlog）"><a href="#十、排障与调试（密钥日志与-qlog）" class="headerlink" title="十、排障与调试（密钥日志与 qlog）"></a>十、排障与调试（密钥日志与 qlog）</h2><p><strong>QUIC</strong> 全加密给排障带来麻烦，aioquic 提供两条标准路径：</p>
+<h3 id="1-SSLKEYLOGFILE：让-Wireshark-解密"><a href="#1-SSLKEYLOGFILE：让-Wireshark-解密" class="headerlink" title="1. SSLKEYLOGFILE：让 Wireshark 解密"></a>1. SSLKEYLOGFILE：让 Wireshark 解密</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cfg = QuicConfiguration(is_client=<span class="literal">True</span>, alpn_protocols=H3_ALPN)</span><br><span class="line">cfg.secrets_log_file = <span class="built_in">open</span>(<span class="string">&quot;secrets.log&quot;</span>, <span class="string">&quot;a&quot;</span>)  <span class="comment"># 写入 TLS 会话密钥</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Wireshark → 首选项 → Protocols → TLS → (Pre)-Master-Secret log filename</strong> 指向该文件，即可解密 <strong>QUIC</strong> 载荷看到 HTTP&#x2F;3 帧。</p>
+<h3 id="2-qlog：结构化事件日志"><a href="#2-qlog：结构化事件日志" class="headerlink" title="2. qlog：结构化事件日志"></a>2. qlog：结构化事件日志</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> aioquic.quic.logger <span class="keyword">import</span> QuicDirectoryLogger</span><br><span class="line"></span><br><span class="line">cfg.quic_logger = QuicDirectoryLogger(<span class="string">&quot;./qlog&quot;</span>)  <span class="comment"># 每条连接一个 .qlog 文件</span></span><br></pre></td></tr></table></figure>
+
+<p>把 <code>.qlog</code> 拖进 <strong><a target="_blank" rel="noopener" href="https://qvis.quictools.info/">qvis</a></strong>，可视化报文时间线、丢包、拥塞窗口与流状态——比逐行读日志高效得多。</p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>证书</td>
+<td><strong>OpenSSL</strong> 自签名 <strong><code>cert.pem</code></strong> &#x2F; <strong><code>key.pem</code></strong>，<strong>SAN</strong> 含 <strong>localhost</strong> 与 <strong>127.0.0.1</strong></td>
+</tr>
+<tr>
+<td>服务端</td>
+<td><strong>Hypercorn</strong> <strong><code>bind</code>（TCP TLS）+ <code>quic_bind</code>（UDP）</strong> 同端口 <strong><code>4433</code></strong>，便于浏览器访问</td>
+</tr>
+<tr>
+<td>客户端</td>
+<td><strong>aioquic</strong> <strong><code>MiniH3Client</code></strong> + <strong><code>load_verify_locations</code></strong>，显式校验自签名</td>
+</tr>
+<tr>
+<td>延伸</td>
+<td><a href="/network/15-quic-protocol/">第十五章：QUIC 详解：基于 UDP 的可靠传输、TLS 集成与 HTTP&#x2F;3</a> · <a href="/network/05-udp-protocol/">第五章：UDP 协议详解：数据报语义、MTU 与示例代码</a> · <a href="/network/04-https-tls-guide/">第四章：HTTPS 详解：TLS 握手、证书与 openssl&#x2F;curl 示例</a></td>
+</tr>
+</tbody></table>
+<p>更深入实验可使用 <strong>aioquic</strong> 官方仓库中的 <strong><code>examples/http3_server.py</code></strong> &#x2F; <strong><code>http3_client.py</code></strong>（<strong><code>--ca-certs</code></strong> 同样指向 <strong><code>cert.pem</code></strong>）。</p>
+<h2 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h2><p>至此，Protocol 课程十六章全部完结：从 <strong>TCP &#x2F; UDP &#x2F; IP</strong> 的传输基石，到 <strong>HTTP &#x2F; HTTPS &#x2F; HTTP3</strong> 的 Web 主干，再到 <strong>DNS、WebSocket、SSH &#x2F; SFTP &#x2F; FTP</strong> 等应用协议，最后以 <strong>RPC &#x2F; gRPC</strong> 的服务调用范式与 <strong>QUIC</strong> 的下一代传输收束。建议回到 <a href="/network/15-quic-protocol/">第十五章：QUIC 详解：基于 UDP 的可靠传输、TLS 集成与 HTTP&#x2F;3</a> 把理论与实践对照，再回到第一章 <strong>TCP</strong> 审视整条协议栈主线——协议万变，<strong>可靠、加密、多路复用与连接管理</strong>的主题始终贯穿其中。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Protocol/" rel="tag"># Protocol</a>
+              <a href="/tags/QUIC/" rel="tag"># QUIC</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/dal/07-mybatis-flex-guide/" rel="prev" title="第七章：MyBatis-Flex 入门与代码生成">
+                  <i class="fa fa-angle-left"></i> 第七章：MyBatis-Flex 入门与代码生成
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/concurrency/08-java-locks-guide/" rel="next" title="第八章：Java并发锁全解与选型">
+                  第八章：Java并发锁全解与选型 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

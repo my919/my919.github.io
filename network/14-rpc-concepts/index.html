@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十四章：RPC 概念详解：原理、形态与 JSON-RPC &#x2F; curl 示例概念基础RPC（Remote Procedure Call，远程过程调用）的目标：让调用远程服务像调用本地函数一样自然：  解决什么问题：分布式系统中，网络通信的序列化、连接管理、协议细节不应散落在业务代码里，RPC 框架把它们收敛到 stub（存根）。 如何做到：客户端 stub 把调用序列化成消息发出去；服">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十四章：RPC 概念详解：原理、形态与 JSON-RPC &#x2F; curl 示例">
+<meta property="og:url" content="https://my919.github.io/network/14-rpc-concepts/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十四章：RPC 概念详解：原理、形态与 JSON-RPC &#x2F; curl 示例概念基础RPC（Remote Procedure Call，远程过程调用）的目标：让调用远程服务像调用本地函数一样自然：  解决什么问题：分布式系统中，网络通信的序列化、连接管理、协议细节不应散落在业务代码里，RPC 框架把它们收敛到 stub（存根）。 如何做到：客户端 stub 把调用序列化成消息发出去；服">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:50:51.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.586Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Protocol">
+<meta property="article:tag" content="RPC">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/network/14-rpc-concepts/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/network/14-rpc-concepts/","path":"network/14-rpc-concepts/","title":"第十四章：RPC 概念详解：原理、形态与 JSON-RPC / curl 示例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十四章：RPC 概念详解：原理、形态与 JSON-RPC / curl 示例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E5%9B%9B%E7%AB%A0%EF%BC%9ARPC-%E6%A6%82%E5%BF%B5%E8%AF%A6%E8%A7%A3%EF%BC%9A%E5%8E%9F%E7%90%86%E3%80%81%E5%BD%A2%E6%80%81%E4%B8%8E-JSON-RPC-curl-%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第十四章：RPC 概念详解：原理、形态与 JSON-RPC &#x2F; curl 示例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%8E%9F%E7%90%86%EF%BC%88-stub-%E4%B8%8E%E5%AD%98%E6%A0%B9%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">一、原理（.stub 与存根）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E4%BD%9C%E7%94%A8%E4%B8%8E%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"><span class="nav-number">1.3.</span> <span class="nav-text">二、作用与典型场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E4%BC%A0%E8%BE%93%E4%B8%8E%E5%BA%8F%E5%88%97%E5%8C%96%EF%BC%88%E5%AF%B9%E7%85%A7%E8%A1%A8%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">三、传输与序列化（对照表）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%A4%B1%E8%B4%A5%E8%AF%AD%E4%B9%89%E4%B8%8E%E5%B9%82%E7%AD%89%EF%BC%88%E5%8E%9F%E7%90%86%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">四、失败语义与幂等（原理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81JSON-RPC-2-0-%E4%B8%8E-curl-%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.6.</span> <span class="nav-text">五、JSON-RPC 2.0 与 curl 示例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81Python-%E6%9C%80%E5%B0%8F-JSON-RPC-%E5%AE%A2%E6%88%B7%E7%AB%AF%EF%BC%88%E6%A0%87%E5%87%86%E5%BA%93%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">六、Python 最小 JSON-RPC 客户端（标准库）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E4%B8%8E-REST%EF%BC%88%E7%AC%AC%E4%BA%8C%E7%AB%A0%EF%BC%9AHTTP-%E8%AF%A6%E8%A7%A3%EF%BC%9A%E6%8A%A5%E6%96%87%E3%80%81%E6%96%B9%E6%B3%95%E3%80%81%E7%89%88%E6%9C%AC%E4%B8%8E-curl-nc-%E7%A4%BA%E4%BE%8B-%E8%B5%84%E6%BA%90%E9%A3%8E%E6%A0%BC%EF%BC%89%E5%AF%B9%E6%AF%94"><span class="nav-number">1.8.</span> <span class="nav-text">七、与 REST（第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例 资源风格）对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E7%94%9F%E4%BA%A7%E5%85%B3%E6%B3%A8%E7%82%B9"><span class="nav-number">1.9.</span> <span class="nav-text">八、生产关注点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/network/14-rpc-concepts/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十四章：RPC 概念详解：原理、形态与 JSON-RPC &#x2F; curl 示例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十四章：RPC 概念详解：原理、形态与 JSON-RPC / curl 示例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:50:51" itemprop="dateCreated datePublished" datetime="2026-05-01T12:50:51+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" itemprop="url" rel="index"><span itemprop="name">计算机网络</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>3.9k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十四章：RPC-概念详解：原理、形态与-JSON-RPC-curl-示例"><a href="#第十四章：RPC-概念详解：原理、形态与-JSON-RPC-curl-示例" class="headerlink" title="第十四章：RPC 概念详解：原理、形态与 JSON-RPC &#x2F; curl 示例"></a>第十四章：RPC 概念详解：原理、形态与 JSON-RPC &#x2F; curl 示例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>RPC</strong>（<strong>Remote Procedure Call</strong>，远程过程调用）的目标：让调用<strong>远程服务</strong>像调用<strong>本地函数</strong>一样自然：</p>
+<ol>
+<li><strong>解决什么问题</strong>：分布式系统中，网络通信的<strong>序列化、连接管理、协议细节</strong>不应散落在业务代码里，<strong>RPC</strong> 框架把它们收敛到 <strong>stub（存根）</strong>。</li>
+<li><strong>如何做到</strong>：客户端 <strong>stub</strong> 把调用<strong>序列化</strong>成消息发出去；服务端 <strong>stub</strong> <strong>反序列化</strong>、执行、再原路返回——开发者只见函数签名。</li>
+<li><strong>不规定字节格式</strong>：<strong>JSON-RPC</strong>（人可读易调试）、<strong>protobuf</strong>（见 <a href="/grpc/grpc-guide/">第十三章：gRPC 详解：Protobuf、HTTP&#x2F;2 与 grpcurl &#x2F; Python 示例</a>）、<strong>Thrift</strong> 等都是可选载体，传输可用 <strong>HTTP</strong> 或自定义 <strong>TCP</strong>。</li>
+<li><strong>核心难点</strong>：<strong>网络不可靠</strong>——<strong>超时</strong>后客户端不知道服务端是否已执行，重试可能重复扣款，必须用<strong>幂等</strong>设计兜底。</li>
+</ol>
+<p>先看一次 RPC 调用的完整链路：</p>
+<h2 id="一、原理（-stub-与存根）"><a href="#一、原理（-stub-与存根）" class="headerlink" title="一、原理（.stub 与存根）"></a>一、原理（.stub 与存根）</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Client                Network                Server</span><br><span class="line"> |  call add(1,2)       |                      |</span><br><span class="line"> |  stub 序列化          |   请求消息            |</span><br><span class="line"> |---------------------&gt;|---------------------&gt;|</span><br><span class="line"> |                      |  反序列化 + 执行 add |</span><br><span class="line"> |                      |   响应消息            |</span><br><span class="line"> |&lt;---------------------|&lt;---------------------|</span><br><span class="line"> |  返回 3               |                      |</span><br></pre></td></tr></table></figure>
+
+<p><strong>RPC</strong> 不规定具体字节格式；可由 <strong>JSON</strong>、<strong>protobuf</strong>、<strong>Thrift</strong> 等定义。</p>
+<p><strong>一次调用在框架内部到底发生了什么</strong>（以典型框架为例）：</p>
+<pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant App as 业务代码
+  participant Stub as 客户端 Stub
+  participant Net as 网络层
+  participant Skel as 服务端 Stub
+  participant Impl as 服务实现
+  App-&gt;&gt;Stub: add(1, 2)
+  Stub-&gt;&gt;Stub: 序列化参数 + 生成调用 ID + 附带元数据(traceId&#x2F;超时)
+  Stub-&gt;&gt;Net: 发送请求帧
+  Net-&gt;&gt;Skel: 投递报文
+  Skel-&gt;&gt;Skel: 反序列化、按方法名路由
+  Skel-&gt;&gt;Impl: 调用本地实现
+  Impl--&gt;&gt;Skel: 返回结果
+  Skel-&gt;&gt;Net: 序列化响应（含同一调用 ID）
+  Net--&gt;&gt;Stub: 投递响应
+  Stub--&gt;&gt;App: 按 ID 匹配挂起的调用，返回 3
+</code>
+</pre>
+
+<p><strong>IDL（接口描述语言）</strong>：强类型 RPC 通常先写 <strong><code>.proto</code> &#x2F; <code>.thrift</code></strong> 契约，再生成各语言 stub——契约即文档、即校验规则、即版本边界。</p>
+<hr>
+<h2 id="二、作用与典型场景"><a href="#二、作用与典型场景" class="headerlink" title="二、作用与典型场景"></a>二、作用与典型场景</h2><ul>
+<li><strong>微服务内部</strong>：低延迟、强类型契约（常选 <a href="/grpc/grpc-guide/">第十三章：gRPC 详解：Protobuf、HTTP&#x2F;2 与 grpcurl &#x2F; Python 示例</a>）。  </li>
+<li><strong>链上节点</strong>：<strong>Ethereum JSON-RPC</strong> 等文本 <strong>RPC</strong>。  </li>
+<li><strong>脚本自动化</strong>：轻量 <strong>JSON-RPC</strong> 管理接口。</li>
+</ul>
+<hr>
+<h2 id="三、传输与序列化（对照表）"><a href="#三、传输与序列化（对照表）" class="headerlink" title="三、传输与序列化（对照表）"></a>三、传输与序列化（对照表）</h2><table>
+<thead>
+<tr>
+<th>组合</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>JSON + HTTP</strong></td>
+<td>人可读，易调试</td>
+</tr>
+<tr>
+<td><strong>protobuf + HTTP&#x2F;2</strong></td>
+<td><strong>gRPC</strong> 默认路径</td>
+</tr>
+<tr>
+<td><strong>二进制 + 自定义 TCP</strong></td>
+<td>高性能私有协议</td>
+</tr>
+</tbody></table>
+<p><strong>序列化选型对比</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>格式</th>
+<th>体积</th>
+<th>速度</th>
+<th>可读性</th>
+<th>Schema</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>JSON</strong></td>
+<td>大</td>
+<td>慢</td>
+<td>好</td>
+<td>无&#x2F;可选（JSON Schema）</td>
+<td>调试、开放 API、低频管理面</td>
+</tr>
+<tr>
+<td><strong>protobuf</strong></td>
+<td>小</td>
+<td>快</td>
+<td>差（二进制）</td>
+<td><strong>强制</strong></td>
+<td>微服务内部、移动弱网</td>
+</tr>
+<tr>
+<td><strong>Thrift</strong></td>
+<td>小</td>
+<td>快</td>
+<td>差</td>
+<td>强制</td>
+<td>跨语言老系统</td>
+</tr>
+<tr>
+<td><strong>MessagePack</strong></td>
+<td>中</td>
+<td>较快</td>
+<td>差</td>
+<td>无</td>
+<td>保留 JSON 结构又要省体积</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="四、失败语义与幂等（原理）"><a href="#四、失败语义与幂等（原理）" class="headerlink" title="四、失败语义与幂等（原理）"></a>四、失败语义与幂等（原理）</h2><ul>
+<li><strong>超时</strong>：客户端不知服务端是否已执行；<strong>重试</strong>可能导致重复扣款。  </li>
+<li><strong>对策</strong>：<strong>幂等键</strong>、<strong>去重表</strong>、<strong>At-least-once</strong> 消费语义与业务配合。</li>
+</ul>
+<p><strong>三种投递语义</strong>——分布式系统的根本约束是「<strong>恰好一次</strong>只能在单个参与者内部保证」：</p>
+<table>
+<thead>
+<tr>
+<th>语义</th>
+<th>机制</th>
+<th>业务要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>At-most-once</strong></td>
+<td>不重试，超时即失败</td>
+<td>可容忍丢失（日志采集、心跳）</td>
+</tr>
+<tr>
+<td><strong>At-least-once</strong></td>
+<td>超时重试直到确认</td>
+<td><strong>必须幂等</strong>（绝大多数业务选此）</td>
+</tr>
+<tr>
+<td><strong>Exactly-once</strong></td>
+<td>业务层去重 + 状态机</td>
+<td>仅能在幂等设计上「等效」实现</td>
+</tr>
+</tbody></table>
+<p><strong>配套防护三件套</strong>：</p>
+<ul>
+<li><strong>超时</strong>：每次调用必设<strong>截止时间</strong>（不是单次重试超时，而是整个调用链预算）。  </li>
+<li><strong>重试</strong>：只对<strong>连接失败&#x2F;明确可重试错误</strong>重试；<strong>指数退避 + 抖动</strong>；限制次数防重试风暴。  </li>
+<li><strong>熔断</strong>：下游持续失败时短路调用，给系统恢复时间（如 <strong>Sentinel</strong>、<strong>resilience4j</strong>）。</li>
+</ul>
+<hr>
+<h2 id="五、JSON-RPC-2-0-与-curl-示例"><a href="#五、JSON-RPC-2-0-与-curl-示例" class="headerlink" title="五、JSON-RPC 2.0 与 curl 示例"></a>五、JSON-RPC 2.0 与 <code>curl</code> 示例</h2><p><strong>请求体</strong>（<strong><code>application/json</code></strong>）：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;jsonrpc&quot;</span><span class="punctuation">:</span> <span class="string">&quot;2.0&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;method&quot;</span><span class="punctuation">:</span> <span class="string">&quot;subtract&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;params&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="attr">&quot;a&quot;</span><span class="punctuation">:</span> <span class="number">42</span><span class="punctuation">,</span> <span class="attr">&quot;b&quot;</span><span class="punctuation">:</span> <span class="number">23</span><span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;id&quot;</span><span class="punctuation">:</span> <span class="number">1</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -sS -X POST <span class="string">&#x27;https://eth.merkle.io/&#x27;</span> \</span><br><span class="line">  -H <span class="string">&#x27;Content-Type: application/json&#x27;</span> \</span><br><span class="line">  -d <span class="string">&#x27;&#123;&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;method&quot;:&quot;eth_blockNumber&quot;,&quot;params&quot;:[],&quot;id&quot;:1&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p>（公共端点仅供演示，勿在高频生产直接依赖第三方。）</p>
+<p><strong>成功响应</strong>形如：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;jsonrpc&quot;</span><span class="punctuation">:</span><span class="string">&quot;2.0&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="number">1</span><span class="punctuation">,</span><span class="attr">&quot;result&quot;</span><span class="punctuation">:</span><span class="string">&quot;0x...&quot;</span><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>错误</strong>带 <strong><code>error</code></strong> 对象（<strong><code>code</code> &#x2F; <code>message</code> &#x2F; <code>data</code></strong>）。</p>
+<p><strong>协议要点补全</strong>：</p>
+<ul>
+<li><strong>通知（Notification）</strong>：不带 <strong><code>id</code></strong> 的请求，服务端不回响应（发后即忘）。  </li>
+<li><strong>批量调用</strong>：请求体为<strong>数组</strong>，一次往返完成多调用。  </li>
+<li><strong>标准错误码</strong>：<strong><code>-32700</code></strong> 解析错误、<strong><code>-32600</code></strong> 非法请求、<strong><code>-32601</code></strong> 方法不存在、<strong><code>-32602</code></strong> 参数无效、<strong><code>-32603</code></strong> 内部错误；<strong><code>-32000 ~ -32099</code></strong> 保留给实现自定义。</li>
+</ul>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;jsonrpc&quot;</span><span class="punctuation">:</span><span class="string">&quot;2.0&quot;</span><span class="punctuation">,</span><span class="attr">&quot;id&quot;</span><span class="punctuation">:</span><span class="number">1</span><span class="punctuation">,</span><span class="attr">&quot;error&quot;</span><span class="punctuation">:</span><span class="punctuation">&#123;</span><span class="attr">&quot;code&quot;</span><span class="punctuation">:</span><span class="number">-32601</span><span class="punctuation">,</span><span class="attr">&quot;message&quot;</span><span class="punctuation">:</span><span class="string">&quot;Method not found&quot;</span><span class="punctuation">&#125;</span><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、Python-最小-JSON-RPC-客户端（标准库）"><a href="#六、Python-最小-JSON-RPC-客户端（标准库）" class="headerlink" title="六、Python 最小 JSON-RPC 客户端（标准库）"></a>六、Python 最小 <strong>JSON-RPC</strong> 客户端（标准库）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> json</span><br><span class="line"><span class="keyword">import</span> urllib.request</span><br><span class="line"></span><br><span class="line">req = urllib.request.Request(</span><br><span class="line">    <span class="string">&quot;https://eth.merkle.io/&quot;</span>,</span><br><span class="line">    data=json.dumps(&#123;</span><br><span class="line">        <span class="string">&quot;jsonrpc&quot;</span>: <span class="string">&quot;2.0&quot;</span>,</span><br><span class="line">        <span class="string">&quot;method&quot;</span>: <span class="string">&quot;eth_chainId&quot;</span>,</span><br><span class="line">        <span class="string">&quot;params&quot;</span>: [],</span><br><span class="line">        <span class="string">&quot;id&quot;</span>: <span class="number">1</span>,</span><br><span class="line">    &#125;).encode(),</span><br><span class="line">    headers=&#123;<span class="string">&quot;Content-Type&quot;</span>: <span class="string">&quot;application/json&quot;</span>&#125;,</span><br><span class="line">)</span><br><span class="line"><span class="keyword">with</span> urllib.request.urlopen(req, timeout=<span class="number">10</span>) <span class="keyword">as</span> resp:</span><br><span class="line">    <span class="built_in">print</span>(json.load(resp))</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="七、与-REST（第二章：HTTP-详解：报文、方法、版本与-curl-nc-示例-资源风格）对比"><a href="#七、与-REST（第二章：HTTP-详解：报文、方法、版本与-curl-nc-示例-资源风格）对比" class="headerlink" title="七、与 REST（第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例 资源风格）对比"></a>七、与 <strong>REST</strong>（<a href="/network/02-http-protocol/">第二章：HTTP 详解：报文、方法、版本与 curl&#x2F;nc 示例</a> 资源风格）对比</h2><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>RPC</strong></th>
+<th><strong>REST</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>建模</td>
+<td><strong>过程&#x2F;动词</strong> 中心</td>
+<td><strong>资源&#x2F;名词</strong> 中心</td>
+</tr>
+<tr>
+<td>缓存</td>
+<td>较弱</td>
+<td><strong>GET</strong> 与缓存头成熟</td>
+</tr>
+<tr>
+<td>浏览器</td>
+<td><strong>JSON-RPC</strong> 尚可；<strong>gRPC</strong> 常需网关</td>
+<td>友好</td>
+</tr>
+</tbody></table>
+<p><strong>落地经验</strong>：<strong>对内</strong>（服务之间、契约可控、追求性能）用 <strong>RPC</strong>；<strong>对外</strong>（开放 API、第三方集成、需要 HTTP 缓存与语义）用 <strong>REST</strong>；两者常以「<strong>内 RPC + 网关转 REST</strong>」组合出现。</p>
+<hr>
+<h2 id="八、生产关注点"><a href="#八、生产关注点" class="headerlink" title="八、生产关注点"></a>八、生产关注点</h2><ul>
+<li><strong>服务发现与负载均衡</strong>：客户端从注册中心（<strong>Nacos</strong>、<strong>Consul</strong>）拿实例列表，配合<strong>健康检查</strong>剔除坏节点。  </li>
+<li><strong>观测性</strong>：<strong>trace id</strong> 贯穿调用链（<strong>OpenTelemetry</strong>），否则「像本地调用」的代价是「排障像猜谜」。  </li>
+<li><strong>版本演进</strong>：<strong>protobuf</strong> 靠<strong>字段编号</strong>向前向后兼容；<strong>增字段安全、改编号&#x2F;类型即破坏性变更</strong>——契约评审要进 CI。  </li>
+<li><strong>元数据传递</strong>：超时、租户、鉴权 token 走 <strong>metadata&#x2F;headers</strong>，别混进业务参数。</li>
+</ul>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>原理</td>
+<td><strong>stub</strong> 隐藏网络，<strong>序列化 + 传输 + 反序列化</strong></td>
+</tr>
+<tr>
+<td>作用</td>
+<td>分布式系统中的「像本地一样调用」</td>
+</tr>
+<tr>
+<td>示例</td>
+<td><strong>JSON-RPC + <code>curl</code></strong></td>
+</tr>
+<tr>
+<td>陷阱</td>
+<td>超时后重试 → <strong>幂等设计</strong>；<strong>Exactly-once</strong> 只能等效实现</td>
+</tr>
+<tr>
+<td>实现</td>
+<td><a href="/grpc/grpc-guide/">第十三章：gRPC 详解：Protobuf、HTTP&#x2F;2 与 grpcurl &#x2F; Python 示例</a> · <a href="/springcloudalibaba/10-sca-dubbo-rpc-governance/">第十章：Dubbo：RPC 与服务治理扩展</a> 等</td>
+</tr>
+</tbody></table>
+<p>选型需同时考虑<strong>观测性</strong>（<strong>trace id</strong>）、<strong>版本演进</strong>与<strong>跨组织边界</strong>（是否暴露 <strong>RPC</strong> 还是 <strong>REST</strong> 网关）。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Protocol/" rel="tag"># Protocol</a>
+              <a href="/tags/RPC/" rel="tag"># RPC</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/network/12-mqtt-protocol/" rel="prev" title="第十二章：MQTT 详解：发布订阅、QoS 与 mosquitto &#x2F; Python 示例">
+                  <i class="fa fa-angle-left"></i> 第十二章：MQTT 详解：发布订阅、QoS 与 mosquitto / Python 示例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/network/15-quic-protocol/" rel="next" title="第十五章：QUIC 详解：基于 UDP 的可靠传输、TLS 集成与 HTTP&#x2F;3">
+                  第十五章：QUIC 详解：基于 UDP 的可靠传输、TLS 集成与 HTTP/3 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务概念基础这是本仓库最核心的一条跨服务业务链路，用来验证前面各章组件协作：  核心链路：下单 POST &#x2F;order&#x2F;place（cloud-order）→ OpenFeign → 扣库存 POST &#x2F;stock&#x2F;goods&#x2F;deduct（cloud-stock），一次业务横跨两个服务、两个数据库。 为什么需要分布式事务：成功时要同">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务">
+<meta property="og:url" content="https://my919.github.io/springcloudalibaba/08-sca-order-stock-seata-practice/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务概念基础这是本仓库最核心的一条跨服务业务链路，用来验证前面各章组件协作：  核心链路：下单 POST &#x2F;order&#x2F;place（cloud-order）→ OpenFeign → 扣库存 POST &#x2F;stock&#x2F;goods&#x2F;deduct（cloud-stock），一次业务横跨两个服务、两个数据库。 为什么需要分布式事务：成功时要同">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-17T02:30:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.598Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="SpringCloudAlibaba">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/springcloudalibaba/08-sca-order-stock-seata-practice/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/springcloudalibaba/08-sca-order-stock-seata-practice/","path":"springcloudalibaba/08-sca-order-stock-seata-practice/","title":"第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%85%AB%E7%AB%A0%EF%BC%9A%E8%AE%A2%E5%8D%95%E4%B8%8B%E5%8D%95%E4%B8%8E%E5%BA%93%E5%AD%98%E6%89%A3%E5%87%8F%EF%BC%9AFeign-%E9%93%BE%E8%B7%AF%E4%B8%8E-Seata-%E5%85%A8%E5%B1%80%E4%BA%8B%E5%8A%A1"><span class="nav-number">1.</span> <span class="nav-text">第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B5%81%E7%A8%8B"><span class="nav-number">1.2.</span> <span class="nav-text">流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%93%BE%E8%B7%AF%E5%89%96%E6%9E%90%EF%BC%9AXID-%E4%B8%8E%E5%88%86%E6%94%AF%E4%BA%8B%E5%8A%A1"><span class="nav-number">1.3.</span> <span class="nav-text">链路剖析：XID 与分支事务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%89%96%E6%9E%90"><span class="nav-number">1.4.</span> <span class="nav-text">代码剖析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B9%82%E7%AD%89%E4%B8%8E%E9%87%8D%E8%AF%95"><span class="nav-number">1.5.</span> <span class="nav-text">幂等与重试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#API"><span class="nav-number">1.6.</span> <span class="nav-text">API</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95%E6%95%B0%E6%8D%AE"><span class="nav-number">1.7.</span> <span class="nav-text">测试数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AF%B7%E6%B1%82%E4%BD%93"><span class="nav-number">1.8.</span> <span class="nav-text">请求体</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%81%94%E8%B0%83%E5%91%BD%E4%BB%A4"><span class="nav-number">1.9.</span> <span class="nav-text">联调命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81%E6%B8%85%E5%8D%95"><span class="nav-number">1.10.</span> <span class="nav-text">验证清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%BA%93%E6%96%AD%E8%A8%80%E8%84%9A%E6%9C%AC%EF%BC%88%E8%81%94%E8%B0%83%E5%8F%AF%E5%A4%8D%E7%94%A8%EF%BC%89"><span class="nav-number">1.11.</span> <span class="nav-text">数据库断言脚本（联调可复用）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E4%BD%8D%E7%BD%AE"><span class="nav-number">1.12.</span> <span class="nav-text">代码位置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="nav-number">1.13.</span> <span class="nav-text">常见问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="nav-number">1.14.</span> <span class="nav-text">参考链接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.15.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/springcloudalibaba/08-sca-order-stock-seata-practice/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-17 10:30:00" itemprop="dateCreated datePublished" datetime="2026-05-17T10:30:00+08:00">2026-05-17</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/SpringCloudAlibaba/" itemprop="url" rel="index"><span itemprop="name">SpringCloudAlibaba</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第八章：订单下单与库存扣减：Feign-链路与-Seata-全局事务"><a href="#第八章：订单下单与库存扣减：Feign-链路与-Seata-全局事务" class="headerlink" title="第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务"></a>第八章：订单下单与库存扣减：Feign 链路与 Seata 全局事务</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p>这是本仓库最核心的一条<strong>跨服务业务链路</strong>，用来验证前面各章组件协作：</p>
+<ol>
+<li><strong>核心链路</strong>：<strong>下单</strong> <code>POST /order/place</code>（<code>cloud-order</code>）→ <strong>OpenFeign</strong> → <strong>扣库存</strong> <code>POST /stock/goods/deduct</code>（<code>cloud-stock</code>），一次业务横跨两个服务、两个数据库。</li>
+<li><strong>为什么需要分布式事务</strong>：成功时要同时写入 <code>t_order</code> 并减少 <code>goods.stock</code>；两个写操作分属不同服务，任何一步失败都会造成<strong>数据不一致</strong>。</li>
+<li><strong>Seata 全局事务兜底</strong>：失败时由 <strong>Seata 全局事务</strong>回滚（默认开启），<code>cloud-order</code> 侧用 <code>@GlobalTransactional</code> 发起，保证「要么都成功、要么都回滚」。</li>
+<li><strong>统一响应约定</strong>：<code>Result</code>，<code>code==0</code> 成功，<code>code==1</code> 业务失败（如库存不足），调用方据此判断结果。</li>
+<li><strong>测试数据</strong>：见 <code>sql/test-data-goods.sql</code>，专门设计了低库存商品用于验证回滚。</li>
+</ol>
+<p>先看整条链路的时序与回滚路径：</p>
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant C as Client
+  participant G as Gateway
+  participant O as cloud-order
+  participant S as cloud-stock
+  participant DBo as DB order
+  participant DBs as DB stock
+
+  C-&gt;&gt;G: POST &#x2F;order&#x2F;place
+  G-&gt;&gt;O: 转发
+  O-&gt;&gt;O: @GlobalTransactional
+  O-&gt;&gt;DBo: INSERT t_order
+  O-&gt;&gt;S: Feign deductGoods
+  S-&gt;&gt;DBs: UPDATE goods SET stock
+  alt stock OK
+    O--&gt;&gt;C: code 0
+  else stock不足
+    S--&gt;&gt;O: 业务异常
+    O-&gt;&gt;O: 全局 rollback
+    O--&gt;&gt;C: code 1
+  end
+</code>
+</pre>
+
+<h2 id="链路剖析：XID-与分支事务"><a href="#链路剖析：XID-与分支事务" class="headerlink" title="链路剖析：XID 与分支事务"></a>链路剖析：XID 与分支事务</h2><p>一次下单在 Seata 视角下的完整动作：</p>
+<pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant O as cloud-order
+  participant F as Feign 拦截器
+  participant S as cloud-stock
+  participant TC as Seata TC
+
+  O-&gt;&gt;TC: ① 开启全局事务，获得 XID
+  O-&gt;&gt;O: ② 本地事务 INSERT t_order，注册 order 分支，写 undo_log
+  O-&gt;&gt;F: ③ 调用 deductGoods
+  F-&gt;&gt;F: ④ 把 XID 放入 HTTP Header
+  F-&gt;&gt;S: ⑤ POST &#x2F;stock&#x2F;goods&#x2F;deduct
+  S-&gt;&gt;TC: ⑥ 绑定 XID，注册 stock 分支
+  S-&gt;&gt;S: ⑦ UPDATE goods，写 undo_log（前后镜像）
+  S--&gt;&gt;O: ⑧ 返回结果
+  alt 全部成功
+    O-&gt;&gt;TC: ⑨ 全局提交 → 各分支异步删除 undo_log
+  else 任一步异常
+    O-&gt;&gt;TC: ⑩ 全局回滚 → 各分支按 undo_log 反向补偿
+  end
+</code>
+</pre>
+
+<p>关键点：</p>
+<ol>
+<li><strong>XID 传播</strong>：Seata starter 的 Feign 拦截器自动把 XID 塞进请求头；stock 侧收到后绑定到当前线程，后续 SQL 都挂在同一全局事务下——<strong>无需手写传递代码</strong>。</li>
+<li><strong>undo_log 时机</strong>：分支在<strong>本地 SQL 执行后、提交前</strong>记录前后镜像；校验失败（如库存不足先抛异常）时 SQL 未执行，<strong>不会</strong>产生 stock 侧 undo_log。</li>
+<li><strong>全局锁</strong>：一阶段提交后行锁即释放，但被改行的<strong>全局锁</strong>持有到二阶段结束，防止其他全局事务交叉修改同一行造成脏写。</li>
+</ol>
+<h2 id="代码剖析"><a href="#代码剖析" class="headerlink" title="代码剖析"></a>代码剖析</h2><p><code>OrderServiceImpl.placeOrder</code>（简化）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@GlobalTransactional</span>   <span class="comment">// Seata 全局事务入口</span></span><br><span class="line"><span class="meta">@Transactional</span>          <span class="comment">// 本地事务</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">Long</span> <span class="title function_">placeOrder</span><span class="params">(PlaceOrderRequest req)</span> &#123;</span><br><span class="line">    <span class="type">Order</span> <span class="variable">order</span> <span class="operator">=</span> buildOrder(req);</span><br><span class="line">    orderMapper.insert(order);                     <span class="comment">// ① 写订单（注册 order 分支）</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (OrderItem item : req.getItems()) &#123;</span><br><span class="line">        <span class="type">Result</span>&lt;Void&gt; <span class="variable">r</span> <span class="operator">=</span> stockFeignClient.deduct(  <span class="comment">// ② Feign 远程扣库存</span></span><br><span class="line">                <span class="keyword">new</span> <span class="title class_">DeductRequest</span>(item.getGoodsId(), item.getQuantity()));</span><br><span class="line">        <span class="keyword">if</span> (r.getCode() != <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BizException</span>(<span class="string">&quot;库存不足&quot;</span>);     <span class="comment">// ③ 业务失败 → 抛异常触发全局回滚</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> order.getId();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>StockFeignClient</code>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@FeignClient(name = &quot;cloud-stock&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">StockFeignClient</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@PostMapping(&quot;/stock/goods/deduct&quot;)</span></span><br><span class="line">    <span class="type">Result</span>&lt;Void&gt; <span class="title function_">deduct</span><span class="params">(<span class="meta">@RequestBody</span> DeductRequest request)</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>要点：</p>
+<ul>
+<li><strong>业务失败必须抛异常</strong>，Seata 才能感知回滚；直接返回 <code>code:1</code> 而不抛异常会<strong>正常提交</strong>，造成订单有记录、库存未扣的脏数据。</li>
+<li><code>cloud-stock</code> 侧库存校验用 <code>UPDATE goods SET stock = stock - #&#123;qty&#125; WHERE id = #&#123;id&#125; AND stock &gt;= #&#123;qty&#125;</code>——<strong>数据库层原子扣减</strong>，更新行数为 0 即失败，防超卖不依赖先查再改。</li>
+<li>Feign 默认只把下游 4xx&#x2F;5xx 转为异常；业务 <code>code:1</code> 属于 <strong>200 正常响应</strong>，需像上面一样<strong>手动判断并抛出</strong>。</li>
+</ul>
+<h2 id="幂等与重试"><a href="#幂等与重试" class="headerlink" title="幂等与重试"></a>幂等与重试</h2><ul>
+<li><code>POST /order/place</code> <strong>非幂等</strong>：网关、前端、Feign 都禁止自动重试；如需防重复提交，下单前生成<strong>幂等号</strong>（如 <code>userId + 时间窗 + UUID</code>）并对订单表加唯一索引，重复请求撞索引即拒绝。</li>
+<li>Feign 超时（已发出请求但未收到响应）属于<strong>状态不确定</strong>：补偿手段是先 <code>GET /stock/goods/&#123;id&#125;</code> 核对库存，而不是盲目重发扣减。</li>
+<li>回滚场景下 Seata 的二阶段补偿由 TC 驱动、<strong>自带重试</strong>，业务无需干预；只有镜像脏校验失败才需要人工处理（见 <a href="/springcloudalibaba/06-sca-integrate-seata/">第六章：集成 Seata：AT 模式分布式事务</a>）。</li>
+</ul>
+<h2 id="API"><a href="#API" class="headerlink" title="API"></a>API</h2><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>POST</td>
+<td><code>/order/place</code></td>
+<td>下单</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/order/&#123;id&#125;</code></td>
+<td>查询订单（id 仅数字，正则 <code>\d+</code>）</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/stock/goods/&#123;id&#125;</code></td>
+<td>查库存</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/stock/goods/deduct</code></td>
+<td>扣减（一般由 order 内部 Feign 调用）</td>
+</tr>
+</tbody></table>
+<p>统一响应：<code>Result</code>，<code>code==0</code> 成功，<code>code==1</code> 业务失败。</p>
+<h2 id="测试数据"><a href="#测试数据" class="headerlink" title="测试数据"></a>测试数据</h2><table>
+<thead>
+<tr>
+<th>goodsId</th>
+<th>名称</th>
+<th>初始 stock</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>示例商品A</td>
+<td>88</td>
+<td>正常下单</td>
+</tr>
+<tr>
+<td>2</td>
+<td>示例商品B</td>
+<td>50</td>
+<td>正常下单</td>
+</tr>
+<tr>
+<td>3</td>
+<td>低库存商品</td>
+<td>2</td>
+<td>回滚（qty&#x3D;10）</td>
+</tr>
+</tbody></table>
+<p>导入：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -h 192.168.1.22 -P 30000 -u root -p study &lt; sql/test-data-goods.sql</span><br></pre></td></tr></table></figure>
+
+<h2 id="请求体"><a href="#请求体" class="headerlink" title="请求体"></a>请求体</h2><p><code>sql/place-order-body.json</code>（成功示例）：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;userId&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;items&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">    <span class="punctuation">&#123;</span> <span class="attr">&quot;goodsId&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span> <span class="attr">&quot;quantity&quot;</span><span class="punctuation">:</span> <span class="number">2</span> <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>回滚示例：<code>sql/swagger-examples/place-order-rollback.json</code>（goodsId&#x3D;3, quantity&#x3D;10）。</p>
+<h2 id="联调命令"><a href="#联调命令" class="headerlink" title="联调命令"></a>联调命令</h2><p><strong>经网关（推荐）</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl.exe -s -X POST <span class="string">&quot;http://127.0.0.1:9000/order/place&quot;</span> ^</span><br><span class="line">  -H <span class="string">&quot;Content-Type: application/json&quot;</span> ^</span><br><span class="line">  -d <span class="string">&quot;@sql/place-order-body.json&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">Invoke-RestMethod</span> <span class="literal">-Method</span> Post <span class="literal">-Uri</span> <span class="string">&quot;http://127.0.0.1:9000/order/place&quot;</span> `</span><br><span class="line">  <span class="literal">-ContentType</span> <span class="string">&quot;application/json&quot;</span> `</span><br><span class="line">  <span class="literal">-Body</span> (<span class="built_in">Get-Content</span> <span class="string">&quot;sql\place-order-body.json&quot;</span> <span class="literal">-Raw</span>)</span><br></pre></td></tr></table></figure>
+
+<p><strong>查库存</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -s <span class="string">&quot;http://127.0.0.1:9000/stock/goods/1&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>直连 order（绕过网关）</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl.exe -s -X POST <span class="string">&quot;http://127.0.0.1:8003/order/place&quot;</span> ^</span><br><span class="line">  -H <span class="string">&quot;Content-Type: application/json&quot;</span> ^</span><br><span class="line">  -d <span class="string">&quot;@sql/place-order-body.json&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="验证清单"><a href="#验证清单" class="headerlink" title="验证清单"></a>验证清单</h2><ol>
+<li><strong>成功</strong>：place 返回 <code>code:0</code>；<code>GET /stock/goods/1</code> 库存减少 2；<code>t_order</code> 新增记录。  </li>
+<li><strong>回滚</strong>：使用 goodsId&#x3D;3、qty&#x3D;10；返回 <code>code:1</code>；goods 3 库存仍为 2；order 日志含 <code>Rollbacked</code>。  </li>
+<li><strong>Seata</strong>：order 日志 <code>Begin new global transaction</code>；TC 30014 可达。  </li>
+<li><strong>单元测试</strong>：<code>mvn -pl cloud-order test</code> → <code>OrderServiceImplTest</code>、<code>OrderPlaceIntegrationTest</code>。</li>
+</ol>
+<p>数据库侧对照（排障用）：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 订单是否写入/回滚</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> t_order <span class="keyword">ORDER</span> <span class="keyword">BY</span> id <span class="keyword">DESC</span> LIMIT <span class="number">3</span>;</span><br><span class="line"><span class="comment">-- 库存是否与预期一致</span></span><br><span class="line"><span class="keyword">SELECT</span> id, stock <span class="keyword">FROM</span> goods <span class="keyword">WHERE</span> id <span class="keyword">IN</span> (<span class="number">1</span>, <span class="number">3</span>);</span><br><span class="line"><span class="comment">-- AT 分支残留（正常应为空或很快被清理）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="built_in">COUNT</span>(<span class="operator">*</span>) <span class="keyword">FROM</span> undo_log;</span><br></pre></td></tr></table></figure>
+
+<h2 id="数据库断言脚本（联调可复用）"><a href="#数据库断言脚本（联调可复用）" class="headerlink" title="数据库断言脚本（联调可复用）"></a>数据库断言脚本（联调可复用）</h2><p>把「预期值」固化成检查清单，每次回归照着核：</p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>预期</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>初始</td>
+<td><code>goods.id=1</code> stock&#x3D;88；<code>goods.id=3</code> stock&#x3D;2</td>
+</tr>
+<tr>
+<td>成功下单（id&#x3D;1, qty&#x3D;2）后</td>
+<td>stock&#x3D;86；<code>t_order</code> +1 行；<code>undo_log</code> 无残留</td>
+</tr>
+<tr>
+<td>回滚下单（id&#x3D;3, qty&#x3D;10）后</td>
+<td>stock&#x3D;2（不变）；<code>t_order</code> 行数不变；日志 <code>Rollbacked</code></td>
+</tr>
+<tr>
+<td>重复提交同一请求</td>
+<td>视幂等设计：无幂等号则生成两单，有则第二单被拒</td>
+</tr>
+</tbody></table>
+<h2 id="代码位置"><a href="#代码位置" class="headerlink" title="代码位置"></a>代码位置</h2><table>
+<thead>
+<tr>
+<th>类</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>OrderController</td>
+<td><code>cloud-order/.../OrderController.java</code></td>
+</tr>
+<tr>
+<td>OrderServiceImpl</td>
+<td><code>cloud-order/.../OrderServiceImpl.java</code></td>
+</tr>
+<tr>
+<td>StockController</td>
+<td><code>cloud-stock/.../StockController.java</code></td>
+</tr>
+<tr>
+<td>Feign Client</td>
+<td><code>cloud-order/.../StockFeignClient.java</code></td>
+</tr>
+</tbody></table>
+<h2 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h2><p><strong>Q：PowerShell 里 curl 报 400 或 JSON 错误？</strong><br>A：使用 <code>curl.exe</code> 或 <code>-d &quot;@文件&quot;</code>；勿用 <code>curl</code> 别名；复杂 JSON 用 <code>Invoke-RestMethod</code> + 文件读入。</p>
+<p><strong>Q：<code>GET /order/place</code> 报错？</strong><br>A：place 仅支持 <strong>POST</strong>。</p>
+<p><strong>Q：回滚后 order 表仍有脏数据？</strong><br>A：查 Seata 是否启用、TC 是否连通、<code>undo_log</code> 是否已建；看 order 日志是否 commit 而非 rollback。</p>
+<p><strong>Q：Feign 超时导致不确定状态？</strong><br>A：调大 <code>spring.cloud.openfeign</code> 超时或重试策略；生产建议幂等与查询补偿。</p>
+<h2 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h2><ul>
+<li><a href="/springcloudalibaba/06-sca-integrate-seata/">第六章：集成 Seata：AT 模式分布式事务</a></li>
+<li><a href="/springcloudalibaba/04-sca-integrate-gateway/">第四章：集成 SpringCloudGateway：统一入口与路由</a></li>
+<li><a target="_blank" rel="noopener" href="https://gitee.com/my919/my919">sql&#x2F;README.md</a></li>
+</ul>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>核心链路</td>
+<td><code>POST /order/place</code>（cloud-order）→ Feign → <code>POST /stock/goods/deduct</code>（cloud-stock）</td>
+</tr>
+<tr>
+<td>数据一致性</td>
+<td>Seata AT 全局事务（默认开启），任一步失败整体回滚</td>
+</tr>
+<tr>
+<td>响应约定</td>
+<td><code>Result</code>：<code>code==0</code> 成功、<code>code==1</code> 业务失败</td>
+</tr>
+<tr>
+<td>回滚用例</td>
+<td>goodsId&#x3D;3、qty&#x3D;10 → <code>code:1</code>、库存不变、日志含 <code>Rollbacked</code></td>
+</tr>
+<tr>
+<td>验证入口</td>
+<td>联调命令 + 验证清单 + 单元测试三层把关</td>
+</tr>
+</tbody></table>
+<hr>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/SpringCloudAlibaba/" rel="tag"># SpringCloudAlibaba</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/springcloudalibaba/07-sca-integrate-sentinel/" rel="prev" title="第七章：集成 Sentinel：流控、熔断与服务保护">
+                  <i class="fa fa-angle-left"></i> 第七章：集成 Sentinel：流控、熔断与服务保护
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/springcloudalibaba/09-sca-components-overview/" rel="next" title="第九章：集成 Spring Cloud Alibaba：组件总览与多模块搭建">
+                  第九章：集成 Spring Cloud Alibaba：组件总览与多模块搭建 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

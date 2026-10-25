@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：PostgreSQL 存储引擎与表访问方法概念基础 表访问方法（Table Access Method）：PostgreSQL 12+ 把「表数据如何组织与读写」抽象为可插拔接口，建表时可用 USING 指定，默认即 heap——这是 PostgreSQL 语境里最接近 MySQL「引擎」的概念。 堆表（Heap）：行按写入顺序无序堆放在页中，用 tid（块号 + 行号） 定位；索引里存的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：PostgreSQL 存储引擎与表访问方法">
+<meta property="og:url" content="https://my919.github.io/database/03-postgresql-storage-engine/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：PostgreSQL 存储引擎与表访问方法概念基础 表访问方法（Table Access Method）：PostgreSQL 12+ 把「表数据如何组织与读写」抽象为可插拔接口，建表时可用 USING 指定，默认即 heap——这是 PostgreSQL 语境里最接近 MySQL「引擎」的概念。 堆表（Heap）：行按写入顺序无序堆放在页中，用 tid（块号 + 行号） 定位；索引里存的">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T08:44:52.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.571Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="MVCC">
+<meta property="article:tag" content="PostgreSQL">
+<meta property="article:tag" content="存储">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/database/03-postgresql-storage-engine/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/database/03-postgresql-storage-engine/","path":"database/03-postgresql-storage-engine/","title":"第三章：PostgreSQL 存储引擎与表访问方法"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：PostgreSQL 存储引擎与表访问方法 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9APostgreSQL-%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E%E4%B8%8E%E8%A1%A8%E8%AE%BF%E9%97%AE%E6%96%B9%E6%B3%95"><span class="nav-number">1.</span> <span class="nav-text">第三章：PostgreSQL 存储引擎与表访问方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E8%A1%A8%E6%95%B0%E6%8D%AE%E9%BB%98%E8%AE%A4%E6%80%8E%E4%B9%88%E5%AD%98%EF%BC%9AHeap%EF%BC%88%E5%A0%86%E8%A1%A8%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">一、表数据默认怎么存：Heap（堆表）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%A0%86%E9%A1%B5%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. 堆页内部结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%A1%8C%E5%A4%B4%E4%B8%8E-MVCC-%E7%89%88%E6%9C%AC%E9%93%BE"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. 行头与 MVCC 版本链</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81TOAST%EF%BC%9A%E5%A4%A7%E5%AD%97%E6%AE%B5%E7%9A%84%E8%A1%8C%E5%A4%96%E5%AD%98%E5%82%A8"><span class="nav-number">1.3.</span> <span class="nav-text">二、TOAST：大字段的行外存储</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81HOT-%E6%9B%B4%E6%96%B0%E4%B8%8E-FILLFACTOR"><span class="nav-number">1.4.</span> <span class="nav-text">三、HOT 更新与 FILLFACTOR</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81FSM-%E4%B8%8E-VM%EF%BC%9A%E4%B8%A4%E4%B8%AA%E8%BE%85%E5%8A%A9%E6%98%A0%E5%B0%84"><span class="nav-number">1.5.</span> <span class="nav-text">四、FSM 与 VM：两个辅助映射</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%A1%A8%E8%AE%BF%E9%97%AE%E6%96%B9%E6%B3%95%EF%BC%88Table-Access-Method%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">五、表访问方法（Table Access Method）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E4%B8%8E%E3%80%8C%E5%BC%95%E6%93%8E%E3%80%8D%E6%98%93%E6%B7%B7%E7%9A%84%E5%87%A0%E4%B8%AA%E6%A6%82%E5%BF%B5"><span class="nav-number">1.7.</span> <span class="nav-text">六、与「引擎」易混的几个概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%92%8C-MySQL-InnoDB-%E7%9A%84%E7%B2%97%E5%AF%B9%E7%85%A7%EF%BC%88%E9%80%89%E5%9E%8B%E6%B2%9F%E9%80%9A%E7%94%A8%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">七、和 MySQL InnoDB 的粗对照（选型沟通用）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81WAL%EF%BC%9A%E5%A0%86%E9%A1%B5%E4%B9%8B%E5%A4%96%E7%9A%84%E7%AC%AC%E4%BA%8C%E5%A5%97%E5%86%99%E5%85%A5"><span class="nav-number">1.9.</span> <span class="nav-text">八、WAL：堆页之外的第二套写入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%88%86%E5%8C%BA%E8%A1%A8%EF%BC%9Aheap-%E7%9A%84%E3%80%8C%E6%B0%B4%E5%B9%B3%E5%88%87%E7%89%87%E3%80%8D"><span class="nav-number">1.10.</span> <span class="nav-text">九、分区表：heap 的「水平切片」</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%AE%9E%E5%8A%A1%E5%BB%BA%E8%AE%AE"><span class="nav-number">1.11.</span> <span class="nav-text">十、实务建议</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"><span class="nav-number">1.12.</span> <span class="nav-text">十一、延伸阅读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.13.</span> <span class="nav-text">本章小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8B%E4%B8%80%E7%AB%A0"><span class="nav-number">1.14.</span> <span class="nav-text">下一章</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/database/03-postgresql-storage-engine/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：PostgreSQL 存储引擎与表访问方法 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：PostgreSQL 存储引擎与表访问方法
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 16:44:52" itemprop="dateCreated datePublished" datetime="2026-05-03T16:44:52+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/" itemprop="url" rel="index"><span itemprop="name">数据库</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：PostgreSQL-存储引擎与表访问方法"><a href="#第三章：PostgreSQL-存储引擎与表访问方法" class="headerlink" title="第三章：PostgreSQL 存储引擎与表访问方法"></a>第三章：PostgreSQL 存储引擎与表访问方法</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>表访问方法（Table Access Method）</strong>：<strong>PostgreSQL 12+</strong> 把「表数据如何组织与读写」抽象为<strong>可插拔接口</strong>，建表时可用 <strong><code>USING</code></strong> 指定，默认即 <strong>heap</strong>——这是 PostgreSQL 语境里最接近 MySQL「引擎」的概念。</li>
+<li><strong>堆表（Heap）</strong>：行按写入顺序<strong>无序堆放</strong>在<strong>页</strong>中，用 <strong>tid（块号 + 行号）</strong> 定位；索引里存的是 <strong>tid</strong>，查数据通常要「<strong>索引 → 回表</strong>」。</li>
+<li><strong>MVCC 是配套设计</strong>：行头维护 <strong><code>xmin</code> &#x2F; <code>xmax</code></strong> 版本信息，更新与删除产生<strong>新版本 &#x2F; 死元组</strong>，由 <strong><code>VACUUM</code></strong> 回收——这直接决定了 PostgreSQL 的性能调优姿势。</li>
+<li><strong>与 MySQL 的本质差别</strong>：MySQL 建表时选 <strong><code>ENGINE=InnoDB</code></strong>，PostgreSQL <strong>没有这个开关</strong>：统一内核 + 统一 <strong>heap</strong>，列存、分片等需求走<strong>扩展与架构层</strong>，而不是换「引擎」。</li>
+</ol>
+<p>先看默认的存储方式：</p>
+<h2 id="一、表数据默认怎么存：Heap（堆表）"><a href="#一、表数据默认怎么存：Heap（堆表）" class="headerlink" title="一、表数据默认怎么存：Heap（堆表）"></a>一、表数据默认怎么存：Heap（堆表）</h2><ul>
+<li>普通 <strong><code>CREATE TABLE</code></strong> 默认即 <strong>heap</strong> 表：行以<strong>堆页</strong>存放，通过 <strong>tid（块号 + 行号）</strong> 定位。  </li>
+<li><strong>MVCC</strong> 在元组头维护版本信息（<strong><code>xmin</code> &#x2F; <code>xmax</code></strong> 等），更新与删除产生<strong>新版本&#x2F;死元组</strong>，依赖 <strong><code>VACUUM</code></strong> 回收（见 <a href="/database/05-postgresql-index-optimization/">第五章：PostgreSQL 索引与性能优化</a>）。  </li>
+<li>与 <strong>InnoDB 聚簇索引即整表</strong>不同：<strong>PostgreSQL</strong> 主键索引是<strong>二级索引</strong>，<strong>堆上</strong>存行，主键查找通常「<strong>索引 → 回表 tid</strong>」。</li>
+</ul>
+<h3 id="1-堆页内部结构"><a href="#1-堆页内部结构" class="headerlink" title="1. 堆页内部结构"></a>1. 堆页内部结构</h3><p>每个堆页默认 <strong>8KB</strong>（编译期 <code>BLCKSZ</code>），从前往后分四段：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">+----------------+------------------+----------------+------------------+</span><br><span class="line">| PageHeaderData |  ItemId 数组(行指针) |   空闲空间      |   元组(从尾部生长) |</span><br><span class="line">|   (24 字节)     |  (每条 4 字节)     |                |                  |</span><br><span class="line">+----------------+------------------+----------------+------------------+</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>PageHeaderData</strong>：LSN、校验和、空闲空间起止位置等页级元数据。  </li>
+<li><strong>ItemId（行指针）数组</strong>：定长 4 字节，记录页内每个元组的偏移与长度——<strong>tid 里的「行号」实际是这个数组的下标</strong>，索引指向行指针而非物理位置，所以页内整理（如 HOT 链修剪）不必改索引。  </li>
+<li><strong>元组区</strong>：从页尾向前生长，每行带 <strong>23 字节行头</strong>（<code>xmin</code> &#x2F; <code>xmax</code> &#x2F; <code>ctid</code> &#x2F; 标志位等）。</li>
+</ul>
+<p>观察实际页面（需 <code>pageinspect</code> 扩展）：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> EXTENSION IF <span class="keyword">NOT</span> <span class="keyword">EXISTS</span> pageinspect;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 页内行指针与元组概览</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> heap_page_items(get_raw_page(<span class="string">&#x27;emp&#x27;</span>, <span class="number">0</span>)) LIMIT <span class="number">5</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-行头与-MVCC-版本链"><a href="#2-行头与-MVCC-版本链" class="headerlink" title="2. 行头与 MVCC 版本链"></a>2. 行头与 MVCC 版本链</h3><p>每行元组头部的关键字段：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>xmin</code></strong></td>
+<td><strong>创建</strong>该行版本的事务 ID</td>
+</tr>
+<tr>
+<td><strong><code>xmax</code></strong></td>
+<td><strong>删除&#x2F;更新</strong>该行版本的事务 ID（0 表示存活）</td>
+</tr>
+<tr>
+<td><strong><code>ctid</code></strong></td>
+<td>指向<strong>下一版本</strong>的 tid（更新形成版本链）</td>
+</tr>
+<tr>
+<td><strong><code>t_infomask</code></strong></td>
+<td>标志位：事务是否已提交、行是否被锁等</td>
+</tr>
+</tbody></table>
+<p>一次 <code>UPDATE</code> &#x3D; 插入新元组 + 把旧元组 <code>xmax</code> 置为当前事务 + <code>ctid</code> 指向新位置。这就是「<strong>更新在 PG 里本质是新增一版</strong>」的物理含义，也是死元组与膨胀的来源。</p>
+<hr>
+<h2 id="二、TOAST：大字段的行外存储"><a href="#二、TOAST：大字段的行外存储" class="headerlink" title="二、TOAST：大字段的行外存储"></a>二、TOAST：大字段的行外存储</h2><p><strong>8KB 页放不下的超长字段</strong>（<code>text</code>、大 <code>jsonb</code>、<code>bytea</code>）由 <strong>TOAST（The Oversized-Attribute Storage Technique）</strong> 接管：超阈值（约 <strong>2KB</strong>）的值被<strong>压缩</strong>和&#x2F;或<strong>切片存入附属 TOAST 表</strong>，主表行里只留指针。</p>
+<p>每张宽表自动挂一张 <strong><code>pg_toast.pg_toast_&lt;oid&gt;</code></strong> 附属表：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看某表的 TOAST 附属表与占用</span></span><br><span class="line"><span class="keyword">SELECT</span> relname, pg_size_pretty(pg_relation_size(oid)) <span class="keyword">AS</span> toast_size</span><br><span class="line"><span class="keyword">FROM</span> pg_class</span><br><span class="line"><span class="keyword">WHERE</span> oid <span class="operator">=</span> (<span class="keyword">SELECT</span> reltoastrelid <span class="keyword">FROM</span> pg_class <span class="keyword">WHERE</span> relname <span class="operator">=</span> <span class="string">&#x27;articles&#x27;</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>四种存储策略</strong>（建表时可按列指定）：</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>压缩</th>
+<th>行外存储</th>
+<th>适用列</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>PLAIN</code></strong></td>
+<td>否</td>
+<td>否</td>
+<td>短字段、<code>int</code> 等定长类型（默认）</td>
+</tr>
+<tr>
+<td><strong><code>EXTENDED</code></strong></td>
+<td>是</td>
+<td>是</td>
+<td>超长 <code>text</code> &#x2F; <code>jsonb</code>（变长类型默认）</td>
+</tr>
+<tr>
+<td><strong><code>EXTERNAL</code></strong></td>
+<td>否</td>
+<td>是</td>
+<td>已压缩的二进制（图片、已 gzip 数据）</td>
+</tr>
+<tr>
+<td><strong><code>MAIN</code></strong></td>
+<td>是</td>
+<td>尽量不</td>
+<td>中等长度、想留在主表的字段</td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ALTER TABLE</span> articles <span class="keyword">ALTER</span> <span class="keyword">COLUMN</span> body <span class="keyword">SET</span> STORAGE <span class="keyword">EXTERNAL</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>性能含义</strong>：<code>SELECT</code> 不碰 TOAST 列时不读 TOAST 表（天然列裁剪）；但<strong>更新 TOAST 列会产生整个新副本</strong>——频繁更新的超大字段要考虑拆分表。</p>
+<hr>
+<h2 id="三、HOT-更新与-FILLFACTOR"><a href="#三、HOT-更新与-FILLFACTOR" class="headerlink" title="三、HOT 更新与 FILLFACTOR"></a>三、HOT 更新与 FILLFACTOR</h2><p><strong>HOT（Heap Only Tuple）更新</strong>：当 <code>UPDATE</code> <strong>不改任何索引列</strong>且<strong>同页有空位</strong>时，新元组直接放同页、<strong>索引条目不动</strong>——省掉一次索引维护 IO，热点行更新快很多。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 给更新频繁的表预留页内空间，提高 HOT 命中率</span></span><br><span class="line"><span class="keyword">ALTER TABLE</span> orders <span class="keyword">SET</span> (fillfactor <span class="operator">=</span> <span class="number">80</span>);</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>fillfactor=100</code></strong>（默认）</td>
+<td>页塞满才开新页</td>
+<td>只增不改的表（日志、数仓）</td>
+</tr>
+<tr>
+<td><strong><code>fillfactor=80~90</code></strong></td>
+<td>预留 10~20% 空间</td>
+<td>高频 UPDATE 且<strong>不改索引列</strong>的表</td>
+</tr>
+<tr>
+<td>改了索引列的 UPDATE</td>
+<td>无法 HOT</td>
+<td>设计上把「状态字段」与「索引字段」分离</td>
+</tr>
+</tbody></table>
+<p>判断 HOT 是否生效：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> relname, n_tup_upd, n_tup_hot_upd,</span><br><span class="line">       round(<span class="number">100.0</span> <span class="operator">*</span> n_tup_hot_upd <span class="operator">/</span> <span class="built_in">NULLIF</span>(n_tup_upd, <span class="number">0</span>), <span class="number">1</span>) <span class="keyword">AS</span> hot_pct</span><br><span class="line"><span class="keyword">FROM</span> pg_stat_user_tables</span><br><span class="line"><span class="keyword">WHERE</span> n_tup_upd <span class="operator">&gt;</span> <span class="number">0</span></span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> n_tup_upd <span class="keyword">DESC</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>hot_pct</code> 低 + 表膨胀快</strong>：检查是否更新了索引列，或 <code>fillfactor</code> 太满。</p>
+<hr>
+<h2 id="四、FSM-与-VM：两个辅助映射"><a href="#四、FSM-与-VM：两个辅助映射" class="headerlink" title="四、FSM 与 VM：两个辅助映射"></a>四、FSM 与 VM：两个辅助映射</h2><table>
+<thead>
+<tr>
+<th>映射</th>
+<th>全称</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>FSM</strong></td>
+<td>Free Space Map（空闲空间映射）</td>
+<td>记录每页剩余空间，<strong>插入时快速找页</strong>，不用全表翻</td>
+</tr>
+<tr>
+<td><strong>VM</strong></td>
+<td>Visibility Map（可见性映射）</td>
+<td>标记「<strong>页内所有行对所有事务可见</strong>」——<strong><code>Index Only Scan</code></strong> 靠它跳过回表；<strong><code>VACUUM</code></strong> 靠它跳过干净页</td>
+</tr>
+</tbody></table>
+<p><strong>实务联动</strong>：大批量 <code>UPDATE/DELETE</code> 后 VM 失效 → <code>Index Only Scan</code> 退化为 <code>Index Scan</code> + 回表 → 执行计划里 <code>Heap Fetches</code> 暴涨。跑一次 <code>VACUUM ANALYZE 表名</code> 重建 VM 即恢复（详见 <a href="/database/05-postgresql-index-optimization/">第五章：PostgreSQL 索引与性能优化</a>）。</p>
+<hr>
+<h2 id="五、表访问方法（Table-Access-Method）"><a href="#五、表访问方法（Table-Access-Method）" class="headerlink" title="五、表访问方法（Table Access Method）"></a>五、表访问方法（Table Access Method）</h2><p><strong>PostgreSQL 12+</strong> 起，表可指定 <strong><code>USING heap</code></strong>（默认）；理论上可挂<strong>自定义表访问方法</strong>（需扩展提供）。<br>生产常见仍是 <strong>heap</strong>；列存、混存等多在<strong>扩展或外部产品</strong>（如某些分析型方案）中实现，<strong>不等价于 MySQL 换一个 <code>ENGINE</code> 字符串</strong>。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 默认即 heap，一般无需写出</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> t (id <span class="type">int</span> <span class="keyword">PRIMARY KEY</span>, v text);</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、与「引擎」易混的几个概念"><a href="#六、与「引擎」易混的几个概念" class="headerlink" title="六、与「引擎」易混的几个概念"></a>六、与「引擎」易混的几个概念</h2><table>
+<thead>
+<tr>
+<th>概念</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>TABLESPACE</code></strong></td>
+<td>表&#x2F;索引的<strong>文件放置位置</strong>（如 <strong><code>pg_default</code></strong>），不是另一种行存储引擎。</td>
+</tr>
+<tr>
+<td><strong>TOAST</strong></td>
+<td>大字段<strong>行外存储</strong>机制，对用户基本透明。</td>
+</tr>
+<tr>
+<td><strong>Foreign Data Wrapper（FDW）</strong></td>
+<td><strong>外部表</strong>：数据在远程；语法像本地表，<strong>语义与本地 heap 完全不同</strong>，不是换存储引擎。</td>
+</tr>
+<tr>
+<td><strong>内置索引类型</strong></td>
+<td><strong>B-Tree、Hash、GiST、GIN、BRIN</strong> 等是<strong>索引访问方法</strong>，不是替换 heap 的「表引擎」。</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="七、和-MySQL-InnoDB-的粗对照（选型沟通用）"><a href="#七、和-MySQL-InnoDB-的粗对照（选型沟通用）" class="headerlink" title="七、和 MySQL InnoDB 的粗对照（选型沟通用）"></a>七、和 MySQL InnoDB 的粗对照（选型沟通用）</h2><table>
+<thead>
+<tr>
+<th>话题</th>
+<th>MySQL（<strong><code>MySQL引擎.md</code></strong>）</th>
+<th>PostgreSQL（本文）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>建表选「引擎」</td>
+<td><strong><code>ENGINE=InnoDB</code></strong> 等</td>
+<td><strong>无</strong>；默认 <strong>heap</strong> + 统一内核</td>
+</tr>
+<tr>
+<td>行存与主键</td>
+<td><strong>InnoDB</strong> 聚簇主键与数据同树</td>
+<td><strong>堆行 + 主键索引</strong></td>
+</tr>
+<tr>
+<td>并发读写的核心</td>
+<td><strong>InnoDB MVCC + 锁</strong></td>
+<td><strong>MVCC + 行锁</strong>（见 <a href="/database/06-postgresql-concurrency-mvcc/">第六章：PostgreSQL 并发与 MVCC 入门</a>）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="八、WAL：堆页之外的第二套写入"><a href="#八、WAL：堆页之外的第二套写入" class="headerlink" title="八、WAL：堆页之外的第二套写入"></a>八、WAL：堆页之外的第二套写入</h2><p>heap 页是「<strong>数据落盘的最终形态</strong>」，但每次写先走 <strong>WAL（Write-Ahead Log）</strong>：</p>
+<ol>
+<li>事务修改先在<strong>内存缓冲区</strong>改页，同时把<strong>重做记录</strong>追加进 WAL 缓冲区。  </li>
+<li><strong>COMMIT 时只需 WAL 刷盘</strong>（<code>wal_writer</code> &#x2F; <code>commit</code> 触发 <code>fsync</code>）即算持久——数据页由后台 <strong><code>checkpointer</code></strong> 批量脏写。  </li>
+<li>崩溃重启时按 WAL 重放，把未落盘的修改补回数据页。</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 看 WAL 写入量与检查点节奏</span></span><br><span class="line"><span class="keyword">SELECT</span> wal_records, wal_bytes, checkpoints_timed, checkpoints_req</span><br><span class="line"><span class="keyword">FROM</span> pg_stat_bgwriter;   <span class="comment">-- PG 17+ 拆为 pg_stat_checkpointer</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>实务含义</strong>：顺序追加的 WAL 远快于随机写数据页——这是 PG 写入性能的根基；<strong>WAL 所在磁盘</strong>（可用 <code>pg_wal</code> 独立表空间&#x2F;挂载点）的延迟直接决定提交延迟。</p>
+<hr>
+<h2 id="九、分区表：heap-的「水平切片」"><a href="#九、分区表：heap-的「水平切片」" class="headerlink" title="九、分区表：heap 的「水平切片」"></a>九、分区表：heap 的「水平切片」</h2><p>声明式分区（PG 10+）把一张逻辑表切成多张物理 heap 子表，<strong>每个分区独立享有自己的页、FSM、VM 与索引</strong>：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> orders (</span><br><span class="line">    id <span class="type">bigint</span>,</span><br><span class="line">    order_date <span class="type">date</span> <span class="keyword">NOT NULL</span>,</span><br><span class="line">    amount <span class="type">numeric</span>(<span class="number">10</span>,<span class="number">2</span>)</span><br><span class="line">) <span class="keyword">PARTITION</span> <span class="keyword">BY</span> <span class="keyword">RANGE</span> (order_date);</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE TABLE</span> orders_2026_10 <span class="keyword">PARTITION</span> <span class="keyword">OF</span> orders</span><br><span class="line">    <span class="keyword">FOR</span> <span class="keyword">VALUES</span> <span class="keyword">FROM</span> (<span class="string">&#x27;2026-10-01&#x27;</span>) <span class="keyword">TO</span> (<span class="string">&#x27;2026-11-01&#x27;</span>);</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>收益</th>
+<th>原理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>分区裁剪</strong></td>
+<td>查询带分区键时只扫命中的子表，等效索引之外的「粗粒度裁剪」</td>
+</tr>
+<tr>
+<td><strong>快速归档</strong></td>
+<td><code>DROP TABLE orders_2025_01</code> 或 <code>DETACH PARTITION</code> 秒级删旧数据，不产生死元组</td>
+</tr>
+<tr>
+<td><strong>分区级维护</strong></td>
+<td><code>VACUUM</code> &#x2F; <code>REINDEX</code> 可按分区跑，大表运维粒度变细</td>
+</tr>
+</tbody></table>
+<p><strong>取舍</strong>：分区数控制在<strong>几百以内</strong>（过多拖慢规划）；分区键必须出现在所有唯一约束里；查询不带分区键时反而要扫所有分区。</p>
+<hr>
+<h2 id="十、实务建议"><a href="#十、实务建议" class="headerlink" title="十、实务建议"></a>十、实务建议</h2><ol>
+<li>学习 <strong>PostgreSQL</strong> 时少问「用哪个引擎」，多问<strong>索引类型、执行计划、<code>VACUUM</code>、隔离级别与锁</strong>。  </li>
+<li>需要列存、分片、多副本高可用时，在<strong>架构层</strong>选专用扩展或产品（如 <strong>Citus</strong>、云厂商数仓、读写分离），而不是在 <strong><code>CREATE TABLE</code></strong> 里找一个 <strong><code>ENGINE</code></strong> 开关。  </li>
+<li>版本升级（<strong><code>16 → 17 → 18</code></strong>）会带执行器与优化器演进，「升级引擎」口语上常指<strong>升级主版本</strong>，与 <strong>MySQL</strong> 的 <strong>ENGINE</strong> 不是同一概念。  </li>
+<li><strong>写多的表先想 <code>fillfactor</code> 与 HOT</strong>，<strong>宽表先想 TOAST 策略</strong>，<strong>只读大表先想 VM 与 <code>Index Only Scan</code></strong>——三个杠杆都长在 heap 结构之上。</li>
+</ol>
+<hr>
+<h2 id="十一、延伸阅读"><a href="#十一、延伸阅读" class="headerlink" title="十一、延伸阅读"></a>十一、延伸阅读</h2><table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/database/postgresql-guide/">第一章：PostgreSQL 概述与 DDL 入门</a></td>
+<td><strong>DDL</strong>、<strong><code>SCHEMA</code></strong></td>
+</tr>
+<tr>
+<td><a href="/database/04-postgresql-advanced-query/">第四章：PostgreSQL 高级查询</a></td>
+<td>复杂 <strong>SQL</strong></td>
+</tr>
+<tr>
+<td><a href="/database/05-postgresql-index-optimization/">第五章：PostgreSQL 索引与性能优化</a></td>
+<td><strong><code>EXPLAIN</code>、备份与 WAL 概念</strong></td>
+</tr>
+<tr>
+<td><a href="/database/02-postgresql-docker/">第二章：Docker 部署 PostgreSQL 实践</a></td>
+<td>镜像、卷、<strong><code>POSTGRES_*</code></strong></td>
+</tr>
+</tbody></table>
+<p>以上描述以官方文档与当前大版本行为为准；内核细节以源码与 <strong>Wiki</strong> 为最终解释。</p>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>默认存储</td>
+<td><strong>heap 堆表</strong>：行按 <strong>tid</strong> 定位，主键索引是<strong>二级索引</strong>，查找需<strong>回表</strong></td>
+</tr>
+<tr>
+<td>页结构</td>
+<td>8KB 页 &#x3D; 页头 + <strong>ItemId 行指针</strong> + 空闲区 + 元组区；索引指行指针不指物理位置</td>
+</tr>
+<tr>
+<td>行头</td>
+<td><strong><code>xmin</code> &#x2F; <code>xmax</code> &#x2F; <code>ctid</code></strong> 撑起 MVCC 版本链；<code>UPDATE</code> &#x3D; 新增一版</td>
+</tr>
+<tr>
+<td>TOAST</td>
+<td>超 ~2KB 字段压缩+行外存储；四策略 <code>PLAIN/EXTENDED/EXTERNAL/MAIN</code>；更新 TOAST 列复制整值</td>
+</tr>
+<tr>
+<td>HOT 更新</td>
+<td>不改索引列且同页有空位时索引不动；<code>fillfactor=80~90</code> 提高命中率</td>
+</tr>
+<tr>
+<td>FSM &#x2F; VM</td>
+<td>FSM 帮插入找页；VM 撑 <code>Index Only Scan</code> 与 <code>VACUUM</code> 跳页</td>
+</tr>
+<tr>
+<td>WAL</td>
+<td>提交只需 WAL 顺序刷盘，数据页由 checkpointer 批量写；WAL 盘延迟 &#x3D; 提交延迟</td>
+</tr>
+<tr>
+<td>分区表</td>
+<td>逻辑表切成物理 heap 子表：分区裁剪、秒级归档、分区级维护；分区数控制在几百内</td>
+</tr>
+<tr>
+<td>表访问方法</td>
+<td><strong>PG 12+</strong> 支持 <strong><code>USING heap</code></strong> 抽象，但生产实际仍是 <strong>heap</strong>，列存等方案多在<strong>架构层</strong></td>
+</tr>
+<tr>
+<td>易混概念</td>
+<td><strong><code>TABLESPACE</code></strong> 是文件位置、<strong>TOAST</strong> 是行外存储、<strong>FDW</strong> 是外部表、<strong>GiST&#x2F;GIN</strong> 等是<strong>索引</strong>——都不是「换引擎」</td>
+</tr>
+<tr>
+<td>调优焦点</td>
+<td>少问「用哪个引擎」，多问<strong>索引类型、执行计划、<code>VACUUM</code>、隔离级别与锁</strong></td>
+</tr>
+</tbody></table>
+<h2 id="下一章"><a href="#下一章" class="headerlink" title="下一章"></a>下一章</h2>
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/PostgreSQL/" rel="tag"># PostgreSQL</a>
+              <a href="/tags/MVCC/" rel="tag"># MVCC</a>
+              <a href="/tags/%E5%AD%98%E5%82%A8/" rel="tag"># 存储</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/mysql/06-mysql-storage-engines/" rel="prev" title="第六章：MySQL 存储引擎">
+                  <i class="fa fa-angle-left"></i> 第六章：MySQL 存储引擎
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/database/04-postgresql-advanced-query/" rel="next" title="第四章：PostgreSQL 高级查询">
+                  第四章：PostgreSQL 高级查询 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

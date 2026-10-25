@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第二章：Docker 部署 MySQL 实践概念基础容器化是「把 MySQL 实例连同版本、配置、账号一次性描述清楚」的部署方式：  环境一致、随起随删：一条命令拉起带指定版本、字符集、账号密码的实例，不污染宿主机；卸载即删容器，重装零成本——这正是第一章建好表结构之后最需要的环境。 数据与容器分离：容器可随时销毁，数据必须落在卷（volume）；命名卷 mysql-data 持久化 &#x2F;var&#x2F;l">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第二章：Docker 部署 MySQL 实践">
+<meta property="og:url" content="https://my919.github.io/mysql/02-mysql-docker/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第二章：Docker 部署 MySQL 实践概念基础容器化是「把 MySQL 实例连同版本、配置、账号一次性描述清楚」的部署方式：  环境一致、随起随删：一条命令拉起带指定版本、字符集、账号密码的实例，不污染宿主机；卸载即删容器，重装零成本——这正是第一章建好表结构之后最需要的环境。 数据与容器分离：容器可随时销毁，数据必须落在卷（volume）；命名卷 mysql-data 持久化 &#x2F;var&#x2F;l">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T12:35:17.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.582Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="Docker Compose">
+<meta property="article:tag" content="Kubernetes">
+<meta property="article:tag" content="MySQL">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/mysql/02-mysql-docker/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/mysql/02-mysql-docker/","path":"mysql/02-mysql-docker/","title":"第二章：Docker 部署 MySQL 实践"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第二章：Docker 部署 MySQL 实践 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E7%AB%A0%EF%BC%9ADocker-%E9%83%A8%E7%BD%B2-MySQL-%E5%AE%9E%E8%B7%B5"><span class="nav-number">1.</span> <span class="nav-text">第二章：Docker 部署 MySQL 实践</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%89%8D%E7%BD%AE%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.2.</span> <span class="nav-text">一、前置条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81MySQL-%E9%95%9C%E5%83%8F%E9%80%89%E6%8B%A9"><span class="nav-number">1.3.</span> <span class="nav-text">二、MySQL 镜像选择</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%AE%98%E6%96%B9%E9%95%9C%E5%83%8F%EF%BC%88%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 官方镜像（推荐）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%8F%98%E4%BD%93%E8%AF%B4%E6%98%8E"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 变体说明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%AD%97%E7%AC%A6%E9%9B%86%E4%B8%8E%E6%8E%92%E5%BA%8F%E8%A7%84%E5%88%99"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. 字符集与排序规则</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%8D%95%E5%AE%B9%E5%99%A8%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2%EF%BC%88docker-run%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">三、单容器一键部署（docker run）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux-macOS-Git-Bash%EF%BC%88-%E7%BB%AD%E8%A1%8C%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">Linux &#x2F; macOS &#x2F; Git Bash（\ 续行）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Windows-CMD%EF%BC%88-%E7%BB%AD%E8%A1%8C%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">Windows CMD（^ 续行）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81Docker-Compose-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2"><span class="nav-number">1.5.</span> <span class="nav-text">四、Docker Compose 一键部署</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81Kubernetes-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2%EF%BC%88%E5%8D%95%E6%96%87%E4%BB%B6%E5%AE%8C%E6%95%B4%E6%B8%85%E5%8D%95%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">五、Kubernetes 一键部署（单文件完整清单）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E6%8C%82%E8%BD%BD%E8%87%AA%E5%AE%9A%E4%B9%89-my-cnf%EF%BC%88%E7%94%9F%E4%BA%A7%E6%8E%A8%E8%8D%90%E5%A7%BF%E5%8A%BF%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">六、挂载自定义 my.cnf（生产推荐姿势）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%87%86%E5%A4%87%E5%AE%BF%E4%B8%BB%E6%9C%BA%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. 准备宿主机配置文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%8C%82%E8%BD%BD%E4%B8%8E%E7%94%9F%E6%95%88"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. 挂载与生效</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E4%B8%80%E9%94%AE%E7%BC%96%E6%8E%92%EF%BC%88Compose-%E7%89%88%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">七、主从复制一键编排（Compose 版）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E5%AE%B9%E5%99%A8%E5%86%85%E5%A4%87%E4%BB%BD%E4%B8%8E%E6%81%A2%E5%A4%8D%E5%AE%9E%E6%88%98"><span class="nav-number">1.9.</span> <span class="nav-text">八、容器内备份与恢复实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-mysqldump-%E9%80%BB%E8%BE%91%E5%A4%87%E4%BB%BD%EF%BC%88%E6%9C%80%E5%B8%B8%E7%94%A8%EF%BC%89"><span class="nav-number">1.9.1.</span> <span class="nav-text">1. mysqldump 逻辑备份（最常用）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-binlog-%E5%A4%87%E4%BB%BD%E4%B8%8E-PITR%EF%BC%88%E6%8C%89%E6%97%B6%E9%97%B4%E7%82%B9%E6%81%A2%E5%A4%8D%EF%BC%89"><span class="nav-number">1.9.2.</span> <span class="nav-text">2. binlog 备份与 PITR（按时间点恢复）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%AE%9A%E6%97%B6%E5%A4%87%E4%BB%BD%EF%BC%88%E5%AE%BF%E4%B8%BB%E6%9C%BA-cron%EF%BC%89"><span class="nav-number">1.9.3.</span> <span class="nav-text">3. 定时备份（宿主机 cron）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%9D%E3%80%81%E5%AE%B9%E5%99%A8%E5%8C%96%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9%EF%BC%88%E9%81%BF%E5%9D%91%E6%B8%85%E5%8D%95%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">九、容器化注意事项（避坑清单）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%95%B0%E6%8D%AE%E5%8D%B7%E4%B8%8E%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.10.1.</span> <span class="nav-text">1. 数据卷与文件系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%86%85%E5%AD%98%E9%99%90%E5%88%B6%E4%B8%8E-OOM%EF%BC%88%E6%9C%80%E9%AB%98%E5%8F%91%E4%BA%8B%E6%95%85%EF%BC%89"><span class="nav-number">1.10.2.</span> <span class="nav-text">2. 内存限制与 OOM（最高发事故）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%85%B6%E4%BB%96%E9%AB%98%E9%A2%91%E5%9D%91"><span class="nav-number">1.10.3.</span> <span class="nav-text">3. 其他高频坑</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%81%E3%80%81%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">十、小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.12.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/mysql/02-mysql-docker/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第二章：Docker 部署 MySQL 实践 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第二章：Docker 部署 MySQL 实践
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 20:35:17" itemprop="dateCreated datePublished" datetime="2026-05-01T20:35:17+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/MySQL-%E6%B7%B1%E5%85%A5/" itemprop="url" rel="index"><span itemprop="name">MySQL 深入</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>14k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>13 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第二章：Docker-部署-MySQL-实践"><a href="#第二章：Docker-部署-MySQL-实践" class="headerlink" title="第二章：Docker 部署 MySQL 实践"></a>第二章：Docker 部署 MySQL 实践</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>容器化</strong>是「把 MySQL 实例连同版本、配置、账号一次性描述清楚」的部署方式：</p>
+<ol>
+<li><strong>环境一致、随起随删</strong>：一条命令拉起带指定<strong>版本、字符集、账号密码</strong>的实例，不污染宿主机；卸载即删容器，重装零成本——这正是第一章建好表结构之后最需要的环境。</li>
+<li><strong>数据与容器分离</strong>：容器可随时销毁，<strong>数据必须落在卷（volume）</strong>；命名卷 <strong><code>mysql-data</code></strong> 持久化 <strong><code>/var/lib/mysql</code></strong>，删容器不丢数据，但<strong>删卷等于删库</strong>，这是容器数据库的第一铁律。</li>
+<li><strong>镜像即版本契约</strong>：优先官方 <strong><code>mysql</code></strong> 镜像并<strong>固定小版本标签</strong>（如 <strong><code>mysql:8.0.40</code></strong>）或 <strong>digest</strong>，避免 <strong><code>latest</code></strong> 漂移；<strong>8.0</strong> 起默认认证插件 <strong><code>caching_sha2_password</code></strong>，老客户端需升级或调整参数。</li>
+<li><strong>初始化只发生一次</strong>：<strong><code>/docker-entrypoint-initdb.d</code></strong> 下的 <strong><code>.sql</code> &#x2F; <code>.sh</code></strong> 仅在<strong>首次空数据目录</strong>时执行；之后的表结构变更要走 SQL 迁移，不会自动重放。</li>
+<li><strong>部署形态递进</strong>：单容器（<strong><code>docker run</code></strong>）→ 编排（<strong>Docker Compose</strong>）→ 集群（<strong>Kubernetes</strong>）；开发环境用前者即可，生产还要叠加<strong>备份、监控、网络策略、TLS 与 Secret 管控</strong>。</li>
+</ol>
+<p>按部署形态由简到繁依次展开：</p>
+<h2 id="一、前置条件"><a href="#一、前置条件" class="headerlink" title="一、前置条件"></a>一、前置条件</h2><p>本机已安装 <strong><code>docker</code></strong>，并能使用 <strong><code>docker compose</code></strong>（<strong>Compose V2</strong> 插件，命令为 <strong><code>docker compose</code></strong>；若仍使用旧版独立程序，则将下文中的 <strong><code>docker compose</code></strong> 换成 <strong><code>docker-compose</code></strong>）。</p>
+<p>验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker version</span><br><span class="line">docker compose version</span><br></pre></td></tr></table></figure>
+
+<p>满足即可，与宿主机操作系统无关。</p>
+<hr>
+<h2 id="二、MySQL-镜像选择"><a href="#二、MySQL-镜像选择" class="headerlink" title="二、MySQL 镜像选择"></a>二、MySQL 镜像选择</h2><h3 id="1-官方镜像（推荐）"><a href="#1-官方镜像（推荐）" class="headerlink" title="1. 官方镜像（推荐）"></a>1. 官方镜像（推荐）</h3><ul>
+<li><strong>仓库</strong>：<strong><code>mysql</code></strong>（Docker Hub 官方库，由 <strong>Oracle</strong> &#x2F; <strong>MySQL</strong> 团队维护）。  </li>
+<li><strong>常用标签</strong>：  <ul>
+<li><strong><code>mysql:8.0</code></strong>：<strong>8.0</strong> 长期维护线，生态兼容面广（<strong>WordPress</strong>、旧驱动等多以 <strong>8.0</strong> 为基准）。  </li>
+<li><strong><code>mysql:8.4</code></strong> 或 <strong><code>mysql:lts</code></strong>：较新的 <strong>LTS</strong> 线（以 <a target="_blank" rel="noopener" href="https://hub.docker.com/_/mysql/tags">Docker Hub mysql tags</a> 为准）。</li>
+</ul>
+</li>
+<li><strong>生产建议</strong>：固定小版本标签（如 <strong><code>mysql:8.0.40</code></strong>）或记录 <strong>digest</strong>，避免 <strong><code>latest</code></strong> 漂移导致行为变化。</li>
+</ul>
+<h3 id="2-变体说明"><a href="#2-变体说明" class="headerlink" title="2. 变体说明"></a>2. 变体说明</h3><table>
+<thead>
+<tr>
+<th>需求</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>默认认证插件</strong></td>
+<td><strong>8.0</strong> 起默认 <strong><code>caching_sha2_password</code></strong>；老客户端不支持时需调整 <strong><code>--default-authentication-plugin</code></strong> 或升级客户端（<strong>MySQL 8.4</strong> 已移除 <strong><code>mysql_native_password</code></strong>，迁移前查发行说明）。</td>
+</tr>
+<tr>
+<td><strong>ARM64</strong>（Apple Silicon 等）</td>
+<td>官方 <strong><code>mysql</code></strong> 多架构镜像一般可直接拉取；若某标签缺架构，换标签或查 Hub <strong>OS&#x2F;ARCH</strong>。</td>
+</tr>
+<tr>
+<td><strong>极简&#x2F;定制</strong></td>
+<td>社区有 <strong><code>bitnami/mysql</code></strong> 等，参数与路径与官方不同，切换镜像时需对照该镜像文档。</td>
+</tr>
+</tbody></table>
+<h3 id="3-字符集与排序规则"><a href="#3-字符集与排序规则" class="headerlink" title="3. 字符集与排序规则"></a>3. 字符集与排序规则</h3><p>容器内建议在 <strong><code>command</code></strong> 或 <strong><code>my.cnf</code></strong> 中显式指定 <strong><code>utf8mb4</code></strong>，与业务库一致，避免默认与连接串不一致。</p>
+<hr>
+<p><strong>1Panel（推荐）</strong>：在 <strong>Linux</strong> 宿主机上若希望少手写命令、仍以容器方式运行 <strong>MySQL</strong>，可先安装 <a target="_blank" rel="noopener" href="https://1panel.cn/"><strong>1Panel</strong></a>（开源 <strong>Linux</strong> 运维面板），在 <strong>「应用商店」</strong> 中选择 <strong>MySQL</strong> 一键部署：由面板负责镜像版本、数据持久化、端口映射与（可选）计划备份，启停与日志可在界面查看。与下文 <strong><code>docker run</code> &#x2F; Compose &#x2F; K8s</strong> 中的环境变量、卷与字符集语义对齐或排障时，自 <strong># 三</strong> 起各节仍可作对照。适合单台 <strong>VPS</strong>、家庭服务器等「一台机子上稳态跑库」的场景。</p>
+<hr>
+<h2 id="三、单容器一键部署（docker-run）"><a href="#三、单容器一键部署（docker-run）" class="headerlink" title="三、单容器一键部署（docker run）"></a>三、单容器一键部署（<code>docker run</code>）</h2><p><strong>一条命令</strong>启动（与下述参数一致；<strong>命名卷</strong> <strong><code>mysql-data</code></strong>、<strong><code>mysql-init</code></strong> 在首次运行时会由 <strong>Docker</strong> 自动创建，无需在宿主机 <strong><code>mkdir</code></strong>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d   --name mysql-dev   -e MYSQL_ROOT_PASSWORD=<span class="string">&quot;pi=3.1415&quot;</span>   -e MYSQL_DATABASE=<span class="string">&quot;app&quot;</span>   -e MYSQL_USER=<span class="string">&quot;admin&quot;</span>   -e MYSQL_PASSWORD=<span class="string">&quot;pi=3.1415&quot;</span>   -p 3306:3306   -v mysql-data:/var/lib/mysql   -v mysql-init:/docker-entrypoint-initdb.d:ro   mysql:8.0   --character-set-server=utf8mb4   --collation-server=utf8mb4_unicode_ci</span><br></pre></td></tr></table></figure>
+
+<p>多行可读（与上条等价；按终端选一种）：</p>
+<h3 id="Linux-macOS-Git-Bash（-续行）"><a href="#Linux-macOS-Git-Bash（-续行）" class="headerlink" title="Linux &#x2F; macOS &#x2F; Git Bash（\ 续行）"></a>Linux &#x2F; macOS &#x2F; Git Bash（<code>\</code> 续行）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">docker run -d\</span><br><span class="line">  --name mysql-dev\</span><br><span class="line">  -e MYSQL_ROOT_PASSWORD=<span class="string">&quot;pi=3.1415&quot;</span>\</span><br><span class="line">  -e MYSQL_DATABASE=<span class="string">&quot;app&quot;</span>\</span><br><span class="line">  -e MYSQL_USER=<span class="string">&quot;admin&quot;</span>\</span><br><span class="line">  -e MYSQL_PASSWORD=<span class="string">&quot;pi=3.1415&quot;</span>\</span><br><span class="line">  -p 3306:3306\</span><br><span class="line">  -v mysql-data:/var/lib/mysql\</span><br><span class="line">  -v mysql-init:/docker-entrypoint-initdb.d:ro\</span><br><span class="line">  mysql:8.0\</span><br><span class="line">  --character-set-server=utf8mb4\</span><br><span class="line">  --collation-server=utf8mb4_unicode_ci</span><br></pre></td></tr></table></figure>
+
+<h3 id="Windows-CMD（-续行）"><a href="#Windows-CMD（-续行）" class="headerlink" title="Windows CMD（^ 续行）"></a>Windows CMD（<code>^</code> 续行）</h3><figure class="highlight bat"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">docker run -d^</span><br><span class="line">  --name mysql-dev^</span><br><span class="line">  -e MYSQL_ROOT_PASSWORD=&quot;pi=<span class="number">3</span>.<span class="number">1415</span>&quot;^</span><br><span class="line">  -e MYSQL_DATABASE=&quot;app&quot;^</span><br><span class="line">  -e MYSQL_USER=&quot;admin&quot;^</span><br><span class="line">  -e MYSQL_PASSWORD=&quot;pi=<span class="number">3</span>.<span class="number">1415</span>&quot;^</span><br><span class="line">  -p <span class="number">3306</span>:<span class="number">3306</span>^</span><br><span class="line">  -v mysql-data:/var/lib/mysql^</span><br><span class="line">  -v mysql-init:/docker-entrypoint-initdb.d:ro^</span><br><span class="line"><span class="function">  mysql:8.0^</span></span><br><span class="line"><span class="function">  --<span class="title">character</span>-<span class="title">set</span>-<span class="title">server</span>=<span class="title">utf8mb4</span>^</span></span><br><span class="line"><span class="function">  --<span class="title">collation</span>-<span class="title">server</span>=<span class="title">utf8mb4_unicode_ci</span></span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Windows 说明</strong>：<strong>Docker Desktop</strong> 下命名卷写法与 <strong>Linux</strong> 一致；若在 <strong>CMD</strong> 中路径或引号报错，可改用 <strong>PowerShell</strong>（行末续行符为 <strong><code>`</code></strong>）或仍用<strong>一条命令</strong>单行复制。</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>-e MYSQL_*</code></strong></td>
+<td><strong>root</strong> 与应用库 <strong><code>app</code></strong>、用户 <strong><code>admin</code></strong> 的密码（示例为 <strong><code>pi=3.1415</code></strong>，含 <strong><code>=</code></strong> 故用引号包住）</td>
+</tr>
+<tr>
+<td><strong><code>-v mysql-data:</code></strong></td>
+<td>数据目录持久化到 <strong>Docker 命名卷</strong> <strong><code>mysql-data</code></strong></td>
+</tr>
+<tr>
+<td><strong><code>-v mysql-init:</code></strong></td>
+<td>初始化脚本目录挂载为<strong>只读</strong>命名卷 <strong><code>mysql-init</code></strong>；<strong><code>.sql</code> &#x2F; <code>.sh</code></strong> 仅在<strong>首次空数据目录</strong>时执行</td>
+</tr>
+<tr>
+<td>末尾 <strong><code>--character-*</code></strong></td>
+<td>传给 <strong><code>mysqld</code></strong>：服务端 <strong>utf8mb4</strong> &#x2F; <strong><code>utf8mb4_unicode_ci</code></strong></td>
+</tr>
+</tbody></table>
+<p>若要把 <strong><code>.sql</code></strong> 放进命名卷 <strong><code>mysql-init</code></strong>，可任选其一：<strong>①</strong> 临时容器拷入 <strong><code>docker run --rm -v mysql-init:/init ...</code></strong>；<strong>②</strong> 改用绑定挂载 <strong><code>-v /宿主机路径/mysql-init:/docker-entrypoint-initdb.d:ro</code></strong>，便于本机直接放文件。</p>
+<p>常用运维一条命令：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker logs -f mysql-dev</span><br><span class="line">docker stop mysql-dev &amp;&amp; docker <span class="built_in">rm</span> mysql-dev</span><br></pre></td></tr></table></figure>
+
+<p>已有数据卷时<strong>不会</strong>再次执行 <strong><code>docker-entrypoint-initdb.d</code></strong> 内脚本；清空数据需删卷：<strong><code>docker volume rm mysql-data</code></strong>（<strong>会删库</strong>，且须先删容器）。</p>
+<hr>
+<h2 id="四、Docker-Compose-一键部署"><a href="#四、Docker-Compose-一键部署" class="headerlink" title="四、Docker Compose 一键部署"></a>四、Docker Compose 一键部署</h2><p>将下面内容保存为 <strong><code>docker-compose.mysql.yml</code></strong>（与 <strong># 一</strong> 要求一致：已能执行 <strong><code>docker compose</code></strong>）。敏感项建议放在同目录 <strong><code>.env</code></strong>（加入 <strong><code>.gitignore</code></strong>），勿长期写死在仓库。</p>
+<p><strong>一条命令</strong>启动全栈（在 <strong><code>docker-compose.mysql.yml</code></strong> 所在目录执行）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.mysql.yml up -d</span><br></pre></td></tr></table></figure>
+
+<p>以下为 <strong><code>docker-compose.mysql.yml</code></strong> 全文：<strong><code>version</code></strong>、<strong><code>name</code></strong>、<strong>命名卷</strong>、<strong>健康检查</strong>、<strong>字符集参数</strong>。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">&quot;3.8&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">name:</span> <span class="string">mysql-stack</span></span><br><span class="line"></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">mysql:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">mysql:8.0</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">mysql-dev</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">unless-stopped</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">MYSQL_ROOT_PASSWORD:</span> <span class="string">$&#123;MYSQL_ROOT_PASSWORD:-pi=3.1415&#125;</span></span><br><span class="line">      <span class="attr">MYSQL_DATABASE:</span> <span class="string">$&#123;MYSQL_DATABASE:-app&#125;</span></span><br><span class="line">      <span class="attr">MYSQL_USER:</span> <span class="string">$&#123;MYSQL_USER:-admin&#125;</span></span><br><span class="line">      <span class="attr">MYSQL_PASSWORD:</span> <span class="string">$&#123;MYSQL_PASSWORD:-pi=3.1415&#125;</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">Asia/Shanghai</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;3306:3306&quot;</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">mysql-data:/var/lib/mysql</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">mysql-init:/docker-entrypoint-initdb.d:ro</span></span><br><span class="line">    <span class="attr">command:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--character-set-server=utf8mb4&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--collation-server=utf8mb4_unicode_ci&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--default-authentication-plugin=caching_sha2_password&quot;</span></span><br><span class="line">    <span class="attr">healthcheck:</span></span><br><span class="line">      <span class="attr">test:</span> [<span class="string">&quot;CMD-SHELL&quot;</span>, <span class="string">&quot;mysqladmin ping -h 127.0.0.1 -uroot -p\&quot;$$MYSQL_ROOT_PASSWORD\&quot; || exit 1&quot;</span>]</span><br><span class="line">      <span class="attr">interval:</span> <span class="string">5s</span></span><br><span class="line">      <span class="attr">timeout:</span> <span class="string">5s</span></span><br><span class="line">      <span class="attr">retries:</span> <span class="number">30</span></span><br><span class="line">      <span class="attr">start_period:</span> <span class="string">40s</span></span><br><span class="line"></span><br><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="attr">mysql-data:</span></span><br><span class="line">    <span class="attr">driver:</span> <span class="string">local</span></span><br><span class="line">  <span class="attr">mysql-init:</span></span><br><span class="line">    <span class="attr">driver:</span> <span class="string">local</span></span><br></pre></td></tr></table></figure>
+
+<p>同目录可选 <strong><code>.env</code></strong>（勿提交；与 <strong># 三</strong> 一条 <strong><code>docker run</code></strong> 对齐）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">MYSQL_ROOT_PASSWORD=pi=3.1415</span><br><span class="line">MYSQL_DATABASE=app</span><br><span class="line">MYSQL_USER=admin</span><br><span class="line">MYSQL_PASSWORD=pi=3.1415</span><br></pre></td></tr></table></figure>
+
+<p>查看状态、日志、停止并删除容器（保留数据卷）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.mysql.yml ps</span><br><span class="line">docker compose -f docker-compose.mysql.yml logs -f mysql</span><br><span class="line">docker compose -f docker-compose.mysql.yml down</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>down</code></strong> 默认保留命名卷 <strong><code>mysql-data</code></strong>、<strong><code>mysql-init</code></strong>；若需清空数据加 <strong><code>docker compose ... down -v</code></strong>（<strong>会删库</strong>）。</p>
+<hr>
+<h2 id="五、Kubernetes-一键部署（单文件完整清单）"><a href="#五、Kubernetes-一键部署（单文件完整清单）" class="headerlink" title="五、Kubernetes 一键部署（单文件完整清单）"></a>五、Kubernetes 一键部署（单文件完整清单）</h2><p>将下面内容保存为 <strong><code>mysql-k8s.yaml</code></strong> 后，<strong>一条命令</strong>应用：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl apply -f mysql-k8s.yaml</span><br></pre></td></tr></table></figure>
+
+<p>清单含 <strong>Secret</strong>（<strong>root</strong> 与应用账号）、<strong>PVC</strong>、<strong>Deployment</strong>、<strong>ClusterIP Service</strong>。未写 <strong><code>storageClassName</code></strong> 时使用集群默认 <strong>StorageClass</strong>；无默认 <strong>SC</strong> 时请在 <strong>PVC</strong> 中补上 <strong><code>storageClassName</code></strong>。命名空间为 <strong><code>default</code></strong>，可按需修改 <strong><code>metadata.namespace</code></strong>。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Secret</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">mysql-secret</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">type:</span> <span class="string">Opaque</span></span><br><span class="line"><span class="attr">stringData:</span></span><br><span class="line">  <span class="attr">MYSQL_ROOT_PASSWORD:</span> <span class="string">&quot;pi=3.1415&quot;</span></span><br><span class="line">  <span class="attr">MYSQL_DATABASE:</span> <span class="string">&quot;app&quot;</span></span><br><span class="line">  <span class="attr">MYSQL_USER:</span> <span class="string">&quot;admin&quot;</span></span><br><span class="line">  <span class="attr">MYSQL_PASSWORD:</span> <span class="string">&quot;pi=3.1415&quot;</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">PersistentVolumeClaim</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">mysql-data</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">accessModes:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ReadWriteOnce</span></span><br><span class="line">  <span class="attr">resources:</span></span><br><span class="line">    <span class="attr">requests:</span></span><br><span class="line">      <span class="attr">storage:</span> <span class="string">20Gi</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">mysql</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">mysql</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">replicas:</span> <span class="number">1</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">mysql</span></span><br><span class="line">  <span class="attr">strategy:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">Recreate</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">metadata:</span></span><br><span class="line">      <span class="attr">labels:</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">mysql</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">mysql</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">mysql:8.0</span></span><br><span class="line">          <span class="attr">ports:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">3306</span></span><br><span class="line">              <span class="attr">name:</span> <span class="string">mysql</span></span><br><span class="line">          <span class="attr">env:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">MYSQL_ROOT_PASSWORD</span></span><br><span class="line">              <span class="attr">valueFrom:</span></span><br><span class="line">                <span class="attr">secretKeyRef:</span></span><br><span class="line">                  <span class="attr">name:</span> <span class="string">mysql-secret</span></span><br><span class="line">                  <span class="attr">key:</span> <span class="string">MYSQL_ROOT_PASSWORD</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">MYSQL_DATABASE</span></span><br><span class="line">              <span class="attr">valueFrom:</span></span><br><span class="line">                <span class="attr">secretKeyRef:</span></span><br><span class="line">                  <span class="attr">name:</span> <span class="string">mysql-secret</span></span><br><span class="line">                  <span class="attr">key:</span> <span class="string">MYSQL_DATABASE</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">MYSQL_USER</span></span><br><span class="line">              <span class="attr">valueFrom:</span></span><br><span class="line">                <span class="attr">secretKeyRef:</span></span><br><span class="line">                  <span class="attr">name:</span> <span class="string">mysql-secret</span></span><br><span class="line">                  <span class="attr">key:</span> <span class="string">MYSQL_USER</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">MYSQL_PASSWORD</span></span><br><span class="line">              <span class="attr">valueFrom:</span></span><br><span class="line">                <span class="attr">secretKeyRef:</span></span><br><span class="line">                  <span class="attr">name:</span> <span class="string">mysql-secret</span></span><br><span class="line">                  <span class="attr">key:</span> <span class="string">MYSQL_PASSWORD</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">TZ</span></span><br><span class="line">              <span class="attr">value:</span> <span class="string">&quot;Asia/Shanghai&quot;</span></span><br><span class="line">          <span class="attr">args:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">&quot;--character-set-server=utf8mb4&quot;</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">&quot;--collation-server=utf8mb4_unicode_ci&quot;</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">&quot;--default-authentication-plugin=caching_sha2_password&quot;</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> <span class="string">/var/lib/mysql</span></span><br><span class="line">          <span class="attr">readinessProbe:</span></span><br><span class="line">            <span class="attr">tcpSocket:</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">3306</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">15</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">5</span></span><br><span class="line">            <span class="attr">timeoutSeconds:</span> <span class="number">3</span></span><br><span class="line">            <span class="attr">failureThreshold:</span> <span class="number">30</span></span><br><span class="line">          <span class="attr">livenessProbe:</span></span><br><span class="line">            <span class="attr">tcpSocket:</span></span><br><span class="line">              <span class="attr">port:</span> <span class="number">3306</span></span><br><span class="line">            <span class="attr">initialDelaySeconds:</span> <span class="number">60</span></span><br><span class="line">            <span class="attr">periodSeconds:</span> <span class="number">10</span></span><br><span class="line">            <span class="attr">timeoutSeconds:</span> <span class="number">5</span></span><br><span class="line">            <span class="attr">failureThreshold:</span> <span class="number">6</span></span><br><span class="line">          <span class="attr">resources:</span></span><br><span class="line">            <span class="attr">requests:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;512Mi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;250m&quot;</span></span><br><span class="line">            <span class="attr">limits:</span></span><br><span class="line">              <span class="attr">memory:</span> <span class="string">&quot;1Gi&quot;</span></span><br><span class="line">              <span class="attr">cpu:</span> <span class="string">&quot;1000m&quot;</span></span><br><span class="line">      <span class="attr">volumes:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">          <span class="attr">persistentVolumeClaim:</span></span><br><span class="line">            <span class="attr">claimName:</span> <span class="string">mysql-data</span></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Service</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">mysql</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">mysql</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">ClusterIP</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">mysql</span></span><br><span class="line">  <span class="attr">ports:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">mysql</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">3306</span></span><br><span class="line">      <span class="attr">targetPort:</span> <span class="number">3306</span></span><br></pre></td></tr></table></figure>
+
+<p>查看资源与连接前检查：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get pods,svc,pvc -l app=mysql</span><br></pre></td></tr></table></figure>
+
+<p>集群内连接串示例（按 <strong>namespace</strong> 调整）：<strong><code>admin:pi=3.1415@tcp(mysql.default.svc.cluster.local:3306)/app?parseTime=true&amp;charset=utf8mb4</code></strong>（密码含 <strong><code>=</code></strong> 时 <strong>URL</strong> 内需 <strong><code>encodeURIComponent</code></strong> 或改用 <strong>Secret</strong> 挂载 <strong><code>my.cnf</code></strong>，勿裸贴生产密钥）。</p>
+<p><strong>说明</strong>：<strong><code>strategy: Recreate</code></strong> 避免 <strong>RWO</strong> 卷被多副本 <strong>RollingUpdate</strong> 同时挂载；<strong>MySQL</strong> 主从、读写分离请用 <strong>Operator</strong> 或 <strong>StatefulSet</strong> 方案，勿直接水平扩展上述 <strong>Deployment</strong>。</p>
+<hr>
+<h2 id="六、挂载自定义-my-cnf（生产推荐姿势）"><a href="#六、挂载自定义-my-cnf（生产推荐姿势）" class="headerlink" title="六、挂载自定义 my.cnf（生产推荐姿势）"></a>六、挂载自定义 my.cnf（生产推荐姿势）</h2><p><strong><code>command</code></strong> 里堆参数只适合少量项；参数一多就应改用<strong>配置文件挂载</strong>，便于版本管理与审计。</p>
+<h3 id="1-准备宿主机配置文件"><a href="#1-准备宿主机配置文件" class="headerlink" title="1. 准备宿主机配置文件"></a>1. 准备宿主机配置文件</h3><p>保存为 <strong><code>./conf/my.cnf</code></strong>（<strong>注意</strong>：<strong><code>[mysqld]</code></strong> 段内写参数，<strong>客户端参数</strong>放 <strong><code>[client]</code></strong>）：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[mysqld]</span></span><br><span class="line"><span class="attr">character-set-server</span> = utf8mb4</span><br><span class="line"><span class="attr">collation-server</span>     = utf8mb4_unicode_ci</span><br><span class="line"><span class="attr">default-time-zone</span>    = <span class="string">&#x27;+8:00&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># InnoDB 核心（按容器内存限额调整）</span></span><br><span class="line"><span class="attr">innodb_buffer_pool_size</span>        = <span class="number">1</span>G</span><br><span class="line"><span class="attr">innodb_redo_log_capacity</span>       = <span class="number">512</span>M</span><br><span class="line"><span class="attr">innodb_flush_log_at_trx_commit</span> = <span class="number">1</span>      <span class="comment"># 强一致；可降级为 2 换性能</span></span><br><span class="line"><span class="attr">sync_binlog</span>                    = <span class="number">1</span>      <span class="comment"># 与上项合称「双 1」，主从环境必开</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 慢查询日志</span></span><br><span class="line"><span class="attr">slow_query_log</span>      = <span class="number">1</span></span><br><span class="line"><span class="attr">long_query_time</span>     = <span class="number">1</span></span><br><span class="line"><span class="attr">slow_query_log_file</span> = /var/log/mysql/slow.log</span><br><span class="line"></span><br><span class="line"><span class="comment"># 连接与超时</span></span><br><span class="line"><span class="attr">max_connections</span>        = <span class="number">500</span></span><br><span class="line"><span class="attr">wait_timeout</span>           = <span class="number">600</span></span><br><span class="line"><span class="attr">interactive_timeout</span>    = <span class="number">600</span></span><br><span class="line"></span><br><span class="line"><span class="section">[client]</span></span><br><span class="line"><span class="attr">default-character-set</span> = utf8mb4</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-挂载与生效"><a href="#2-挂载与生效" class="headerlink" title="2. 挂载与生效"></a>2. 挂载与生效</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">docker run -d \</span><br><span class="line">  --name mysql-dev \</span><br><span class="line">  -e MYSQL_ROOT_PASSWORD=<span class="string">&quot;pi=3.1415&quot;</span> \</span><br><span class="line">  -v mysql-data:/var/lib/mysql \</span><br><span class="line">  -v /宿主机路径/conf/my.cnf:/etc/mysql/conf.d/custom.cnf:ro \</span><br><span class="line">  -p 3306:3306 \</span><br><span class="line">  mysql:8.4</span><br></pre></td></tr></table></figure>
+
+<p>官方镜像的 <strong><code>/etc/mysql/my.cnf</code></strong> 末尾会 <strong><code>!includedir /etc/mysql/conf.d/</code></strong>，故挂到 <strong><code>conf.d</code></strong> 下即被加载；<strong>同名参数后加载者生效</strong>，可用于覆盖镜像默认值。</p>
+<p><strong>坑位提示</strong>：</p>
+<ol>
+<li>配置文件必须<strong>以只读挂载（<code>:ro</code>）</strong>，避免容器内进程误改；</li>
+<li><strong><code>innodb_buffer_pool_size</code> 必须小于容器内存限额</strong>，留足连接缓冲与系统余量，否则见 <strong># 九</strong> 的 OOM 一节；</li>
+<li>改配置后需 <strong><code>docker restart</code></strong> 生效；动态参数可优先 <strong><code>SET GLOBAL</code></strong> 临时验证。</li>
+</ol>
+<hr>
+<h2 id="七、主从复制一键编排（Compose-版）"><a href="#七、主从复制一键编排（Compose-版）" class="headerlink" title="七、主从复制一键编排（Compose 版）"></a>七、主从复制一键编排（Compose 版）</h2><p>开发&#x2F;测试环境想用最小成本验证<strong>主从复制</strong>？一份 Compose 起一主一从。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">&quot;3.8&quot;</span></span><br><span class="line"><span class="attr">name:</span> <span class="string">mysql-repl</span></span><br><span class="line"></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">mysql-master:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">mysql:8.4</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">mysql-master</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">MYSQL_ROOT_PASSWORD:</span> <span class="string">&quot;pi=3.1415&quot;</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">Asia/Shanghai</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;3306:3306&quot;</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">master-data:/var/lib/mysql</span></span><br><span class="line">    <span class="attr">command:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--server-id=1&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--log-bin=mysql-bin&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--binlog-format=ROW&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--gtid-mode=ON&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--enforce-gtid-consistency=ON&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--character-set-server=utf8mb4&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">mysql-slave:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">mysql:8.4</span></span><br><span class="line">    <span class="attr">container_name:</span> <span class="string">mysql-slave</span></span><br><span class="line">    <span class="attr">environment:</span></span><br><span class="line">      <span class="attr">MYSQL_ROOT_PASSWORD:</span> <span class="string">&quot;pi=3.1415&quot;</span></span><br><span class="line">      <span class="attr">TZ:</span> <span class="string">Asia/Shanghai</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;3307:3306&quot;</span></span><br><span class="line">    <span class="attr">volumes:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">slave-data:/var/lib/mysql</span></span><br><span class="line">    <span class="attr">command:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--server-id=2&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--log-bin=mysql-bin&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--binlog-format=ROW&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--gtid-mode=ON&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--enforce-gtid-consistency=ON&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--read-only=ON&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--character-set-server=utf8mb4&quot;</span></span><br><span class="line">    <span class="attr">depends_on:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">mysql-master</span></span><br><span class="line"></span><br><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="attr">master-data:</span></span><br><span class="line">  <span class="attr">slave-data:</span></span><br></pre></td></tr></table></figure>
+
+<p>启动后在<strong>主库</strong>建复制账号，在<strong>从库</strong>指主并启动复制：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker compose -f docker-compose.repl.yml up -d</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 主库（mysql-master，3306）</span></span><br><span class="line"><span class="keyword">CREATE</span> <span class="keyword">USER</span> <span class="string">&#x27;repl&#x27;</span>@<span class="string">&#x27;%&#x27;</span> IDENTIFIED <span class="keyword">BY</span> <span class="string">&#x27;repl_pwd_2026&#x27;</span>;</span><br><span class="line"><span class="keyword">GRANT</span> REPLICATION SLAVE <span class="keyword">ON</span> <span class="operator">*</span>.<span class="operator">*</span> <span class="keyword">TO</span> <span class="string">&#x27;repl&#x27;</span>@<span class="string">&#x27;%&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 从库（mysql-slave，3307），8.0.23+ 用 CHANGE REPLICATION SOURCE TO</span></span><br><span class="line">CHANGE REPLICATION SOURCE <span class="keyword">TO</span></span><br><span class="line">  SOURCE_HOST     <span class="operator">=</span> <span class="string">&#x27;mysql-master&#x27;</span>,   <span class="comment">-- Compose 内部 DNS 服务名</span></span><br><span class="line">  SOURCE_PORT     <span class="operator">=</span> <span class="number">3306</span>,</span><br><span class="line">  SOURCE_USER     <span class="operator">=</span> <span class="string">&#x27;repl&#x27;</span>,</span><br><span class="line">  SOURCE_PASSWORD <span class="operator">=</span> <span class="string">&#x27;repl_pwd_2026&#x27;</span>,</span><br><span class="line">  SOURCE_AUTO_POSITION <span class="operator">=</span> <span class="number">1</span>;           <span class="comment">-- GTID 自动定位，免查 binlog 位点</span></span><br><span class="line"><span class="keyword">START</span> REPLICA;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 验证：两个 Yes 即成功</span></span><br><span class="line"><span class="keyword">SHOW</span> REPLICA STATUS\G</span><br><span class="line"><span class="comment">-- Replica_IO_Running: Yes</span></span><br><span class="line"><span class="comment">-- Replica_SQL_Running: Yes</span></span><br><span class="line"><span class="comment">-- Seconds_Behind_Source: 0</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>排障速查</strong>：IO 线程断多为<strong>网络&#x2F;账号&#x2F;防火墙</strong>；SQL 线程断多为<strong>数据冲突</strong>（从库被误写）——从库务必 <strong><code>read-only=ON</code></strong>，需要离线修数据时先 <strong><code>STOP REPLICA</code></strong>。生产级高可用（自动切换）请用 <strong>Orchestrator &#x2F; MHA &#x2F; Operator</strong>，Compose 编排仅用于学习与联调。</p>
+<hr>
+<h2 id="八、容器内备份与恢复实战"><a href="#八、容器内备份与恢复实战" class="headerlink" title="八、容器内备份与恢复实战"></a>八、容器内备份与恢复实战</h2><h3 id="1-mysqldump-逻辑备份（最常用）"><a href="#1-mysqldump-逻辑备份（最常用）" class="headerlink" title="1. mysqldump 逻辑备份（最常用）"></a>1. mysqldump 逻辑备份（最常用）</h3><p><strong>要点</strong>：在<strong>宿主机</strong>执行 <strong><code>docker exec</code></strong>，输出重定向到<strong>宿主机文件</strong>——备份文件不要留在容器里。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 全库备份（--single-transaction 保证 InnoDB 一致性快照，不锁表）</span></span><br><span class="line">docker <span class="built_in">exec</span> mysql-dev mysqldump -uroot -p<span class="string">&quot;pi=3.1415&quot;</span> \</span><br><span class="line">  --single-transaction --routines --triggers --events \</span><br><span class="line">  --databases app &gt; backup_$(<span class="built_in">date</span> +%F_%H%M).sql</span><br><span class="line"></span><br><span class="line"><span class="comment"># 恢复（把宿主机文件管道进容器）</span></span><br><span class="line">docker <span class="built_in">exec</span> -i mysql-dev mysql -uroot -p<span class="string">&quot;pi=3.1415&quot;</span> app &lt; backup_2026-10-25_0200.sql</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意重定向方向</strong>：<strong><code>&gt;</code></strong> 备份用 <strong><code>docker exec</code></strong>（无 <strong><code>-i</code></strong> 也可），<strong><code>&lt;</code></strong> 恢复必须加 <strong><code>-i</code></strong>（保持 STDIN 打开），否则恢复文件喂不进去。</p>
+<h3 id="2-binlog-备份与-PITR（按时间点恢复）"><a href="#2-binlog-备份与-PITR（按时间点恢复）" class="headerlink" title="2. binlog 备份与 PITR（按时间点恢复）"></a>2. binlog 备份与 PITR（按时间点恢复）</h3><p>前提是 <strong>my.cnf</strong> 已开 <strong><code>log-bin</code></strong>（见 <strong># 七</strong> 主从参数）。<strong>binlog 文件就在数据卷里</strong>，随卷持久化：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 binlog 列表</span></span><br><span class="line">docker <span class="built_in">exec</span> mysql-dev mysql -uroot -p<span class="string">&quot;pi=3.1415&quot;</span> -e <span class="string">&quot;SHOW BINARY LOGS;&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 把 binlog 文件拷出宿主机归档（数据卷路径可用 docker inspect 查）</span></span><br><span class="line">docker <span class="built_in">cp</span> mysql-dev:/var/lib/mysql/binlog.000003 ./archive/</span><br></pre></td></tr></table></figure>
+
+<p><strong>误删数据后的 PITR 流程</strong>（示例：10:00 全备，14:00 误删表）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ① 还原 10:00 的全量备份到恢复实例</span></span><br><span class="line">docker <span class="built_in">exec</span> -i mysql-restore mysql -uroot -p<span class="string">&quot;xxx&quot;</span> &lt; backup_1000.sql</span><br><span class="line"></span><br><span class="line"><span class="comment"># ② 重放 binlog 到「误删发生前一刻」</span></span><br><span class="line">docker <span class="built_in">exec</span> mysql-restore mysqlbinlog \</span><br><span class="line">  --start-datetime=<span class="string">&quot;2026-10-25 10:00:00&quot;</span> \</span><br><span class="line">  --stop-datetime=<span class="string">&quot;2026-10-25 13:59:59&quot;</span> \</span><br><span class="line">  /var/lib/mysql/binlog.000005 /var/lib/mysql/binlog.000006 \</span><br><span class="line">  | docker <span class="built_in">exec</span> -i mysql-restore mysql -uroot -p<span class="string">&quot;xxx&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>铁律</strong>：<strong>备份的有效性 &#x3D; 恢复演练的次数</strong>。每季度至少做一次完整恢复演练；binlog 与全备<strong>异地存放</strong>，跟数据卷同机同盘等于没备。</p>
+<h3 id="3-定时备份（宿主机-cron）"><a href="#3-定时备份（宿主机-cron）" class="headerlink" title="3. 定时备份（宿主机 cron）"></a>3. 定时备份（宿主机 cron）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># crontab -e，每天 02:30 备份并保留 14 天</span></span><br><span class="line">30 2 * * * docker <span class="built_in">exec</span> mysql-dev mysqldump -uroot -p<span class="string">&quot;pi=3.1415&quot;</span> --single-transaction app | gzip &gt; /backup/app_$(<span class="built_in">date</span> +\%F).sql.gz &amp;&amp; find /backup -name <span class="string">&quot;app_*.sql.gz&quot;</span> -mtime +14 -delete</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="九、容器化注意事项（避坑清单）"><a href="#九、容器化注意事项（避坑清单）" class="headerlink" title="九、容器化注意事项（避坑清单）"></a>九、容器化注意事项（避坑清单）</h2><h3 id="1-数据卷与文件系统"><a href="#1-数据卷与文件系统" class="headerlink" title="1. 数据卷与文件系统"></a>1. 数据卷与文件系统</h3><ul>
+<li><strong>必须用卷</strong>：容器层（容器可写层）性能差且随容器删除；命名卷或绑定挂载二选一，<strong>生产推荐绑定挂载到独立磁盘</strong>便于备份与迁移。</li>
+<li><strong>Windows &#x2F; macOS 的 Docker Desktop 有文件系统翻译层</strong>，<code>/var/lib/mysql</code> 绑定挂载到宿主机目录时 <strong>I&#x2F;O 性能显著下降</strong>且易遇权限问题——桌面系统上<strong>优先命名卷</strong>；生产一律 Linux 宿主机。</li>
+<li><strong>勿把数据目录挂到 NFS&#x2F;网盘类存储</strong>：锁语义与 fsync 行为不可靠，可能损坏数据。</li>
+</ul>
+<h3 id="2-内存限制与-OOM（最高发事故）"><a href="#2-内存限制与-OOM（最高发事故）" class="headerlink" title="2. 内存限制与 OOM（最高发事故）"></a>2. 内存限制与 OOM（最高发事故）</h3><p><strong>MySQL 默认按宿主机内存估算缓冲池</strong>。容器若限制 2G 内存而 <code>innodb_buffer_pool_size</code> 是默认的 128M 还好，但一旦你在 my.cnf 里按「机器有 32G」的习惯写了 8G，<strong>容器会被 cgroup OOM Killer 直接杀掉</strong>，表现为<strong>随机重启</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 确认是否死于 OOM</span></span><br><span class="line">docker inspect mysql-dev --format <span class="string">&#x27;&#123;&#123;.State.OOMKilled&#125;&#125;&#x27;</span></span><br><span class="line">dmesg | grep -i <span class="string">&#x27;killed process&#x27;</span>    <span class="comment"># Linux 宿主机</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>正确姿势</strong>（Compose 示例）：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">mysql:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">mysql:8.4</span></span><br><span class="line">    <span class="attr">deploy:</span></span><br><span class="line">      <span class="attr">resources:</span></span><br><span class="line">        <span class="attr">limits:</span></span><br><span class="line">          <span class="attr">memory:</span> <span class="string">4G</span>          <span class="comment"># 容器硬上限</span></span><br><span class="line">    <span class="attr">command:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--innodb-buffer-pool-size=2G&quot;</span>   <span class="comment"># 约为上限的 50%~60%</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;--performance-schema=OFF&quot;</span>       <span class="comment"># 内存紧张的小实例可省百余 MB</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>配比经验</strong>：<code>buffer_pool ≤ 限额 × 60%</code>，再预留连接开销（<strong><code>max_connections</code></strong> × 每连接缓冲约 10~20MB）、排序&#x2F;临时表与系统余量。</p>
+<h3 id="3-其他高频坑"><a href="#3-其他高频坑" class="headerlink" title="3. 其他高频坑"></a>3. 其他高频坑</h3><ol>
+<li><strong>时区</strong>：容器默认 <strong>UTC</strong>，务必 <strong><code>TZ=Asia/Shanghai</code></strong> + <strong><code>--default-time-zone=&#39;+8:00&#39;</code></strong> 双保险，否则 <code>NOW()</code> 差 8 小时。</li>
+<li><strong><code>lower_case_table_names</code></strong> 只能<strong>初始化时</strong>设定（数据目录非空后不可改），Linux 默认 0（大小写敏感），从 Windows 迁库前务必确认。</li>
+<li><strong>重启策略</strong>：<strong><code>restart: unless-stopped</code></strong>，但<strong>不要</strong>依赖自动重启代替监控——实例反复崩溃时重启循环会掩盖根因。</li>
+<li><strong>健康检查</strong>：应用编排中用 <strong><code>depends_on</code> + <code>condition: service_healthy</code></strong> 等健康检查通过再启动应用，避免应用先于数据库就绪而启动失败。</li>
+<li><strong>升级</strong>：<strong>不可</strong>直接换镜像标签原地升级大版本（8.0 → 8.4）——正确路径是<strong>先 dump 再灌入新实例</strong>，或按官方升级路径逐级替换镜像并让它跑完 <strong><code>mysql_upgrade</code></strong> 等价流程。</li>
+</ol>
+<hr>
+<h2 id="十、小结"><a href="#十、小结" class="headerlink" title="十、小结"></a>十、小结</h2><table>
+<thead>
+<tr>
+<th>项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>前置</strong></td>
+<td>已安装 <strong><code>docker</code></strong> 与 <strong><code>docker compose</code></strong>（或 <strong><code>docker-compose</code></strong>）</td>
+</tr>
+<tr>
+<td><strong>镜像</strong></td>
+<td>优先官方 <strong><code>mysql:8.0</code></strong> &#x2F; 固定补丁标签；注意认证插件与客户端版本</td>
+</tr>
+<tr>
+<td><strong>单容器</strong></td>
+<td><strong><code>docker run</code></strong>：<strong><code>mysql-dev</code></strong>、命名卷 <strong><code>mysql-data</code></strong> &#x2F; <strong><code>mysql-init</code></strong>、库 <strong><code>app</code></strong>、用户 <strong><code>admin</code></strong>、<strong><code>utf8mb4</code></strong>（见 <strong># 三</strong>）</td>
+</tr>
+<tr>
+<td><strong>Compose</strong></td>
+<td>保存 <strong><code>docker-compose.mysql.yml</code></strong> 后 <strong><code>docker compose -f ... up -d</code></strong></td>
+</tr>
+<tr>
+<td><strong>Kubernetes</strong></td>
+<td>保存 <strong><code>mysql-k8s.yaml</code></strong> 后 <strong><code>kubectl apply -f ...</code></strong></td>
+</tr>
+<tr>
+<td><strong>my.cnf 挂载</strong></td>
+<td>挂到 <strong><code>/etc/mysql/conf.d/*.cnf</code></strong>（<code>:ro</code>），buffer pool 必须小于容器限额</td>
+</tr>
+<tr>
+<td><strong>主从复制</strong></td>
+<td>Compose 起双实例 + <strong><code>server-id</code> &#x2F; <code>log-bin</code> &#x2F; GTID</strong>，<strong><code>CHANGE REPLICATION SOURCE TO</code></strong> 指主</td>
+</tr>
+<tr>
+<td><strong>备份恢复</strong></td>
+<td><strong><code>docker exec ... mysqldump &gt; 宿主机文件</code></strong>；恢复用 <strong><code>-i</code></strong> 管道；PITR &#x3D; 全备 + binlog 重放</td>
+</tr>
+<tr>
+<td><strong>OOM</strong></td>
+<td>随机重启先查 <strong><code>docker inspect --format &#39;&#123;&#123;.State.OOMKilled&#125;&#125;&#39;</code></strong>，buffer pool ≤ 限额 60%</td>
+</tr>
+</tbody></table>
+<p>生产环境请配合备份、监控、网络策略与 <strong>TLS</strong>；<strong>Secret</strong> 建议对接 <strong>External Secrets</strong> &#x2F; <strong>Sealed Secrets</strong> 等管控流程。</p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>镜像</td>
+<td>官方 <strong><code>mysql:8.0</code></strong> 起步，<strong>固定小版本标签&#x2F;digest</strong> 防 <strong><code>latest</code></strong> 漂移</td>
+</tr>
+<tr>
+<td>数据持久化</td>
+<td>命名卷 <strong><code>mysql-data</code></strong> 对应 <strong><code>/var/lib/mysql</code></strong>；<strong>删卷 &#x3D; 删库</strong></td>
+</tr>
+<tr>
+<td>初始化脚本</td>
+<td><strong><code>/docker-entrypoint-initdb.d</code></strong> 仅<strong>首次空数据目录</strong>执行一次</td>
+</tr>
+<tr>
+<td>Compose</td>
+<td><strong><code>docker compose -f ... up -d</code></strong>；敏感项走 <strong><code>.env</code></strong> 且不提交仓库</td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td><strong>Secret + PVC + Deployment（Recreate）+ Service</strong>；主从用 <strong>Operator &#x2F; StatefulSet</strong></td>
+</tr>
+<tr>
+<td>配置管理</td>
+<td><strong>my.cnf 只读挂到 conf.d</strong>；<strong><code>innodb_buffer_pool_size ≤ 容器限额 × 60%</code></strong> 防 OOM</td>
+</tr>
+<tr>
+<td>主从复制</td>
+<td>Compose 双实例 + GTID；<strong><code>SHOW REPLICA STATUS</code></strong> 两个 <strong>Yes</strong> 才算通</td>
+</tr>
+<tr>
+<td>备份</td>
+<td><strong>全备落宿主机 + binlog 归档 + 定期恢复演练</strong>；备份不进容器</td>
+</tr>
+</tbody></table>
+<p>数据库已经稳稳跑起来了，接下来深入它的并发控制核心——锁。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Docker/" rel="tag"># Docker</a>
+              <a href="/tags/Docker-Compose/" rel="tag"># Docker Compose</a>
+              <a href="/tags/Kubernetes/" rel="tag"># Kubernetes</a>
+              <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/redis/02-redis-docker/" rel="prev" title="第二章：Docker 部署 Redis 实践">
+                  <i class="fa fa-angle-left"></i> 第二章：Docker 部署 Redis 实践
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/mq/02-kafka-docker/" rel="next" title="第二章：Docker 部署 Kafka 实践">
+                  第二章：Docker 部署 Kafka 实践 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

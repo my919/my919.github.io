@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：Redis String 数据类型：概念、命令与案例概念基础String 是 Redis 最基本的值类型——一个 key 对应一个字符串值：  Redis 是 KV 模型：键（key） 永远是字符串；值（value） 可以是 String &#x2F; Hash &#x2F; List 等类型之一。   本文说的 String 指 value 的类型为 string（TYPE key 显示">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：Redis String 数据类型：概念、命令与案例">
+<meta property="og:url" content="https://my919.github.io/redis/03-redis-string-type/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：Redis String 数据类型：概念、命令与案例概念基础String 是 Redis 最基本的值类型——一个 key 对应一个字符串值：  Redis 是 KV 模型：键（key） 永远是字符串；值（value） 可以是 String &#x2F; Hash &#x2F; List 等类型之一。   本文说的 String 指 value 的类型为 string（TYPE key 显示">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-03T09:28:32.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.592Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Redis">
+<meta property="article:tag" content="String">
+<meta property="article:tag" content="缓存">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/redis/03-redis-string-type/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/redis/03-redis-string-type/","path":"redis/03-redis-string-type/","title":"第三章：Redis String 数据类型：概念、命令与案例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：Redis String 数据类型：概念、命令与案例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9ARedis-String-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%EF%BC%9A%E6%A6%82%E5%BF%B5%E3%80%81%E5%91%BD%E4%BB%A4%E4%B8%8E%E6%A1%88%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第三章：Redis String 数据类型：概念、命令与案例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86%EF%BC%9A%E7%BC%96%E7%A0%81%E4%B8%8E%E5%BA%95%E5%B1%82%E7%BB%93%E6%9E%84"><span class="nav-number">1.2.</span> <span class="nav-text">核心原理：编码与底层结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%EF%BC%88%E5%BF%85%E4%BC%9A%E5%AD%90%E9%9B%86%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">常用命令（必会子集）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%AF%BB%E5%86%99%E4%B8%8E%E5%88%A0%E9%99%A4"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 读写与删除</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%B8%A6%E6%9D%A1%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E4%B8%8E%E8%BF%87%E6%9C%9F%EF%BC%88%E4%B8%9A%E5%8A%A1%E9%AB%98%E9%A2%91%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 带条件的写入与过期（业务高频）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E8%AE%A1%E6%95%B0%E5%99%A8%EF%BC%9AINCR-DECR-INCRBY"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. 计数器：INCR &#x2F; DECR &#x2F; INCRBY</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%85%B6%E5%AE%83%E5%AE%9E%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="nav-number">1.3.4.</span> <span class="nav-text">4. 其它实用命令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">1.4.</span> <span class="nav-text">典型应用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%BC%E5%90%88%E6%A1%88%E4%BE%8B%EF%BC%88redis-cli-%E5%8F%AF%E7%9B%B4%E6%8E%A5%E6%95%B2%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">综合案例（redis-cli 可直接敲）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%94%A8%E6%88%B7%E4%BF%A1%E6%81%AF%E7%BC%93%E5%AD%98%EF%BC%88%E5%B8%A6%E8%BF%87%E6%9C%9F%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">1. 用户信息缓存（带过期）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%96%87%E7%AB%A0%E9%98%85%E8%AF%BB%E9%87%8F"><span class="nav-number">1.5.2.</span> <span class="nav-text">2. 文章阅读量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E6%9C%80%E5%B0%8F%E6%AD%A3%E7%A1%AE%E7%89%88%EF%BC%9A%E5%8D%A0%E4%BD%8D-%E9%AA%8C%E8%BA%AB%E4%BB%BD%E9%87%8A%E6%94%BE"><span class="nav-number">1.5.3.</span> <span class="nav-text">3. 分布式锁最小正确版：占位 + 验身份释放</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E5%9B%BA%E5%AE%9A%E7%AA%97%E5%8F%A3%E9%99%90%E6%B5%81%EF%BC%88%E6%AF%8F%E5%88%86%E9%92%9F-100-%E6%AC%A1%EF%BC%89"><span class="nav-number">1.5.4.</span> <span class="nav-text">4. 固定窗口限流（每分钟 100 次）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E6%9D%A1%E4%BB%B6%E6%9B%B4%E6%96%B0%EF%BC%9A%E4%BB%85%E5%AD%98%E5%9C%A8%E6%97%B6%E6%94%B9"><span class="nav-number">1.5.5.</span> <span class="nav-text">5. 条件更新：仅存在时改</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%A4%BA%E4%BE%8B%EF%BC%88Lettuce%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">Java 客户端示例（Lettuce）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Python-%E7%A4%BA%E4%BE%8B%EF%BC%88redis-py%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">Python 示例（redis-py）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8E%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="nav-number">1.8.</span> <span class="nav-text">与关系型方案对比</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9%E4%B8%8E%E9%80%89%E5%9E%8B"><span class="nav-number">1.9.</span> <span class="nav-text">注意事项与选型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/redis/03-redis-string-type/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：Redis String 数据类型：概念、命令与案例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：Redis String 数据类型：概念、命令与案例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-03 17:28:32" itemprop="dateCreated datePublished" datetime="2026-05-03T17:28:32+08:00">2026-05-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Redis-%E7%BC%93%E5%AD%98/" itemprop="url" rel="index"><span itemprop="name">Redis 缓存</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.1k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：Redis-String-数据类型：概念、命令与案例"><a href="#第三章：Redis-String-数据类型：概念、命令与案例" class="headerlink" title="第三章：Redis String 数据类型：概念、命令与案例"></a>第三章：Redis String 数据类型：概念、命令与案例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>String</strong> 是 Redis 最基本的值类型——一个 key 对应一个字符串值：</p>
+<ol>
+<li><strong>Redis</strong> 是 <strong>KV</strong> 模型：<strong>键（key）</strong> 永远是字符串；<strong>值（value）</strong> 可以是 <strong>String &#x2F; Hash &#x2F; List</strong> 等类型之一。  </li>
+<li>本文说的 <strong>String</strong> 指 <strong>value 的类型</strong>为 <strong>string</strong>（<strong><code>TYPE key</code></strong> 显示 <strong><code>string</code></strong>）。  </li>
+<li><strong>二进制安全</strong>：值可以是任意字节序列——文本、JSON、序列化对象，甚至图片字节，不需要担心内容里出现特殊字符。  </li>
+<li><strong>容量上限</strong>：单个 String 最大 <strong>512 MB</strong>，但业务上应把「大 value」视为反模式（见注意事项）。  </li>
+<li><strong>编码</strong>：底层可能为 <strong><code>int</code></strong>、<strong><code>embstr</code></strong>、<strong><code>raw</code></strong> 等（<strong><code>OBJECT ENCODING key</code></strong> 可查看），对使用者多数时候<strong>透明</strong>，选型时更关心<strong>语义与命令</strong>（原理见下一节）。</li>
+</ol>
+<h2 id="核心原理：编码与底层结构"><a href="#核心原理：编码与底层结构" class="headerlink" title="核心原理：编码与底层结构"></a>核心原理：编码与底层结构</h2><ol>
+<li><strong>SDS（简单动态字符串）</strong>：Redis 的字符串不是 C 语言以 <code>\0</code> 结尾的字符数组，而是自研的 <strong>SDS</strong> 结构——头部记录<strong>已用长度</strong>与<strong>剩余空间</strong>，因此 <strong><code>STRLEN</code> 是 O(1)</strong>；追加时可<strong>预分配</strong>空间减少 realloc；内容可含 <code>\0</code>，这是「二进制安全」的基础。</li>
+<li><strong>三种编码与转换</strong>：<ul>
+<li><strong><code>int</code></strong>：值是能放进 <strong>64 位有符号整数</strong>的数字（如 <code>INCR</code> 计数器），直接存整数，最省内存。</li>
+<li><strong><code>embstr</code></strong>：短字符串（<strong>≤ 44 字节</strong>），<strong>redisObject 与 SDS 一次性分配</strong>在一块连续内存，读多写少时最省且缓存友好；<strong>embstr 是只读的</strong>，一旦修改就转成 <strong><code>raw</code></strong>。</li>
+<li><strong><code>raw</code></strong>：长字符串（&gt; 44 字节）或被修改过的短字符串，SDS 独立分配，支持高效追加。</li>
+</ul>
+</li>
+<li><strong>观察方法</strong>：</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SET num 12345</span><br><span class="line">redis-cli OBJECT ENCODING num      <span class="comment"># -&gt; &quot;int&quot;</span></span><br><span class="line">redis-cli SET s <span class="string">&quot;hello&quot;</span></span><br><span class="line">redis-cli OBJECT ENCODING s        <span class="comment"># -&gt; &quot;embstr&quot;</span></span><br><span class="line">redis-cli APPEND s <span class="string">&quot; world&quot;</span></span><br><span class="line">redis-cli OBJECT ENCODING s        <span class="comment"># -&gt; &quot;raw&quot;</span></span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li><strong>内存账</strong>：同样是 100 万个小 key，编码差异能拉开明显内存差距——<strong><code>int</code> 编码的计数器 key</strong> 几乎只有 redisObject 与 dictEntry 开销；<strong><code>raw</code> 长字符串</strong> 还要叠一份独立 SDS。海量 key 场景先用 <strong><code>MEMORY USAGE key</code></strong> 抽查，再决定要不要「多 key 合并成 Hash」（见第四章）。</li>
+<li><strong>原子性</strong>：命令单线程执行，<strong><code>INCR</code>、<code>SET key val NX</code> 等都是原子操作</strong>——这就是「计数器」和「占位锁」不惧并发的根本原因，不需要应用层再包一层锁。</li>
+</ol>
+<h2 id="常用命令（必会子集）"><a href="#常用命令（必会子集）" class="headerlink" title="常用命令（必会子集）"></a>常用命令（必会子集）</h2><h3 id="1-读写与删除"><a href="#1-读写与删除" class="headerlink" title="1. 读写与删除"></a>1. 读写与删除</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SET user:1001 <span class="string">&quot;Alice&quot;</span></span><br><span class="line">redis-cli GET user:1001</span><br><span class="line">redis-cli DEL user:1001</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>MSET</code> &#x2F; <code>MGET</code></strong>：一次多键，减少往返（注意原子性与键命名规范）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">redis-cli MSET a 1 b 2 c 3</span><br><span class="line">redis-cli MGET a b c</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-带条件的写入与过期（业务高频）"><a href="#2-带条件的写入与过期（业务高频）" class="headerlink" title="2. 带条件的写入与过期（业务高频）"></a>2. 带条件的写入与过期（业务高频）</h3><p><strong><code>SET</code></strong> 常用选项（<strong>Redis 2.6+</strong> 语法，具体以你版本文档为准）：</p>
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>EX 秒</code> &#x2F; <code>PX 毫秒</code></strong></td>
+<td>设置<strong>过期时间</strong>（<strong>TTL</strong>）</td>
+</tr>
+<tr>
+<td><strong><code>NX</code></strong></td>
+<td>仅当 <strong>key 不存在</strong> 时写入（常用于<strong>抢锁占位</strong>）</td>
+</tr>
+<tr>
+<td><strong><code>XX</code></strong></td>
+<td>仅当 <strong>key 已存在</strong> 时覆盖</td>
+</tr>
+<tr>
+<td><strong><code>KEEPTTL</code></strong>（6.0+）</td>
+<td>覆盖时保留原 TTL，不再被默认清空</td>
+</tr>
+<tr>
+<td><strong><code>GET</code></strong>（6.2+）</td>
+<td>返回旧值，等价 <strong><code>GETSET</code></strong> 合并进 SET</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SET session:abc <span class="string">&quot;uid=1001&quot;</span> EX 3600 NX</span><br><span class="line">redis-cli TTL session:abc</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-计数器：INCR-DECR-INCRBY"><a href="#3-计数器：INCR-DECR-INCRBY" class="headerlink" title="3. 计数器：INCR &#x2F; DECR &#x2F; INCRBY"></a>3. 计数器：<code>INCR</code> &#x2F; <code>DECR</code> &#x2F; <code>INCRBY</code></h3><p><strong><code>INCR</code></strong> 在<strong>值可解析为整数</strong>时原子自增；不存在时按 <strong>0</strong> 开始。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SET article:42:views 0</span><br><span class="line">redis-cli INCR article:42:views</span><br><span class="line">redis-cli INCRBY article:42:views 10</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-其它实用命令"><a href="#4-其它实用命令" class="headerlink" title="4. 其它实用命令"></a>4. 其它实用命令</h3><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>APPEND</code></strong></td>
+<td>尾部追加字节</td>
+</tr>
+<tr>
+<td><strong><code>STRLEN</code></strong></td>
+<td>返回字节长度</td>
+</tr>
+<tr>
+<td><strong><code>GETRANGE</code> &#x2F; <code>SETRANGE</code></strong></td>
+<td>按偏移读写子串（仍整体是 <strong>String</strong>）</td>
+</tr>
+<tr>
+<td><strong><code>GETSET</code></strong> &#x2F; <strong><code>GETEX</code></strong></td>
+<td>读旧值并写新值 &#x2F; 读值并改过期（6.2+，适合做「读后刷新 TTL」的会话续期）</td>
+</tr>
+</tbody></table>
+<h2 id="典型应用场景"><a href="#典型应用场景" class="headerlink" title="典型应用场景"></a>典型应用场景</h2><ol>
+<li><strong>缓存整页或对象</strong>：值存 <strong>JSON</strong> 字符串，配合 <strong><code>EX</code></strong> 做<strong>短期缓存</strong>；更新数据库后<strong>删键</strong>或<strong>覆盖</strong>避免脏读。  </li>
+<li><strong>会话 &#x2F; 登录态</strong>：<strong><code>SET … EX …</code></strong> 存 <strong>token → 用户信息</strong>；过期自动消失；续期用 <strong><code>GETEX key EX 3600</code></strong> 一步完成「读 + 续期」。  </li>
+<li><strong>计数与限流</strong>：<strong><code>INCR</code></strong> 做浏览量、接口调用次数；与<strong>滑动窗口</strong>等逻辑配合（复杂限流可再引入 <strong>Hash</strong> &#x2F; <strong>ZSet</strong>）。  </li>
+<li><strong>分布式锁（谨慎）</strong>：<strong><code>SET key token NX PX ttl</code></strong> 仅占位；完整锁需<strong>唯一 token</strong>、<strong>Lua 校验身份释放</strong>、<strong>续期</strong>、<strong>Redlock 争议</strong>等专题，本文给<strong>最小正确版</strong>（见案例 3）。  </li>
+<li><strong>配置与功能开关</strong>：<strong><code>SET feature:x:enabled 1</code></strong>，读时 <strong><code>GET</code></strong> 转布尔。</li>
+</ol>
+<h2 id="综合案例（redis-cli-可直接敲）"><a href="#综合案例（redis-cli-可直接敲）" class="headerlink" title="综合案例（redis-cli 可直接敲）"></a>综合案例（redis-cli 可直接敲）</h2><p>以下默认本机 <strong><code>redis-cli</code></strong> 无密码；若启用了 <strong><code>requirepass</code></strong>，请加 <strong><code>-a &lt;密码&gt;</code></strong>（见 <a href="/redis/02-redis-docker/">第二章：Docker 部署 Redis 实践</a>）。</p>
+<h3 id="1-用户信息缓存（带过期）"><a href="#1-用户信息缓存（带过期）" class="headerlink" title="1. 用户信息缓存（带过期）"></a>1. 用户信息缓存（带过期）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SET user:1001 <span class="string">&quot;&#123;\&quot;name\&quot;:\&quot;Alice\&quot;,\&quot;vip\&quot;:1&#125;&quot;</span> EX 300</span><br><span class="line">redis-cli GET user:1001</span><br><span class="line">redis-cli TTL user:1001</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-文章阅读量"><a href="#2-文章阅读量" class="headerlink" title="2. 文章阅读量"></a>2. 文章阅读量</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SET post:7:views 0</span><br><span class="line">redis-cli INCR post:7:views</span><br><span class="line">redis-cli GET post:7:views</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-分布式锁最小正确版：占位-验身份释放"><a href="#3-分布式锁最小正确版：占位-验身份释放" class="headerlink" title="3. 分布式锁最小正确版：占位 + 验身份释放"></a>3. 分布式锁最小正确版：占位 + 验身份释放</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 加锁：唯一 token + NX + PX。占坑成功返回 OK；重复执行因 NX 失败返回 (nil)</span></span><br><span class="line">redis-cli SET lock:order:8899 <span class="string">&quot;worker-1-uuid&quot;</span> NX PX 30000</span><br><span class="line"></span><br><span class="line"><span class="comment"># 解锁：先比对 token 再删，防止误删别人的锁（原子交给 Lua）</span></span><br><span class="line">redis-cli EVAL <span class="string">&quot;if redis.call(&#x27;get&#x27;, KEYS[1]) == ARGV[1] then return redis.call(&#x27;del&#x27;, KEYS[1]) else return 0 end&quot;</span> 1 lock:order:8899 worker-1-uuid</span><br></pre></td></tr></table></figure>
+
+<p>生产请直接用 <strong>Redisson</strong>（自带看门狗续期），不要手写锁逻辑。</p>
+<h3 id="4-固定窗口限流（每分钟-100-次）"><a href="#4-固定窗口限流（每分钟-100-次）" class="headerlink" title="4. 固定窗口限流（每分钟 100 次）"></a>4. 固定窗口限流（每分钟 100 次）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">redis-cli INCR rl:api:user:1:17480000</span><br><span class="line">redis-cli EXPIRE rl:api:user:1:17480000 60</span><br><span class="line"><span class="comment"># INCR 返回值 &gt; 100 即拒绝；key 命名含「分钟桶」，到点自动过期</span></span><br></pre></td></tr></table></figure>
+
+<p>精确滑动窗口请用 ZSet 方案（见第七章）。</p>
+<h3 id="5-条件更新：仅存在时改"><a href="#5-条件更新：仅存在时改" class="headerlink" title="5. 条件更新：仅存在时改"></a>5. 条件更新：仅存在时改</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">redis-cli SET config:site:title <span class="string">&quot;旧标题&quot;</span></span><br><span class="line">redis-cli SET config:site:title <span class="string">&quot;新标题&quot;</span> XX</span><br><span class="line">redis-cli GET config:site:title</span><br></pre></td></tr></table></figure>
+
+<h2 id="Java-客户端示例（Lettuce）"><a href="#Java-客户端示例（Lettuce）" class="headerlink" title="Java 客户端示例（Lettuce）"></a>Java 客户端示例（Lettuce）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">RedisCommands</span>&lt;String, String&gt; <span class="variable">cmd</span> <span class="operator">=</span> lettuceConnection.sync();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 带 TTL 的缓存写入</span></span><br><span class="line">cmd.set(<span class="string">&quot;user:1001&quot;</span>, <span class="string">&quot;&#123;\&quot;name\&quot;:\&quot;Alice\&quot;&#125;&quot;</span>, SetArgs.Builder.ex(<span class="number">300</span>));</span><br><span class="line"></span><br><span class="line"><span class="comment">// 抢锁占位（NX）</span></span><br><span class="line"><span class="type">String</span> <span class="variable">ok</span> <span class="operator">=</span> cmd.set(<span class="string">&quot;lock:order:8899&quot;</span>, <span class="string">&quot;worker-1&quot;</span>,</span><br><span class="line">        SetArgs.Builder.nx().px(<span class="number">30000</span>));</span><br><span class="line"></span><br><span class="line"><span class="comment">// 计数器</span></span><br><span class="line"><span class="type">Long</span> <span class="variable">views</span> <span class="operator">=</span> cmd.incr(<span class="string">&quot;post:7:views&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 批量读</span></span><br><span class="line"><span class="type">List</span>&lt;KeyValue&lt;String, String&gt;&gt; <span class="variable">kvs</span> <span class="operator">=</span> cmd.mget(<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<h2 id="Python-示例（redis-py）"><a href="#Python-示例（redis-py）" class="headerlink" title="Python 示例（redis-py）"></a>Python 示例（redis-py）</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> redis</span><br><span class="line"></span><br><span class="line">r = redis.Redis(host=<span class="string">&quot;127.0.0.1&quot;</span>, port=<span class="number">6379</span>, decode_responses=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 缓存 + TTL</span></span><br><span class="line">r.<span class="built_in">set</span>(<span class="string">&quot;user:1001&quot;</span>, <span class="string">&#x27;&#123;&quot;name&quot;:&quot;Alice&quot;&#125;&#x27;</span>, ex=<span class="number">300</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 抢锁</span></span><br><span class="line">acquired = r.<span class="built_in">set</span>(<span class="string">&quot;lock:order:8899&quot;</span>, <span class="string">&quot;worker-1&quot;</span>, nx=<span class="literal">True</span>, px=<span class="number">30000</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 计数器</span></span><br><span class="line">r.incr(<span class="string">&quot;post:7:views&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h2 id="与关系型方案对比"><a href="#与关系型方案对比" class="headerlink" title="与关系型方案对比"></a>与关系型方案对比</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Redis String</th>
+<th>MySQL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>计数器并发</td>
+<td><strong><code>INCR</code></strong> 原子，无锁</td>
+<td><code>UPDATE ... SET c = c + 1</code> 行锁竞争，热点行明显</td>
+</tr>
+<tr>
+<td>会话存储</td>
+<td>TTL 自动过期</td>
+<td>需定时任务清理</td>
+</tr>
+<tr>
+<td>分布式锁</td>
+<td><strong><code>SET NX PX</code></strong> 一条命令</td>
+<td>需唯一索引 + 租约字段，复杂</td>
+</tr>
+<tr>
+<td>持久性</td>
+<td>RDB&#x2F;AOF，可能丢秒级数据</td>
+<td>InnoDB 事务，强持久</td>
+</tr>
+</tbody></table>
+<p>口诀：<strong>热、快、可丢的放 Redis；准、稳、要审计的放 MySQL</strong>。</p>
+<h2 id="注意事项与选型"><a href="#注意事项与选型" class="headerlink" title="注意事项与选型"></a>注意事项与选型</h2><ol>
+<li><strong>大 value</strong>：单 <strong>String</strong> 过大占用内存与网络带宽，<strong>序列化大对象</strong>可评估 <strong>Hash 分字段</strong>或<strong>拆 key</strong>；超 10 KB 的 value 就该警觉。  </li>
+<li><strong>热 key</strong>：同一 <strong>key</strong> 超高并发时，<strong>单线程处理</strong>该 <strong>key</strong> 易成瓶颈，需业务侧<strong>分片</strong>（如 <code>views:{id}:{shard}</code> 写时分片、读时求和）或换结构。  </li>
+<li><strong>KEY 命名</strong>：建议 <strong><code>业务:实体:id:属性</code></strong> 一类可读前缀，避免<strong>全局 <code>KEYS *</code></strong> 在生产使用（用 <strong><code>SCAN MATCH</code></strong>）。  </li>
+<li><strong>持久化与丢失</strong>：<strong>String</strong> 在内存里，是否落盘取决于 <strong>RDB&#x2F;AOF</strong> 与策略；<strong>缓存≠数据库</strong>，关键数据以<strong>库</strong>为准并设计<strong>降级</strong>。  </li>
+<li><strong>字符集</strong>：<strong>Redis String</strong> 是<strong>字节</strong>；<strong>UTF-8</strong> 文本由客户端编码&#x2F;解码，不要在服务端假设「一定是中文几个字符」与<strong>字节长度</strong>一一对应。  </li>
+<li><strong>TTL 覆盖</strong>：<strong><code>SET</code></strong> 不带 <strong><code>KEEPTTL</code></strong> 会<strong>清掉旧 TTL</strong>，「更新缓存却意外变永久」是高频事故；6.0+ 记得加 <strong><code>KEEPTTL</code></strong> 或重写时重设 EX。</li>
+</ol>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>本质</td>
+<td><strong>二进制安全</strong>的字节串，最大 <strong>512 MB</strong></td>
+</tr>
+<tr>
+<td>编码</td>
+<td><strong>int &#x2F; embstr（≤44B，只读）&#x2F; raw</strong>，<code>OBJECT ENCODING</code> 可查</td>
+</tr>
+<tr>
+<td>原子性</td>
+<td><code>INCR</code> &#x2F; <code>SET NX</code> 单命令原子，天然抗并发</td>
+</tr>
+<tr>
+<td>高频命令</td>
+<td><strong><code>SET</code>(EX&#x2F;PX&#x2F;NX&#x2F;XX&#x2F;KEEPTTL) &#x2F; GET &#x2F; GETEX &#x2F; INCR &#x2F; MSET &#x2F; MGET</strong></td>
+</tr>
+<tr>
+<td>场景</td>
+<td>缓存、会话、计数限流、分布式锁、开关</td>
+</tr>
+</tbody></table>
+<p>后续类型选择参考：字段需独立更新 → <a href="/redis/04-redis-hash-type/">第四章：Redis Hash 数据类型：概念、命令与案例</a>；要队列 → <a href="/redis/05-redis-list-type/">第五章：Redis List 数据类型：概念、命令与案例</a>。</p>
+<p><strong>延伸阅读</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>Hash数据类型、应用场景及案例.md</code></strong></td>
+<td>字段级对象</td>
+</tr>
+<tr>
+<td><strong><code>List数据类型、应用场景及案例.md</code></strong></td>
+<td>队列 &#x2F; 栈</td>
+</tr>
+<tr>
+<td><strong><code>Set数据类型、应用场景及案例.md</code></strong></td>
+<td>去重集合</td>
+</tr>
+<tr>
+<td><strong><code>ZSet数据类型、应用场景及案例.md</code></strong></td>
+<td>排行榜 &#x2F; 延时队列</td>
+</tr>
+<tr>
+<td><strong><code>HyperLogLog数据类型、应用场景及案例.md</code></strong></td>
+<td>近似 <strong>UV</strong></td>
+</tr>
+<tr>
+<td><strong><code>Bitmap数据类型、应用场景及案例.md</code></strong></td>
+<td>位图签到等</td>
+</tr>
+<tr>
+<td><strong><code>Geospatial数据类型、应用场景及案例.md</code></strong></td>
+<td><strong>LBS</strong></td>
+</tr>
+<tr>
+<td><strong><code>Redis-Docker.md</code></strong></td>
+<td>容器启动、<strong><code>requirepass</code></strong>、<strong>AOF</strong> 卷</td>
+</tr>
+<tr>
+<td><strong><code>Redis.md</code></strong></td>
+<td>第一章总览</td>
+</tr>
+</tbody></table>
+<p>更复杂的消费组、持久化流等，可另文写 <strong>Stream</strong> 等类型。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%BC%93%E5%AD%98/" rel="tag"># 缓存</a>
+              <a href="/tags/Redis/" rel="tag"># Redis</a>
+              <a href="/tags/String/" rel="tag"># String</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/database/06-postgresql-concurrency-mvcc/" rel="prev" title="第六章：PostgreSQL 并发与 MVCC 入门">
+                  <i class="fa fa-angle-left"></i> 第六章：PostgreSQL 并发与 MVCC 入门
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/redis/05-redis-list-type/" rel="next" title="第五章：Redis List 数据类型：概念、命令与案例">
+                  第五章：Redis List 数据类型：概念、命令与案例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

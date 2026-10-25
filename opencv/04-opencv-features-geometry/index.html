@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：特征与几何概念基础 特征 &#x3D; 图像中可辨识的局部模式：角点、斑点、边缘交点等，在不同光照、尺度、视角下仍能被稳定检测与匹配，是图像配准、拼接、跟踪的基础。 检测 + 描述两步：先检测关键点位置，再计算描述子（高维向量）表征其邻域；匹配即比较描述子距离。 几何从像素到世界：单应性（Homography）描述两视图间的平面映射，4 对匹配点即可解出，用于拼接、AR、文档矫正。 轮廓是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：特征与几何">
+<meta property="og:url" content="https://my919.github.io/opencv/04-opencv-features-geometry/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：特征与几何概念基础 特征 &#x3D; 图像中可辨识的局部模式：角点、斑点、边缘交点等，在不同光照、尺度、视角下仍能被稳定检测与匹配，是图像配准、拼接、跟踪的基础。 检测 + 描述两步：先检测关键点位置，再计算描述子（高维向量）表征其邻域；匹配即比较描述子距离。 几何从像素到世界：单应性（Homography）描述两视图间的平面映射，4 对匹配点即可解出，用于拼接、AR、文档矫正。 轮廓是">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:42:38.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.589Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="OpenCV">
+<meta property="article:tag" content="Python">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/opencv/04-opencv-features-geometry/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/opencv/04-opencv-features-geometry/","path":"opencv/04-opencv-features-geometry/","title":"第四章：特征与几何"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：特征与几何 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9A%E7%89%B9%E5%BE%81%E4%B8%8E%E5%87%A0%E4%BD%95"><span class="nav-number">1.</span> <span class="nav-text">第四章：特征与几何</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E8%A7%92%E7%82%B9%E6%A3%80%E6%B5%8B%EF%BC%9AHarris-%E4%B8%8E-Shi-Tomasi"><span class="nav-number">1.2.</span> <span class="nav-text">一、角点检测：Harris 与 Shi-Tomasi</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E7%89%B9%E5%BE%81%E6%A3%80%E6%B5%8B%E4%B8%8E%E6%8F%8F%E8%BF%B0%EF%BC%9AORB-SIFT"><span class="nav-number">1.3.</span> <span class="nav-text">二、特征检测与描述：ORB&#x2F;SIFT</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-SIFT%EF%BC%88%E5%B0%BA%E5%BA%A6%E4%B8%8D%E5%8F%98%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. SIFT（尺度不变）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-ORB%EF%BC%88%E5%BF%AB%E9%80%9F%EF%BC%8C%E5%85%8D%E8%B4%B9%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. ORB（快速，免费）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%89%B9%E5%BE%81%E5%8C%B9%E9%85%8D"><span class="nav-number">1.3.3.</span> <span class="nav-text">3. 特征匹配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#FLANN-%E4%B8%8E%E6%AF%94%E5%80%BC%E6%A3%80%E9%AA%8C%E5%AE%9E%E6%93%8D"><span class="nav-number">1.3.4.</span> <span class="nav-text">FLANN 与比值检验实操</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%C2%B7%E8%A1%A5%E5%85%85%E3%80%81%E9%9C%8D%E5%A4%AB%E5%8F%98%E6%8D%A2%EF%BC%9A%E7%9B%B4%E7%BA%BF%E4%B8%8E%E5%9C%86"><span class="nav-number">1.4.</span> <span class="nav-text">二·补充、霍夫变换：直线与圆</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%8D%95%E5%BA%94%E6%80%A7%E7%9F%A9%E9%98%B5%E4%B8%8E%E5%9B%BE%E5%83%8F%E6%8B%BC%E6%8E%A5"><span class="nav-number">1.5.</span> <span class="nav-text">三、单应性矩阵与图像拼接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E8%BD%AE%E5%BB%93%E6%A3%80%E6%B5%8B%E4%B8%8E%E5%88%86%E6%9E%90"><span class="nav-number">1.6.</span> <span class="nav-text">四、轮廓检测与分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BD%AE%E5%BB%93%E5%B1%82%E7%BA%A7%E4%B8%8E%E5%BD%A2%E7%8A%B6%E6%8F%8F%E8%BF%B0%E5%AD%90"><span class="nav-number">1.6.1.</span> <span class="nav-text">轮廓层级与形状描述子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%B8%E5%8C%85%E4%B8%8E%E7%BC%BA%E9%99%B7%E6%A3%80%E6%B5%8B"><span class="nav-number">1.6.2.</span> <span class="nav-text">凸包与缺陷检测</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%C2%B7%E8%A1%A5%E5%85%85%E3%80%81%E7%9B%B8%E6%9C%BA%E6%A0%87%E5%AE%9A%E5%85%A5%E9%97%A8%EF%BC%88calib3d%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">四·补充、相机标定入门（calib3d）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E6%A8%A1%E6%9D%BF%E5%8C%B9%E9%85%8D"><span class="nav-number">1.8.</span> <span class="nav-text">五、模板匹配</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E4%BC%A0%E7%BB%9F-CV-%E4%B8%8E%E6%B7%B1%E5%BA%A6%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%88%86%E5%B7%A5"><span class="nav-number">1.9.</span> <span class="nav-text">六、传统 CV 与深度模型的分工</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1"><span class="nav-number">1.10.</span> <span class="nav-text">七、常见陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/opencv/04-opencv-features-geometry/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：特征与几何 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：特征与几何
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:42:38" itemprop="dateCreated datePublished" datetime="2026-05-01T13:42:38+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/OpenCV/" itemprop="url" rel="index"><span itemprop="name">OpenCV</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.6k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：特征与几何"><a href="#第四章：特征与几何" class="headerlink" title="第四章：特征与几何"></a>第四章：特征与几何</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>特征 &#x3D; 图像中可辨识的局部模式</strong>：角点、斑点、边缘交点等，在不同光照、尺度、视角下仍能被稳定检测与匹配，是图像配准、拼接、跟踪的基础。</li>
+<li><strong>检测 + 描述两步</strong>：先<strong>检测</strong>关键点位置，再计算<strong>描述子</strong>（高维向量）表征其邻域；匹配即比较描述子距离。</li>
+<li><strong>几何从像素到世界</strong>：单应性（Homography）描述两视图间的平面映射，4 对匹配点即可解出，用于拼接、AR、文档矫正。</li>
+<li><strong>轮廓是连通区域边界</strong>：从二值图提取轮廓，可算面积、外接矩形、近似多边形，是传统目标检测与计数的利器。</li>
+<li><strong>本章目标</strong>：掌握角点&#x2F;特征检测与匹配、单应性求解、轮廓分析，理解传统 CV 几何处理的边界与深度模型的分工。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/opencv/03-opencv-filter-transform/">第三章：滤波与几何变换</a>。生产级检测&#x2F;分割多交由 <a href="/ai/01-pytorch-guide/">第一章：PyTorch 入门与张量</a> 深度模型，OpenCV 负责几何与前后处理。</p>
+</blockquote>
+<hr>
+<h2 id="一、角点检测：Harris-与-Shi-Tomasi"><a href="#一、角点检测：Harris-与-Shi-Tomasi" class="headerlink" title="一、角点检测：Harris 与 Shi-Tomasi"></a>一、角点检测：Harris 与 Shi-Tomasi</h2><p>角点在两方向都有强梯度，是稳定的特征点：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> cv2</span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line">gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)</span><br><span class="line">gray = np.float32(gray)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Harris 角点</span></span><br><span class="line">dst = cv2.cornerHarris(gray, <span class="number">2</span>, <span class="number">3</span>, <span class="number">0.04</span>)</span><br><span class="line">dst = cv2.dilate(dst, <span class="literal">None</span>)                    <span class="comment"># 膨胀便于标记</span></span><br><span class="line">img[dst &gt; <span class="number">0.01</span> * dst.<span class="built_in">max</span>()] = [<span class="number">0</span>, <span class="number">0</span>, <span class="number">255</span>]      <span class="comment"># 阈值标记红点</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Shi-Tomasi（goodFeaturesToTrack）：更稳定，常用于跟踪</span></span><br><span class="line">corners = cv2.goodFeaturesToTrack(gray, <span class="number">100</span>, <span class="number">0.01</span>, <span class="number">10</span>)</span><br><span class="line">corners = np.int0(corners)</span><br><span class="line"><span class="keyword">for</span> c <span class="keyword">in</span> corners:</span><br><span class="line">    x, y = c.ravel()</span><br><span class="line">    cv2.circle(img, (x, y), <span class="number">3</span>, (<span class="number">0</span>, <span class="number">255</span>, <span class="number">0</span>), -<span class="number">1</span>)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>Harris</strong>：返回角点响应图，需自行阈值化。</li>
+<li><strong><code>goodFeaturesToTrack</code></strong>：直接返回前 N 个角点坐标，参数为（最大点数、质量阈值、最小间距）。</li>
+</ul>
+<hr>
+<h2 id="二、特征检测与描述：ORB-SIFT"><a href="#二、特征检测与描述：ORB-SIFT" class="headerlink" title="二、特征检测与描述：ORB&#x2F;SIFT"></a>二、特征检测与描述：ORB&#x2F;SIFT</h2><h3 id="1-SIFT（尺度不变）"><a href="#1-SIFT（尺度不变）" class="headerlink" title="1. SIFT（尺度不变）"></a>1. SIFT（尺度不变）</h3><p>SIFT 对尺度、旋转、光照变化鲁棒，4.x 起主包可用：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sift = cv2.SIFT_create()</span><br><span class="line">kp, des = sift.detectAndCompute(gray, <span class="literal">None</span>)    <span class="comment"># des: (N, 128) 描述子</span></span><br><span class="line">img_kp = cv2.drawKeypoints(img, kp, <span class="literal">None</span>, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-ORB（快速，免费）"><a href="#2-ORB（快速，免费）" class="headerlink" title="2. ORB（快速，免费）"></a>2. ORB（快速，免费）</h3><p>ORB 速度远快于 SIFT 且无专利，实时场景首选：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">orb = cv2.ORB_create()</span><br><span class="line">kp, des = orb.detectAndCompute(gray, <span class="literal">None</span>)     <span class="comment"># des: (N, 32)，二进制描述子</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-特征匹配"><a href="#3-特征匹配" class="headerlink" title="3. 特征匹配"></a>3. 特征匹配</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># FLANN 或 BFMatcher</span></span><br><span class="line">bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=<span class="literal">True</span>)  <span class="comment"># ORB 用汉明距离</span></span><br><span class="line">matches = bf.<span class="keyword">match</span>(des1, des2)</span><br><span class="line">matches = <span class="built_in">sorted</span>(matches, key=<span class="keyword">lambda</span> m: m.distance)    <span class="comment"># 按距离升序</span></span><br><span class="line">result = cv2.drawMatches(img1, kp1, img2, kp2, matches[:<span class="number">20</span>], <span class="literal">None</span>, flags=<span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>NORM_HAMMING</code></strong>：ORB 等二进制描述子用汉明距离；SIFT 等浮点描述子用 <code>NORM_L2</code>。</li>
+<li><strong><code>crossCheck=True</code></strong>：双向匹配，过滤误匹配。</li>
+<li><strong>比值检验</strong>（Lowe’s ratio test）进一步筛优：近邻距离 &#x2F; 次近邻 &lt; 0.7 才保留。</li>
+</ul>
+<h3 id="FLANN-与比值检验实操"><a href="#FLANN-与比值检验实操" class="headerlink" title="FLANN 与比值检验实操"></a>FLANN 与比值检验实操</h3><p>大数据集用 FLANN 近似最近邻，配 Lowe ratio test：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># SIFT（浮点描述子）用 KD-Tree 索引</span></span><br><span class="line">flann = cv2.FlannBasedMatcher(<span class="built_in">dict</span>(algorithm=<span class="number">1</span>, trees=<span class="number">5</span>), <span class="built_in">dict</span>(checks=<span class="number">50</span>))</span><br><span class="line">matches = flann.knnMatch(des1, des2, k=<span class="number">2</span>)</span><br><span class="line">good = [m <span class="keyword">for</span> m, n <span class="keyword">in</span> matches <span class="keyword">if</span> m.distance &lt; <span class="number">0.7</span> * n.distance]</span><br><span class="line"></span><br><span class="line"><span class="comment"># ORB（二进制）改用 LSH 索引：algorithm=6, table_number=6, key_size=12</span></span><br><span class="line">vis = cv2.drawMatches(img1, kp1, img2, kp2, good, <span class="literal">None</span>,</span><br><span class="line">                      flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)</span><br></pre></td></tr></table></figure>
+
+<p><strong>选型经验</strong>：实时&#x2F;嵌入式用 ORB + BFMatcher；离线高精度配准用 SIFT + FLANN；AKAZE 介于两者之间且对非线性尺度更鲁棒。</p>
+<hr>
+<h2 id="二·补充、霍夫变换：直线与圆"><a href="#二·补充、霍夫变换：直线与圆" class="headerlink" title="二·补充、霍夫变换：直线与圆"></a>二·补充、霍夫变换：直线与圆</h2><p>霍夫变换把「图像空间的点共线&#x2F;共圆」转成「参数空间的投票峰值」，是从边缘图提取几何基元的标准方法：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">edges = cv2.Canny(gray, <span class="number">50</span>, <span class="number">150</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 概率霍夫直线：直接返回线段端点</span></span><br><span class="line">lines = cv2.HoughLinesP(edges, <span class="number">1</span>, np.pi/<span class="number">180</span>, threshold=<span class="number">80</span>,</span><br><span class="line">                        minLineLength=<span class="number">50</span>, maxLineGap=<span class="number">10</span>)</span><br><span class="line"><span class="keyword">for</span> l <span class="keyword">in</span> lines[:, <span class="number">0</span>]:</span><br><span class="line">    x1, y1, x2, y2 = l</span><br><span class="line">    cv2.line(img, (x1, y1), (x2, y2), (<span class="number">0</span>, <span class="number">255</span>, <span class="number">0</span>), <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 霍夫圆：需先模糊降噪</span></span><br><span class="line">circles = cv2.HoughCircles(blur, cv2.HOUGH_GRADIENT, dp=<span class="number">1</span>, minDist=<span class="number">50</span>,</span><br><span class="line">                           param1=<span class="number">150</span>, param2=<span class="number">40</span>, minRadius=<span class="number">10</span>, maxRadius=<span class="number">100</span>)</span><br><span class="line"><span class="keyword">if</span> circles <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">    <span class="keyword">for</span> c <span class="keyword">in</span> np.uint16(np.around(circles[<span class="number">0</span>])):</span><br><span class="line">        cv2.circle(img, (c[<span class="number">0</span>], c[<span class="number">1</span>]), c[<span class="number">2</span>], (<span class="number">0</span>, <span class="number">0</span>, <span class="number">255</span>), <span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>HoughLinesP</code></strong>（概率版）比标准版 <code>HoughLines</code> 实用：直接给线段而不是无穷直线方程。</li>
+<li><strong><code>HoughCircles</code></strong> 对噪声敏感，<code>param2</code>（累加阈值）越大越严格；前置中值&#x2F;高斯模糊几乎必须。</li>
+<li>应用：车道线、文档边框、仪表盘指针读数、圆形工件检测。</li>
+</ul>
+<hr>
+<h2 id="三、单应性矩阵与图像拼接"><a href="#三、单应性矩阵与图像拼接" class="headerlink" title="三、单应性矩阵与图像拼接"></a>三、单应性矩阵与图像拼接</h2><p>由 4 对以上匹配点解 3×3 单应性矩阵，把一幅图「贴」到另一幅的平面：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 取匹配良好的点坐标</span></span><br><span class="line">src_pts = np.float32([kp1[m.queryIdx].pt <span class="keyword">for</span> m <span class="keyword">in</span> good]).reshape(-<span class="number">1</span>, <span class="number">1</span>, <span class="number">2</span>)</span><br><span class="line">dst_pts = np.float32([kp2[m.trainIdx].pt <span class="keyword">for</span> m <span class="keyword">in</span> good]).reshape(-<span class="number">1</span>, <span class="number">1</span>, <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># RANSAC 求单应性，内点掩码过滤误匹配</span></span><br><span class="line">H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, <span class="number">5.0</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 透视变换把 img1 投到 img2 平面</span></span><br><span class="line">h, w = img1.shape[:<span class="number">2</span>]</span><br><span class="line">warped = cv2.warpPerspective(img1, H, (w + img2.shape[<span class="number">1</span>], img2.shape[<span class="number">0</span>]))</span><br><span class="line"><span class="comment"># 把 img2 贴到左侧剩余区域（简化拼接）</span></span><br><span class="line">warped[<span class="number">0</span>:img2.shape[<span class="number">0</span>], <span class="number">0</span>:img2.shape[<span class="number">1</span>]] = img2</span><br></pre></td></tr></table></figure>
+
+<p>应用：全景拼接、AR 平面贴合、文档&#x2F;车牌矫正（第三章透视变换的进阶）。</p>
+<blockquote>
+<p>单应性要求场景中存在<strong>平面</strong>（或纯旋转相机），非平面场景会有视差错位。</p>
+</blockquote>
+<hr>
+<h2 id="四、轮廓检测与分析"><a href="#四、轮廓检测与分析" class="headerlink" title="四、轮廓检测与分析"></a>四、轮廓检测与分析</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)</span><br><span class="line">_, binary = cv2.threshold(gray, <span class="number">127</span>, <span class="number">255</span>, cv2.THRESH_BINARY)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 提取轮廓</span></span><br><span class="line">contours, hierarchy = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> cnt <span class="keyword">in</span> contours:</span><br><span class="line">    <span class="comment"># 面积与周长</span></span><br><span class="line">    area = cv2.contourArea(cnt)</span><br><span class="line">    peri = cv2.arcLength(cnt, <span class="literal">True</span>)</span><br><span class="line">    <span class="keyword">if</span> area &lt; <span class="number">100</span>:          <span class="comment"># 过滤太小的噪点轮廓</span></span><br><span class="line">        <span class="keyword">continue</span></span><br><span class="line">    <span class="comment"># 外接矩形（正/旋转）</span></span><br><span class="line">    x, y, w, h = cv2.boundingRect(cnt)</span><br><span class="line">    rect = cv2.minAreaRect(cnt)                <span class="comment"># 旋转外接矩形</span></span><br><span class="line">    box = cv2.boxPoints(rect).astype(<span class="built_in">int</span>)      <span class="comment"># 四角点</span></span><br><span class="line">    <span class="comment"># 最小外接圆与拟合椭圆</span></span><br><span class="line">    (cx, cy), r = cv2.minEnclosingCircle(cnt)</span><br><span class="line">    <span class="comment"># 多边形近似（顶点数判断形状）</span></span><br><span class="line">    approx = cv2.approxPolyDP(cnt, <span class="number">0.04</span> * peri, <span class="literal">True</span>)</span><br><span class="line">    <span class="comment"># 画轮廓</span></span><br><span class="line">    cv2.drawContours(img, [cnt], -<span class="number">1</span>, (<span class="number">0</span>, <span class="number">255</span>, <span class="number">0</span>), <span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>RETR_EXTERNAL</code></strong>：只取最外层轮廓；<code>RETR_TREE</code> 取全部层级。</li>
+<li><strong><code>CHAIN_APPROX_SIMPLE</code></strong>：压缩水平&#x2F;垂直&#x2F;对角冗余点，省内存。</li>
+<li><strong>形状识别</strong>：<code>approxPolyDP</code> 顶点数 → 三角形 3、矩形 4、圆 &gt;8。</li>
+</ul>
+<h3 id="轮廓层级与形状描述子"><a href="#轮廓层级与形状描述子" class="headerlink" title="轮廓层级与形状描述子"></a>轮廓层级与形状描述子</h3><p><code>hierarchy</code> 数组表达嵌套关系（外轮廓含孔洞时），常用作「只保留有孔的外轮廓」这类筛选；<code>RETR_CCOMP</code> 两层结构对文字检测够用。</p>
+<p>形状量化常用三招：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">area = cv2.contourArea(cnt)</span><br><span class="line">peri = cv2.arcLength(cnt, <span class="literal">True</span>)</span><br><span class="line">circularity = <span class="number">4</span> * np.pi * area / (peri * peri)   <span class="comment"># 圆度：圆=1，越扁越小</span></span><br><span class="line">x, y, w, h = cv2.boundingRect(cnt)</span><br><span class="line">aspect = w / h                                    <span class="comment"># 长宽比</span></span><br><span class="line">extent = area / (w * h)                           <span class="comment"># 占外接矩形比例</span></span><br></pre></td></tr></table></figure>
+
+<p>Hu 矩（<code>cv2.HuMoments</code>）提供旋转&#x2F;尺度&#x2F;平移不变的形状签名，<code>cv2.matchShapes</code> 直接比较两轮廓相似度——「找图中与模板形状相似的物体」不必上深度模型。</p>
+<h3 id="凸包与缺陷检测"><a href="#凸包与缺陷检测" class="headerlink" title="凸包与缺陷检测"></a>凸包与缺陷检测</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hull = cv2.convexHull(cnt)                  <span class="comment"># 凸包</span></span><br><span class="line">defects_idx = cv2.convexHull(cnt, returnPoints=<span class="literal">False</span>)</span><br><span class="line">defects = cv2.convexityDefects(cnt, defects_idx)  <span class="comment"># 凹凸缺陷</span></span><br></pre></td></tr></table></figure>
+
+<p>经典应用：<strong>手势识别</strong>——手部轮廓凸包的「凹点」即指缝，数凸顶点得张开手指数。</p>
+<hr>
+<h2 id="四·补充、相机标定入门（calib3d）"><a href="#四·补充、相机标定入门（calib3d）" class="headerlink" title="四·补充、相机标定入门（calib3d）"></a>四·补充、相机标定入门（calib3d）</h2><p>摄像头镜头有畸变，精确测量（尺寸&#x2F;三维）前必须标定。标准流程用棋盘格：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 多拍棋盘格照片，找角点</span></span><br><span class="line">pattern = (<span class="number">9</span>, <span class="number">6</span>)                                <span class="comment"># 内角点数</span></span><br><span class="line">objp = np.zeros((pattern[<span class="number">0</span>]*pattern[<span class="number">1</span>], <span class="number">3</span>), np.float32)</span><br><span class="line">objp[:, :<span class="number">2</span>] = np.mgrid[<span class="number">0</span>:<span class="number">9</span>, <span class="number">0</span>:<span class="number">6</span>].T.reshape(-<span class="number">1</span>, <span class="number">2</span>)  <span class="comment"># 世界坐标（z=0 平面）</span></span><br><span class="line"></span><br><span class="line">objpoints, imgpoints = [], []</span><br><span class="line"><span class="keyword">for</span> f <span class="keyword">in</span> glob.glob(<span class="string">&quot;calib/*.jpg&quot;</span>):</span><br><span class="line">    g = cv2.cvtColor(cv2.imread(f), cv2.COLOR_BGR2GRAY)</span><br><span class="line">    ok, corners = cv2.findChessboardCorners(g, pattern, <span class="literal">None</span>)</span><br><span class="line">    <span class="keyword">if</span> ok:</span><br><span class="line">        corners = cv2.cornerSubPix(g, corners, (<span class="number">11</span>, <span class="number">11</span>), (-<span class="number">1</span>, -<span class="number">1</span>),</span><br><span class="line">                                   (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, <span class="number">30</span>, <span class="number">0.001</span>))</span><br><span class="line">        objpoints.append(objp); imgpoints.append(corners)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 标定：得内参矩阵 K 与畸变系数 dist</span></span><br><span class="line">ret, K, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints,</span><br><span class="line">                                                 g.shape[::-<span class="number">1</span>], <span class="literal">None</span>, <span class="literal">None</span>)</span><br><span class="line"><span class="comment"># 3. 去畸变</span></span><br><span class="line">undistorted = cv2.undistort(img, K, dist)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong><code>K</code></strong>：3×3 内参（焦距 fx&#x2F;fy、主点 cx&#x2F;cy）；<code>dist</code>：径向&#x2F;切向畸变系数。</li>
+<li>标定板需<strong>多姿态多角度 15+ 张</strong>，覆盖画面边缘（畸变最大处）；<code>ret</code> 是重投影误差，&lt;0.5 像素为佳。</li>
+<li>去畸变后 <code>findHomography</code>&#x2F;测量才有几何意义；鱼眼镜头改用 <code>cv2.fisheye</code> 系列 API。</li>
+</ul>
+<hr>
+<h2 id="五、模板匹配"><a href="#五、模板匹配" class="headerlink" title="五、模板匹配"></a>五、模板匹配</h2><p>在图中滑动模板找最相似位置（限定于平移、无尺度旋转）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">template = cv2.imread(<span class="string">&quot;template.png&quot;</span>, <span class="number">0</span>)</span><br><span class="line">gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)</span><br><span class="line">res = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED)</span><br><span class="line">min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)</span><br><span class="line">top_left = max_loc</span><br><span class="line">h, w = template.shape</span><br><span class="line">cv2.rectangle(img, top_left, (top_left[<span class="number">0</span>]+w, top_left[<span class="number">1</span>]+h), (<span class="number">0</span>,<span class="number">0</span>,<span class="number">255</span>), <span class="number">2</span>)</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>局限</strong>：<code>matchTemplate</code> 只对平移有效，目标有旋转&#x2F;缩放则失效——这种情况改用特征匹配或深度模型。</p>
+</blockquote>
+<hr>
+<h2 id="六、传统-CV-与深度模型的分工"><a href="#六、传统-CV-与深度模型的分工" class="headerlink" title="六、传统 CV 与深度模型的分工"></a>六、传统 CV 与深度模型的分工</h2><table>
+<thead>
+<tr>
+<th>任务</th>
+<th>传统（本章）</th>
+<th>深度模型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>图像配准&#x2F;拼接</td>
+<td>SIFT&#x2F;ORB + 单应性 <strong>优势</strong></td>
+<td>少用</td>
+</tr>
+<tr>
+<td>物体检测</td>
+<td>模板匹配（仅平移）&#x2F;轮廓</td>
+<td><strong>YOLO&#x2F;DETR 优势</strong></td>
+</tr>
+<tr>
+<td>语义分割</td>
+<td>阈值&#x2F;分水岭</td>
+<td><strong>U-Net&#x2F;Mask R-CNN 优势</strong></td>
+</tr>
+<tr>
+<td>几何测量</td>
+<td>轮廓面积&#x2F;周长 <strong>优势</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>实时跟踪</td>
+<td>KCF&#x2F;光流</td>
+<td>Siamese 等深度跟踪</td>
+</tr>
+</tbody></table>
+<p>经验：<strong>几何与配准用传统 CV，识别与分割用深度模型</strong>，二者常组合——深度模型出框，OpenCV 做几何后处理。</p>
+<hr>
+<h2 id="七、常见陷阱"><a href="#七、常见陷阱" class="headerlink" title="七、常见陷阱"></a>七、常见陷阱</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Harris 输入未转 float32</strong></td>
+<td><code>cornerHarris</code> 需 float32 灰度，uint8 报错</td>
+</tr>
+<tr>
+<td><strong>ORB 用 L2 距离</strong></td>
+<td>ORB 二进制描述子须用 <code>NORM_HAMMING</code></td>
+</tr>
+<tr>
+<td><strong>无比值检验误匹配多</strong></td>
+<td>只取最近邻会有大量误匹配，加 Lowe ratio test</td>
+</tr>
+<tr>
+<td><strong>单应性点不足</strong></td>
+<td>需 ≥4 对点，且不能共线，否则解不稳</td>
+</tr>
+<tr>
+<td><strong>轮廓忘过滤小面积</strong></td>
+<td>不滤噪点轮廓会画出一片碎点</td>
+</tr>
+<tr>
+<td><strong>模板匹配遇旋转</strong></td>
+<td><code>matchTemplate</code> 不抗旋转缩放，需改特征匹配</td>
+</tr>
+<tr>
+<td><strong>findContours 改原图</strong></td>
+<td>该函数会修改输入图，传副本</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>角点</td>
+<td>Harris 响应图、Shi-Tomasi 直接出点（<code>goodFeaturesToTrack</code>）</td>
+</tr>
+<tr>
+<td>特征</td>
+<td>SIFT 鲁棒、ORB 快且免费；检测+描述两步</td>
+</tr>
+<tr>
+<td>匹配</td>
+<td>BFMatcher&#x2F;FLANN；二进制用汉明距离、浮点用 L2；加比值检验</td>
+</tr>
+<tr>
+<td>霍夫</td>
+<td><code>HoughLinesP</code> 出直线段、<code>HoughCircles</code> 出圆，需先边缘&#x2F;模糊</td>
+</tr>
+<tr>
+<td>单应性</td>
+<td>4+ 对点 RANSAC 解 3×3，全景拼接&#x2F;AR&#x2F;矫正</td>
+</tr>
+<tr>
+<td>轮廓</td>
+<td><code>findContours</code> + 面积&#x2F;外接矩形&#x2F;多边形近似；圆度&#x2F;长宽比&#x2F;Hu 矩量化形状；凸包缺陷做手势</td>
+</tr>
+<tr>
+<td>标定</td>
+<td>棋盘格 15+ 张 → <code>calibrateCamera</code> 得 K&#x2F;dist → <code>undistort</code> 去畸变</td>
+</tr>
+<tr>
+<td>模板匹配</td>
+<td>仅平移有效，旋转缩放失效</td>
+</tr>
+<tr>
+<td>分工</td>
+<td>几何配准用传统，识别分割用深度（见第五章）</td>
+</tr>
+</tbody></table>
+<p>进入 <a href="/opencv/05-opencv-video-deep-learning/">第五章：视频与深度学习</a>，学习视频处理、光流与 dnn 推理。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Python/" rel="tag"># Python</a>
+              <a href="/tags/OpenCV/" rel="tag"># OpenCV</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/opencv/05-opencv-video-deep-learning/" rel="prev" title="第五章：视频与深度学习">
+                  <i class="fa fa-angle-left"></i> 第五章：视频与深度学习
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/opencv/03-opencv-filter-transform/" rel="next" title="第三章：滤波与几何变换">
+                  第三章：滤波与几何变换 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

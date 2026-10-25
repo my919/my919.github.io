@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第七章：I2C概念基础 I2C（Inter-Integrated Circuit）是 Philips 发明的两线同步总线：SCL 时钟 + SDA 数据，是板级互联传感器&#x2F;存储器等外设的事实标准。 地址寻址多从：每个从设备有 7 位地址（0x00~0x7F），主设备以地址帧寻址——两根线即可挂多个器件，扩展外设几乎不加线。 开漏 + 上拉：SDA&#x2F;SCL 均为开漏输出加上拉电阻">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第七章：I2C">
+<meta property="og:url" content="https://my919.github.io/embedded/07-i2c/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第七章：I2C概念基础 I2C（Inter-Integrated Circuit）是 Philips 发明的两线同步总线：SCL 时钟 + SDA 数据，是板级互联传感器&#x2F;存储器等外设的事实标准。 地址寻址多从：每个从设备有 7 位地址（0x00~0x7F），主设备以地址帧寻址——两根线即可挂多个器件，扩展外设几乎不加线。 开漏 + 上拉：SDA&#x2F;SCL 均为开漏输出加上拉电阻">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:11:31.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.575Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Embedded">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/embedded/07-i2c/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/embedded/07-i2c/","path":"embedded/07-i2c/","title":"第七章：I2C"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第七章：I2C | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%83%E7%AB%A0%EF%BC%9AI2C"><span class="nav-number">1.</span> <span class="nav-text">第七章：I2C</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BA%BF%E6%8B%93%E6%89%91"><span class="nav-number">1.2.</span> <span class="nav-text">总线拓扑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E4%BF%A1%E5%8F%B7%E4%B8%8E%E8%B5%B7%E5%A7%8B-%E5%81%9C%E6%AD%A2"><span class="nav-number">1.3.</span> <span class="nav-text">一、信号与起始&#x2F;停止</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E6%AC%A1%E5%AE%8C%E6%95%B4%E5%86%99%E4%BC%A0%E8%BE%93%E7%9A%84%E6%B3%A2%E5%BD%A2%E8%AF%AD%E4%B9%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">一次完整写传输的波形语义</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%817-%E4%BD%8D%E5%9C%B0%E5%9D%80%E5%B8%A7%EF%BC%88%E5%86%99%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">二、7 位地址帧（写）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%B0%E5%9D%80%E5%AD%97%E8%8A%82%E7%9A%84%E4%B8%A4%E5%A5%97%E8%AE%B0%E6%B3%95"><span class="nav-number">1.4.1.</span> <span class="nav-text">地址字节的两套记法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%BB%E4%BC%A0%E6%84%9F%E5%99%A8%E5%AF%84%E5%AD%98%E5%99%A8%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B%EF%BC%88%E4%BB%A5%E8%AF%BB-WHO-AM-I-%E4%B8%BA%E4%BE%8B%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">读传感器寄存器的完整流程（以读 WHO_AM_I 为例）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HAL-%E5%AE%9E%E6%88%98%EF%BC%9A%E8%AF%BB%E5%86%99-MPU6050"><span class="nav-number">1.4.3.</span> <span class="nav-text">HAL 实战：读写 MPU6050</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E9%80%9F%E7%8E%87%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.5.</span> <span class="nav-text">三、速率模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%8A%E6%8B%89%E7%94%B5%E9%98%BB%E6%80%8E%E4%B9%88%E9%80%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">上拉电阻怎么选</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%85%B8%E5%9E%8B%E8%AE%BE%E5%A4%87"><span class="nav-number">1.6.</span> <span class="nav-text">四、典型设备</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%B0%83%E8%AF%95%E4%B8%8E%E6%8E%92%E9%9A%9C"><span class="nav-number">1.7.</span> <span class="nav-text">五、调试与排障</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95"><span class="nav-number">1.7.1.</span> <span class="nav-text">常见问题清单</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E4%B8%8E-SPI%E3%80%81UART"><span class="nav-number">1.8.</span> <span class="nav-text">六、与 SPI、UART</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%8D%8F%E8%AE%AE%E5%AE%B6%E6%97%8F%E7%9A%84%E5%BB%B6%E4%BC%B8"><span class="nav-number">1.9.</span> <span class="nav-text">七、协议家族的延伸</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/embedded/07-i2c/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第七章：I2C | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第七章：I2C
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:11:31" itemprop="dateCreated datePublished" datetime="2026-05-01T13:11:31+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">嵌入式</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>3.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>3 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第七章：I2C"><a href="#第七章：I2C" class="headerlink" title="第七章：I2C"></a>第七章：I2C</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>I2C</strong>（Inter-Integrated Circuit）是 <strong>Philips 发明的两线同步总线</strong>：<strong>SCL 时钟 + SDA 数据</strong>，是板级互联传感器&#x2F;存储器等外设的事实标准。</li>
+<li><strong>地址寻址多从</strong>：每个从设备有 <strong>7 位地址</strong>（0x00~0x7F），主设备以<strong>地址帧</strong>寻址——两根线即可挂多个器件，扩展外设几乎不加线。</li>
+<li><strong>开漏 + 上拉</strong>：SDA&#x2F;SCL 均为<strong>开漏输出加上拉电阻</strong>，天然支持<strong>多主仲裁与时钟同步</strong>，也决定了速率上限（100k&#x2F;400k&#x2F;1M&#x2F;3.4M）。</li>
+<li><strong>协议机制清晰</strong>：<strong>START&#x2F;STOP</strong> 条件界定传输，逐字节 <strong>ACK&#x2F;NACK</strong> 确认；读操作用<strong>重复 START</strong> 切换方向。</li>
+<li><strong>取舍</strong>：<strong>线最少、成本低</strong>，EEPROM&#x2F;RTC&#x2F;IMU&#x2F;OLED 全支持；但速率不如 SPI，上拉取值需按总线电容与速率权衡。</li>
+</ol>
+<p>先看总线拓扑：</p>
+<h2 id="总线拓扑"><a href="#总线拓扑" class="headerlink" title="总线拓扑"></a>总线拓扑</h2><pre>
+<code class="mermaid">
+
+flowchart TB
+  Master[主设备 MCU] --- SCL[SCL 时钟]
+  Master --- SDA[SDA 数据]
+  SDA --&gt; S1[从设备 地址 0x48]
+  SDA --&gt; S2[从设备 地址 0x50]
+  SCL --&gt; S1
+  SCL --&gt; S2
+</code>
+</pre>
+
+<hr>
+<h2 id="一、信号与起始-停止"><a href="#一、信号与起始-停止" class="headerlink" title="一、信号与起始&#x2F;停止"></a>一、信号与起始&#x2F;停止</h2><ul>
+<li><strong>空闲</strong>：SDA、SCL 均为高（靠<strong>上拉电阻</strong>）。  </li>
+<li><strong>START</strong>：SCL 高时 SDA 下降沿。  </li>
+<li><strong>STOP</strong>：SCL 高时 SDA 上升沿。  </li>
+<li><strong>数据位</strong>：SCL 低时 SDA 变化，SCL 高时采样。</li>
+</ul>
+<h3 id="一次完整写传输的波形语义"><a href="#一次完整写传输的波形语义" class="headerlink" title="一次完整写传输的波形语义"></a>一次完整写传输的波形语义</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">S     A6..A0 W  A    D7..D0  A    P</span><br><span class="line">START 地址  写 ACK  数据    ACK  STOP</span><br><span class="line">      └主→从┘ └从→主 └主→从┘ └从→主</span><br></pre></td></tr></table></figure>
+
+<p>几个容易忽略的细节：</p>
+<ul>
+<li><strong>ACK 由接收方发出</strong>：第 9 个时钟，发送方释放 SDA（保持高），接收方拉低表示 ACK。</li>
+<li><strong>NACK 不一定是错误</strong>：主设备读最后一个字节时故意回 NACK，告诉从机「别再发了」，然后发 STOP。</li>
+<li><strong>时钟延展（Clock Stretching）</strong>：从机来不及处理时可在字节间<strong>把 SCL 拉低不放</strong>，主机必须等待——主机代码若不支持检测 SCL 实际电平，与慢速从机通信会莫名失败。</li>
+<li><strong>开漏的意义</strong>：任何设备都能拉低总线，没有人能推高——这是多主仲裁与 ACK 机制的电气基础。</li>
+</ul>
+<hr>
+<h2 id="二、7-位地址帧（写）"><a href="#二、7-位地址帧（写）" class="headerlink" title="二、7 位地址帧（写）"></a>二、7 位地址帧（写）</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">START + 7bit地址(写) + ACK + 寄存器地址 + ACK + 数据 + ACK + STOP</span><br></pre></td></tr></table></figure>
+
+<p>读操作：写寄存器指针 → <strong>重复 START</strong> → 读地址 + 读数据 + <strong>NACK</strong> + STOP。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// STM32 HAL 概念</span></span><br><span class="line">HAL_I2C_Mem_Write(&amp;hi2c1, <span class="number">0x50</span>&lt;&lt;<span class="number">1</span>, reg, I2C_MEMADD_SIZE_8BIT, &amp;val, <span class="number">1</span>, <span class="number">100</span>);</span><br><span class="line">HAL_I2C_Mem_Read(&amp;hi2c1, <span class="number">0x50</span>&lt;&lt;<span class="number">1</span>, reg, I2C_MEMADD_SIZE_8BIT, &amp;val, <span class="number">1</span>, <span class="number">100</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="地址字节的两套记法"><a href="#地址字节的两套记法" class="headerlink" title="地址字节的两套记法"></a>地址字节的两套记法</h3><p>地址字节 &#x3D; <code>7bit 地址 &lt;&lt; 1 | R/W</code>，文档有两种写法，极易混淆：</p>
+<table>
+<thead>
+<tr>
+<th>记法</th>
+<th>EEPROM 24C02 示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>7 位地址</td>
+<td>0x50</td>
+</tr>
+<tr>
+<td>写地址 &#x2F; 读地址（8 位）</td>
+<td>0xA0 &#x2F; 0xA1</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>HAL 库的 API 要的是 <strong>8 位形式</strong>（所以上面代码写 <code>0x50&lt;&lt;1</code>），而数据手册通常给 7 位地址——通信不通先检查是不是地址忘了左移。</p>
+</blockquote>
+<h3 id="读传感器寄存器的完整流程（以读-WHO-AM-I-为例）"><a href="#读传感器寄存器的完整流程（以读-WHO-AM-I-为例）" class="headerlink" title="读传感器寄存器的完整流程（以读 WHO_AM_I 为例）"></a>读传感器寄存器的完整流程（以读 WHO_AM_I 为例）</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">1) START</span><br><span class="line">2) 发 [0x68&lt;&lt;1|0]（写方向）     → ACK</span><br><span class="line">3) 发寄存器地址 0x75            → ACK</span><br><span class="line">4) ReSTART（重复起始，不发 STOP）</span><br><span class="line">5) 发 [0x68&lt;&lt;1|1]（读方向）     → ACK</span><br><span class="line">6) 收 1 字节数据                → 主机回 NACK</span><br><span class="line">7) STOP</span><br></pre></td></tr></table></figure>
+
+<h3 id="HAL-实战：读写-MPU6050"><a href="#HAL-实战：读写-MPU6050" class="headerlink" title="HAL 实战：读写 MPU6050"></a>HAL 实战：读写 MPU6050</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint8_t</span> whoami;</span><br><span class="line">HAL_I2C_Mem_Read(&amp;hi2c1, <span class="number">0x68</span> &lt;&lt; <span class="number">1</span>, <span class="number">0x75</span>, I2C_MEMADD_SIZE_8BIT, &amp;whoami, <span class="number">1</span>, <span class="number">100</span>);</span><br><span class="line"><span class="comment">// whoami 应为 0x68</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 唤醒 MPU6050：写 PWR_MGMT_1 = 0</span></span><br><span class="line"><span class="type">uint8_t</span> val = <span class="number">0</span>;</span><br><span class="line">HAL_I2C_Mem_Write(&amp;hi2c1, <span class="number">0x68</span> &lt;&lt; <span class="number">1</span>, <span class="number">0x6B</span>, I2C_MEMADD_SIZE_8BIT, &amp;val, <span class="number">1</span>, <span class="number">100</span>);</span><br></pre></td></tr></table></figure>
+
+<p>忙等待超时、地址移位、寄存器地址宽度（8 位&#x2F;16 位）是 HAL 调用最常出错的三个参数。</p>
+<hr>
+<h2 id="三、速率模式"><a href="#三、速率模式" class="headerlink" title="三、速率模式"></a>三、速率模式</h2><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>速率</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Standard</strong></td>
+<td>100 kHz</td>
+</tr>
+<tr>
+<td><strong>Fast</strong></td>
+<td>400 kHz</td>
+</tr>
+<tr>
+<td><strong>Fast Mode Plus</strong></td>
+<td>1 MHz</td>
+</tr>
+<tr>
+<td><strong>High Speed</strong></td>
+<td>3.4 MHz（较少用）</td>
+</tr>
+</tbody></table>
+<p><strong>上拉电阻</strong>：常见 <strong>2.2k~10k</strong>（3.3V、总线电容与速率相关）；长电缆或多设备需降低电容、可能用 <strong>I2C 缓冲器&#x2F;扩展器</strong>。</p>
+<h3 id="上拉电阻怎么选"><a href="#上拉电阻怎么选" class="headerlink" title="上拉电阻怎么选"></a>上拉电阻怎么选</h3><p>RC 上升时间是核心约束：SCL&#x2F;SDA 靠上拉电阻对总线电容充电，规范要求 100 kHz 下上升沿 ≤ 1000 ns、400 kHz 下 ≤ 300 ns。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">经验估算：Rp(min) = (VDD - VOL) / IOL      // 太小吃电流、驱动吃力</span><br><span class="line">          Rp(max) = tr / (0.8473 × Cb)     // 太大上升慢、波形不合格</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐上拉</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>板内短走线、1~2 个器件</td>
+<td>4.7kΩ ~ 10kΩ（省电）</td>
+</tr>
+<tr>
+<td>多器件、400 kHz</td>
+<td>2.2kΩ ~ 3.3kΩ</td>
+</tr>
+<tr>
+<td>长排线 &#x2F; 高电容</td>
+<td>1kΩ ~ 2.2kΩ，或改用总线缓冲器（PCA9515）</td>
+</tr>
+</tbody></table>
+<p>示波器看 SCL 波形：上升沿呈明显圆弧说明上拉偏弱或电容过大；正常应接近方波。</p>
+<hr>
+<h2 id="四、典型设备"><a href="#四、典型设备" class="headerlink" title="四、典型设备"></a>四、典型设备</h2><ul>
+<li><strong>EEPROM</strong>（24Cxx）、<strong>RTC</strong>（DS3231）、<strong>IMU</strong>、<strong>OLED</strong> 小屏、<strong>PMIC</strong>、<strong>GPIO 扩展</strong>（PCF8574）。  </li>
+<li><strong>同一地址冲突</strong>：部分芯片有 <strong>ADDR</strong> 引脚改地址；否则需不同总线（<strong>I2C mux</strong>）。</li>
+</ul>
+<p>地址冲突的处理手段：</p>
+<ol>
+<li><strong>ADDR 引脚</strong>：多数传感器留 1~3 个地址引脚，可改低位地址。</li>
+<li><strong>I2C 多路复用器</strong>：TCA9548A 把一路总线分成 8 路，先选通道再通信，可挂 8 个同地址设备。</li>
+<li><strong>第二路 I2C 外设</strong>：MCU 有多个 I2C 控制器时分开挂。</li>
+<li><strong>软件模拟（bit-bang）</strong>：GPIO 模拟时序，灵活但占 CPU，适合调试或非关键低速设备。</li>
+</ol>
+<hr>
+<h2 id="五、调试与排障"><a href="#五、调试与排障" class="headerlink" title="五、调试与排障"></a>五、调试与排障</h2><ul>
+<li><strong>逻辑分析仪解码</strong>：廉价的 8 通道逻辑分析仪软件（如 PulseView&#x2F;sigrok）自带 I2C 解码，能直接显示地址、ACK&#x2F;NACK、数据，定位「哪一步没 ACK」一目了然。</li>
+<li><strong>地址扫描</strong>：主机遍历 0x08~0x77 发地址帧看哪个 ACK，10 秒确认设备是否在线：</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (<span class="type">uint8_t</span> a = <span class="number">0x08</span>; a &lt; <span class="number">0x78</span>; a++) &#123;</span><br><span class="line">    <span class="keyword">if</span> (HAL_I2C_IsDeviceReady(&amp;hi2c1, a &lt;&lt; <span class="number">1</span>, <span class="number">1</span>, <span class="number">10</span>) == HAL_OK)</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;Found device at 0x%02X\r\n&quot;</span>, a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="常见问题清单"><a href="#常见问题清单" class="headerlink" title="常见问题清单"></a>常见问题清单</h3><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>可能原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>地址帧就 NACK</td>
+<td>地址没左移&#x2F;右移错；设备未上电；SDA&#x2F;SCL 接反</td>
+</tr>
+<tr>
+<td>总线锁死（SDA 恒低）</td>
+<td>上次通信中途复位，从机挂在传输中；主机动打 9 个 SCL 脉冲可解锁</td>
+</tr>
+<tr>
+<td>读回全 0xFF</td>
+<td>上拉缺失或设备根本没接，总线浮空为高</td>
+</tr>
+<tr>
+<td>高速率下偶发错误</td>
+<td>上拉偏大、走线过长；降速或减小上拉验证</td>
+</tr>
+<tr>
+<td>多主互相干扰</td>
+<td>仲裁逻辑未实现；双主系统先确认双方都支持多主</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="六、与-SPI、UART"><a href="#六、与-SPI、UART" class="headerlink" title="六、与 SPI、UART"></a>六、与 SPI、UART</h2><table>
+<thead>
+<tr>
+<th>总线</th>
+<th>线数</th>
+<th>速度</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>I2C</strong></td>
+<td>2 + GND</td>
+<td>中</td>
+<td>多从、地址、开漏</td>
+</tr>
+<tr>
+<td><strong><a href="/embedded/08-spi/">第八章：SPI</a></strong></td>
+<td>4+</td>
+<td>高</td>
+<td>全双工、无标准地址</td>
+</tr>
+<tr>
+<td><strong><a href="/embedded/04-uart/">第四章：UART</a></strong></td>
+<td>2 + GND</td>
+<td>中</td>
+<td>点对点、异步</td>
+</tr>
+</tbody></table>
+<p> <strong><a href="/embedded/09-can-bus/">第九章：CAN 总线：帧结构、多主仲裁与 CAN FD</a></strong> 用于车载&#x2F;工业现场总线，抗干扰与仲裁不同于 I2C。</p>
+<p>选型速记：<strong>板内低速多外设选 I2C；板内高速单外设选 SPI；出板&#x2F;远距离选 UART+收发器或现场总线</strong>。</p>
+<hr>
+<h2 id="七、协议家族的延伸"><a href="#七、协议家族的延伸" class="headerlink" title="七、协议家族的延伸"></a>七、协议家族的延伸</h2><ul>
+<li><strong>SMBus</strong>：I2C 的「严格版」子集（PC 主板电源管理、智能电池），限定电平、超时与包格式（PEC 校验）。</li>
+<li><strong>PMBus</strong>：SMBus 之上针对电源管理 IC 的命令集，服务器电源监控的标准。</li>
+<li><strong>I3C</strong>：MIPI 推出的现代继任者，推挽为主、速率 12.5 MHz 起步，支持带内中断与热插拔，传感器领域逐步替代 I2C。</li>
+<li><strong>TWI</strong>：Atmel&#x2F;Microchip 的 I2C 兼容叫法（规避商标），协议一致。</li>
+</ul>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>总线</td>
+<td><strong>SCL+SDA 两线同步总线</strong>，开漏 + 上拉，支持多主多从</td>
+</tr>
+<tr>
+<td>寻址</td>
+<td><strong>7 位地址</strong>帧寻址，读方向用<strong>重复 START</strong> 切换</td>
+</tr>
+<tr>
+<td>握手</td>
+<td>每字节 <strong>ACK&#x2F;NACK</strong> 确认；START&#x2F;STOP 界定传输</td>
+</tr>
+<tr>
+<td>速率</td>
+<td>标准 100k &#x2F; 快速 400k &#x2F; FM+ 1M &#x2F; HS 3.4M</td>
+</tr>
+<tr>
+<td>实务</td>
+<td>上拉 2.2k~10k 按速率与电容配置；地址冲突用 ADDR 引脚或 I2C mux</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Embedded/" rel="tag"># Embedded</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/embedded/06-rs485/" rel="prev" title="第六章：RS485">
+                  <i class="fa fa-angle-left"></i> 第六章：RS485
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/embedded/08-spi/" rel="next" title="第八章：SPI">
+                  第八章：SPI <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

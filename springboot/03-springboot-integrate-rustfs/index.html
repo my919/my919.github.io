@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：SpringBoot 集成 RustFS 对象存储概念基础对象存储以「Bucket + objectKey」平铺组织文件，通过 HTTP API 读写，适合图片、附件等非结构化数据：  S3 兼容协议：RustFS 提供 S3 兼容 API，凡支持 AWS S3 协议的客户端均可直接对接，迁移成本低。 SDK 与访问风格：本工程使用 AWS SDK for Java v2 访问，并开启 f">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：SpringBoot 集成 RustFS 对象存储">
+<meta property="og:url" content="https://my919.github.io/springboot/03-springboot-integrate-rustfs/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：SpringBoot 集成 RustFS 对象存储概念基础对象存储以「Bucket + objectKey」平铺组织文件，通过 HTTP API 读写，适合图片、附件等非结构化数据：  S3 兼容协议：RustFS 提供 S3 兼容 API，凡支持 AWS S3 协议的客户端均可直接对接，迁移成本低。 SDK 与访问风格：本工程使用 AWS SDK for Java v2 访问，并开启 f">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-16T02:10:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.596Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="SpringBoot">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/springboot/03-springboot-integrate-rustfs/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/springboot/03-springboot-integrate-rustfs/","path":"springboot/03-springboot-integrate-rustfs/","title":"第三章：SpringBoot 集成 RustFS 对象存储"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：SpringBoot 集成 RustFS 对象存储 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9ASpringBoot-%E9%9B%86%E6%88%90-RustFS-%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8"><span class="nav-number">1.</span> <span class="nav-text">第三章：SpringBoot 集成 RustFS 对象存储</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.2.</span> <span class="nav-text">前置条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8A%E4%BC%A0%E4%B8%8B%E8%BD%BD%E6%B5%81%E7%A8%8B"><span class="nav-number">1.3.</span> <span class="nav-text">上传下载流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%90%AD%E5%BB%BA%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.4.</span> <span class="nav-text">搭建步骤</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E6%B7%BB%E5%8A%A0%E4%BE%9D%E8%B5%96%EF%BC%88%E5%B7%B2%E5%AE%8C%E6%88%90%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. 添加依赖（已完成）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E9%85%8D%E7%BD%AE%E5%B1%9E%E6%80%A7%E7%B1%BB"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 配置属性类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E7%BC%96%E5%86%99%E6%9C%8D%E5%8A%A1%E4%B8%8E%E6%8E%A5%E5%8F%A3"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. 编写服务与接口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E9%85%8D%E7%BD%AE-application-yaml"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. 配置 application.yaml</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-%E5%90%AF%E5%8A%A8%E5%BA%94%E7%94%A8"><span class="nav-number">1.4.5.</span> <span class="nav-text">5. 启动应用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#API-%E4%B8%80%E8%A7%88"><span class="nav-number">1.5.</span> <span class="nav-text">API 一览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81"><span class="nav-number">1.6.</span> <span class="nav-text">验证</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%A7%E6%96%87%E4%BB%B6%E5%88%86%E7%89%87%E4%B8%8A%E4%BC%A0%EF%BC%88Multipart-Upload%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">大文件分片上传（Multipart Upload）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A2%84%E7%AD%BE%E5%90%8D-URL-%E6%B7%B1%E5%85%A5"><span class="nav-number">1.8.</span> <span class="nav-text">预签名 URL 深入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="nav-number">1.9.</span> <span class="nav-text">常见问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#KMS-encryption-service-is-not-initialized"><span class="nav-number">1.9.1.</span> <span class="nav-text">KMS encryption service is not initialized</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%AF%E7%94%A8%E5%BC%80%E5%85%B3%E4%B8%8D%E7%94%9F%E6%95%88"><span class="nav-number">1.9.2.</span> <span class="nav-text">启用开关不生效</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#404-%E7%AD%BE%E5%90%8D%E9%94%99%E8%AF%AF"><span class="nav-number">1.9.3.</span> <span class="nav-text">404 &#x2F; 签名错误</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E6%96%87%E4%BB%B6"><span class="nav-number">1.10.</span> <span class="nav-text">相关文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/springboot/03-springboot-integrate-rustfs/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：SpringBoot 集成 RustFS 对象存储 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：SpringBoot 集成 RustFS 对象存储
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-16 10:10:00" itemprop="dateCreated datePublished" datetime="2026-05-16T10:10:00+08:00">2026-05-16</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/SpringBoot/" itemprop="url" rel="index"><span itemprop="name">SpringBoot</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：SpringBoot-集成-RustFS-对象存储"><a href="#第三章：SpringBoot-集成-RustFS-对象存储" class="headerlink" title="第三章：SpringBoot 集成 RustFS 对象存储"></a>第三章：SpringBoot 集成 RustFS 对象存储</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>对象存储</strong>以「<strong>Bucket + objectKey</strong>」平铺组织文件，通过 HTTP API 读写，适合图片、附件等非结构化数据：</p>
+<ol>
+<li><strong>S3 兼容协议</strong>：<a target="_blank" rel="noopener" href="https://github.com/rustfs/rustfs">RustFS</a> 提供 <strong>S3 兼容</strong> API，凡支持 AWS S3 协议的客户端均可直接对接，迁移成本低。</li>
+<li><strong>SDK 与访问风格</strong>：本工程使用 <strong>AWS SDK for Java v2</strong> 访问，并开启 <strong><code>forcePathStyle: true</code></strong>（路径风格访问，兼容 MinIO&#x2F;RustFS 等自建服务）。</li>
+<li><strong>预签名 URL</strong>：服务端签发带过期时间的临时链接（本项目 15 分钟），客户端<strong>直连</strong>存储完成下载，应用不代理文件流量。</li>
+<li><strong>开关与外部化</strong>：<code>app.rustfs.oss.enabled</code> 控制装配（<code>@ConditionalOnProperty</code>），endpoint 与密钥经环境变量注入，生产<strong>勿写入仓库</strong>。</li>
+<li><strong>测试友好</strong>：单元测试默认关闭 OSS，真实环境联调用 <code>RUSTFS_LIVE_TEST=true</code> 单独触发。</li>
+</ol>
+<h2 id="前置条件"><a href="#前置条件" class="headerlink" title="前置条件"></a>前置条件</h2><ol>
+<li>已部署 RustFS 服务（示例：<code>http://192.168.1.22:30009</code>）</li>
+<li>在控制台创建 Access Key：<code>http://&lt;host&gt;:&lt;port&gt;/rustfs/console/access-keys</code></li>
+<li>创建或确认 Bucket 名称</li>
+</ol>
+<blockquote>
+<p><strong>注意</strong>：SDK 的 <code>endpoint</code> 填 <strong>S3 API 根地址</strong>，不要带 <code>/rustfs/console/...</code> 路径。</p>
+</blockquote>
+<h2 id="上传下载流程"><a href="#上传下载流程" class="headerlink" title="上传下载流程"></a>上传下载流程</h2><pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant C as Client
+  participant API as RustFsOssController
+  participant S as RustFsOssService
+  participant S3 as RustFS S3 API
+
+  C-&gt;&gt;API: POST &#x2F;api&#x2F;oss&#x2F;upload
+  API-&gt;&gt;S: putObject
+  S-&gt;&gt;S3: PutObject
+  S3--&gt;&gt;C: 200 + objectKey
+  C-&gt;&gt;API: GET presign
+  API-&gt;&gt;S: presignGet
+  S--&gt;&gt;C: 临时 URL
+</code>
+</pre>
+
+<h2 id="搭建步骤"><a href="#搭建步骤" class="headerlink" title="搭建步骤"></a>搭建步骤</h2><h3 id="1-添加依赖（已完成）"><a href="#1-添加依赖（已完成）" class="headerlink" title="1. 添加依赖（已完成）"></a>1. 添加依赖（已完成）</h3><p><code>build.gradle</code>：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">implementation platform(<span class="string">&#x27;software.amazon.awssdk:bom:2.29.45&#x27;</span>)</span><br><span class="line">implementation <span class="string">&#x27;software.amazon.awssdk:s3&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-配置属性类"><a href="#2-配置属性类" class="headerlink" title="2. 配置属性类"></a>2. 配置属性类</h3><ul>
+<li><code>RustFsOssProperties</code>：<code>app.rustfs.oss.*</code></li>
+<li><code>RustFsOssConfiguration</code>：<code>@ConditionalOnProperty(enabled=true)</code> 时注册 <code>S3Client</code>、<code>S3Presigner</code></li>
+</ul>
+<p><strong>S3Client 完整封装示例</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="meta">@EnableConfigurationProperties(RustFsOssProperties.class)</span></span><br><span class="line"><span class="meta">@ConditionalOnProperty(prefix = &quot;app.rustfs.oss&quot;, name = &quot;enabled&quot;, havingValue = &quot;true&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">RustFsOssConfiguration</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean(destroyMethod = &quot;close&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">S3Client</span> <span class="title function_">s3Client</span><span class="params">(RustFsOssProperties props)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> S3Client.builder()</span><br><span class="line">                .endpointOverride(URI.create(props.getEndpoint()))</span><br><span class="line">                .region(Region.of(props.getRegion()))</span><br><span class="line">                .credentialsProvider(StaticCredentialsProvider.create(</span><br><span class="line">                        AwsBasicCredentials.create(props.getAccessKey(), props.getSecretKey())))</span><br><span class="line">                .forcePathStyle(props.isPathStyle())          <span class="comment">// 关键：路径风格，兼容 RustFS/MinIO</span></span><br><span class="line">                .serviceConfiguration(S3Configuration.builder()</span><br><span class="line">                        .chunkedEncodingEnabled(<span class="literal">false</span>)        <span class="comment">// 自建存储建议关闭分块编码</span></span><br><span class="line">                        .build())</span><br><span class="line">                .build();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean(destroyMethod = &quot;close&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> <span class="type">S3Presigner</span> <span class="title function_">s3Presigner</span><span class="params">(RustFsOssProperties props)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> S3Presigner.builder()</span><br><span class="line">                .endpointOverride(URI.create(props.getEndpoint()))</span><br><span class="line">                .region(Region.of(props.getRegion()))</span><br><span class="line">                .credentialsProvider(StaticCredentialsProvider.create(</span><br><span class="line">                        AwsBasicCredentials.create(props.getAccessKey(), props.getSecretKey())))</span><br><span class="line">                .serviceConfiguration(S3Configuration.builder()</span><br><span class="line">                        .pathStyleAccessEnabled(<span class="literal">true</span>)</span><br><span class="line">                        .build())</span><br><span class="line">                .build();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>要点：</p>
+<ul>
+<li><strong><code>forcePathStyle</code></strong>：虚拟主机风格（<code>bucket.endpoint/key</code>）要求 DNS 泛解析，自建服务一律用路径风格（<code>endpoint/bucket/key</code>）。</li>
+<li><strong><code>destroyMethod = &quot;close&quot;</code></strong>：应用关闭时释放底层 Netty&#x2F;Apache HTTP 连接池，避免热重启端口占用。</li>
+<li><code>S3Client</code> 与 <code>S3Presigner</code> <strong>线程安全</strong>，单例即可全局复用。</li>
+</ul>
+<hr>
+<h3 id="3-编写服务与接口"><a href="#3-编写服务与接口" class="headerlink" title="3. 编写服务与接口"></a>3. 编写服务与接口</h3><table>
+<thead>
+<tr>
+<th>类</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>RustFsOssService</code></td>
+<td>上传、下载、删除、列举、预签名、探测</td>
+</tr>
+<tr>
+<td><code>RustFsOssController</code></td>
+<td>REST：<code>/api/oss/*</code></td>
+</tr>
+<tr>
+<td><code>TestController</code></td>
+<td>探针 <code>GET /test/oss</code>（<code>ObjectProvider</code> 注入，未启用时不报错）</td>
+</tr>
+</tbody></table>
+<h3 id="4-配置-application-yaml"><a href="#4-配置-application-yaml" class="headerlink" title="4. 配置 application.yaml"></a>4. 配置 <code>application.yaml</code></h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">app:</span></span><br><span class="line">  <span class="attr">rustfs:</span></span><br><span class="line">    <span class="attr">oss:</span></span><br><span class="line">      <span class="attr">enabled:</span> <span class="string">$&#123;RUSTFS_OSS_ENABLED:true&#125;</span></span><br><span class="line">      <span class="attr">endpoint:</span> <span class="string">$&#123;RUSTFS_ENDPOINT:http://192.168.1.22:30009&#125;</span></span><br><span class="line">      <span class="attr">region:</span> <span class="string">$&#123;RUSTFS_REGION:us-east-1&#125;</span></span><br><span class="line">      <span class="attr">access-key:</span> <span class="string">$&#123;RUSTFS_ACCESS_KEY:your-key&#125;</span></span><br><span class="line">      <span class="attr">secret-key:</span> <span class="string">$&#123;RUSTFS_SECRET_KEY:your-secret&#125;</span></span><br><span class="line">      <span class="attr">bucket:</span> <span class="string">$&#123;RUSTFS_BUCKET:springboot&#125;</span></span><br><span class="line">      <span class="attr">path-style:</span> <span class="literal">true</span></span><br><span class="line">      <span class="attr">presign-expire-minutes:</span> <span class="number">15</span></span><br></pre></td></tr></table></figure>
+
+<p>生产环境请用环境变量注入密钥，勿写入仓库。</p>
+<h3 id="5-启动应用"><a href="#5-启动应用" class="headerlink" title="5. 启动应用"></a>5. 启动应用</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gradlew.bat bootRun</span><br></pre></td></tr></table></figure>
+
+<h2 id="API-一览"><a href="#API-一览" class="headerlink" title="API 一览"></a>API 一览</h2><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GET</td>
+<td><code>/api/oss/probe</code></td>
+<td>读写探测</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/oss/upload</code></td>
+<td><code>multipart</code>，字段 <code>file</code>，可选 <code>key</code></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/oss/download?key=</code></td>
+<td>下载</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/oss?key=</code></td>
+<td>删除</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/oss/list?prefix=</code></td>
+<td>列举</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/oss/presign?key=</code></td>
+<td>预签名 URL</td>
+</tr>
+</tbody></table>
+<h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 探针</span></span><br><span class="line">curl http://localhost:8082/test/oss</span><br><span class="line"></span><br><span class="line"><span class="comment"># 上传（示例）</span></span><br><span class="line">curl -F <span class="string">&quot;file=@./demo.txt&quot;</span> http://localhost:8082/api/oss/upload</span><br></pre></td></tr></table></figure>
+
+<p>单元测试默认关闭 OSS（<code>src/test/resources/application.yaml</code> 中 <code>app.rustfs.oss.enabled=false</code>）。</p>
+<p>真实环境联调：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> RUSTFS_LIVE_TEST=<span class="literal">true</span></span><br><span class="line">gradlew.bat <span class="built_in">test</span> --tests org.my919.springboot.RustFsOssLiveTest</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="大文件分片上传（Multipart-Upload）"><a href="#大文件分片上传（Multipart-Upload）" class="headerlink" title="大文件分片上传（Multipart Upload）"></a>大文件分片上传（Multipart Upload）</h2><p>单次 <code>PutObject</code> 适合 <strong>100MB 以内</strong>的文件；更大文件应使用 S3 分片上传协议，断点续传、并行上传、失败只重传单片：</p>
+<pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant S as Service
+  participant R as RustFS
+  S-&gt;&gt;R: CreateMultipartUpload
+  R--&gt;&gt;S: uploadId
+  loop 每片 5MB+
+    S-&gt;&gt;R: UploadPart(partNumber, bytes)
+    R--&gt;&gt;S: ETag
+  end
+  S-&gt;&gt;R: CompleteMultipartUpload(ETag列表)
+  R--&gt;&gt;S: 200 合并完成
+</code>
+</pre>
+
+<p>核心代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">String</span> <span class="title function_">uploadLarge</span><span class="params">(String key, Path file)</span> <span class="keyword">throws</span> IOException &#123;</span><br><span class="line">    <span class="comment">// 1. 初始化</span></span><br><span class="line">    <span class="type">String</span> <span class="variable">uploadId</span> <span class="operator">=</span> s3.createMultipartUpload(b -&gt; b.bucket(bucket).key(key)).uploadId();</span><br><span class="line">    <span class="type">List</span>&lt;CompletedPart&gt; <span class="variable">parts</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ArrayList</span>&lt;&gt;();</span><br><span class="line">    <span class="type">long</span> <span class="variable">partSize</span> <span class="operator">=</span> <span class="number">8L</span> * <span class="number">1024</span> * <span class="number">1024</span>;                    <span class="comment">// 单片 8MB（S3 协议最小 5MB）</span></span><br><span class="line">    <span class="keyword">try</span> (<span class="type">InputStream</span> <span class="variable">in</span> <span class="operator">=</span> Files.newInputStream(file)) &#123;</span><br><span class="line">        <span class="type">byte</span>[] <span class="variable">buf</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[(<span class="type">int</span>) partSize];</span><br><span class="line">        <span class="type">int</span> <span class="variable">partNo</span> <span class="operator">=</span> <span class="number">1</span>, len;</span><br><span class="line">        <span class="keyword">while</span> ((len = readFull(in, buf)) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// 2. 逐片上传</span></span><br><span class="line">            <span class="type">UploadPartResponse</span> <span class="variable">resp</span> <span class="operator">=</span> s3.uploadPart(b -&gt; b.bucket(bucket).key(key)</span><br><span class="line">                            .uploadId(uploadId).partNumber(partNo),</span><br><span class="line">                    RequestBody.fromBytes(Arrays.copyOf(buf, len)));</span><br><span class="line">            parts.add(CompletedPart.builder().partNumber(partNo++).eTag(resp.eTag()).build());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 3. 合并</span></span><br><span class="line">        s3.completeMultipartUpload(b -&gt; b.bucket(bucket).key(key).uploadId(uploadId)</span><br><span class="line">                .multipartUpload(m -&gt; m.parts(parts)));</span><br><span class="line">        <span class="keyword">return</span> key;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">        <span class="comment">// 4. 失败必须中止，否则残留分片持续计费/占空间</span></span><br><span class="line">        s3.abortMultipartUpload(b -&gt; b.bucket(bucket).key(key).uploadId(uploadId));</span><br><span class="line">        <span class="keyword">throw</span> e;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>要点：</p>
+<ul>
+<li><strong>单片最小 5MB</strong>（最后一片除外），最多 10000 片；单片过大会失去并行与重传粒度。</li>
+<li>失败路径必须 <code>AbortMultipartUpload</code>，或在 Bucket 上配置<strong>生命周期规则</strong>自动清理过期分片。</li>
+<li>前端直传大文件时，可对每个分片单独签发<strong>预签名 PUT URL</strong>（<code>presignUploadPart</code>），流量不过应用。</li>
+</ul>
+<hr>
+<h2 id="预签名-URL-深入"><a href="#预签名-URL-深入" class="headerlink" title="预签名 URL 深入"></a>预签名 URL 深入</h2><p>预签名的本质是<strong>把签名算进 URL 查询串</strong>（<code>X-Amz-Signature</code>），客户端无需 SDK 即可直连存储：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">String</span> <span class="title function_">presignGet</span><span class="params">(String key, Duration ttl)</span> &#123;</span><br><span class="line">    <span class="type">GetObjectPresignRequest</span> <span class="variable">req</span> <span class="operator">=</span> GetObjectPresignRequest.builder()</span><br><span class="line">            .signatureDuration(ttl)</span><br><span class="line">            .getObjectRequest(b -&gt; b.bucket(bucket).key(key))</span><br><span class="line">            .build();</span><br><span class="line">    <span class="keyword">return</span> presigner.presignGetObject(req).url().toString();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 上传预签名：前端 PUT 直传，应用零流量</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">String</span> <span class="title function_">presignPut</span><span class="params">(String key, Duration ttl)</span> &#123;</span><br><span class="line">    <span class="type">PutObjectPresignRequest</span> <span class="variable">req</span> <span class="operator">=</span> PutObjectPresignRequest.builder()</span><br><span class="line">            .signatureDuration(ttl)</span><br><span class="line">            .putObjectRequest(b -&gt; b.bucket(bucket).key(key))</span><br><span class="line">            .build();</span><br><span class="line">    <span class="keyword">return</span> presigner.presignPutObject(req).url().toString();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>安全实践：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>过期时间</td>
+<td>下载 15 分钟、上传 5 分钟内，越短越安全</td>
+</tr>
+<tr>
+<td>objectKey</td>
+<td>服务端生成（UUID + 日期目录），<strong>不信任</strong>前端传入的任意路径</td>
+</tr>
+<tr>
+<td>权限收敛</td>
+<td>预签名只签单个 key，不给 <code>s3:*</code> 通配</td>
+</tr>
+<tr>
+<td>防盗链</td>
+<td>重要资源叠加业务侧 Token 校验，预签名 URL 本身不防转发</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a>常见问题</h2><h3 id="KMS-encryption-service-is-not-initialized"><a href="#KMS-encryption-service-is-not-initialized" class="headerlink" title="KMS encryption service is not initialized"></a><code>KMS encryption service is not initialized</code></h3><p>RustFS 服务端 Bucket 默认启用了 KMS&#x2F;SSE，但 KMS 未初始化。<strong>在 RustFS 控制台关闭该 Bucket 的默认加密</strong>，或完成 KMS 配置。属于服务端问题，非应用代码错误。</p>
+<h3 id="启用开关不生效"><a href="#启用开关不生效" class="headerlink" title="启用开关不生效"></a>启用开关不生效</h3><p>确认 <code>app.rustfs.oss.enabled=true</code>，且未在测试 Profile 中被覆盖为 <code>false</code>。</p>
+<h3 id="404-签名错误"><a href="#404-签名错误" class="headerlink" title="404 &#x2F; 签名错误"></a>404 &#x2F; 签名错误</h3><ul>
+<li>检查 <code>endpoint</code> 是否为 API 根路径</li>
+<li>确认 <code>path-style: true</code></li>
+<li>核对 Access Key &#x2F; Secret 与 Bucket 名</li>
+</ul>
+<h2 id="相关文件"><a href="#相关文件" class="headerlink" title="相关文件"></a>相关文件</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">config/RustFsOssProperties.java</span><br><span class="line">config/RustFsOssConfiguration.java</span><br><span class="line">service/RustFsOssService.java</span><br><span class="line">controller/RustFsOssController.java</span><br></pre></td></tr></table></figure>
+
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>协议</td>
+<td>RustFS 提供 S3 兼容 API，AWS SDK v2 + <code>forcePathStyle: true</code> 访问</td>
+</tr>
+<tr>
+<td>配置</td>
+<td><code>app.rustfs.oss.*</code>；endpoint 填 S3 API 根地址，勿带 console 路径</td>
+</tr>
+<tr>
+<td>接口</td>
+<td><code>/api/oss/*</code>：上传、下载、删除、列举、预签名</td>
+</tr>
+<tr>
+<td>装配</td>
+<td><code>@ConditionalOnProperty</code> 按 <code>enabled</code> 开关注册 <code>S3Client</code> &#x2F; <code>S3Presigner</code></td>
+</tr>
+<tr>
+<td>排障</td>
+<td>KMS 报错到控制台关闭 Bucket 默认加密；404&#x2F;签名错误先查 endpoint 与 path-style</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/SpringBoot/" rel="tag"># SpringBoot</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/springboot/02-springboot-multi-profile-config/" rel="prev" title="第二章：SpringBoot 多环境配置：Profile 激活与优先级">
+                  <i class="fa fa-angle-left"></i> 第二章：SpringBoot 多环境配置：Profile 激活与优先级
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/springboot/04-springboot-integrate-redis-cache/" rel="next" title="第四章：SpringBoot 集成 Redis 与缓存">
+                  第四章：SpringBoot 集成 Redis 与缓存 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

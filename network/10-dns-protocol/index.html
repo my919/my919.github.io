@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例概念基础DNS（Domain Name System）是互联网的「电话簿」：把人类易记的域名翻译成机器路由所需的 IP 地址：  解决什么问题：IP 难记且可能变化，域名稳定易读；DNS 把二者解耦，换机房只改记录、不改品牌。 分层委派：根 → TLD → 权威逐级授权，任何递归解析器都能沿这条链问出答案，无单点存储全部数据。 缓存">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例">
+<meta property="og:url" content="https://my919.github.io/network/10-dns-protocol/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例概念基础DNS（Domain Name System）是互联网的「电话簿」：把人类易记的域名翻译成机器路由所需的 IP 地址：  解决什么问题：IP 难记且可能变化，域名稳定易读；DNS 把二者解耦，换机房只改记录、不改品牌。 分层委派：根 → TLD → 权威逐级授权，任何递归解析器都能沿这条链问出答案，无单点存储全部数据。 缓存">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T04:49:45.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.585Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="DNS">
+<meta property="article:tag" content="Protocol">
+<meta property="article:tag" content="网络安全">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/network/10-dns-protocol/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/network/10-dns-protocol/","path":"network/10-dns-protocol/","title":"第十章：DNS 详解：解析原理、记录类型与命令/代码示例"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十章：DNS 详解：解析原理、记录类型与命令/代码示例 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E7%AB%A0%EF%BC%9ADNS-%E8%AF%A6%E8%A7%A3%EF%BC%9A%E8%A7%A3%E6%9E%90%E5%8E%9F%E7%90%86%E3%80%81%E8%AE%B0%E5%BD%95%E7%B1%BB%E5%9E%8B%E4%B8%8E%E5%91%BD%E4%BB%A4-%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.</span> <span class="nav-text">第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%92%E5%BD%92%E8%A7%A3%E6%9E%90"><span class="nav-number">1.2.</span> <span class="nav-text">递归解析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%88%86%E5%B1%82%E4%B8%8E%E8%A7%A3%E6%9E%90%E5%8E%9F%E7%90%86"><span class="nav-number">1.3.</span> <span class="nav-text">一、分层与解析原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%A7%92%E8%89%B2"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 角色</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E9%80%92%E5%BD%92%E8%A7%A3%E6%9E%90%E8%BF%87%E7%A8%8B%EF%BC%88%E6%A6%82%E5%BF%B5%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 递归解析过程（概念）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%8A%A5%E6%96%87%E4%B8%8E%E4%BC%A0%E8%BE%93%EF%BC%88%E5%8E%9F%E7%90%86%EF%BC%89"><span class="nav-number">1.4.</span> <span class="nav-text">二、报文与传输（原理）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%B8%B8%E8%A7%81%E8%AE%B0%E5%BD%95%E7%B1%BB%E5%9E%8B%EF%BC%88%E4%BD%9C%E7%94%A8%EF%BC%89"><span class="nav-number">1.5.</span> <span class="nav-text">三、常见记录类型（作用）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81DoT-DoH%EF%BC%88%E5%8A%A0%E5%AF%86%E4%B8%8E%E4%BC%A0%E8%BE%93%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">四、DoT &#x2F; DoH（加密与传输）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%91%BD%E4%BB%A4%E7%A4%BA%E4%BE%8B%EF%BC%9Adig"><span class="nav-number">1.7.</span> <span class="nav-text">五、命令示例：dig</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B%EF%BC%9APython-%E5%8F%91-UDP-%E6%9F%A5%E8%AF%A2%EF%BC%88%E6%95%99%E5%AD%A6%E5%90%91%E6%9E%81%E7%AE%80%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">六、代码示例：Python 发 UDP 查询（教学向极简）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E9%80%9F%E6%9F%A5"><span class="nav-number">1.9.</span> <span class="nav-text">七、常见故障速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AB%E3%80%81%E5%AE%89%E5%85%A8%E6%B3%A8%E6%84%8F"><span class="nav-number">1.10.</span> <span class="nav-text">八、安全注意</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.11.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/network/10-dns-protocol/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十章：DNS 详解：解析原理、记录类型与命令/代码示例
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:49:45" itemprop="dateCreated datePublished" datetime="2026-05-01T12:49:45+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" itemprop="url" rel="index"><span itemprop="name">计算机网络</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>4.6k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十章：DNS-详解：解析原理、记录类型与命令-代码示例"><a href="#第十章：DNS-详解：解析原理、记录类型与命令-代码示例" class="headerlink" title="第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例"></a>第十章：DNS 详解：解析原理、记录类型与命令&#x2F;代码示例</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><p><strong>DNS</strong>（<strong>Domain Name System</strong>）是互联网的「电话簿」：把人类易记的<strong>域名</strong>翻译成机器路由所需的 <strong>IP 地址</strong>：</p>
+<ol>
+<li><strong>解决什么问题</strong>：IP 难记且可能变化，域名稳定易读；<strong>DNS</strong> 把二者解耦，换机房只改记录、不改品牌。</li>
+<li><strong>分层委派</strong>：<strong>根 → TLD → 权威</strong>逐级授权，任何<strong>递归解析器</strong>都能沿这条链问出答案，无单点存储全部数据。</li>
+<li><strong>缓存与 TTL</strong>：各级结果按 <strong>TTL</strong> 缓存，命中秒回；副作用是记录变更存在<strong>生效延迟</strong>。</li>
+<li><strong>不只有「名字 → IP」</strong>：<strong>MX</strong>（邮件）、<strong>TXT</strong>（SPF&#x2F;DKIM&#x2F;域名验证）、<strong>PTR</strong>（反向解析）等记录支撑大量基础设施。</li>
+<li><strong>为什么重要</strong>：几乎所有 <strong>Web</strong> 访问的第一步；DNS 故障常表现为「<strong>ping IP 正常但域名不通</strong>」。</li>
+</ol>
+<p>先看一次完整解析的全貌：</p>
+<h2 id="递归解析"><a href="#递归解析" class="headerlink" title="递归解析"></a>递归解析</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  App[应用] --&gt; LR[本地递归解析器]
+  LR --&gt; Root[根 DNS]
+  Root --&gt; TLD[.com TLD]
+  TLD --&gt; Auth[权威 DNS]
+  Auth --&gt; IP[A 记录 IP]
+</code>
+</pre>
+
+<hr>
+<h2 id="一、分层与解析原理"><a href="#一、分层与解析原理" class="headerlink" title="一、分层与解析原理"></a>一、分层与解析原理</h2><h3 id="1-角色"><a href="#1-角色" class="headerlink" title="1. 角色"></a>1. 角色</h3><table>
+<thead>
+<tr>
+<th>角色</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Stub resolver</strong></td>
+<td>运行在终端或系统库内，把查询发给<strong>递归解析器</strong></td>
+</tr>
+<tr>
+<td><strong>Recursive resolver</strong></td>
+<td>代客户端迭代问根、<strong>TLD</strong>、<strong>权威</strong> 直到拿到答案并<strong>缓存 TTL</strong></td>
+</tr>
+<tr>
+<td><strong>Authoritative server</strong></td>
+<td>对某区（<strong>zone</strong>）拥有权威数据（<strong>NS</strong> 委派链终点）</td>
+</tr>
+</tbody></table>
+<h3 id="2-递归解析过程（概念）"><a href="#2-递归解析过程（概念）" class="headerlink" title="2. 递归解析过程（概念）"></a>2. 递归解析过程（概念）</h3><p>查询 <strong><code>www.example.com.</code></strong>（末尾点表示根）时，递归器从<strong>根</strong>得到 <strong><code>.com</code></strong> 的 <strong>NS</strong>，再问 <strong><code>.com</code></strong> 得到 <strong><code>example.com</code></strong> 的 <strong>NS</strong>，最后问 <strong><code>example.com</code></strong> 权威得到 <strong><code>www</code></strong> 的 <strong>A &#x2F; AAAA</strong>。结果按 <strong>TTL</strong> 缓存，命中则直接返回。</p>
+<p>更细的时序（客户端只发一问，剩下都是递归器代劳）：</p>
+<pre>
+<code class="mermaid">
+
+sequenceDiagram
+  participant A as 应用(Stub)
+  participant R as 递归解析器
+  participant Root as 根服务器
+  participant TLD as .com TLD
+  participant Auth as example.com 权威
+  A-&gt;&gt;R: www.example.com A?（RD&#x3D;1）
+  R-&gt;&gt;Root: www.example.com A?
+  Root--&gt;&gt;R: 去问 .com NS（Referral）
+  R-&gt;&gt;TLD: www.example.com A?
+  TLD--&gt;&gt;R: 去问 example.com NS（Referral）
+  R-&gt;&gt;Auth: www.example.com A?
+  Auth--&gt;&gt;R: A 93.184.216.34（AA&#x3D;1）
+  R--&gt;&gt;A: A 93.184.216.34（按 TTL 缓存）
+</code>
+</pre>
+
+<p><strong>术语</strong>：<strong>递归查询（RD&#x3D;1）<strong>是客户端对递归器的请求方式；递归器对各级服务器做的是</strong>迭代查询</strong>——每跳只给「下一层去哪问」的指引。</p>
+<hr>
+<h2 id="二、报文与传输（原理）"><a href="#二、报文与传输（原理）" class="headerlink" title="二、报文与传输（原理）"></a>二、报文与传输（原理）</h2><ul>
+<li><strong>传统 53 端口</strong>：多数查询用 <a href="/network/05-udp-protocol/">第五章：UDP 协议详解：数据报语义、MTU 与示例代码</a>，报文小、往返少。  </li>
+<li><strong>响应过大或区域传送等</strong>：回退 <a href="/network/01-tcp-protocol/">第一章：TCP 协议详解：连接、可靠传输与编程示例</a>（<strong>TCP&#x2F;53</strong>）。  </li>
+<li><strong>DNS 消息结构</strong>（概念）：<strong>Header</strong>（<strong>ID</strong>、<strong>flags</strong>、各计数器）+ <strong>Question</strong> + <strong>Answer &#x2F; Authority &#x2F; Additional</strong>。</li>
+</ul>
+<p><strong>首部 12 字节逐字段</strong>（<strong>RFC 1035</strong>）：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>位宽</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>ID</strong></td>
+<td>16</td>
+<td>请求&#x2F;响应匹配标识（须随机化）</td>
+</tr>
+<tr>
+<td><strong>QR</strong></td>
+<td>1</td>
+<td>0&#x3D;查询，1&#x3D;响应</td>
+</tr>
+<tr>
+<td><strong>Opcode</strong></td>
+<td>4</td>
+<td>0&#x3D;标准查询</td>
+</tr>
+<tr>
+<td><strong>AA</strong></td>
+<td>1</td>
+<td>权威应答（来自权威服务器时置位）</td>
+</tr>
+<tr>
+<td><strong>TC</strong></td>
+<td>1</td>
+<td>截断：UDP 放不下，提示改用 <strong>TCP</strong> 重问</td>
+</tr>
+<tr>
+<td><strong>RD</strong></td>
+<td>1</td>
+<td>期望递归</td>
+</tr>
+<tr>
+<td><strong>RA</strong></td>
+<td>1</td>
+<td>递归可用（递归器应答时置位）</td>
+</tr>
+<tr>
+<td><strong>RCODE</strong></td>
+<td>4</td>
+<td>结果码：0 NOERROR、2 SERVFAIL、3 NXDOMAIN</td>
+</tr>
+<tr>
+<td><strong>QD&#x2F;AN&#x2F;NS&#x2F;AR COUNT</strong></td>
+<td>16×4</td>
+<td>四个区段的记录数</td>
+</tr>
+</tbody></table>
+<p><strong>ID</strong> 用于匹配请求与响应；客户端应随机化 <strong>ID</strong> 与源端口以降低<strong>投毒</strong>风险（实现依赖系统解析器）。</p>
+<hr>
+<h2 id="三、常见记录类型（作用）"><a href="#三、常见记录类型（作用）" class="headerlink" title="三、常见记录类型（作用）"></a>三、常见记录类型（作用）</h2><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>A</strong></td>
+<td>主机名 → <strong>IPv4</strong></td>
+</tr>
+<tr>
+<td><strong>AAAA</strong></td>
+<td>主机名 → <strong>IPv6</strong></td>
+</tr>
+<tr>
+<td><strong>CNAME</strong></td>
+<td>别名到另一域名（继续解析目标名）</td>
+</tr>
+<tr>
+<td><strong>MX</strong></td>
+<td>邮件交换：优先级 + 目标主机</td>
+</tr>
+<tr>
+<td><strong>NS</strong></td>
+<td>某区的权威服务器</td>
+</tr>
+<tr>
+<td><strong>TXT</strong></td>
+<td>任意文本（<strong>SPF</strong>、<strong>DKIM</strong>、域名验证等）</td>
+</tr>
+<tr>
+<td><strong>PTR</strong></td>
+<td><strong>IP</strong> → 主机名（反向解析）</td>
+</tr>
+</tbody></table>
+<p>补充两个运维常用类型：<strong>SOA</strong>（区起始权威，含序列号与刷新&#x2F;重试&#x2F;过期计时器，<code>dig example.com SOA</code> 可见）、<strong>CAA</strong>（声明哪些 CA 允许为本域签发证书，误配会导致<strong>证书申请失败</strong>）。</p>
+<p><strong>注意</strong>：<strong>CNAME</strong> 不能与其他记录共存于同名节点，也<strong>不能放在域顶点（apex）</strong>——这是 CDN 接入时「裸域无法直接 CNAME」的根因，可用 <strong>ALIAS&#x2F;ANAME</strong>（厂商扩展）或扁平化方案绕行。</p>
+<hr>
+<h2 id="四、DoT-DoH（加密与传输）"><a href="#四、DoT-DoH（加密与传输）" class="headerlink" title="四、DoT &#x2F; DoH（加密与传输）"></a>四、DoT &#x2F; DoH（加密与传输）</h2><ul>
+<li><strong>DoT</strong>（<strong>DNS over TLS</strong>，<strong>RFC 7858</strong>）：<strong>853&#x2F;tcp</strong>，整流加密。  </li>
+<li><strong>DoH</strong>（<strong>DNS over HTTPS</strong>，<strong>RFC 8484</strong>）：封装在 <a href="/network/04-https-tls-guide/">第四章：HTTPS 详解：TLS 握手、证书与 openssl&#x2F;curl 示例</a> 内，常走 <strong>443</strong>，与网页流量形态相近。</li>
+</ul>
+<p>二者可防<strong>链路窃听</strong>，但递归器仍能看到查询内容；信任模型与日志策略需单独评审。</p>
+<p><strong>DoH 实测</strong>（<code>curl</code> 走 <strong>application&#x2F;dns-json</strong>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -s <span class="string">&#x27;https://dns.google/resolve?name=example.com&amp;type=A&#x27;</span> | <span class="built_in">head</span> -c 300</span><br></pre></td></tr></table></figure>
+
+<p><strong>DoT 实测</strong>（<code>kdig</code> 或新版 <code>dig</code>）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kdig +tls @1.1.1.1 example.com A</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、命令示例：dig"><a href="#五、命令示例：dig" class="headerlink" title="五、命令示例：dig"></a>五、命令示例：<code>dig</code></h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">dig +short example.com A</span><br><span class="line">dig +short example.com AAAA</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dig +trace example.com A</span><br></pre></td></tr></table></figure>
+
+<p>查看 <strong>DNSSEC</strong>（若部署）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dig +dnssec example.com A</span><br></pre></td></tr></table></figure>
+
+<p>更多高频用法：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">dig @223.5.5.5 example.com A        <span class="comment"># 指定递归器，绕过本机配置对比结果</span></span><br><span class="line">dig -x 93.184.216.34 +short         <span class="comment"># 反向解析（PTR）</span></span><br><span class="line">dig example.com ANY +noall +answer  <span class="comment"># 只看应答段（ANY 已被多数公网解析器限制）</span></span><br><span class="line">dig +tcp example.com A              <span class="comment"># 强制 TCP/53（验证 TC 截断或防火墙）</span></span><br><span class="line">dig +bufsize=1232 example.com A     <span class="comment"># 调整 EDNS UDP 缓冲，规避分片问题</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>解读要点</strong>：应答里的 <strong><code>status: NOERROR/NXDOMAIN/SERVFAIL</code></strong>、<strong><code>flags: aa ra rd</code></strong>、<strong><code>Query time</code></strong> 与 <strong><code>SERVER</code></strong> 行是排障四要素。</p>
+<hr>
+<h2 id="六、代码示例：Python-发-UDP-查询（教学向极简）"><a href="#六、代码示例：Python-发-UDP-查询（教学向极简）" class="headerlink" title="六、代码示例：Python 发 UDP 查询（教学向极简）"></a>六、代码示例：<strong>Python</strong> 发 <strong>UDP</strong> 查询（教学向极简）</h2><p>下列示例<strong>仅用于理解「自己拼 DNS 问包」的思路</strong>；生产请用 <strong><code>dnspython</code></strong> 或系统 <strong><code>getaddrinfo</code></strong>。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> random</span><br><span class="line"><span class="keyword">import</span> socket</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">build_query_qname</span>(<span class="params">hostname: <span class="built_in">str</span></span>) -&gt; <span class="built_in">bytes</span>:</span><br><span class="line">    parts = hostname.rstrip(<span class="string">&quot;.&quot;</span>).split(<span class="string">&quot;.&quot;</span>)</span><br><span class="line">    qname = <span class="string">b&quot;&quot;</span>.join(<span class="built_in">bytes</span>([<span class="built_in">len</span>(p)]) + p.encode() <span class="keyword">for</span> p <span class="keyword">in</span> parts) + <span class="string">b&quot;\x00&quot;</span></span><br><span class="line">    tid = random.randint(<span class="number">0</span>, <span class="number">0xFFFF</span>)</span><br><span class="line">    flags = <span class="number">0x0100</span>  <span class="comment"># 标准查询，递归期望</span></span><br><span class="line">    header = tid.to_bytes(<span class="number">2</span>, <span class="string">&quot;big&quot;</span>) + flags.to_bytes(<span class="number">2</span>, <span class="string">&quot;big&quot;</span>)</span><br><span class="line">    header += (<span class="number">1</span>).to_bytes(<span class="number">2</span>, <span class="string">&quot;big&quot;</span>)  <span class="comment"># QDCOUNT</span></span><br><span class="line">    header += (<span class="number">0</span>).to_bytes(<span class="number">2</span>, <span class="string">&quot;big&quot;</span>)  <span class="comment"># ANCOUNT</span></span><br><span class="line">    header += (<span class="number">0</span>).to_bytes(<span class="number">2</span>, <span class="string">&quot;big&quot;</span>)  <span class="comment"># NSCOUNT</span></span><br><span class="line">    header += (<span class="number">0</span>).to_bytes(<span class="number">2</span>, <span class="string">&quot;big&quot;</span>)  <span class="comment"># ARCOUNT</span></span><br><span class="line">    qtype = (<span class="number">1</span>).to_bytes(<span class="number">2</span>, <span class="string">&quot;big&quot;</span>)   <span class="comment"># A</span></span><br><span class="line">    qclass = (<span class="number">1</span>).to_bytes(<span class="number">2</span>, <span class="string">&quot;big&quot;</span>)  <span class="comment"># IN</span></span><br><span class="line">    <span class="keyword">return</span> header + qname + qtype + qclass</span><br><span class="line"></span><br><span class="line">sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)</span><br><span class="line">sock.settimeout(<span class="number">3</span>)</span><br><span class="line">msg = build_query_qname(<span class="string">&quot;example.com&quot;</span>)</span><br><span class="line">sock.sendto(msg, (<span class="string">&quot;8.8.8.8&quot;</span>, <span class="number">53</span>))</span><br><span class="line">resp, _ = sock.recvfrom(<span class="number">512</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;response length&quot;</span>, <span class="built_in">len</span>(resp))</span><br></pre></td></tr></table></figure>
+
+<p>解析 <strong>Answer</strong> 需按 <strong>RFC 1035</strong> 继续偏移指针，教学上更推荐：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> socket</span><br><span class="line"><span class="built_in">print</span>(socket.getaddrinfo(<span class="string">&quot;example.com&quot;</span>, <span class="number">443</span>, <span class="built_in">type</span>=socket.SOCK_STREAM))</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="七、常见故障速查"><a href="#七、常见故障速查" class="headerlink" title="七、常见故障速查"></a>七、常见故障速查</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>优先怀疑</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>ping IP 通、域名不通</strong></td>
+<td><strong>DNS</strong> 故障：<code>/etc/resolv.conf</code> 错、递归器不可达</td>
+</tr>
+<tr>
+<td>改记录后部分用户仍旧 IP</td>
+<td><strong>TTL</strong> 未过期，各级缓存未刷新（属预期行为）</td>
+</tr>
+<tr>
+<td><code>SERVFAIL</code></td>
+<td>权威故障、<strong>DNSSEC</strong> 校验失败、递归器到权威链路不通</td>
+</tr>
+<tr>
+<td><code>NXDOMAIN</code> 但确定存在</td>
+<td>记录名拼错；<strong>CNAME</strong> 链断裂；区文件未加载（<strong>SOA 序列号</strong>未递增）</td>
+</tr>
+<tr>
+<td>解析慢、偶发超时</td>
+<td><strong>UDP 53</strong> 被限速&#x2F;丢包；换 <strong>TCP</strong> 或 <strong>DoH&#x2F;DoT</strong> 验证</td>
+</tr>
+<tr>
+<td>境内外解析结果不同</td>
+<td><strong>CDN 智能解析</strong>（按来源分线路）或链路劫持</td>
+</tr>
+</tbody></table>
+<p>抓包验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> tcpdump -n -i any <span class="string">&#x27;port 53&#x27;</span>     <span class="comment"># UDP/TCP 53 一起看</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Wireshark</strong> 显示过滤：<strong><code>dns</code></strong>、<strong><code>dns.flags.response == 1</code></strong>、<strong><code>dns.flags.rcode != 0</code></strong>（只看异常应答）。</p>
+<hr>
+<h2 id="八、安全注意"><a href="#八、安全注意" class="headerlink" title="八、安全注意"></a>八、安全注意</h2><ul>
+<li><strong>缓存投毒</strong>：依赖可预测的 <strong>ID&#x2F;源端口</strong>；递归器务必随机化并启用 <strong>DNSSEC</strong> 校验（<strong>RFC 4033+</strong>）。  </li>
+<li><strong>放大攻击</strong>：<strong>DNS</strong> 响应可远大于请求，开放递归器会被当反射放大器——权威与递归<strong>分离部署</strong>，递归只服务内网。  </li>
+<li><strong>DoT&#x2F;DoH</strong> 防链路窃听，但也让基于 <strong>53 端口</strong>的安全审计失效，企业需统一出口策略。</li>
+</ul>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>原理</td>
+<td>分层委派 + 缓存 <strong>TTL</strong>；<strong>UDP&#x2F;TCP 53</strong></td>
+</tr>
+<tr>
+<td>作用</td>
+<td>名字 ↔ <strong>RR</strong>；支撑几乎所有 <strong>Web</strong> 访问</td>
+</tr>
+<tr>
+<td>命令</td>
+<td><strong><code>dig</code></strong>、<strong><code>+trace</code></strong>、<strong><code>@server</code></strong>、<strong><code>-x</code></strong></td>
+</tr>
+<tr>
+<td>代码</td>
+<td><strong><code>getaddrinfo</code></strong> 或 <strong><code>dnspython</code></strong></td>
+</tr>
+<tr>
+<td>加密</td>
+<td><strong>DoT(853)</strong> &#x2F; <strong>DoH(443)</strong>，链路防窃听但需重审信任模型</td>
+</tr>
+</tbody></table>
+<p>生产关注：<strong>权威与递归分离</strong>、<strong>防缓存投毒</strong>、<strong>限速</strong>、<strong>DNSSEC</strong> 策略与 <strong>TLS</strong> 证书透明度。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Protocol/" rel="tag"># Protocol</a>
+              <a href="/tags/DNS/" rel="tag"># DNS</a>
+              <a href="/tags/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/" rel="tag"># 网络安全</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/network/09-ssh-protocol/" rel="prev" title="第九章：SSH 详解：加密远程登录、密钥与端口转发示例">
+                  <i class="fa fa-angle-left"></i> 第九章：SSH 详解：加密远程登录、密钥与端口转发示例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/network/11-websocket-protocol/" rel="next" title="第十一章：WebSocket 详解：握手、帧与 Python 示例">
+                  第十一章：WebSocket 详解：握手、帧与 Python 示例 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第三章：Rust 并发与错误处理概念基础 Fearless Concurrency：所有权 + Send&#x2F;Sync 在编译期阻止数据竞争，称「无畏并发」——多线程代码能编译过，基本就不会有数据竞争。 Send&#x2F;Sync marker trait：Send 允许跨线程转移所有权，Sync 允许跨线程共享 &amp;T；编译器自动判定，Rc 非 Send、Mutex 内的值变 Sy">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第三章：Rust 并发与错误处理">
+<meta property="og:url" content="https://my919.github.io/rust/03-rust-concurrency-error-handling/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第三章：Rust 并发与错误处理概念基础 Fearless Concurrency：所有权 + Send&#x2F;Sync 在编译期阻止数据竞争，称「无畏并发」——多线程代码能编译过，基本就不会有数据竞争。 Send&#x2F;Sync marker trait：Send 允许跨线程转移所有权，Sync 允许跨线程共享 &amp;T；编译器自动判定，Rc 非 Send、Mutex 内的值变 Sy">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-02T04:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.593Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Rust">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/rust/03-rust-concurrency-error-handling/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/rust/03-rust-concurrency-error-handling/","path":"rust/03-rust-concurrency-error-handling/","title":"第三章：Rust 并发与错误处理"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第三章：Rust 并发与错误处理 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9ARust-%E5%B9%B6%E5%8F%91%E4%B8%8E%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">第三章：Rust 并发与错误处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E9%9B%86%E5%90%88"><span class="nav-number">1.2.</span> <span class="nav-text">一、集合</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Vec%EF%BC%9A%E5%8A%A8%E6%80%81%E6%95%B0%E7%BB%84"><span class="nav-number">1.2.1.</span> <span class="nav-text">1. Vec：动态数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-HashMap%EF%BC%9A%E5%93%88%E5%B8%8C%E8%A1%A8"><span class="nav-number">1.2.2.</span> <span class="nav-text">2. HashMap：哈希表</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E8%BF%AD%E4%BB%A3%E5%99%A8%E4%B8%8E%E9%97%AD%E5%8C%85"><span class="nav-number">1.3.</span> <span class="nav-text">二、迭代器与闭包</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%BF%AD%E4%BB%A3%E5%99%A8"><span class="nav-number">1.3.1.</span> <span class="nav-text">1. 迭代器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E9%97%AD%E5%8C%85"><span class="nav-number">1.3.2.</span> <span class="nav-text">2. 闭包</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86"><span class="nav-number">1.4.</span> <span class="nav-text">三、错误处理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Result-%E4%B8%8E-%E8%BF%90%E7%AE%97%E7%AC%A6"><span class="nav-number">1.4.1.</span> <span class="nav-text">1. Result 与 ? 运算符</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E8%87%AA%E5%AE%9A%E4%B9%89%E9%94%99%E8%AF%AF%E7%B1%BB%E5%9E%8B%EF%BC%88%E6%89%8B%E5%86%99-impl%EF%BC%89"><span class="nav-number">1.4.2.</span> <span class="nav-text">2. 自定义错误类型（手写 impl）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-thiserror-%E4%B8%8E-anyhow"><span class="nav-number">1.4.3.</span> <span class="nav-text">3. thiserror 与 anyhow</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-panic-%E4%B8%8E%E4%B8%8D%E8%AF%A5-panic-%E7%9A%84%E5%9C%BA%E6%99%AF"><span class="nav-number">1.4.4.</span> <span class="nav-text">4. panic 与不该 panic 的场景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81Send-Sync-%E6%B7%B1%E5%85%A5"><span class="nav-number">1.5.</span> <span class="nav-text">四、Send&#x2F;Sync 深入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81Mutex-RwLock-Arc"><span class="nav-number">1.6.</span> <span class="nav-text">五、Mutex&#x2F;RwLock&#x2F;Arc</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81channel-%E6%B6%88%E6%81%AF%E4%BC%A0%E9%80%92"><span class="nav-number">1.7.</span> <span class="nav-text">六、channel 消息传递</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-std-mpsc"><span class="nav-number">1.7.1.</span> <span class="nav-text">1. std mpsc</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-crossbeam-channel"><span class="nav-number">1.7.2.</span> <span class="nav-text">2. crossbeam-channel</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81async-await-%E4%B8%8E-Tokio-%E5%85%A5%E9%97%A8"><span class="nav-number">1.8.</span> <span class="nav-text">七、async&#x2F;await 与 Tokio 入门</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%81%BF%E5%9D%91"><span class="nav-number">1.9.</span> <span class="nav-text">常见避坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/rust/03-rust-concurrency-error-handling/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第三章：Rust 并发与错误处理 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第三章：Rust 并发与错误处理
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-09-02 12:00:00" itemprop="dateCreated datePublished" datetime="2026-09-02T12:00:00+08:00">2026-09-02</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Rust-%E8%AF%AD%E8%A8%80/" itemprop="url" rel="index"><span itemprop="name">Rust 语言</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>11k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>10 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第三章：Rust-并发与错误处理"><a href="#第三章：Rust-并发与错误处理" class="headerlink" title="第三章：Rust 并发与错误处理"></a>第三章：Rust 并发与错误处理</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>Fearless Concurrency</strong>：所有权 + <strong><code>Send</code>&#x2F;<code>Sync</code></strong> 在编译期阻止数据竞争，称「无畏并发」——多线程代码能编译过，基本就不会有数据竞争。</li>
+<li><strong>Send&#x2F;Sync marker trait</strong>：<strong><code>Send</code></strong> 允许跨线程<strong>转移所有权</strong>，<strong><code>Sync</code></strong> 允许跨线程<strong>共享 <code>&amp;T</code></strong>；编译器自动判定，<code>Rc</code> 非 <code>Send</code>、<code>Mutex</code> 内的值变 <code>Sync</code>。</li>
+<li><strong>所有权防数据竞争</strong>：多线程共享可变必须经 <strong><code>Arc</code>+<code>Mutex</code></strong>，裸共享 <code>&amp;mut</code> 会被编译器拒绝。</li>
+<li><strong>Result&#x2F;Option 错误模型</strong>：可恢复用 <strong><code>Result&lt;T, E&gt;</code></strong>，不可恢复用 <strong><code>panic!</code></strong>；无异常机制，错误是值。</li>
+<li><strong><code>?</code> 运算符</strong>：错误传播语法糖，遇到 <code>Err</code> 提前返回、<code>Ok</code> 取值继续，替代手写 <code>match</code> 层层传播。</li>
+</ol>
+<blockquote>
+<p>本章聚焦并发与错误处理。所有权与基础语法见 <a href="/rust/rust-guide/">第一章：Rust 入门与所有权系统</a>；类型系统与 trait 见 <a href="/rust/02-rust-type-system-trait/">第二章：Rust 类型系统与 trait</a>；工程实践见 <a href="/framework/rust-web-system/">第四章：Rust 工程实践与 Web 开发</a>。</p>
+</blockquote>
+<hr>
+<h2 id="一、集合"><a href="#一、集合" class="headerlink" title="一、集合"></a>一、集合</h2><h3 id="1-Vec：动态数组"><a href="#1-Vec：动态数组" class="headerlink" title="1. Vec：动态数组"></a>1. Vec：动态数组</h3><figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">v</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = <span class="type">Vec</span>::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    v.<span class="title function_ invoke__">push</span>(<span class="number">1</span>);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">v2</span> = <span class="built_in">vec!</span>[<span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]; <span class="comment">// 宏初始化</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 越界时 [] 会 panic，get 返回 Option 更安全</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">third</span> = v2.<span class="title function_ invoke__">get</span>(<span class="number">2</span>); <span class="comment">// Some(5)</span></span><br><span class="line">    <span class="keyword">for</span> <span class="variable">n</span> <span class="keyword">in</span> &amp;v2 &#123; <span class="built_in">print!</span>(<span class="string">&quot;&#123;n&#125; &quot;</span>); &#125; <span class="comment">// 遍历</span></span><br><span class="line"></span><br><span class="line">    v.<span class="title function_ invoke__">extend</span>(&amp;v2);</span><br><span class="line">    v.<span class="title function_ invoke__">retain</span>(|&amp;x| x % <span class="number">2</span> == <span class="number">1</span>);   <span class="comment">// 过滤：只留奇数</span></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;\n&#123;:?&#125;&quot;</span>, v);       <span class="comment">// [1, 3, 5]</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-HashMap：哈希表"><a href="#2-HashMap：哈希表" class="headerlink" title="2. HashMap：哈希表"></a>2. HashMap：哈希表</h3><figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::collections::HashMap;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">scores</span>: HashMap&lt;<span class="type">String</span>, <span class="type">i32</span>&gt; = HashMap::<span class="title function_ invoke__">new</span>();</span><br><span class="line">    scores.<span class="title function_ invoke__">insert</span>(<span class="type">String</span>::<span class="title function_ invoke__">from</span>(<span class="string">&quot;小明&quot;</span>), <span class="number">90</span>);</span><br><span class="line">    scores.<span class="title function_ invoke__">insert</span>(<span class="type">String</span>::<span class="title function_ invoke__">from</span>(<span class="string">&quot;小红&quot;</span>), <span class="number">85</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// entry：键存在则不动，不存在则插入（避免覆盖）</span></span><br><span class="line">    scores.<span class="title function_ invoke__">entry</span>(<span class="type">String</span>::<span class="title function_ invoke__">from</span>(<span class="string">&quot;小明&quot;</span>)).<span class="title function_ invoke__">or_insert</span>(<span class="number">100</span>); <span class="comment">// 已有，不动</span></span><br><span class="line">    scores.<span class="title function_ invoke__">entry</span>(<span class="type">String</span>::<span class="title function_ invoke__">from</span>(<span class="string">&quot;小刚&quot;</span>)).<span class="title function_ invoke__">or_insert</span>(<span class="number">70</span>);  <span class="comment">// 插入</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (k, v) <span class="keyword">in</span> &amp;scores &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;k&#125;: &#123;v&#125;&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>另有 <strong><code>VecDeque</code></strong>（双端队列）、<strong><code>BTreeMap</code>&#x2F;<code>BTreeSet</code></strong>（有序）、<strong><code>HashSet</code></strong>（去重）、<strong><code>LinkedList</code></strong>，按需取用。</p>
+<hr>
+<h2 id="二、迭代器与闭包"><a href="#二、迭代器与闭包" class="headerlink" title="二、迭代器与闭包"></a>二、迭代器与闭包</h2><h3 id="1-迭代器"><a href="#1-迭代器" class="headerlink" title="1. 迭代器"></a>1. 迭代器</h3><p>迭代器实现 <strong><code>Iterator</code></strong> trait，<strong>惰性</strong>：只在被消费时才求值，零成本抽象（编译为高效循环）。</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">v</span> = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>];</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 适配器链式调用：map 变换、filter 过滤、sum 消费</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">doubled</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = v.<span class="title function_ invoke__">iter</span>().<span class="title function_ invoke__">map</span>(|x| x * <span class="number">2</span>).<span class="title function_ invoke__">collect</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">even</span>: <span class="type">Vec</span>&lt;&amp;<span class="type">i32</span>&gt; = v.<span class="title function_ invoke__">iter</span>().<span class="title function_ invoke__">filter</span>(|x| *x % <span class="number">2</span> == <span class="number">0</span>).<span class="title function_ invoke__">collect</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">total</span>: <span class="type">i32</span> = v.<span class="title function_ invoke__">iter</span>().<span class="title function_ invoke__">sum</span>();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125; &#123;:?&#125; &#123;total&#125;&quot;</span>, doubled, even);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// into_iter 消费所有权；iter 借用；iter_mut 可变借用</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">owned</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = <span class="built_in">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>].<span class="title function_ invoke__">into_iter</span>().<span class="title function_ invoke__">map</span>(|x| x + <span class="number">1</span>).<span class="title function_ invoke__">collect</span>();</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;:?&#125;&quot;</span>, owned);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// enumerate 带索引，rev 反转，zip 拉链，flat_map 拍平</span></span><br><span class="line">    <span class="keyword">for</span> (i, n) <span class="keyword">in</span> v.<span class="title function_ invoke__">iter</span>().<span class="title function_ invoke__">enumerate</span>() &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;&#123;i&#125;: &#123;n&#125;&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>自定义迭代器</strong>：实现 <code>Iterator</code> trait 的 <code>next</code> 方法即可，编译器自动适配 <code>map</code>&#x2F;<code>filter</code>&#x2F;<code>collect</code> 等所有方法。</p>
+<h3 id="2-闭包"><a href="#2-闭包" class="headerlink" title="2. 闭包"></a>2. 闭包</h3><p>闭包是「可捕获环境的匿名函数」，三种捕获方式由推断决定：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="comment">// 闭包通常无需标注类型，由首次调用推断</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">add</span> = |a, b| a + b;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">add</span>(<span class="number">1</span>, <span class="number">2</span>)); <span class="comment">// 3</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 显式标注（推断不出或需明确时）</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">add_f</span> = |a: <span class="type">i32</span>, b: <span class="type">i32</span>| <span class="punctuation">-&gt;</span> <span class="type">i32</span> &#123; a + b &#125;;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">add_f</span>(<span class="number">3</span>, <span class="number">4</span>));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">k</span> = <span class="number">10</span>;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">add_k</span> = <span class="keyword">move</span> |x: <span class="type">i32</span>| x + k;   <span class="comment">// move 把 k 按值移入闭包</span></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">add_k</span>(<span class="number">5</span>));           <span class="comment">// 15</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 闭包作参数：impl Fn/FnMut/FnOnce</span></span><br><span class="line">    <span class="keyword">fn</span> <span class="title function_">apply</span>(f: <span class="keyword">impl</span> <span class="title class_">Fn</span>(<span class="type">i32</span>) <span class="punctuation">-&gt;</span> <span class="type">i32</span>, x: <span class="type">i32</span>) <span class="punctuation">-&gt;</span> <span class="type">i32</span> &#123; <span class="title function_ invoke__">f</span>(x) &#125;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, <span class="title function_ invoke__">apply</span>(|n| n * n, <span class="number">4</span>)); <span class="comment">// 16</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>闭包 trait：<strong><code>FnOnce</code></strong>（可消耗捕获值，只能调一次）、<strong><code>FnMut</code></strong>（可变借用）、<strong><code>Fn</code></strong>（不可变借用，可多次调）。按「最强需求」实现，按「最弱约束」接收。</p>
+</blockquote>
+<hr>
+<h2 id="三、错误处理"><a href="#三、错误处理" class="headerlink" title="三、错误处理"></a>三、错误处理</h2><p>Rust 没有「异常」，错误分两类：<strong>可恢复错误</strong>用 <strong><code>Result</code></strong>，<strong>不可恢复错误</strong>用 <strong><code>panic!</code></strong>。</p>
+<h3 id="1-Result-与-运算符"><a href="#1-Result-与-运算符" class="headerlink" title="1. Result 与 ? 运算符"></a>1. Result 与 ? 运算符</h3><figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::fs;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">read_config</span>() <span class="punctuation">-&gt;</span> <span class="type">Result</span>&lt;<span class="type">String</span>, std::io::Error&gt; &#123;</span><br><span class="line">    fs::<span class="title function_ invoke__">read_to_string</span>(<span class="string">&quot;config.toml&quot;</span>) <span class="comment">// 返回 Result&lt;String, io::Error&gt;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">match</span> <span class="title function_ invoke__">read_config</span>() &#123;</span><br><span class="line">        <span class="title function_ invoke__">Ok</span>(body) =&gt; <span class="built_in">println!</span>(<span class="string">&quot;&#123;body&#125;&quot;</span>),</span><br><span class="line">        <span class="title function_ invoke__">Err</span>(e) =&gt; <span class="built_in">eprintln!</span>(<span class="string">&quot;&#123;e&#125;&quot;</span>),</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>?</code></strong> 运算符：在 <code>Result</code> 上遇到 <code>Err</code> 提前返回、遇到 <code>Ok</code> 取出值继续，用于<strong>错误传播</strong>：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::fs;</span><br><span class="line"><span class="keyword">use</span> std::io;</span><br><span class="line"><span class="keyword">use</span> std::path::Path;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ? 把 io::Error 一路传播到调用方</span></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">read_lines</span>(path: &amp;Path) <span class="punctuation">-&gt;</span> io::<span class="type">Result</span>&lt;<span class="type">Vec</span>&lt;<span class="type">String</span>&gt;&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">s</span> = fs::<span class="title function_ invoke__">read_to_string</span>(path)?; <span class="comment">// 失败则 return Err</span></span><br><span class="line">    <span class="title function_ invoke__">Ok</span>(s.<span class="title function_ invoke__">lines</span>().<span class="title function_ invoke__">map</span>(<span class="type">String</span>::from).<span class="title function_ invoke__">collect</span>())</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">match</span> <span class="title function_ invoke__">read_lines</span>(Path::<span class="title function_ invoke__">new</span>(<span class="string">&quot;data.txt&quot;</span>)) &#123;</span><br><span class="line">        <span class="title function_ invoke__">Ok</span>(lines) =&gt; <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, lines.<span class="title function_ invoke__">len</span>()),</span><br><span class="line">        <span class="title function_ invoke__">Err</span>(e) =&gt; <span class="built_in">eprintln!</span>(<span class="string">&quot;读取失败: &#123;e&#125;&quot;</span>),</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-自定义错误类型（手写-impl）"><a href="#2-自定义错误类型（手写-impl）" class="headerlink" title="2. 自定义错误类型（手写 impl）"></a>2. 自定义错误类型（手写 impl）</h3><p>库代码的规范姿势：<strong>枚举收拢本模块所有失败模式</strong>，实现 <code>Display</code> + <code>Error</code>：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::fmt;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">enum</span> <span class="title class_">StoreError</span> &#123;</span><br><span class="line">    <span class="title function_ invoke__">NotFound</span>(<span class="type">u64</span>),                  <span class="comment">// 携带业务上下文</span></span><br><span class="line">    <span class="title function_ invoke__">Db</span>(<span class="type">String</span>),</span><br><span class="line">    <span class="title function_ invoke__">Io</span>(std::io::Error),</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="title class_">fmt</span>::Display <span class="keyword">for</span> <span class="title class_">StoreError</span> &#123;</span><br><span class="line">    <span class="keyword">fn</span> <span class="title function_">fmt</span>(&amp;<span class="keyword">self</span>, f: &amp;<span class="keyword">mut</span> fmt::Formatter&lt;<span class="symbol">&#x27;_</span>&gt;) <span class="punctuation">-&gt;</span> fmt::<span class="type">Result</span> &#123;</span><br><span class="line">        <span class="keyword">match</span> <span class="keyword">self</span> &#123;</span><br><span class="line">            StoreError::<span class="title function_ invoke__">NotFound</span>(id) =&gt; <span class="built_in">write!</span>(f, <span class="string">&quot;记录 &#123;id&#125; 不存在&quot;</span>),</span><br><span class="line">            StoreError::<span class="title function_ invoke__">Db</span>(msg) =&gt; <span class="built_in">write!</span>(f, <span class="string">&quot;数据库错误: &#123;msg&#125;&quot;</span>),</span><br><span class="line">            StoreError::<span class="title function_ invoke__">Io</span>(e) =&gt; <span class="built_in">write!</span>(f, <span class="string">&quot;IO 错误: &#123;e&#125;&quot;</span>),</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">impl</span> <span class="title class_">std</span>::error::Error <span class="keyword">for</span> <span class="title class_">StoreError</span> &#123;</span><br><span class="line">    <span class="keyword">fn</span> <span class="title function_">source</span>(&amp;<span class="keyword">self</span>) <span class="punctuation">-&gt;</span> <span class="type">Option</span>&lt;&amp;(<span class="keyword">dyn</span> std::error::Error + <span class="symbol">&#x27;static</span>)&gt; &#123;</span><br><span class="line">        <span class="keyword">match</span> <span class="keyword">self</span> &#123;</span><br><span class="line">            StoreError::<span class="title function_ invoke__">Io</span>(e) =&gt; <span class="title function_ invoke__">Some</span>(e),   <span class="comment">// 错误链：暴露底层原因</span></span><br><span class="line">            _ =&gt; <span class="literal">None</span>,</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// From 转换：让 ? 自动把 io::Error 包成 StoreError</span></span><br><span class="line"><span class="keyword">impl</span> <span class="title class_">From</span>&lt;std::io::Error&gt; <span class="keyword">for</span> <span class="title class_">StoreError</span> &#123;</span><br><span class="line">    <span class="keyword">fn</span> <span class="title function_">from</span>(e: std::io::Error) <span class="punctuation">-&gt;</span> <span class="keyword">Self</span> &#123; StoreError::<span class="title function_ invoke__">Io</span>(e) &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">load</span>(id: <span class="type">u64</span>) <span class="punctuation">-&gt;</span> <span class="type">Result</span>&lt;<span class="type">String</span>, StoreError&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">s</span> = std::fs::<span class="title function_ invoke__">read_to_string</span>(<span class="string">&quot;a.txt&quot;</span>)?;   <span class="comment">// io::Error 自动转 StoreError</span></span><br><span class="line">    <span class="title function_ invoke__">Ok</span>(<span class="built_in">format!</span>(<span class="string">&quot;&#123;id&#125;:&#123;s&#125;&quot;</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-thiserror-与-anyhow"><a href="#3-thiserror-与-anyhow" class="headerlink" title="3. thiserror 与 anyhow"></a>3. thiserror 与 anyhow</h3><p>生产代码常用 <strong><code>thiserror</code></strong>（库，派生自定义错误，编译期生成上面的样板）或 <strong><code>anyhow</code></strong>（应用，简化错误传播）：</p>
+<figure class="highlight toml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Cargo.toml</span></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">thiserror</span> = <span class="string">&quot;2&quot;</span></span><br><span class="line"><span class="attr">anyhow</span> = <span class="string">&quot;1&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> thiserror::Error;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Error, Debug)]</span></span><br><span class="line"><span class="keyword">pub</span> <span class="keyword">enum</span> <span class="title class_">AppError</span> &#123;</span><br><span class="line">    <span class="meta">#[error(<span class="string">&quot;IO 错误: &#123;0&#125;&quot;</span>)]</span></span><br><span class="line">    <span class="title function_ invoke__">Io</span>(<span class="meta">#[from]</span> std::io::Error),          <span class="comment">// #[from] 自动生成 From 转换</span></span><br><span class="line">    <span class="meta">#[error(<span class="string">&quot;解析错误: &#123;0&#125;&quot;</span>)]</span></span><br><span class="line">    <span class="title function_ invoke__">Parse</span>(<span class="meta">#[from]</span> std::num::ParseIntError),</span><br><span class="line">    <span class="meta">#[error(<span class="string">&quot;记录 &#123;0&#125; 不存在&quot;</span>)]</span></span><br><span class="line">    <span class="title function_ invoke__">NotFound</span>(<span class="type">u64</span>),</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> anyhow::&#123;Context, <span class="type">Result</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">parse_count</span>(s: &amp;<span class="type">str</span>) <span class="punctuation">-&gt;</span> <span class="type">Result</span>&lt;<span class="type">i32</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">n</span>: <span class="type">i32</span> = s.<span class="title function_ invoke__">trim</span>().<span class="title function_ invoke__">parse</span>().<span class="title function_ invoke__">context</span>(<span class="string">&quot;解析数量失败&quot;</span>)?;  <span class="comment">// 附加上下文</span></span><br><span class="line">    <span class="keyword">if</span> n &lt; <span class="number">0</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="title function_ invoke__">Err</span>(anyhow::anyhow!(<span class="string">&quot;数量不能为负: &#123;n&#125;&quot;</span>));   <span class="comment">// 就地造错误</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="title function_ invoke__">Ok</span>(n)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>分工</strong>：<strong>thiserror</strong> 适合库代码——错误类型是公共 API 的一部分，调用方要 <code>match</code> 分类处理；<strong>anyhow</strong> 适合应用层——main&#x2F;handler 里聚合千疮百孔的底层错误，统一打印或上报。两者可混用：库返 thiserror 类型，应用层 <code>?</code> 进 anyhow。</p>
+</blockquote>
+<h3 id="4-panic-与不该-panic-的场景"><a href="#4-panic-与不该-panic-的场景" class="headerlink" title="4. panic 与不该 panic 的场景"></a>4. panic 与不该 panic 的场景</h3><figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="comment">// panic!：程序无法继续，解栈并打印调用栈，实际多由下列操作触发：</span></span><br><span class="line">    <span class="comment">// let v = vec![1, 2, 3]; let _ = v[10];   // ❌ 数组越界 panic</span></span><br><span class="line">    <span class="comment">// let _: i32 = &quot;abc&quot;.parse().unwrap();    // ❌ unwrap 遇 Err 直接 panic</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 原则：库代码应返回 Result，让调用方决定；应用顶层才适合 unwrap/expect</span></span><br><span class="line">    <span class="comment">// expect 比 unwrap 好：附带自定义信息便于定位</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">n</span>: <span class="type">i32</span> = <span class="string">&quot;123&quot;</span>.<span class="title function_ invoke__">parse</span>().<span class="title function_ invoke__">expect</span>(<span class="string">&quot;应输入数字&quot;</span>);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;n&#125;&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、Send-Sync-深入"><a href="#四、Send-Sync-深入" class="headerlink" title="四、Send&#x2F;Sync 深入"></a>四、Send&#x2F;Sync 深入</h2><p><strong><code>Send</code></strong>：类型可跨线程<strong>转移所有权</strong>；<strong><code>Sync</code></strong>：<code>&amp;T</code> 可跨线程<strong>共享</strong>（即 <code>T</code> 可安全被多线程读）。<code>Arc&lt;T&gt;</code> 要求 <code>T: Sync + Send</code>。</p>
+<p>判定规则：</p>
+<ul>
+<li><strong><code>Rc&lt;T&gt;</code></strong> 非 <code>Send</code>（引用计数非原子），不能跨线程。</li>
+<li><strong><code>Mutex&lt;T&gt;</code></strong> 使 <code>T</code> 满足 <code>Sync</code>（加锁后可安全共享可变）。</li>
+<li><strong><code>RefCell&lt;T&gt;</code></strong> 非 <code>Sync</code>（运行期借用检查非线程安全）。</li>
+<li>裸指针 <strong><code>*const T</code>&#x2F;<code>*mut T</code></strong> 既非 <code>Send</code> 也非 <code>Sync</code>。</li>
+</ul>
+<p><strong>边界速查</strong>（<code>T: Send</code> 且 <code>T: Sync</code> 才能「<code>Arc&lt;T&gt;</code> 多线程共享可变」）：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>Send</th>
+<th>Sync</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>i32</code>&#x2F;<code>String</code>&#x2F;<code>Vec&lt;T&gt;</code></td>
+<td>✅</td>
+<td>✅</td>
+<td>拥有数据，无内部可变性</td>
+</tr>
+<tr>
+<td><code>&amp;T</code>（T: Sync）</td>
+<td>✅</td>
+<td>✅</td>
+<td>只读引用共享安全</td>
+</tr>
+<tr>
+<td><code>&amp;mut T</code>（T: Send）</td>
+<td>✅</td>
+<td>❌</td>
+<td>可变引用只能独占，不能共享</td>
+</tr>
+<tr>
+<td><code>Cell&lt;T&gt;</code>&#x2F;<code>RefCell&lt;T&gt;</code></td>
+<td>✅</td>
+<td>❌</td>
+<td>内部可变性无线程安全检查</td>
+</tr>
+<tr>
+<td><code>Rc&lt;T&gt;</code></td>
+<td>❌</td>
+<td>❌</td>
+<td>引用计数非原子</td>
+</tr>
+<tr>
+<td><code>Arc&lt;T&gt;</code>（T: Send+Sync）</td>
+<td>✅</td>
+<td>✅</td>
+<td>原子引用计数</td>
+</tr>
+<tr>
+<td><code>Mutex&lt;T&gt;</code>&#x2F;<code>RwLock&lt;T&gt;</code>（T: Send）</td>
+<td>✅</td>
+<td>✅</td>
+<td>锁提供线程安全的内部可变性</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>这两个 trait 是 <strong><code>unsafe auto trait</code></strong>：编译器为绝大多数类型自动推导，手写 <code>unsafe impl Send for X</code> 等于你向编译器担保线程安全——只有封装 FFI&#x2F;裸指针时才需要，写错即 UB。</p>
+</blockquote>
+<hr>
+<h2 id="五、Mutex-RwLock-Arc"><a href="#五、Mutex-RwLock-Arc" class="headerlink" title="五、Mutex&#x2F;RwLock&#x2F;Arc"></a>五、Mutex&#x2F;RwLock&#x2F;Arc</h2><figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::thread;</span><br><span class="line"><span class="keyword">use</span> std::sync::&#123;Arc, Mutex&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="comment">// Arc（原子引用计数）：多线程共享所有权；Mutex：互斥锁保护内部值</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">counter</span> = Arc::<span class="title function_ invoke__">new</span>(Mutex::<span class="title function_ invoke__">new</span>(<span class="number">0</span>));</span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">handles</span> = <span class="built_in">vec!</span>[];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> <span class="variable">_</span> <span class="keyword">in</span> <span class="number">0</span>..<span class="number">4</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">c</span> = Arc::<span class="title function_ invoke__">clone</span>(&amp;counter);</span><br><span class="line">        handles.<span class="title function_ invoke__">push</span>(thread::<span class="title function_ invoke__">spawn</span>(<span class="keyword">move</span> || &#123;</span><br><span class="line">            <span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">n</span> = c.<span class="title function_ invoke__">lock</span>().<span class="title function_ invoke__">unwrap</span>(); <span class="comment">// 加锁，返回 MutexGuard</span></span><br><span class="line">            *n += <span class="number">1</span>;</span><br><span class="line">        &#125;)); <span class="comment">// 离开作用域自动解锁（Drop）</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> <span class="variable">h</span> <span class="keyword">in</span> handles &#123;</span><br><span class="line">        h.<span class="title function_ invoke__">join</span>().<span class="title function_ invoke__">unwrap</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;count = &#123;&#125;&quot;</span>, *counter.<span class="title function_ invoke__">lock</span>().<span class="title function_ invoke__">unwrap</span>()); <span class="comment">// 4</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>RwLock</code></strong> 用于读多写少（多个读锁或一个写锁）；单线程内 <code>Rc</code>&#x2F;<code>RefCell</code> 对应 <code>Arc</code>&#x2F;<code>Mutex</code>。<code>read()</code> 返回多个只读锁，<code>write()</code> 独占写锁。</p>
+<p><strong>锁中毒（poisoning）</strong>：持锁线程 panic 后，<code>Mutex</code> 进入中毒态，后续 <code>lock()</code> 返回 <code>Err(PoisonError)</code>——这是 std 故意的设计（锁保护的数据可能处于不一致中间态）。实战对策：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 方案 1：接受现状——认为 panic 不影响数据一致性，取回锁继续用</span></span><br><span class="line"><span class="keyword">let</span> <span class="keyword">mut </span><span class="variable">n</span> = <span class="keyword">match</span> counter.<span class="title function_ invoke__">lock</span>() &#123;</span><br><span class="line">    <span class="title function_ invoke__">Ok</span>(g) =&gt; g,</span><br><span class="line">    <span class="title function_ invoke__">Err</span>(poisoned) =&gt; poisoned.<span class="title function_ invoke__">into_inner</span>(),   <span class="comment">// 明确忽略中毒</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 方案 2：换 parking_lot::Mutex——无中毒、API 更小、性能更好</span></span><br><span class="line"><span class="comment">// parking_lot = &quot;0.12&quot;，lock() 直接返回 Guard 而非 Result</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>死锁防御</strong>：① 固定全局加锁顺序；② 锁粒度最小化，持锁期间<strong>不做 IO、不调用未知回调</strong>；③ 能用消息传递（channel）就不用共享锁。</p>
+</blockquote>
+<hr>
+<h2 id="六、channel-消息传递"><a href="#六、channel-消息传递" class="headerlink" title="六、channel 消息传递"></a>六、channel 消息传递</h2><h3 id="1-std-mpsc"><a href="#1-std-mpsc" class="headerlink" title="1. std mpsc"></a>1. std mpsc</h3><figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::sync::mpsc;</span><br><span class="line"><span class="keyword">use</span> std::thread;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> (tx, rx) = mpsc::<span class="title function_ invoke__">channel</span>(); <span class="comment">// 多生产者单消费者</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> <span class="number">0</span>..<span class="number">3</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> <span class="variable">tx</span> = tx.<span class="title function_ invoke__">clone</span>();</span><br><span class="line">        thread::<span class="title function_ invoke__">spawn</span>(<span class="keyword">move</span> || &#123;</span><br><span class="line">            tx.<span class="title function_ invoke__">send</span>(<span class="built_in">format!</span>(<span class="string">&quot;消息 &#123;i&#125;&quot;</span>)).<span class="title function_ invoke__">unwrap</span>();</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="title function_ invoke__">drop</span>(tx); <span class="comment">// 关闭原始发送端，rx 迭代才会结束</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> <span class="variable">msg</span> <span class="keyword">in</span> rx &#123;</span><br><span class="line">        <span class="built_in">println!</span>(<span class="string">&quot;收到: &#123;msg&#125;&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-crossbeam-channel"><a href="#2-crossbeam-channel" class="headerlink" title="2. crossbeam-channel"></a>2. crossbeam-channel</h3><p><strong><code>crossbeam</code></strong> crate 提供多生产者多消费者（MPMC）、有界&#x2F;无界 channel，接收端可 <code>clone</code>（std mpsc 不行），性能优于 std mpsc：</p>
+<figure class="highlight toml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Cargo.toml</span></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">crossbeam-channel</span> = <span class="string">&quot;0.5&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> crossbeam_channel::&#123;bounded, unbounded&#125;;</span><br><span class="line"><span class="keyword">use</span> std::thread;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> (s, r) = bounded::&lt;<span class="type">i32</span>&gt;(<span class="number">2</span>);        <span class="comment">// 有界：满则阻塞发送方（背压）</span></span><br><span class="line">    <span class="keyword">let</span> (s2, r2) = (s.<span class="title function_ invoke__">clone</span>(), r.<span class="title function_ invoke__">clone</span>()); <span class="comment">// 两端都可 clone → MPMC</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">p</span> = thread::<span class="title function_ invoke__">spawn</span>(<span class="keyword">move</span> || &#123;</span><br><span class="line">        <span class="keyword">for</span> <span class="variable">i</span> <span class="keyword">in</span> <span class="number">0</span>..<span class="number">4</span> &#123; s.<span class="title function_ invoke__">send</span>(i).<span class="title function_ invoke__">unwrap</span>(); &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">c</span> = thread::<span class="title function_ invoke__">spawn</span>(<span class="keyword">move</span> || &#123;</span><br><span class="line">        <span class="keyword">for</span> <span class="variable">v</span> <span class="keyword">in</span> r &#123; <span class="built_in">println!</span>(<span class="string">&quot;收到 &#123;v&#125;&quot;</span>); &#125;  <span class="comment">// 全部发送端 drop 后迭代结束</span></span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="title function_ invoke__">drop</span>(s2); <span class="title function_ invoke__">drop</span>(r2);</span><br><span class="line">    p.<span class="title function_ invoke__">join</span>().<span class="title function_ invoke__">unwrap</span>();</span><br><span class="line">    c.<span class="title function_ invoke__">join</span>().<span class="title function_ invoke__">unwrap</span>();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> (sx, _rx) = unbounded::&lt;<span class="type">i32</span>&gt;();    <span class="comment">// 无界：发送永不阻塞（小心内存膨胀）</span></span><br><span class="line">    sx.<span class="title function_ invoke__">send</span>(<span class="number">1</span>).<span class="title function_ invoke__">unwrap</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>背压（backpressure）<strong>用 <code>bounded(n)</code>：下游慢时发送方自然降速，防内存撑爆；<code>unbounded</code> 只用于确认流量有界的内部管线。消息传递适合</strong>线程间通信</strong>；共享可变适合<strong>细粒度状态</strong>。Erlang&#x2F;Go 偏消息传递，Rust 两者皆可。</p>
+</blockquote>
+<hr>
+<h2 id="七、async-await-与-Tokio-入门"><a href="#七、async-await-与-Tokio-入门" class="headerlink" title="七、async&#x2F;await 与 Tokio 入门"></a>七、async&#x2F;await 与 Tokio 入门</h2><p><strong><code>async fn</code></strong> 返回 <strong><code>Future</code></strong>（惰性，不 await 不执行），<strong><code>.await</code></strong> 挂起让出执行权。<strong><code>std</code></strong> 只提供 Future 抽象，<strong>运行时</strong>需第三方——最常用 <strong>Tokio</strong>（多线程工作窃取调度器 + IO 驱动 + 定时器）：</p>
+<figure class="highlight toml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Cargo.toml</span></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">tokio</span> = &#123; version = <span class="string">&quot;1&quot;</span>, features = [<span class="string">&quot;full&quot;</span>] &#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> tokio::time::&#123;sleep, Duration&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">fn</span> <span class="title function_">task</span>(name: &amp;<span class="type">str</span>) <span class="punctuation">-&gt;</span> <span class="type">String</span> &#123;</span><br><span class="line">    <span class="title function_ invoke__">sleep</span>(Duration::<span class="title function_ invoke__">from_millis</span>(<span class="number">50</span>)).<span class="keyword">await</span>;   <span class="comment">// 挂起而非阻塞线程</span></span><br><span class="line">    <span class="built_in">format!</span>(<span class="string">&quot;&#123;name&#125; 完成&quot;</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[tokio::main]</span>                                <span class="comment">// 宏展开：建运行时并 block_on</span></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="comment">// join!：同一任务内并发轮询两个 Future，全部完成才返回</span></span><br><span class="line">    <span class="keyword">let</span> (a, b) = tokio::join!(<span class="title function_ invoke__">task</span>(<span class="string">&quot;A&quot;</span>), <span class="title function_ invoke__">task</span>(<span class="string">&quot;B&quot;</span>));</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;a&#125; | &#123;b&#125;&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// spawn：独立任务进调度器并行跑（要求 &#x27;static + Send）</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">h</span> = tokio::<span class="title function_ invoke__">spawn</span>(<span class="title function_ invoke__">task</span>(<span class="string">&quot;C&quot;</span>));</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, h.<span class="keyword">await</span>.<span class="title function_ invoke__">unwrap</span>());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// select!：多个 Future 谁先就绪用谁，常用于超时控制</span></span><br><span class="line">    tokio::<span class="built_in">select!</span> &#123;</span><br><span class="line">        r = <span class="title function_ invoke__">task</span>(<span class="string">&quot;慢任务&quot;</span>) =&gt; <span class="built_in">println!</span>(<span class="string">&quot;完成: &#123;r&#125;&quot;</span>),</span><br><span class="line">        _ = <span class="title function_ invoke__">sleep</span>(Duration::<span class="title function_ invoke__">from_millis</span>(<span class="number">10</span>)) =&gt; <span class="built_in">println!</span>(<span class="string">&quot;超时兜底&quot;</span>),</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>工具</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>并发等待多个 Future（同任务内）</td>
+<td><code>tokio::join!</code></td>
+</tr>
+<tr>
+<td>派生独立后台任务</td>
+<td><code>tokio::spawn</code>（’static + Send）</td>
+</tr>
+<tr>
+<td>超时&#x2F;竞速</td>
+<td><code>tokio::select!</code> &#x2F; <code>tokio::time::timeout</code></td>
+</tr>
+<tr>
+<td>async 版 channel</td>
+<td><code>tokio::sync::mpsc</code>（std mpsc 不能 .await）</td>
+</tr>
+<tr>
+<td>async 版互斥锁</td>
+<td><code>tokio::sync::Mutex</code>（可跨 .await 持有）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>关键纪律</strong>：持 std <code>MutexGuard</code> <strong>跨 <code>.await</code></strong> 会死锁（挂起时不放锁）——async 里要么缩小持锁范围，要么换 <code>tokio::sync::Mutex</code>。CPU 密集活别塞进 async 任务，用 <code>tokio::task::spawn_blocking</code> 或 rayon。</p>
+</blockquote>
+<p><strong>rayon 数据并行</strong>：把顺序迭代器变并行，零配置利用多核：</p>
+<figure class="highlight toml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Cargo.toml</span></span><br><span class="line"><span class="section">[dependencies]</span></span><br><span class="line"><span class="attr">rayon</span> = <span class="string">&quot;1&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> rayon::prelude::*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">fn</span> <span class="title function_">main</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">v</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = (<span class="number">1</span>..=<span class="number">1000</span>).<span class="title function_ invoke__">collect</span>();</span><br><span class="line">    <span class="keyword">let</span> <span class="variable">total</span>: <span class="type">i32</span> = v.<span class="title function_ invoke__">par_iter</span>().<span class="title function_ invoke__">sum</span>();                     <span class="comment">// 并行归约</span></span><br><span class="line">    <span class="keyword">let</span> <span class="variable">doubled</span>: <span class="type">Vec</span>&lt;<span class="type">i32</span>&gt; = v.<span class="title function_ invoke__">par_iter</span>().<span class="title function_ invoke__">map</span>(|x| x * <span class="number">2</span>).<span class="title function_ invoke__">collect</span>(); <span class="comment">// 并行 map</span></span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">&quot;&#123;total&#125; &#123;:?&#125;&quot;</span>, &amp;doubled[..<span class="number">3</span>]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>async 适合<strong>高并发 IO</strong>（大量连接等待），CPU 密集仍用线程或 <strong>rayon</strong>——两者可共存：Tokio 管网络 IO，rayon 管计算热区。</p>
+</blockquote>
+<hr>
+<h2 id="常见避坑"><a href="#常见避坑" class="headerlink" title="常见避坑"></a>常见避坑</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>错误</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Rc</code> 跨线程</td>
+<td><code>thread::spawn(move || rc)</code> → 非 <code>Send</code> 编译错误</td>
+<td>改用 <code>Arc</code></td>
+</tr>
+<tr>
+<td>裸 <code>&amp;mut</code> 共享</td>
+<td>多线程同时持 <code>&amp;mut</code> → 借用检查拒绝</td>
+<td>用 <code>Arc&lt;Mutex&lt;T&gt;&gt;</code></td>
+</tr>
+<tr>
+<td>忘记 <code>drop(tx)</code></td>
+<td>mpsc 的 <code>rx</code> 迭代永不结束</td>
+<td>关闭所有发送端或用 <code>into_iter</code></td>
+</tr>
+<tr>
+<td><code>Mutex</code> 死锁</td>
+<td>加锁顺序不一致互相等待</td>
+<td>固定加锁顺序，或用 <code>parking_lot</code> 防中毒</td>
+</tr>
+<tr>
+<td><code>unwrap</code> 锁中毒</td>
+<td><code>lock().unwrap()</code> 在持锁线程 panic 后 → panic</td>
+<td>用 <code>match</code> 处理 <code>PoisonError</code> 或 <code>parking_lot</code></td>
+</tr>
+<tr>
+<td><code>RefCell</code> 跨线程</td>
+<td><code>RefCell&lt;T&gt;</code> 非 <code>Sync</code></td>
+<td>换 <code>Mutex&lt;T&gt;</code> 或 <code>RwLock&lt;T&gt;</code></td>
+</tr>
+<tr>
+<td>迭代器未消费</td>
+<td><code>v.iter().map(...)</code> 不执行 → 惰性</td>
+<td>加 <code>.collect()</code>&#x2F;<code>for</code> 消费</td>
+</tr>
+<tr>
+<td>闭包 move 时机</td>
+<td>需转移所有权却未 <code>move</code> → 借用过期</td>
+<td>加 <code>move</code> 关键字</td>
+</tr>
+<tr>
+<td><code>unwrap</code> 遇 <code>Err</code></td>
+<td><code>result.unwrap()</code> panic</td>
+<td>用 <code>?</code>&#x2F;<code>match</code>&#x2F;<code>unwrap_or</code></td>
+</tr>
+<tr>
+<td>async 无运行时</td>
+<td><code>async fn</code> 直接调用 → Future 不执行</td>
+<td><code>#[tokio::main]</code> 或 <code>block_on</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>集合</td>
+<td><strong><code>Vec</code>&#x2F;<code>HashMap</code></strong> 常用；<code>BTreeMap</code> 有序，<code>HashSet</code> 去重</td>
+</tr>
+<tr>
+<td>迭代器</td>
+<td>实现 <code>Iterator</code>，惰性零成本，<code>map</code>&#x2F;<code>filter</code>&#x2F;<code>collect</code> 链式</td>
+</tr>
+<tr>
+<td>闭包</td>
+<td><code>Fn</code>&#x2F;<code>FnMut</code>&#x2F;<code>FnOnce</code>，<code>move</code> 转移捕获环境</td>
+</tr>
+<tr>
+<td>错误模型</td>
+<td><code>Result</code> 可恢复、<code>panic!</code> 不可恢复；<code>?</code> 传播</td>
+</tr>
+<tr>
+<td>自定义错误</td>
+<td>枚举收拢失败模式 + <code>Display</code>&#x2F;<code>Error</code>&#x2F;<code>From</code>；库用 thiserror、应用用 anyhow</td>
+</tr>
+<tr>
+<td>Send&#x2F;Sync</td>
+<td><code>Send</code> 跨线程转移，<code>Sync</code> 跨线程共享 <code>&amp;T</code>；<code>Rc</code> 双非、<code>Arc</code>+<code>Mutex</code> 双全</td>
+</tr>
+<tr>
+<td>并发原语</td>
+<td><code>Arc</code> 共享所有权，<code>Mutex</code> 互斥（防中毒&#x2F;死锁），<code>RwLock</code> 读多写少</td>
+</tr>
+<tr>
+<td>channel</td>
+<td>std mpsc 单消费者，crossbeam MPMC 有界背压；消息传递 vs 共享可变</td>
+</tr>
+<tr>
+<td>async&#x2F;Tokio</td>
+<td><code>join!</code>&#x2F;<code>spawn</code>&#x2F;<code>select!</code> 三件套；持锁禁跨 <code>.await</code>；CPU 密集用 rayon</td>
+</tr>
+</tbody></table>
+<hr>
+<blockquote>
+<p>上一篇：<a href="/rust/rust-guide/">第一章：Rust 入门与所有权系统</a>　|　<a href="/rust/02-rust-type-system-trait/">第二章：Rust 类型系统与 trait</a>　|　<a href="/framework/rust-web-system/">第四章：Rust 工程实践与 Web 开发</a></p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Rust/" rel="tag"># Rust</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/sysdesign/03-high-concurrency-system-design/" rel="prev" title="第三章：高并发系统设计">
+                  <i class="fa fa-angle-left"></i> 第三章：高并发系统设计
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/rust/02-rust-type-system-trait/" rel="next" title="第二章：Rust 类型系统与 trait">
+                  第二章：Rust 类型系统与 trait <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

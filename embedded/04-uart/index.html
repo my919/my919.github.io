@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第四章：UART概念基础 UART（通用异步收发器）是异步串行通信控制器：只用 TX&#x2F;RX 两根信号线加共地，不传时钟，收发双方按约定的波特率各自采样。 异步帧：起始位(0) + 数据位(通常 8) + 可选校验位 + 停止位(1)；空闲为高电平，起始位拉低完成一次同步，数据 LSB 先发。 为什么无处不在：实现极简、调试直观，日志打印、AT 指令、GPS NMEA、Bootloader">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第四章：UART">
+<meta property="og:url" content="https://my919.github.io/embedded/04-uart/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第四章：UART概念基础 UART（通用异步收发器）是异步串行通信控制器：只用 TX&#x2F;RX 两根信号线加共地，不传时钟，收发双方按约定的波特率各自采样。 异步帧：起始位(0) + 数据位(通常 8) + 可选校验位 + 停止位(1)；空闲为高电平，起始位拉低完成一次同步，数据 LSB 先发。 为什么无处不在：实现极简、调试直观，日志打印、AT 指令、GPS NMEA、Bootloader">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-05-01T05:09:30.000Z">
+<meta property="article:modified_time" content="2026-10-25T15:49:27.574Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Embedded">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/embedded/04-uart/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/embedded/04-uart/","path":"embedded/04-uart/","title":"第四章：UART"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第四章：UART | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-standards"><a href="/standards/" rel="section"><i class="fa fa-gavel fa-fw"></i>标准规范</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-audio"><a href="/audio/" rel="section"><i class="fa fa-music fa-fw"></i>音频</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-git"><a href="/git/" rel="section"><i class="fab fa-git-alt fa-fw"></i>版本控制</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-microservice"><a href="/microservice/" rel="section"><i class="fa fa-server fa-fw"></i>微服务</a></li><li class="menu-item menu-item-monitor"><a href="/monitor/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>监控运维</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-cicd"><a href="/cicd/" rel="section"><i class="fa fa-sync-alt fa-fw"></i>CI/CD</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 设计</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-service"><a href="/service/" rel="section"><i class="fa fa-cogs fa-fw"></i>服务</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具</a></li><li class="menu-item menu-item-project"><a href="/project/" rel="section"><i class="fa fa-briefcase fa-fw"></i>项目</a></li><li class="menu-item menu-item-framework"><a href="/framework/" rel="section"><i class="fa fa-puzzle-piece fa-fw"></i>开发框架</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-lowcode"><a href="/lowcode/" rel="section"><i class="fa fa-magic fa-fw"></i>低代码</a></li><li class="menu-item menu-item-ddd"><a href="/ddd/" rel="section"><i class="fa fa-sitemap fa-fw"></i>DDD 领域驱动</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端基础</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-cloud"><a href="/cloud/" rel="section"><i class="fa fa-cloud fa-fw"></i>云原生</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-mobile"><a href="/mobile/" rel="section"><i class="fa fa-mobile-alt fa-fw"></i>移动开发</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-interview"><a href="/interview/" rel="section"><i class="fa fa-user-tie fa-fw"></i>面试与职业</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>技术管理</a></li><li class="menu-item menu-item-opensource"><a href="/opensource/" rel="section"><i class="fab fa-github-alt fa-fw"></i>开源参与</a></li><li class="menu-item menu-item-softskill"><a href="/softskill/" rel="section"><i class="fa fa-comments fa-fw"></i>软技能</a></li><li class="menu-item menu-item-react"><a href="/react/" rel="section"><i class="fab fa-react fa-fw"></i>React 生态</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-typescript"><a href="/typescript/" rel="section"><i class="fa fa-code fa-fw"></i>TypeScript 进阶</a></li><li class="menu-item menu-item-sysdesign"><a href="/sysdesign/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统设计</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测性</a></li><li class="menu-item menu-item-graphql"><a href="/graphql/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>GraphQL</a></li><li class="menu-item menu-item-grpc"><a href="/grpc/" rel="section"><i class="fa fa-exchange fa-fw"></i>gRPC</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-e2e"><a href="/e2e/" rel="section"><i class="fa fa-vial fa-fw"></i>端到端测试</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-wasm"><a href="/wasm/" rel="section"><i class="fa fa-microchip fa-fw"></i>WebAssembly</a></li><li class="menu-item menu-item-iac"><a href="/iac/" rel="section"><i class="fa fa-code-branch fa-fw"></i>基础设施即代码</a></li><li class="menu-item menu-item-servicemesh"><a href="/servicemesh/" rel="section"><i class="fa fa-spider fa-fw"></i>Service Mesh</a></li><li class="menu-item menu-item-eda"><a href="/eda/" rel="section"><i class="fa fa-bolt fa-fw"></i>事件驱动架构</a></li><li class="menu-item menu-item-saas"><a href="/saas/" rel="section"><i class="fa fa-building fa-fw"></i>多租户 SaaS</a></li><li class="menu-item menu-item-finops"><a href="/finops/" rel="section"><i class="fa fa-coins fa-fw"></i>云成本优化</a></li><li class="menu-item menu-item-a11y"><a href="/a11y/" rel="section"><i class="fa fa-universal-access fa-fw"></i>无障碍设计</a></li><li class="menu-item menu-item-sre"><a href="/sre/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>站点可靠性工程</a></li><li class="menu-item menu-item-chaos"><a href="/chaos/" rel="section"><i class="fa fa-bomb fa-fw"></i>混沌工程</a></li><li class="menu-item menu-item-modernization"><a href="/modernization/" rel="section"><i class="fa fa-recycle fa-fw"></i>遗留系统现代化</a></li><li class="menu-item menu-item-edge"><a href="/edge/" rel="section"><i class="fa fa-wifi fa-fw"></i>边缘计算</a></li><li class="menu-item menu-item-apigateway"><a href="/apigateway/" rel="section"><i class="fa fa-door-open fa-fw"></i>API 网关</a></li><li class="menu-item menu-item-identity"><a href="/identity/" rel="section"><i class="fa fa-id-badge fa-fw"></i>身份与访问管理</a></li><li class="menu-item menu-item-compliance"><a href="/compliance/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>合规标准</a></li><li class="menu-item menu-item-featureflag"><a href="/featureflag/" rel="section"><i class="fa fa-toggle-on fa-fw"></i>特性开关</a></li><li class="menu-item menu-item-techdebt"><a href="/techdebt/" rel="section"><i class="fa fa-bug fa-fw"></i>技术债管理</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>代码评审</a></li><li class="menu-item menu-item-dx"><a href="/dx/" rel="section"><i class="fa fa-rocket fa-fw"></i>开发者体验</a></li><li class="menu-item menu-item-platform"><a href="/platform/" rel="section"><i class="fa fa-cubes fa-fw"></i>平台工程</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%9B%9B%E7%AB%A0%EF%BC%9AUART"><span class="nav-number">1.</span> <span class="nav-text">第四章：UART</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%82%B9%E5%AF%B9%E7%82%B9%E8%BF%9E%E6%8E%A5"><span class="nav-number">1.2.</span> <span class="nav-text">点对点连接</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%BC%82%E6%AD%A5%E5%B8%A7%E7%BB%93%E6%9E%84"><span class="nav-number">1.3.</span> <span class="nav-text">一、异步帧结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%90%E4%BD%8D%E6%97%B6%E5%BA%8F%EF%BC%88%E4%BB%A5%E5%8F%91%E9%80%81-0x55-%E4%B8%BA%E4%BE%8B%EF%BC%8C8N1%EF%BC%89"><span class="nav-number">1.3.1.</span> <span class="nav-text">逐位时序（以发送 0x55 为例，8N1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E5%B8%A7%E7%9A%84%E6%97%B6%E9%97%B4%E6%88%90%E6%9C%AC"><span class="nav-number">1.3.2.</span> <span class="nav-text">一帧的时间成本</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%B3%A2%E7%89%B9%E7%8E%87"><span class="nav-number">1.4.</span> <span class="nav-text">二、波特率</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B3%A2%E7%89%B9%E7%8E%87%E8%AF%AF%E5%B7%AE%E4%BB%8E%E5%93%AA%E6%9D%A5"><span class="nav-number">1.4.1.</span> <span class="nav-text">波特率误差从哪来</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%94%B6%E5%8F%91%E6%96%B9%E5%BC%8F%EF%BC%9A%E8%BD%AE%E8%AF%A2-%E4%B8%AD%E6%96%AD-DMA"><span class="nav-number">1.5.</span> <span class="nav-text">三、收发方式：轮询 &#x2F; 中断 &#x2F; DMA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81Linux-%E4%BE%A7%E6%93%8D%E4%BD%9C"><span class="nav-number">1.6.</span> <span class="nav-text">四、Linux 侧操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E7%94%B5%E5%B9%B3%E4%B8%8E%E6%8E%A5%E5%8F%A3%E5%B1%82"><span class="nav-number">1.7.</span> <span class="nav-text">五、电平与接口层</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E5%BA%94%E7%94%A8%E4%B8%8E%E8%B0%83%E8%AF%95"><span class="nav-number">1.8.</span> <span class="nav-text">六、应用与调试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E8%AF%95%E5%B7%A5%E5%85%B7%E7%AE%B1"><span class="nav-number">1.8.1.</span> <span class="nav-text">调试工具箱</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B8%85%E5%8D%95"><span class="nav-number">1.8.2.</span> <span class="nav-text">常见问题清单</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%83%E3%80%81%E7%8E%AF%E5%BD%A2%E7%BC%93%E5%86%B2%E5%8C%BA%E4%B8%8E%E5%B8%A7%E5%8D%8F%E8%AE%AE"><span class="nav-number">1.9.</span> <span class="nav-text">七、环形缓冲区与帧协议</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.10.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">476</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">91</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">406</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/embedded/04-uart/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第四章：UART | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第四章：UART
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 13:09:30" itemprop="dateCreated datePublished" datetime="2026-05-01T13:09:30+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-25 23:49:27" itemprop="dateModified" datetime="2026-10-25T23:49:27+08:00">2026-10-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">嵌入式</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>4 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第四章：UART"><a href="#第四章：UART" class="headerlink" title="第四章：UART"></a>第四章：UART</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>UART</strong>（通用异步收发器）是<strong>异步串行通信控制器</strong>：只用 <strong>TX&#x2F;RX</strong> 两根信号线加共地，<strong>不传时钟</strong>，收发双方按<strong>约定的波特率</strong>各自采样。</li>
+<li><strong>异步帧</strong>：<code>起始位(0) + 数据位(通常 8) + 可选校验位 + 停止位(1)</code>；<strong>空闲为高电平</strong>，起始位拉低完成一次同步，数据 <strong>LSB 先发</strong>。</li>
+<li><strong>为什么无处不在</strong>：实现极简、调试直观，<strong>日志打印、AT 指令、GPS NMEA、Bootloader</strong> 都走 UART，是嵌入式最基础的调试与互联手段。</li>
+<li><strong>只是逻辑层</strong>：UART 引脚是 <strong>TTL 电平（0&#x2F;3.3V）</strong>，接 PC 老串口或工业总线需 <strong>MAX232（RS232）</strong>、<strong>MAX485（RS485）</strong> 等收发器转换物理层。</li>
+<li><strong>点对点</strong>：无从机地址、无仲裁，多机组网要靠上层协议或改用总线型物理层。</li>
+</ol>
+<p>先看最基本的连接形态：</p>
+<h2 id="点对点连接"><a href="#点对点连接" class="headerlink" title="点对点连接"></a>点对点连接</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  MCU1[MCU A TX] --&gt;|RX| MCU2[MCU B RX]
+  MCU2 --&gt;|TX| MCU1
+</code>
+</pre>
+
+<hr>
+<h2 id="一、异步帧结构"><a href="#一、异步帧结构" class="headerlink" title="一、异步帧结构"></a>一、异步帧结构</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">起始位(0) + 数据位(通常8) + 可选校验位 + 停止位(1)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>空闲</strong>：线路高电平。  </li>
+<li><strong>起始位</strong>：拉低，通知接收方开始采样。  </li>
+<li><strong>LSB 先发</strong>：数据位从低位到高位。  </li>
+<li><strong>校验</strong>：<strong>None &#x2F; Odd &#x2F; Even</strong>（可选）。  </li>
+<li><strong>停止位</strong>：1 或 2 位高电平，恢复空闲。</li>
+</ul>
+<h3 id="逐位时序（以发送-0x55-为例，8N1）"><a href="#逐位时序（以发送-0x55-为例，8N1）" class="headerlink" title="逐位时序（以发送 0x55 为例，8N1）"></a>逐位时序（以发送 0x55 为例，8N1）</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">空闲 ──┐  ┌──┐     ┌──┐     ┌──┐     ┌──┐  ┌────── 空闲</span><br><span class="line">       └──┘  └─────┘  └─────┘  └─────┘  └──┘</span><br><span class="line">       Start D0 D1 D2 D3 D4 D5 D6 D7 Stop</span><br><span class="line">             1  0  1  0  1  0  1  0    （LSB 先发：0x55 = 01010101b）</span><br><span class="line">       |&lt;---------- 10 位 = 1 字符 ----------&gt;|</span><br></pre></td></tr></table></figure>
+
+<p>接收方的采样策略：</p>
+<ul>
+<li>检测到下降沿后，<strong>等待 0.5 个位时间</strong>，在起始位中央采样确认仍为低（防毛刺误判）。</li>
+<li>之后每隔 <strong>1 个位时间</strong>采样一次，硬件 UART 通常每位<strong>过采样 16 次</strong>取中间值，容忍一定时钟误差。</li>
+<li>采样到停止位不是高电平 → 报<strong>帧错误（Framing Error）</strong>，常见于波特率不匹配或线路干扰。</li>
+</ul>
+<h3 id="一帧的时间成本"><a href="#一帧的时间成本" class="headerlink" title="一帧的时间成本"></a>一帧的时间成本</h3><p>8N1 配置下每字符 10 位：</p>
+<table>
+<thead>
+<tr>
+<th>波特率</th>
+<th>位时间</th>
+<th>每字符</th>
+<th>每秒字符数（约）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>9600</td>
+<td>104 µs</td>
+<td>1.04 ms</td>
+<td>960</td>
+</tr>
+<tr>
+<td>115200</td>
+<td>8.68 µs</td>
+<td>86.8 µs</td>
+<td>11520</td>
+</tr>
+<tr>
+<td>921600</td>
+<td>1.09 µs</td>
+<td>10.9 µs</td>
+<td>92160</td>
+</tr>
+</tbody></table>
+<p>估算「打印一条日志会不会拖慢系统」时用得上：115200 下每秒最多输出约 11 KB。</p>
+<hr>
+<h2 id="二、波特率"><a href="#二、波特率" class="headerlink" title="二、波特率"></a>二、波特率</h2><p>常见：<strong>9600</strong>、<strong>115200</strong>、<strong>921600</strong>。收发双方<strong>波特率必须一致</strong>（误差通常 &lt; 2%）。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 概念：USART 分频得到比特率</span></span><br><span class="line"><span class="comment">// baud = f_clk / (16 * USARTDIV)  // 依芯片手册</span></span><br><span class="line">HAL_UART_Init(&amp;huart1);  <span class="comment">// STM32 HAL 示例</span></span><br><span class="line">HAL_UART_Transmit(&amp;huart1, (<span class="type">uint8_t</span>*)<span class="string">&quot;OK\r\n&quot;</span>, <span class="number">4</span>, <span class="number">100</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="波特率误差从哪来"><a href="#波特率误差从哪来" class="headerlink" title="波特率误差从哪来"></a>波特率误差从哪来</h3><ul>
+<li><strong>分频取整误差</strong>：72 MHz 时钟要 115200，USARTDIV &#x3D; 39.0625，取整后实际 115107，误差 -0.08%，可接受；但某些时钟&#x2F;波特率组合误差可达 1% 以上。</li>
+<li><strong>内部 RC 振荡器温漂</strong>：HSI 典型 ±1%，高低温下更差——<strong>工业级产品串口建议用外部晶振</strong>。</li>
+<li><strong>双方误差叠加</strong>：两端各偏 1%，叠加后逼近 2% 极限，边界工况开始丢字节。</li>
+</ul>
+<p>经验法则：收发总误差 &lt; 2% 可靠工作，&lt; 1% 安心；超了就会出现「大部分正常、偶发乱码」这种最难排查的症状。</p>
+<hr>
+<h2 id="三、收发方式：轮询-中断-DMA"><a href="#三、收发方式：轮询-中断-DMA" class="headerlink" title="三、收发方式：轮询 &#x2F; 中断 &#x2F; DMA"></a>三、收发方式：轮询 &#x2F; 中断 &#x2F; DMA</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1) 阻塞发送：简单但占 CPU</span></span><br><span class="line">HAL_UART_Transmit(&amp;huart1, buf, len, <span class="number">100</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2) 中断接收：逐字节回调，适合短帧/命令</span></span><br><span class="line"><span class="type">uint8_t</span> ch;</span><br><span class="line">HAL_UART_Receive_IT(&amp;huart1, &amp;ch, <span class="number">1</span>);</span><br><span class="line"><span class="type">void</span> <span class="title function_">HAL_UART_RxCpltCallback</span><span class="params">(UART_HandleTypeDef *h)</span> &#123;</span><br><span class="line">    ringbuf_push(ch);</span><br><span class="line">    HAL_UART_Receive_IT(&amp;huart1, &amp;ch, <span class="number">1</span>);  <span class="comment">// 重新挂起</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3) DMA + 空闲中断：高吞吐零拷贝，日志/数传首选</span></span><br><span class="line">HAL_UARTEx_ReceiveToIdle_DMA(&amp;huart1, rx_buf, <span class="keyword">sizeof</span>(rx_buf));</span><br></pre></td></tr></table></figure>
+
+<p>选型建议：调试打印用阻塞或 DMA；AT 指令逐字节中断；GPS&#x2F;数传等连续流式数据用 <strong>DMA + Idle 中断</strong>，配合环形缓冲区几乎不丢字节。</p>
+<hr>
+<h2 id="四、Linux-侧操作"><a href="#四、Linux-侧操作" class="headerlink" title="四、Linux 侧操作"></a>四、Linux 侧操作</h2><p>设备节点 <code>/dev/ttyUSB0</code>（USB 转串口）、<code>/dev/ttyS0</code>（板载）、<code>/dev/ttyAMA0</code>（树莓派 PL011）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看接入的串口</span></span><br><span class="line">dmesg | grep <span class="built_in">tty</span></span><br><span class="line"><span class="built_in">ls</span> /dev/ttyUSB* /dev/ttyACM*</span><br><span class="line"></span><br><span class="line"><span class="comment"># 命令行配置参数：115200 8N1 无流控</span></span><br><span class="line"><span class="built_in">stty</span> -F /dev/ttyUSB0 115200 cs8 -cstopb -parenb -ixon raw</span><br><span class="line"></span><br><span class="line"><span class="comment"># 收发测试</span></span><br><span class="line"><span class="built_in">cat</span> /dev/ttyUSB0 &amp;</span><br><span class="line"><span class="built_in">echo</span> -e <span class="string">&quot;AT\r&quot;</span> &gt; /dev/ttyUSB0</span><br></pre></td></tr></table></figure>
+
+<p>Python（pyserial）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> serial</span><br><span class="line"></span><br><span class="line">ser = serial.Serial(<span class="string">&quot;/dev/ttyUSB0&quot;</span>, <span class="number">115200</span>, timeout=<span class="number">1</span>)</span><br><span class="line">ser.write(<span class="string">b&quot;AT\r\n&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(ser.read(<span class="number">64</span>))</span><br><span class="line">ser.close()</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、电平与接口层"><a href="#五、电平与接口层" class="headerlink" title="五、电平与接口层"></a>五、电平与接口层</h2><table>
+<thead>
+<tr>
+<th>层次</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>TTL UART</strong></td>
+<td>MCU 引脚 <strong>3.3V&#x2F;5V</strong>，直连 USB-TTL 模块</td>
+</tr>
+<tr>
+<td><strong><a href="/embedded/05-rs232/">第五章：RS232</a></strong></td>
+<td>± 电平，PC 老式串口、部分工业设备</td>
+</tr>
+<tr>
+<td><strong><a href="/embedded/06-rs485/">第六章：RS485</a></strong></td>
+<td>差分、半双工、多机总线，常经 UART+收发器</td>
+</tr>
+</tbody></table>
+<p><strong>UART</strong> 指<strong>控制器逻辑</strong>；对外物理层常加 <strong>MAX232</strong>、<strong>MAX485</strong> 等芯片。</p>
+<p>电平匹配的坑：</p>
+<ul>
+<li><strong>3.3V 与 5V 互连</strong>：多数 5V 器件把 ≥2.0V 识别为高，3.3V TX → 5V RX 通常可行；反向 <strong>5V TX → 3.3V RX 可能损坏 MCU 引脚</strong>，除非引脚标注 5V-tolerant，否则要分压或电平转换芯片。</li>
+<li><strong>USB-TTL 模块输出电压可选</strong>（跳线 3.3&#x2F;5V），接错档是烧引脚的常见原因。</li>
+<li><strong>反相问题</strong>：个别廉价「RS232 转 TTL」模块输出的是<strong>未反相的 RS232 逻辑</strong>，接 MCU 全乱码——认准 MAX232 类芯片完成的电平与极性双转换。</li>
+</ul>
+<hr>
+<h2 id="六、应用与调试"><a href="#六、应用与调试" class="headerlink" title="六、应用与调试"></a>六、应用与调试</h2><ul>
+<li><strong>日志打印</strong>、<strong>AT 指令</strong>（4G&#x2F;Wi-Fi 模块）、<strong>GPS NMEA</strong>、Bootloader。  </li>
+<li><strong>Linux</strong>：<strong><code>/dev/ttyUSB0</code></strong>，<strong><code>minicom</code></strong> &#x2F; <strong><code>picocom</code></strong> &#x2F; <strong><code>screen</code></strong>。  </li>
+<li><strong>注意</strong>：<strong>TX 接 RX</strong> 交叉；共地 <strong>GND</strong> 必须连接。</li>
+</ul>
+<h3 id="调试工具箱"><a href="#调试工具箱" class="headerlink" title="调试工具箱"></a>调试工具箱</h3><ul>
+<li><strong>串口助手</strong>：Windows 下 SSCOM &#x2F; XCOM &#x2F; MobaXterm；跨平台 Tabby、cutecom。</li>
+<li><strong>逻辑分析仪</strong>：十几块钱的 24 MHz 8 通道 USB 款即可解码 UART 协议，自动标出每字节与帧错误，调波特率问题极快。</li>
+<li><strong>示波器</strong>：量位宽反推实际波特率（<code>波特率 = 1 / 位时间</code>），识别电平异常、振铃。</li>
+<li><strong>环回自测（loopback）</strong>：把模块自身 TX、RX 短接，发送应原样收回——快速区分「线缆&#x2F;对端问题」还是「本端配置问题」。</li>
+</ul>
+<h3 id="常见问题清单"><a href="#常见问题清单" class="headerlink" title="常见问题清单"></a>常见问题清单</h3><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>可能原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>完全无输出</td>
+<td>TX&#x2F;RX 没交叉；GND 未连；串口被别的进程占用</td>
+</tr>
+<tr>
+<td>全是乱码</td>
+<td>波特率不匹配；电平制式错（接了 RS232 电平）</td>
+</tr>
+<tr>
+<td>偶发乱码</td>
+<td>波特率误差接近边界；RC 时钟温漂；线缆过长干扰</td>
+</tr>
+<tr>
+<td>只收一半</td>
+<td>接收缓冲区溢出，未用中断&#x2F;DMA；流控未开</td>
+</tr>
+<tr>
+<td>发送卡死</td>
+<td>阻塞发送超时设太长；对端 RTS 未拉低（开了硬件流控）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="七、环形缓冲区与帧协议"><a href="#七、环形缓冲区与帧协议" class="headerlink" title="七、环形缓冲区与帧协议"></a>七、环形缓冲区与帧协议</h2><p>裸 UART 只给字节流，<strong>消息边界要自己造</strong>。常见三种帧封装思路：</p>
+<ol>
+<li><strong>定长帧</strong>：协议简单但死板。</li>
+<li><strong>长度字段</strong>：<code>头 + 长度 + 数据 + 校验</code>，灵活主流。</li>
+<li><strong>转义分隔</strong>：如 SLIP（0xC0 结尾，数据中出现则转义），PPP&#x2F;GPS 类常用。</li>
+</ol>
+<p>配套环形缓冲区接收：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> RB_SIZE 256</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">volatile</span> <span class="type">uint8_t</span> rb_buf[RB_SIZE];</span><br><span class="line"><span class="type">static</span> <span class="keyword">volatile</span> <span class="type">uint16_t</span> rb_head, rb_tail;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">rb_push</span><span class="params">(<span class="type">uint8_t</span> b)</span> &#123;</span><br><span class="line">    <span class="type">uint16_t</span> next = (rb_head + <span class="number">1</span>) % RB_SIZE;</span><br><span class="line">    <span class="keyword">if</span> (next != rb_tail) &#123; rb_buf[rb_head] = b; rb_head = next; &#125;  <span class="comment">// 满则丢</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="type">int</span> <span class="title function_">rb_pop</span><span class="params">(<span class="type">uint8_t</span> *b)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (rb_head == rb_tail) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    *b = rb_buf[rb_tail]; rb_tail = (rb_tail + <span class="number">1</span>) % RB_SIZE;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>中断里只管 push，主循环里 pop 并做帧解析——<strong>中断短、主循环重</strong>是 UART 软件结构的通用范式。</p>
+<p>与 <a href="/embedded/08-spi/">第八章：SPI</a>、<a href="/embedded/07-i2c/">第七章：I2C</a> 对照：UART <strong>线少、距离短（TTL）</strong>、协议简单，无硬件从机地址。</p>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>本质</td>
+<td>两线<strong>异步</strong>串行控制器，不传时钟，靠约定波特率采样</td>
+</tr>
+<tr>
+<td>帧格式</td>
+<td>起始位 + 数据位（<strong>LSB 先发</strong>）+ 可选校验 + 停止位</td>
+</tr>
+<tr>
+<td>关键参数</td>
+<td>双方<strong>波特率必须一致</strong>（误差 &lt; 2%），常见 9600&#x2F;115200</td>
+</tr>
+<tr>
+<td>物理层</td>
+<td>TTL 引脚直连需共地；上 RS232&#x2F;RS485 需收发器转换</td>
+</tr>
+<tr>
+<td>调试要点</td>
+<td><strong>TX&#x2F;RX 交叉</strong>、<strong>必须共地</strong>；Linux 用 minicom&#x2F;picocom&#x2F;screen</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Embedded/" rel="tag"># Embedded</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/embedded/03-modbus-ascii/" rel="prev" title="第三章：Modbus ASCII">
+                  <i class="fa fa-angle-left"></i> 第三章：Modbus ASCII
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/embedded/05-rs232/" rel="next" title="第五章：RS232">
+                  第五章：RS232 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4.1m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:24</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>
