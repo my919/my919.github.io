@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第九章：LLM 微调实战：LoRA、QLoRA 与 DPO 微调的价值不是”让模型更聪明”，而是”让模型学会你业务的格式、语气与边界”——本章给出全参 &#x2F; LoRA &#x2F; QLoRA 的取舍框架、数据构造与清洗规范、LLaMA-Factory 与 unsloth 实操、DPO 偏好对齐，以及从评测到合并部署的完整闭环。  本章导读   章节 主题    第一章：AI Agent">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第九章：LLM 微调实战：LoRA、QLoRA 与 DPO">
+<meta property="og:url" content="https://my919.github.io/ai-engineering/08-llm-finetuning-practice/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第九章：LLM 微调实战：LoRA、QLoRA 与 DPO 微调的价值不是”让模型更聪明”，而是”让模型学会你业务的格式、语气与边界”——本章给出全参 &#x2F; LoRA &#x2F; QLoRA 的取舍框架、数据构造与清洗规范、LLaMA-Factory 与 unsloth 实操、DPO 偏好对齐，以及从评测到合并部署的完整闭环。  本章导读   章节 主题    第一章：AI Agent">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-10-28T00:03:00.000Z">
+<meta property="article:modified_time" content="2026-10-29T15:31:07.838Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="AI">
+<meta property="article:tag" content="LoRA">
+<meta property="article:tag" content="微调">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/ai-engineering/08-llm-finetuning-practice/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/ai-engineering/08-llm-finetuning-practice/","path":"ai-engineering/08-llm-finetuning-practice/","title":"第九章：LLM 微调实战：LoRA、QLoRA 与 DPO"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第九章：LLM 微调实战：LoRA、QLoRA 与 DPO | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式与机器人</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>音视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 与接口</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具与效率</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端与移动端</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 与平台工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>职业与管理</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测与稳定性</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>云原生与 Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>工程规范与代码质量</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E4%B9%9D%E7%AB%A0%EF%BC%9ALLM-%E5%BE%AE%E8%B0%83%E5%AE%9E%E6%88%98%EF%BC%9ALoRA%E3%80%81QLoRA-%E4%B8%8E-DPO"><span class="nav-number">1.</span> <span class="nav-text">第九章：LLM 微调实战：LoRA、QLoRA 与 DPO</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.1.</span> <span class="nav-text">本章导读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%85%88%E6%83%B3%E6%B8%85%E6%A5%9A%EF%BC%9A%E5%BE%AE%E8%B0%83%E3%80%81RAG-%E8%BF%98%E6%98%AF-Prompt"><span class="nav-number">1.2.</span> <span class="nav-text">1. 先想清楚：微调、RAG 还是 Prompt</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%85%A8%E5%8F%82-vs-LoRA-vs-QLoRA"><span class="nav-number">1.3.</span> <span class="nav-text">2. 全参 vs LoRA vs QLoRA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E6%95%B0%E6%8D%AE%E6%9E%84%E9%80%A0%E4%B8%8E%E6%B8%85%E6%B4%97"><span class="nav-number">1.4.</span> <span class="nav-text">3. 数据构造与清洗</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%8C%87%E4%BB%A4%E6%A0%BC%E5%BC%8F%EF%BC%88Alpaca-ShareGPT-%E9%A3%8E%E6%A0%BC%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 指令格式（Alpaca &#x2F; ShareGPT 风格）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E6%95%B0%E6%8D%AE%E6%9E%84%E9%80%A0%E6%9D%A5%E6%BA%90"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 数据构造来源</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E6%B8%85%E6%B4%97%E4%B8%8E%E5%8E%BB%E6%B1%A1%E6%9F%93"><span class="nav-number">1.4.3.</span> <span class="nav-text">3.3 清洗与去污染</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-LLaMA-Factory-%E5%AE%9E%E6%93%8D"><span class="nav-number">1.5.</span> <span class="nav-text">4. LLaMA-Factory 实操</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-unsloth-%E5%AE%9E%E6%93%8D%EF%BC%9A%E5%8D%95%E5%8D%A1%E6%9E%81%E9%99%90%E7%9C%81%E6%98%BE%E5%AD%98"><span class="nav-number">1.6.</span> <span class="nav-text">5. unsloth 实操：单卡极限省显存</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E8%B6%85%E5%8F%82%E6%95%B0%E6%80%8E%E4%B9%88%E8%B0%83"><span class="nav-number">1.7.</span> <span class="nav-text">6. 超参数怎么调</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-DPO%EF%BC%9A%E4%BB%8E%E2%80%9D%E4%BC%9A%E5%9B%9E%E7%AD%94%E2%80%9D%E5%88%B0%E2%80%9D%E7%AD%94%E5%BE%97%E5%A5%BD%E2%80%9D"><span class="nav-number">1.8.</span> <span class="nav-text">7. DPO：从”会回答”到”答得好”</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E8%AF%84%E6%B5%8B%EF%BC%9AMMLU-%E4%B8%8E%E8%87%AA%E5%BB%BA%E9%9B%86"><span class="nav-number">1.9.</span> <span class="nav-text">8. 评测：MMLU 与自建集</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E8%BF%87%E6%8B%9F%E5%90%88%E8%AF%86%E5%88%AB%E4%B8%8E%E5%AF%B9%E7%AD%96"><span class="nav-number">1.10.</span> <span class="nav-text">9. 过拟合识别与对策</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-%E5%90%88%E5%B9%B6%E4%B8%8E%E9%83%A8%E7%BD%B2%E9%97%AD%E7%8E%AF"><span class="nav-number">1.11.</span> <span class="nav-text">10. 合并与部署闭环</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91-FAQ"><span class="nav-number">1.12.</span> <span class="nav-text">常见坑 FAQ</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E5%AE%9E%E8%B7%B5%E6%B8%85%E5%8D%95"><span class="nav-number">1.13.</span> <span class="nav-text">生产实践清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB"><span class="nav-number">1.14.</span> <span class="nav-text">扩展阅读</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">462</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">73</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">421</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/ai-engineering/08-llm-finetuning-practice/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第九章：LLM 微调实战：LoRA、QLoRA 与 DPO | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第九章：LLM 微调实战：LoRA、QLoRA 与 DPO
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-10-28 08:03:00" itemprop="dateCreated datePublished" datetime="2026-10-28T08:03:00+08:00">2026-10-28</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/AI-%E5%B7%A5%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">AI 工程</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>7.4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第九章：LLM-微调实战：LoRA、QLoRA-与-DPO"><a href="#第九章：LLM-微调实战：LoRA、QLoRA-与-DPO" class="headerlink" title="第九章：LLM 微调实战：LoRA、QLoRA 与 DPO"></a>第九章：LLM 微调实战：LoRA、QLoRA 与 DPO</h1><blockquote>
+<p>微调的价值不是”让模型更聪明”，而是”让模型学会你业务的格式、语气与边界”——本章给出全参 &#x2F; LoRA &#x2F; QLoRA 的取舍框架、数据构造与清洗规范、LLaMA-Factory 与 unsloth 实操、DPO 偏好对齐，以及从评测到合并部署的完整闭环。</p>
+</blockquote>
+<h2 id="本章导读"><a href="#本章导读" class="headerlink" title="本章导读"></a>本章导读</h2><table>
+<thead>
+<tr>
+<th>章节</th>
+<th>主题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/ai-engineering/01-agent-intro-core-concepts/">第一章：AI Agent 入门与核心概念</a></td>
+<td>Agent 的组成与 ReAct 范式</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/02-agent-frameworks-practice/">第二章：Agent 框架实战</a></td>
+<td>LangChain &#x2F; LangGraph 落地</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/03-agent-tool-calling-orchestration/">第三章：Agent 工具调用与函数编排</a></td>
+<td>Function Calling 原理</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/04-agent-production-engineering/">第四章：Agent 生产化与工程实践</a></td>
+<td>可观测与稳定性</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/04-rag-vector-retrieval-practice/">第五章：RAG 与向量检索实战</a></td>
+<td>RAG 检索链路</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/05-mcp-protocol-guide/">第六章：MCP 协议实战</a></td>
+<td>MCP Server 开发</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/06-coding-agent-workflow/">第七章：Coding Agent 工作流</a></td>
+<td>AI 编程落地</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/07-llm-inference-deployment/">第八章：LLM 推理与部署</a></td>
+<td>vLLM 与量化</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/08-llm-finetuning-practice/">第九章：LLM 微调实战</a></td>
+<td>本章</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/09-dify-n8n-ai-orchestration/">第十章：AI 应用编排</a></td>
+<td>Dify 与 n8n</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/10-ai-gateway-guide/">第十一章：AI 网关</a></td>
+<td>路由与成本治理</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-先想清楚：微调、RAG-还是-Prompt"><a href="#1-先想清楚：微调、RAG-还是-Prompt" class="headerlink" title="1. 先想清楚：微调、RAG 还是 Prompt"></a>1. 先想清楚：微调、RAG 还是 Prompt</h2><p>决策框架一句话：<strong>Prompt 教任务、RAG 给知识、微调改行为</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>诉求</th>
+<th>首选方案</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>知识时效性、可引用来源</td>
+<td>RAG</td>
+<td>微调记不住长尾事实，更新成本高</td>
+</tr>
+<tr>
+<td>固定输出格式 &#x2F; 语气 &#x2F; 领域术语风格</td>
+<td>微调</td>
+<td>上千次提示不如梯度改一次权重</td>
+</tr>
+<tr>
+<td>通用能力缺失（数学、推理）</td>
+<td>换更强的基座</td>
+<td>小数据微调补不了能力短板</td>
+</tr>
+<tr>
+<td>降低提示词长度与成本</td>
+<td>微调</td>
+<td>把 2K token 的 few-shot 蒸进权重</td>
+</tr>
+</tbody></table>
+<p>判断标准：把你想让模型做的事写成 50 条指令数据，如果<strong>每一条都能用”例子示范”教会</strong>而不是”查资料回答”，那就是微调的活。</p>
+<h2 id="2-全参-vs-LoRA-vs-QLoRA"><a href="#2-全参-vs-LoRA-vs-QLoRA" class="headerlink" title="2. 全参 vs LoRA vs QLoRA"></a>2. 全参 vs LoRA vs QLoRA</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">  W[原始权重 W&lt;br/&gt;冻结] --&gt; X[前向: h = Wx]</span><br><span class="line">  subgraph LoRA旁路</span><br><span class="line">    A[A 矩阵&lt;br/&gt;d×r] </span><br><span class="line">    B[B 矩阵&lt;br/&gt;r×d]</span><br><span class="line">  end</span><br><span class="line">  X --&gt; O[输出 h + BAx·α/r]</span><br><span class="line">  A --&gt; B --&gt; O</span><br></pre></td></tr></table></figure>
+
+<p>LoRA 原理：冻结原权重 <code>W</code>，用两个低秩矩阵 <code>B×A</code>（秩 r 通常 8–64）拟合增量 <code>ΔW</code>，训练参数量从 7B 降到 <strong>几百万到几千万</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>全参微调</th>
+<th>LoRA</th>
+<th>QLoRA</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>7B 显存需求</td>
+<td>≥ 80GB（Adam 状态 3 倍权重）</td>
+<td>16–24GB</td>
+<td><strong>10–12GB</strong>（4bit 基座）</td>
+</tr>
+<tr>
+<td>效果上限</td>
+<td>最高</td>
+<td>接近全参（多数任务 95%+）</td>
+<td>略低于 LoRA，格式任务足够</td>
+</tr>
+<tr>
+<td>多任务切换</td>
+<td>每任务一份全量权重</td>
+<td><strong>只换 Adapter（几十 MB）</strong></td>
+<td>同左</td>
+</tr>
+<tr>
+<td>训练速度</td>
+<td>基准</td>
+<td>快 2-3 倍</td>
+<td>略慢于 LoRA（量化开销）</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>领域大改、持续预训练</td>
+<td><strong>默认选择</strong></td>
+<td>单卡消费级显卡</td>
+</tr>
+</tbody></table>
+<p>经验：默认 LoRA；一张 4090&#x2F;3090 就 QLoRA；只有在”基座模型完全不懂你的领域语言”（如极端专业语料续训）时才考虑全参。</p>
+<h2 id="3-数据构造与清洗"><a href="#3-数据构造与清洗" class="headerlink" title="3. 数据构造与清洗"></a>3. 数据构造与清洗</h2><p>数据质量决定微调上限，<strong>1000 条精选胜过 10 万条噪声</strong>。</p>
+<h3 id="3-1-指令格式（Alpaca-ShareGPT-风格）"><a href="#3-1-指令格式（Alpaca-ShareGPT-风格）" class="headerlink" title="3.1 指令格式（Alpaca &#x2F; ShareGPT 风格）"></a>3.1 指令格式（Alpaca &#x2F; ShareGPT 风格）</h3><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;messages&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">    <span class="punctuation">&#123;</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span> <span class="string">&quot;system&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;content&quot;</span><span class="punctuation">:</span> <span class="string">&quot;你是客服助手，回答简洁，不超过 100 字。&quot;</span><span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="punctuation">&#123;</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span> <span class="string">&quot;user&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;content&quot;</span><span class="punctuation">:</span> <span class="string">&quot;我的订单三天没物流更新了&quot;</span><span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="punctuation">&#123;</span><span class="attr">&quot;role&quot;</span><span class="punctuation">:</span> <span class="string">&quot;assistant&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;content&quot;</span><span class="punctuation">:</span> <span class="string">&quot;您好，非常抱歉让您久等。请您提供订单号，我立即为您查询物流状态并催促网点更新。&quot;</span><span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-数据构造来源"><a href="#3-2-数据构造来源" class="headerlink" title="3.2 数据构造来源"></a>3.2 数据构造来源</h3><ol>
+<li><strong>真实业务日志改写</strong>：脱敏后人工修订成标准答案，质量最高；</li>
+<li><strong>强模型蒸馏</strong>：用 GPT-4 级模型按种子问题生成答案，人审后入库（注意合规条款）；</li>
+<li><strong>规则模板扩充</strong>：格式转换类任务用脚本生成，保证 100% 正确。</li>
+</ol>
+<h3 id="3-3-清洗与去污染"><a href="#3-3-清洗与去污染" class="headerlink" title="3.3 清洗与去污染"></a>3.3 清洗与去污染</h3><ul>
+<li><strong>去重</strong>：MinHash &#x2F; SimHash 近重复检测，重复样本会让模型过拟合特定表述；</li>
+<li><strong>去污染</strong>：用 n-gram 重叠检测训练集与<strong>评测集</strong>的重合，MMLU 等公开基准早已被爬烂，混入即虚高；</li>
+<li><strong>格式校验</strong>：schema 强校验（角色齐全、无空轮、无截断），脚本过滤含”作为 AI 我不能”类拒答模板（除非业务需要）；</li>
+<li><strong>配比</strong>：多任务混训时，核心任务数据占比不低于 30%，防止被通用数据稀释；</li>
+<li><strong>长度分布</strong>：覆盖业务真实长度，避免全是短样本导致长文输出截断。</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 最小清洗脚本骨架</span></span><br><span class="line"><span class="keyword">import</span> json, hashlib</span><br><span class="line"></span><br><span class="line">seen = <span class="built_in">set</span>()</span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&quot;raw.jsonl&quot;</span>) <span class="keyword">as</span> fin, <span class="built_in">open</span>(<span class="string">&quot;clean.jsonl&quot;</span>, <span class="string">&quot;w&quot;</span>) <span class="keyword">as</span> fout:</span><br><span class="line">    <span class="keyword">for</span> line <span class="keyword">in</span> fin:</span><br><span class="line">        d = json.loads(line)</span><br><span class="line">        key = hashlib.md5(d[<span class="string">&quot;messages&quot;</span>][-<span class="number">1</span>][<span class="string">&quot;content&quot;</span>].encode()).hexdigest()</span><br><span class="line">        <span class="keyword">if</span> key <span class="keyword">in</span> seen:</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        seen.add(key)</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(d[<span class="string">&quot;messages&quot;</span>]) &lt; <span class="number">2</span> <span class="keyword">or</span> <span class="keyword">not</span> d[<span class="string">&quot;messages&quot;</span>][-<span class="number">1</span>][<span class="string">&quot;content&quot;</span>].strip():</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        fout.write(json.dumps(d, ensure_ascii=<span class="literal">False</span>) + <span class="string">&quot;\n&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-LLaMA-Factory-实操"><a href="#4-LLaMA-Factory-实操" class="headerlink" title="4. LLaMA-Factory 实操"></a>4. LLaMA-Factory 实操</h2><p>LLaMA-Factory 是国内最顺手的一站式微调框架，CLI + WebUI 双形态：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/hiyouga/LLaMA-Factory.git</span><br><span class="line"><span class="built_in">cd</span> LLaMA-Factory &amp;&amp; pip install -e <span class="string">&quot;.[torch,metrics]&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><code>data/dataset_info.json</code> 注册数据集后，一个 YAML 描述训练：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># train_lora.yaml</span></span><br><span class="line"><span class="attr">model_name_or_path:</span> <span class="string">Qwen/Qwen2.5-7B-Instruct</span></span><br><span class="line"><span class="attr">stage:</span> <span class="string">sft</span></span><br><span class="line"><span class="attr">do_train:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">finetuning_type:</span> <span class="string">lora</span></span><br><span class="line"><span class="attr">lora_target:</span> <span class="string">all</span></span><br><span class="line"><span class="attr">lora_rank:</span> <span class="number">16</span></span><br><span class="line"><span class="attr">lora_alpha:</span> <span class="number">32</span></span><br><span class="line"><span class="attr">dataset:</span> <span class="string">my_customer_service</span></span><br><span class="line"><span class="attr">template:</span> <span class="string">qwen</span></span><br><span class="line"><span class="attr">cutoff_len:</span> <span class="number">4096</span></span><br><span class="line"><span class="attr">learning_rate:</span> <span class="number">1.0e-4</span></span><br><span class="line"><span class="attr">num_train_epochs:</span> <span class="number">3</span></span><br><span class="line"><span class="attr">per_device_train_batch_size:</span> <span class="number">4</span></span><br><span class="line"><span class="attr">gradient_accumulation_steps:</span> <span class="number">8</span></span><br><span class="line"><span class="attr">lr_scheduler_type:</span> <span class="string">cosine</span></span><br><span class="line"><span class="attr">warmup_ratio:</span> <span class="number">0.03</span></span><br><span class="line"><span class="attr">fp16:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">output_dir:</span> <span class="string">saves/qwen2.5-7b/lora/cs-v1</span></span><br><span class="line"><span class="attr">val_size:</span> <span class="number">0.05</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">llamafactory-cli train train_lora.yaml</span><br><span class="line"><span class="comment"># 或打开 WebUI 点点点</span></span><br><span class="line">llamafactory-cli webui</span><br></pre></td></tr></table></figure>
+
+<p>优势：模板系统（<code>template: qwen</code>）自动处理各家 chat template 差异，这是自己手写训练脚本最容易踩坑的地方。</p>
+<h2 id="5-unsloth-实操：单卡极限省显存"><a href="#5-unsloth-实操：单卡极限省显存" class="headerlink" title="5. unsloth 实操：单卡极限省显存"></a>5. unsloth 实操：单卡极限省显存</h2><p>unsloth 用手写 Triton kernel 把 QLoRA 训练速度提 2 倍、显存省 40%，单卡 4090 可训 7B：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> unsloth <span class="keyword">import</span> FastLanguageModel</span><br><span class="line"><span class="keyword">from</span> trl <span class="keyword">import</span> SFTTrainer</span><br><span class="line"><span class="keyword">from</span> datasets <span class="keyword">import</span> load_dataset</span><br><span class="line"></span><br><span class="line">model, tokenizer = FastLanguageModel.from_pretrained(</span><br><span class="line">    model_name=<span class="string">&quot;unsloth/Qwen2.5-7B-Instruct-bnb-4bit&quot;</span>,</span><br><span class="line">    max_seq_length=<span class="number">4096</span>,</span><br><span class="line">    load_in_4bit=<span class="literal">True</span>,</span><br><span class="line">)</span><br><span class="line">model = FastLanguageModel.get_peft_model(</span><br><span class="line">    model, r=<span class="number">16</span>, lora_alpha=<span class="number">32</span>,</span><br><span class="line">    target_modules=[<span class="string">&quot;q_proj&quot;</span>, <span class="string">&quot;k_proj&quot;</span>, <span class="string">&quot;v_proj&quot;</span>, <span class="string">&quot;o_proj&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;gate_proj&quot;</span>, <span class="string">&quot;up_proj&quot;</span>, <span class="string">&quot;down_proj&quot;</span>],</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">dataset = load_dataset(<span class="string">&quot;json&quot;</span>, data_files=<span class="string">&quot;clean.jsonl&quot;</span>, split=<span class="string">&quot;train&quot;</span>)</span><br><span class="line">trainer = SFTTrainer(</span><br><span class="line">    model=model, tokenizer=tokenizer, train_dataset=dataset,</span><br><span class="line">    dataset_text_field=<span class="string">&quot;text&quot;</span>, max_seq_length=<span class="number">4096</span>,</span><br><span class="line">    args=<span class="built_in">dict</span>(</span><br><span class="line">        per_device_train_batch_size=<span class="number">2</span>,</span><br><span class="line">        gradient_accumulation_steps=<span class="number">8</span>,</span><br><span class="line">        learning_rate=<span class="number">1e-4</span>, num_train_epochs=<span class="number">3</span>,</span><br><span class="line">        logging_steps=<span class="number">10</span>, output_dir=<span class="string">&quot;outputs&quot;</span>,</span><br><span class="line">        fp16=<span class="literal">True</span>, optim=<span class="string">&quot;paged_adamw_8bit&quot;</span>,</span><br><span class="line">    ),</span><br><span class="line">)</span><br><span class="line">trainer.train()</span><br><span class="line">model.save_pretrained(<span class="string">&quot;lora_cs_v1&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>选型：<strong>多卡&#x2F;团队用 LLaMA-Factory</strong>（工程化完整），<strong>单卡&#x2F;个人&#x2F;快速验证用 unsloth</strong>（快且省）。</p>
+<h2 id="6-超参数怎么调"><a href="#6-超参数怎么调" class="headerlink" title="6. 超参数怎么调"></a>6. 超参数怎么调</h2><table>
+<thead>
+<tr>
+<th>超参</th>
+<th>经验起点</th>
+<th>调整信号</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>lora_rank</code></td>
+<td>16</td>
+<td>任务复杂（代码&#x2F;多步推理）→ 32&#x2F;64；简单格式任务 8 够</td>
+</tr>
+<tr>
+<td><code>lora_alpha</code></td>
+<td>2×rank</td>
+<td>控制 LoRA 缩放强度，一般锁 2 倍关系不动</td>
+</tr>
+<tr>
+<td><code>lora_dropout</code></td>
+<td>0.05</td>
+<td>数据 &lt; 2K 条时加 dropout 防过拟合</td>
+</tr>
+<tr>
+<td><code>learning_rate</code></td>
+<td>1e-4（LoRA）</td>
+<td>loss 不降 → 调大；震荡发散 → 调小；全参用 1e-5 级</td>
+</tr>
+<tr>
+<td><code>epochs</code></td>
+<td>2–3</td>
+<td>小数据 3-5，上万条 1-2，<strong>看验证集不看训练 loss</strong></td>
+</tr>
+<tr>
+<td><code>cutoff_len</code></td>
+<td>覆盖 P95 样本长度</td>
+<td>截断会破坏长文任务，显存不够加梯度累积</td>
+</tr>
+<tr>
+<td><code>batch × accum</code></td>
+<td>等效 32–128</td>
+<td>太小 loss 噪声大，太大泛化差</td>
+</tr>
+</tbody></table>
+<p><code>lora_target: all</code>（含 MLP 层）比只挂 attention 效果好一截，代价是参数量翻倍，通常值得。</p>
+<h2 id="7-DPO：从”会回答”到”答得好”"><a href="#7-DPO：从”会回答”到”答得好”" class="headerlink" title="7. DPO：从”会回答”到”答得好”"></a>7. DPO：从”会回答”到”答得好”</h2><p>SFT 教模型模仿，DPO（Direct Preference Optimization）用<strong>偏好对</strong>告诉模型哪个更好，不需要训奖励模型（相对 RLHF 大幅简化）。</p>
+<p>数据格式——chosen &#x2F; rejected 对：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;prompt&quot;</span><span class="punctuation">:</span> <span class="string">&quot;客户说：你们产品太贵了&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;chosen&quot;</span><span class="punctuation">:</span> <span class="string">&quot;理解您的顾虑。我们的定价包含了三年质保与专属客服，折算下来每天不到 2 元。需要我帮您对比下基础版与专业版的差异吗？&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;rejected&quot;</span><span class="punctuation">:</span> <span class="string">&quot;不贵，我们性价比很高。&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>偏好对来源：线上人工标注（客服对话的好&#x2F;坏案例）、强模型排序、规则判定（格式合规 vs 违规）。<strong>rejected 必须是”真实会犯的错”</strong>，随手编的烂答案没有梯度价值。</p>
+<p>LLaMA-Factory 切换 DPO 只需改：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">stage:</span> <span class="string">dpo</span></span><br><span class="line"><span class="attr">preference_loss:</span> <span class="string">sigmoid</span>   <span class="comment"># 标准 DPO；ipo / kto 可选</span></span><br><span class="line"><span class="attr">beta:</span> <span class="number">0.1</span>                  <span class="comment"># 偏离参考模型的惩罚强度</span></span><br><span class="line"><span class="attr">dataset:</span> <span class="string">my_preference_pairs</span></span><br></pre></td></tr></table></figure>
+
+<p><code>beta</code> 是关键：太小模型”放飞”偏离 SFT 能力，太大学不动；0.05–0.3 区间网格搜。前沿变体里，<strong>KTO</strong> 只需好&#x2F;坏单标签（不需要成对），<strong>SimPO</strong> 去掉了参考模型，数据不足时可试。</p>
+<h2 id="8-评测：MMLU-与自建集"><a href="#8-评测：MMLU-与自建集" class="headerlink" title="8. 评测：MMLU 与自建集"></a>8. 评测：MMLU 与自建集</h2><p>两条腿走路：</p>
+<ol>
+<li><strong>通用基准防降智</strong>：MMLU &#x2F; CMMLU &#x2F; C-Eval 跑一遍，确认微调没把通用能力训崩（灾难性遗忘监控）；</li>
+<li><strong>自建业务集定生死</strong>：从真实场景抽 100–300 条带标准答案的 case，人工或强模型（GPT-4 裁判）打分，记录格式合规率、准确率、拒答误判率。</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 强模型裁判打分骨架</span></span><br><span class="line">judge_prompt = <span class="string">&quot;&quot;&quot;对比【参考答案】与【模型回答】，从准确性、格式、语气打分（1-5）。</span></span><br><span class="line"><span class="string">参考答案：&#123;ref&#125;</span></span><br><span class="line"><span class="string">模型回答：&#123;pred&#125;</span></span><br><span class="line"><span class="string">只输出 JSON：&#123;&#123;&quot;score&quot;: x, &quot;reason&quot;: &quot;...&quot;&#125;&#125;&quot;&quot;&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>纪律：<strong>训练集与评测集严格去污染</strong>；每次实验固定评测脚本与裁判模型版本，否则分数无法横向比较；把评测分数、超参、数据版本记进实验表（wandb &#x2F; 简单的 CSV 都行）。</p>
+<h2 id="9-过拟合识别与对策"><a href="#9-过拟合识别与对策" class="headerlink" title="9. 过拟合识别与对策"></a>9. 过拟合识别与对策</h2><p>信号：</p>
+<ul>
+<li>训练 loss 降、验证 loss 升（最可靠）；</li>
+<li>输出开始<strong>复读训练数据的特定表述</strong>，换种问法就露馅；</li>
+<li>通用基准分数明显下滑。</li>
+</ul>
+<p>对策：减 epoch、降 lr、加 dropout、增数据多样性、混入 10%–20% 通用指令数据（防遗忘的廉价保险）。</p>
+<h2 id="10-合并与部署闭环"><a href="#10-合并与部署闭环" class="headerlink" title="10. 合并与部署闭环"></a>10. 合并与部署闭环</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  D[清洗后数据] --&gt; T[LoRA 训练]</span><br><span class="line">  T --&gt; E[评测&lt;br/&gt;自建集+通用基准]</span><br><span class="line">  E --&gt;|不达标| D</span><br><span class="line">  E --&gt;|达标| M[合并权重&lt;br/&gt;merge_and_unload]</span><br><span class="line">  M --&gt; Q[可选量化 AWQ]</span><br><span class="line">  Q --&gt; S[vLLM 部署]</span><br><span class="line">  S --&gt; MON[线上监控&lt;br/&gt;badcase 回流]</span><br><span class="line">  MON --&gt; D</span><br></pre></td></tr></table></figure>
+
+<p>合并导出：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> peft <span class="keyword">import</span> PeftModel</span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoModelForCausalLM</span><br><span class="line"></span><br><span class="line">base = AutoModelForCausalLM.from_pretrained(<span class="string">&quot;Qwen/Qwen2.5-7B-Instruct&quot;</span>)</span><br><span class="line">merged = PeftModel.from_pretrained(base, <span class="string">&quot;saves/qwen2.5-7b/lora/cs-v1&quot;</span>).merge_and_unload()</span><br><span class="line">merged.save_pretrained(<span class="string">&quot;qwen2.5-7b-cs-v1&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>也可以不合并直接挂 LoRA 服务——vLLM 的 <code>--enable-lora --lora-modules cs=v1</code> 支持<strong>一个基座挂多个 Adapter 热切换</strong>，多业务线共享 GPU 时极其划算（这也是 LoRA 相对全参的隐性架构优势）。</p>
+<h2 id="常见坑-FAQ"><a href="#常见坑-FAQ" class="headerlink" title="常见坑 FAQ"></a>常见坑 FAQ</h2><ol>
+<li><strong>Q：微调后模型变”复读机”，反复输出训练集原句？</strong> A：典型过拟合 + 数据去重没做好。减 epoch、查近重复样本、混通用数据。</li>
+<li><strong>Q：loss 降到接近 0 但效果很差？</strong> A：检查是否把 <strong>prompt 部分也算了 loss</strong>（应只 mask 出答案部分计算，LLaMA-Factory <code>train_on_prompt: false</code>）；以及 chat template 是否配对——template 错一位全盘皆输。</li>
+<li><strong>Q：QLoRA 训完合并后精度掉得厉害？</strong> A：QLoRA 的正确姿势是<strong>合并 LoRA 到 BF16 基座再量化</strong>，而不是直接对 4bit 基座导出的权重上线。</li>
+<li><strong>Q：DPO 训完模型变啰嗦&#x2F;变哑巴？</strong> A：<code>beta</code> 不合适或 chosen&#x2F;rejected 长度差异太大（模型学会”长&#x3D;好”的伪相关）。控制长度分布，或换 IPO&#x2F;KTO。</li>
+<li><strong>Q：只有 500 条数据值得微调吗？</strong> A：格式类任务值得（rank 8、3 epoch 常有奇效）；知识类任务不值得，转 RAG。</li>
+<li><strong>Q：基座选哪个版本？</strong> A：直接选 <strong>Instruct 版做 SFT</strong>（别从 Base 重来）；中文任务优先 Qwen 系；留意模型 License（商用限制）。</li>
+</ol>
+<h2 id="生产实践清单"><a href="#生产实践清单" class="headerlink" title="生产实践清单"></a>生产实践清单</h2><ul>
+<li><input disabled="" type="checkbox"> 明确微调目标属于”行为&#x2F;格式”而非”知识”，与 RAG 分工清晰</li>
+<li><input disabled="" type="checkbox"> 数据去重、去污染、schema 校验三步走完才开训</li>
+<li><input disabled="" type="checkbox"> 训练 mask 只算答案部分 loss，chat template 与基座严格匹配</li>
+<li><input disabled="" type="checkbox"> 固定评测集与裁判版本，每次实验留记录</li>
+<li><input disabled="" type="checkbox"> 通用基准 + 自建集双评测，监控灾难性遗忘</li>
+<li><input disabled="" type="checkbox"> LoRA 合并到高精度基座后再量化，不直接部署 4bit 训练产物</li>
+<li><input disabled="" type="checkbox"> 多业务线用 vLLM LoRA 热挂载共享基座</li>
+<li><input disabled="" type="checkbox"> 线上 badcase 回流数据池，建立月度迭代节奏</li>
+</ul>
+<h2 id="扩展阅读"><a href="#扩展阅读" class="headerlink" title="扩展阅读"></a>扩展阅读</h2><ul>
+<li>LoRA 论文：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2106.09685">https://arxiv.org/abs/2106.09685</a>；QLoRA：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.14314">https://arxiv.org/abs/2305.14314</a></li>
+<li>DPO 论文：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2305.18290">https://arxiv.org/abs/2305.18290</a></li>
+<li>LLaMA-Factory：<a target="_blank" rel="noopener" href="https://github.com/hiyouga/LLaMA-Factory">https://github.com/hiyouga/LLaMA-Factory</a></li>
+<li>unsloth：<a target="_blank" rel="noopener" href="https://github.com/unslothai/unsloth">https://github.com/unslothai/unsloth</a></li>
+<li>Hugging Face TRL（SFT&#x2F;DPO&#x2F;KTO 训练库）文档</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/AI/" rel="tag"># AI</a>
+              <a href="/tags/%E5%BE%AE%E8%B0%83/" rel="tag"># 微调</a>
+              <a href="/tags/LoRA/" rel="tag"># LoRA</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/ai-engineering/07-llm-inference-deployment/" rel="prev" title="第八章：LLM 推理与部署：vLLM、SGLang 与量化">
+                  <i class="fa fa-angle-left"></i> 第八章：LLM 推理与部署：vLLM、SGLang 与量化
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/ai-engineering/09-dify-n8n-ai-orchestration/" rel="next" title="第十章：AI 应用编排：Dify 与 n8n 工作流实战">
+                  第十章：AI 应用编排：Dify 与 n8n 工作流实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">60:37</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

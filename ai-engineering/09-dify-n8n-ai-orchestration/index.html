@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十章：AI 应用编排：Dify 与 n8n 工作流实战 Dify 是”AI 应用的低代码 IDE”，n8n 是”带 AI 节点的自动化 Zapier”——本章讲清两者的架构差异、Dify 私有化部署与 RAG 编排、n8n 自动化接入 AI 节点，以及二者组合打通”AI 能力 ↔ 业务系统”的落地路径。  本章导读   章节 主题    第一章：AI Agent 入门与核心概念 Agent 的组">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十章：AI 应用编排：Dify 与 n8n 工作流实战">
+<meta property="og:url" content="https://my919.github.io/ai-engineering/09-dify-n8n-ai-orchestration/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十章：AI 应用编排：Dify 与 n8n 工作流实战 Dify 是”AI 应用的低代码 IDE”，n8n 是”带 AI 节点的自动化 Zapier”——本章讲清两者的架构差异、Dify 私有化部署与 RAG 编排、n8n 自动化接入 AI 节点，以及二者组合打通”AI 能力 ↔ 业务系统”的落地路径。  本章导读   章节 主题    第一章：AI Agent 入门与核心概念 Agent 的组">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-10-28T00:04:00.000Z">
+<meta property="article:modified_time" content="2026-10-29T15:31:07.838Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="AI">
+<meta property="article:tag" content="Dify">
+<meta property="article:tag" content="n8n">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/ai-engineering/09-dify-n8n-ai-orchestration/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/ai-engineering/09-dify-n8n-ai-orchestration/","path":"ai-engineering/09-dify-n8n-ai-orchestration/","title":"第十章：AI 应用编排：Dify 与 n8n 工作流实战"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十章：AI 应用编排：Dify 与 n8n 工作流实战 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式与机器人</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>音视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 与接口</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具与效率</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端与移动端</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 与平台工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>职业与管理</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测与稳定性</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>云原生与 Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>工程规范与代码质量</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E7%AB%A0%EF%BC%9AAI-%E5%BA%94%E7%94%A8%E7%BC%96%E6%8E%92%EF%BC%9ADify-%E4%B8%8E-n8n-%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">第十章：AI 应用编排：Dify 与 n8n 工作流实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.1.</span> <span class="nav-text">本章导读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E7%BC%96%E6%8E%92%E5%B9%B3%E5%8F%B0"><span class="nav-number">1.2.</span> <span class="nav-text">1. 为什么需要编排平台</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-Dify-%E6%9E%B6%E6%9E%84%E4%B8%8E%E7%A7%81%E6%9C%89%E5%8C%96%E9%83%A8%E7%BD%B2"><span class="nav-number">1.3.</span> <span class="nav-text">2. Dify 架构与私有化部署</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E6%9E%B6%E6%9E%84%E9%80%9F%E8%A7%88"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 架构速览</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-docker-compose-%E9%83%A8%E7%BD%B2"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 docker-compose 部署</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-Dify-RAG-%E5%BA%94%E7%94%A8%E7%BC%96%E6%8E%92"><span class="nav-number">1.4.</span> <span class="nav-text">3. Dify RAG 应用编排</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%BB%BA%E7%9F%A5%E8%AF%86%E5%BA%93"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 建知识库</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E5%BA%94%E7%94%A8%E4%BE%A7%E7%BC%96%E6%8E%92"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 应用侧编排</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E8%B4%A8%E9%87%8F%E8%B0%83%E4%BC%98%E8%8A%82%E5%A5%8F"><span class="nav-number">1.4.3.</span> <span class="nav-text">3.3 质量调优节奏</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-Dify-Agent-%E8%8A%82%E7%82%B9%E4%B8%8E%E5%B7%A5%E5%85%B7"><span class="nav-number">1.5.</span> <span class="nav-text">4. Dify Agent 节点与工具</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-Dify-%E5%B7%A5%E4%BD%9C%E6%B5%81%E8%8A%82%E7%82%B9%E9%80%9F%E6%9F%A5"><span class="nav-number">1.6.</span> <span class="nav-text">5. Dify 工作流节点速查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-n8n%EF%BC%9A%E8%87%AA%E5%8A%A8%E5%8C%96%E5%B7%A5%E4%BD%9C%E6%B5%81-AI-%E8%8A%82%E7%82%B9"><span class="nav-number">1.7.</span> <span class="nav-text">6. n8n：自动化工作流 + AI 节点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E9%83%A8%E7%BD%B2"><span class="nav-number">1.7.1.</span> <span class="nav-text">6.1 部署</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-AI-%E8%8A%82%E7%82%B9%E4%BD%93%E7%B3%BB"><span class="nav-number">1.7.2.</span> <span class="nav-text">6.2 AI 节点体系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-Code-%E8%8A%82%E7%82%B9%E5%85%9C%E5%BA%95"><span class="nav-number">1.7.3.</span> <span class="nav-text">6.3 Code 节点兜底</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%AE%9A%E4%BD%8D%E5%AF%B9%E6%AF%94%E4%B8%8E%E7%BB%84%E5%90%88%E7%94%A8%E6%B3%95"><span class="nav-number">1.8.</span> <span class="nav-text">7. 定位对比与组合用法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-Webhook-%E4%B8%8E%E5%AE%9A%E6%97%B6%E8%A7%A6%E5%8F%91"><span class="nav-number">1.9.</span> <span class="nav-text">8. Webhook 与定时触发</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E4%BC%81%E4%B8%9A%E8%90%BD%E5%9C%B0%E6%A1%88%E4%BE%8B%EF%BC%9A%E5%94%AE%E5%90%8E%E7%9F%A5%E8%AF%86%E5%8A%A9%E6%89%8B"><span class="nav-number">1.10.</span> <span class="nav-text">9. 企业落地案例：售后知识助手</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91-FAQ"><span class="nav-number">1.11.</span> <span class="nav-text">常见坑 FAQ</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E5%AE%9E%E8%B7%B5%E6%B8%85%E5%8D%95"><span class="nav-number">1.12.</span> <span class="nav-text">生产实践清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB"><span class="nav-number">1.13.</span> <span class="nav-text">扩展阅读</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">462</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">73</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">421</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/ai-engineering/09-dify-n8n-ai-orchestration/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十章：AI 应用编排：Dify 与 n8n 工作流实战 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十章：AI 应用编排：Dify 与 n8n 工作流实战
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-10-28 08:04:00" itemprop="dateCreated datePublished" datetime="2026-10-28T08:04:00+08:00">2026-10-28</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/AI-%E5%B7%A5%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">AI 工程</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.9k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十章：AI-应用编排：Dify-与-n8n-工作流实战"><a href="#第十章：AI-应用编排：Dify-与-n8n-工作流实战" class="headerlink" title="第十章：AI 应用编排：Dify 与 n8n 工作流实战"></a>第十章：AI 应用编排：Dify 与 n8n 工作流实战</h1><blockquote>
+<p>Dify 是”AI 应用的低代码 IDE”，n8n 是”带 AI 节点的自动化 Zapier”——本章讲清两者的架构差异、Dify 私有化部署与 RAG 编排、n8n 自动化接入 AI 节点，以及二者组合打通”AI 能力 ↔ 业务系统”的落地路径。</p>
+</blockquote>
+<h2 id="本章导读"><a href="#本章导读" class="headerlink" title="本章导读"></a>本章导读</h2><table>
+<thead>
+<tr>
+<th>章节</th>
+<th>主题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/ai-engineering/01-agent-intro-core-concepts/">第一章：AI Agent 入门与核心概念</a></td>
+<td>Agent 的组成与 ReAct 范式</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/02-agent-frameworks-practice/">第二章：Agent 框架实战</a></td>
+<td>LangChain &#x2F; LangGraph 落地</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/03-agent-tool-calling-orchestration/">第三章：Agent 工具调用与函数编排</a></td>
+<td>Function Calling 原理</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/04-agent-production-engineering/">第四章：Agent 生产化与工程实践</a></td>
+<td>可观测与稳定性</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/04-rag-vector-retrieval-practice/">第五章：RAG 与向量检索实战</a></td>
+<td>RAG 检索链路</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/05-mcp-protocol-guide/">第六章：MCP 协议实战</a></td>
+<td>MCP Server 开发</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/06-coding-agent-workflow/">第七章：Coding Agent 工作流</a></td>
+<td>AI 编程落地</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/07-llm-inference-deployment/">第八章：LLM 推理与部署</a></td>
+<td>vLLM 与量化</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/08-llm-finetuning-practice/">第九章：LLM 微调实战</a></td>
+<td>LoRA &#x2F; DPO</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/09-dify-n8n-ai-orchestration/">第十章：AI 应用编排</a></td>
+<td>本章</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/10-ai-gateway-guide/">第十一章：AI 网关</a></td>
+<td>路由与成本治理</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-为什么需要编排平台"><a href="#1-为什么需要编排平台" class="headerlink" title="1. 为什么需要编排平台"></a>1. 为什么需要编排平台</h2><p>自己写代码串”LLM + 检索 + 工具 + 审批流”当然可行，但当需求变成”业务方每周改三次流程”时，代码迭代速度就是瓶颈。编排平台的价值：</p>
+<ul>
+<li><strong>可视化流程</strong>：业务方能看懂、能验收，需求沟通成本骤降；</li>
+<li><strong>组件复用</strong>：LLM 节点、HTTP 节点、条件分支都是预置的，不用重复造轮子；</li>
+<li><strong>运行时内置</strong>：会话管理、日志追踪、并发调度开箱即用；</li>
+<li><strong>权限与协作</strong>：多人编辑、版本管理、环境分离。</li>
+</ul>
+<p>代价是灵活性受限与平台锁定。判断标准：<strong>流程变更频率 &gt; 每月一次、参与方含非研发</strong> → 上编排平台；核心交易链路、极致性能场景 → 自己写代码。</p>
+<h2 id="2-Dify-架构与私有化部署"><a href="#2-Dify-架构与私有化部署" class="headerlink" title="2. Dify 架构与私有化部署"></a>2. Dify 架构与私有化部署</h2><h3 id="2-1-架构速览"><a href="#2-1-架构速览" class="headerlink" title="2.1 架构速览"></a>2.1 架构速览</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">  U[用户/业务系统] --&gt; W[Web 前端]</span><br><span class="line">  U --&gt; API[api 服务&lt;br/&gt;Flask]</span><br><span class="line">  API --&gt; WK[worker 服务&lt;br/&gt;Celery 异步任务]</span><br><span class="line">  API --&gt; PG[(PostgreSQL&lt;br/&gt;应用元数据)]</span><br><span class="line">  API --&gt; R[(Redis&lt;br/&gt;缓存/队列)]</span><br><span class="line">  API --&gt; V[(向量库&lt;br/&gt;Weaviate/Qdrant/PGVector)]</span><br><span class="line">  API --&gt; S[(对象存储&lt;br/&gt;S3/MinIO)]</span><br><span class="line">  WK --&gt; PG &amp; R &amp; V</span><br><span class="line">  API --&gt; LLM[模型供应商&lt;br/&gt;OpenAI/自托管 vLLM]</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-docker-compose-部署"><a href="#2-2-docker-compose-部署" class="headerlink" title="2.2 docker-compose 部署"></a>2.2 docker-compose 部署</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/langgenius/dify.git</span><br><span class="line"><span class="built_in">cd</span> dify/docker</span><br><span class="line"><span class="built_in">cp</span> .env.example .<span class="built_in">env</span></span><br><span class="line">docker compose up -d</span><br></pre></td></tr></table></figure>
+
+<p><code>.env</code> 生产必改项：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安全</span></span><br><span class="line">SECRET_KEY=&lt;随机长字符串&gt;</span><br><span class="line">INIT_PASSWORD=&lt;管理员初始密码&gt;</span><br><span class="line"><span class="comment"># 存储：默认本地文件，生产换 S3/MinIO</span></span><br><span class="line">STORAGE_TYPE=s3</span><br><span class="line">S3_ENDPOINT=https://minio.internal:9000</span><br><span class="line">S3_BUCKET_NAME=dify</span><br><span class="line"><span class="comment"># 向量库：小规模用 pgvector 省一个组件</span></span><br><span class="line">VECTOR_STORE=pgvector</span><br><span class="line"><span class="comment"># 会话与限流</span></span><br><span class="line">APP_MAX_ACTIVE_REQUESTS=200</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker compose ps        <span class="comment"># 确认 api / worker / web / db / redis 全部 healthy</span></span><br><span class="line">docker compose logs -f api</span><br></pre></td></tr></table></figure>
+
+<p>访问 <code>http://服务器/install</code> 初始化管理员。生产环境前面挂 Nginx 做 TLS，<code>CONSOLE_WEB_URL</code> 等域名变量同步改。</p>
+<p>升级纪律：<strong>先备份 PostgreSQL 与 volumes</strong>，再看 release notes 里的 migration 说明，按版本逐个升，跨大版本跳跃是事故高发操作。</p>
+<h2 id="3-Dify-RAG-应用编排"><a href="#3-Dify-RAG-应用编排" class="headerlink" title="3. Dify RAG 应用编排"></a>3. Dify RAG 应用编排</h2><p>RAG 是 Dify 的强项，完整链路：<strong>知识库建索引 → 应用挂检索 → 编排后处理</strong>。</p>
+<h3 id="3-1-建知识库"><a href="#3-1-建知识库" class="headerlink" title="3.1 建知识库"></a>3.1 建知识库</h3><ol>
+<li>创建知识库，选<strong>分段方式</strong>：通用（按长度切）或父子分段（小块召回、大块喂上下文，长文档推荐）；</li>
+<li>配置 Embedding 模型：中文场景 bge-m3 &#x2F; Qwen3-Embedding，自托管接<a href="/ai-engineering/07-llm-inference-deployment/">第八章</a>的 vLLM 端点；</li>
+<li>索引方式：<strong>高质量</strong>（向量）为主，混合检索（向量 + 关键词）对专有名词、编号类查询显著更准；</li>
+<li>上传文档触发异步解析，worker 日志可观察分段结果。</li>
+</ol>
+<h3 id="3-2-应用侧编排"><a href="#3-2-应用侧编排" class="headerlink" title="3.2 应用侧编排"></a>3.2 应用侧编排</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  Q[用户问题] --&gt; K[知识检索节点&lt;br/&gt;TopK=5]</span><br><span class="line">  K --&gt; C&#123;相关度判断&lt;br/&gt;score ≥ 0.5?&#125;</span><br><span class="line">  C --&gt;|有命中| L[LLM 节点&lt;br/&gt;带引用回答]</span><br><span class="line">  C --&gt;|无命中| F[固定回复&lt;br/&gt;转人工话术]</span><br><span class="line">  L --&gt; A[答案+引用来源]</span><br></pre></td></tr></table></figure>
+
+<p>关键配置：</p>
+<ul>
+<li><strong>检索节点</strong>：TopK 3–8，开 Rerank（bge-reranker-v2-m3），Score 阈值按实测调；</li>
+<li><strong>LLM 节点提示词</strong>：明确”仅根据【上下文】回答，不知道就说不知道，答案末尾用 [^1] 标注来源”；</li>
+<li><strong>引用与归属</strong>：打开”引用和归属”开关，前端自动渲染来源卡片——企业知识库的信任度命脉；</li>
+<li><strong>多轮改写</strong>：对话型 RAG 开”问题改写”，用 LLM 把”那第二个呢”补全成完整问题再检索。</li>
+</ul>
+<h3 id="3-3-质量调优节奏"><a href="#3-3-质量调优节奏" class="headerlink" title="3.3 质量调优节奏"></a>3.3 质量调优节奏</h3><p>先跑通 → 收集 50 条真实问题建评测集 → 调分段大小（256&#x2F;512&#x2F;1024 对比）→ 调 TopK 与 Rerank → 只在前述都调完仍不达标时考虑微调 Embedding。分段策略与 Rerank 通常是收益最大的两步。</p>
+<h2 id="4-Dify-Agent-节点与工具"><a href="#4-Dify-Agent-节点与工具" class="headerlink" title="4. Dify Agent 节点与工具"></a>4. Dify Agent 节点与工具</h2><p>Agent 类应用里，LLM 节点升级为 <strong>Agent 节点</strong>，挂工具让模型自主调用：</p>
+<ul>
+<li><strong>内置工具</strong>：Google 搜索、Wikipedia、代码执行沙箱、图表生成；</li>
+<li><strong>自定义工具（OpenAPI 导入）</strong>：贴一份 OpenAPI&#x2F;Swagger 文档，Dify 自动生成可调工具——把内部 CRM、工单系统接进来的标准姿势；</li>
+<li><strong>MCP 工具</strong>：新版 Dify 支持直接挂<a href="/ai-engineering/05-mcp-protocol-guide/">第六章</a>开发的 MCP Server，与业界生态打通。</li>
+</ul>
+<p>自定义工具鉴权：在工具配置里填 Header（如 <code>Authorization: Bearer xxx</code>），凭据存 Dify 侧加密存储，不进提示词。</p>
+<p>Agent 节点策略选 <strong>Function Calling</strong>（模型支持原生函数调用时）或 <strong>ReAct</strong>（兜底），<code>max_iterations</code> 设 5–10 防死循环，配合”超时熔断”与”人工审批节点”处理高风险动作。</p>
+<h2 id="5-Dify-工作流节点速查"><a href="#5-Dify-工作流节点速查" class="headerlink" title="5. Dify 工作流节点速查"></a>5. Dify 工作流节点速查</h2><p>Dify 的 Workflow &#x2F; Chatflow 类型应用里，常用节点分工如下：</p>
+<table>
+<thead>
+<tr>
+<th>节点</th>
+<th>作用</th>
+<th>使用要点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>开始</td>
+<td>定义入参变量</td>
+<td>变量名即提示词里的插值名，起好语义化名字</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>调模型生成</td>
+<td>提示词用 <code>&#123;#变量#&#125;</code> 插值；输出设结构化 JSON 便于下游解析</td>
+</tr>
+<tr>
+<td>知识检索</td>
+<td>查知识库</td>
+<td>查询变量接”开始”的用户输入或上游改写结果</td>
+</tr>
+<tr>
+<td>条件分支</td>
+<td>if&#x2F;else 路由</td>
+<td>分支条件可引用任意上游变量，含 LLM 的 JSON 输出字段</td>
+</tr>
+<tr>
+<td>代码执行</td>
+<td>JS&#x2F;Python 沙箱</td>
+<td>有超时与库限制，重活放外部 HTTP 服务</td>
+</tr>
+<tr>
+<td>HTTP 请求</td>
+<td>调外部 API</td>
+<td>鉴权 Header 支持变量引用，凭据用环境变量注入</td>
+</tr>
+<tr>
+<td>模板转换</td>
+<td>字符串拼接</td>
+<td>轻量格式化首选，比代码节点直观</td>
+</tr>
+<tr>
+<td>变量聚合</td>
+<td>多分支汇合</td>
+<td>条件分支后统一出口必备</td>
+</tr>
+<tr>
+<td>直接回复 &#x2F; 结束</td>
+<td>输出</td>
+<td>Chatflow 支持流式回复节点，边生成边推给前端</td>
+</tr>
+</tbody></table>
+<p><strong>会话变量与环境变量</strong>：Chatflow 支持会话级变量（跨轮记忆业务状态，如”已收集的表单字段”），配合”变量赋值”节点可实现多轮表单收集——这是把 Chatflow 当”对话式表单引擎”用的关键能力。</p>
+<p><strong>错误处理</strong>：关键节点开”失败时重试”（默认 2 次起）与”异常分支”，LLM 节点输出 JSON 时务必配”参数提取器”或代码节点做 schema 校验，失败走兜底分支而不是让脏数据流向下游。</p>
+<p><strong>版本与发布</strong>：Dify 应用保存为草稿，”发布”后才对 API 生效，支持版本回滚。提示词改动建议走”复制应用做实验 → 对比评测集跑分 → 发布”的流程，而不是直接在生产应用上边改边试——Dify 内置的”评测”模块可挂自建数据集批量跑分，把提示词迭代从玄学变成回归测试。</p>
+<h2 id="6-n8n：自动化工作流-AI-节点"><a href="#6-n8n：自动化工作流-AI-节点" class="headerlink" title="6. n8n：自动化工作流 + AI 节点"></a>6. n8n：自动化工作流 + AI 节点</h2><p>n8n 是通用自动化平台（400+ 连接器），2023 年后内置了完整的 LangChain 系 AI 节点。</p>
+<h3 id="6-1-部署"><a href="#6-1-部署" class="headerlink" title="6.1 部署"></a>6.1 部署</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name n8n \</span><br><span class="line">  -p 5678:5678 \</span><br><span class="line">  -v n8n_data:/home/node/.n8n \</span><br><span class="line">  -e N8N_ENCRYPTION_KEY=&lt;随机串&gt; \</span><br><span class="line">  -e WEBHOOK_URL=https://n8n.example.com/ \</span><br><span class="line">  n8nio/n8n</span><br></pre></td></tr></table></figure>
+
+<p><code>N8N_ENCRYPTION_KEY</code> 必须显式设置且<strong>永不更换</strong>（凭据用它加密，换了全废）。</p>
+<h3 id="6-2-AI-节点体系"><a href="#6-2-AI-节点体系" class="headerlink" title="6.2 AI 节点体系"></a>6.2 AI 节点体系</h3><ul>
+<li><strong>AI Agent 节点</strong>：内置 ReAct 循环，下挂 Chat Model（OpenAI&#x2F;自建 OpenAI 兼容端点）、Memory（会话记忆）、Tool 三类子节点；</li>
+<li><strong>Tool 节点</strong>：HTTP Request、Postgres、自定义 Code，皆可被 Agent 调用；</li>
+<li><strong>向量存储节点</strong>：接 Qdrant&#x2F;PGVector 做 RAG，与 Dify 知识库同构。</li>
+</ul>
+<p>典型工作流——“新工单自动分类并回复”：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  T[Webhook 触发&lt;br/&gt;新工单] --&gt; E[Embedding&lt;br/&gt;向量化]</span><br><span class="line">  E --&gt; V[向量检索&lt;br/&gt;相似历史工单]</span><br><span class="line">  V --&gt; A[AI Agent 节点&lt;br/&gt;分类+草拟回复]</span><br><span class="line">  A --&gt; H&#123;置信度&gt;0.8?&#125;</span><br><span class="line">  H --&gt;|是| S[HTTP 节点&lt;br/&gt;调工单系统 API 回帖]</span><br><span class="line">  H --&gt;|否| M[人工审核队列&lt;br/&gt;飞书通知]</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-Code-节点兜底"><a href="#6-3-Code-节点兜底" class="headerlink" title="6.3 Code 节点兜底"></a>6.3 Code 节点兜底</h3><p>遇到预置节点搞不定的逻辑，Code 节点写 JavaScript&#x2F;Python 直接处理 item 数组：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 去重并按时间排序</span></span><br><span class="line"><span class="keyword">const</span> seen = <span class="keyword">new</span> <span class="title class_">Set</span>();</span><br><span class="line"><span class="keyword">return</span> $input.<span class="title function_">all</span>()</span><br><span class="line">  .<span class="title function_">filter</span>(<span class="function"><span class="params">item</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> id = item.<span class="property">json</span>.<span class="property">ticket_id</span>;</span><br><span class="line">    <span class="keyword">if</span> (seen.<span class="title function_">has</span>(id)) <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    seen.<span class="title function_">add</span>(id); <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">  &#125;)</span><br><span class="line">  .<span class="title function_">sort</span>(<span class="function">(<span class="params">a, b</span>) =&gt;</span> <span class="keyword">new</span> <span class="title class_">Date</span>(a.<span class="property">json</span>.<span class="property">created_at</span>) - <span class="keyword">new</span> <span class="title class_">Date</span>(b.<span class="property">json</span>.<span class="property">created_at</span>));</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-定位对比与组合用法"><a href="#7-定位对比与组合用法" class="headerlink" title="7. 定位对比与组合用法"></a>7. 定位对比与组合用法</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Dify</th>
+<th>n8n</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>核心定位</td>
+<td><strong>AI 应用</strong>（对话&#x2F;RAG&#x2F;Agent 对外服务）</td>
+<td><strong>自动化流程</strong>（系统间搬运与触发）</td>
+</tr>
+<tr>
+<td>用户界面</td>
+<td>给终端用户的聊天窗&#x2F;API 开箱即用</td>
+<td>只有管理台，需自建前端</td>
+</tr>
+<tr>
+<td>AI 深度</td>
+<td>深（提示词工程、评测、标注、知识库运营）</td>
+<td>够用（AI 是流程里的一个节点）</td>
+</tr>
+<tr>
+<td>系统集成</td>
+<td>弱（需自定义工具）</td>
+<td><strong>极强</strong>（400+ 连接器）</td>
+</tr>
+<tr>
+<td>运营闭环</td>
+<td>日志、标注、数据集回流一体</td>
+<td>需自建</td>
+</tr>
+</tbody></table>
+<p><strong>组合用法（推荐架构）</strong>：Dify 做 AI 能力层并暴露 API，n8n 做业务胶水层调用 Dify：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  subgraph n8n工作流</span><br><span class="line">    W[Webhook/定时触发] --&gt; P[数据预处理节点]</span><br><span class="line">    P --&gt; D1[HTTP 调 Dify 应用 API]</span><br><span class="line">    D1 --&gt; R[结果写回业务系统]</span><br><span class="line">  end</span><br><span class="line">  subgraph Dify</span><br><span class="line">    D1 -.API.-&gt; APP[RAG 应用/Agent 应用]</span><br><span class="line">  end</span><br></pre></td></tr></table></figure>
+
+<p>这样 AI 提示词与知识库在 Dify 里被专业运营，业务触发与系统对接在 n8n 里灵活编排，<strong>两边各自用最强的部分</strong>。</p>
+<p>什么情况下<strong>不该用编排平台</strong>、回归自研代码：</p>
+<ul>
+<li>核心交易&#x2F;支付链路，对延迟与稳定性要求极端（编排层的抽象与调度开销在毫秒级 SLA 前不可接受）；</li>
+<li>流程逻辑高度动态（运行时按规则引擎生成流程），可视化拖拽反而成了枷锁；</li>
+<li>需要深度定制的流式协议、复杂的工具调用状态机——这类需求用<a href="/ai-engineering/02-agent-frameworks-practice/">第二章</a>的 LangGraph 直接编码更可控。</li>
+</ul>
+<p>编排平台与自研代码不是互斥选型，常见终态是”边缘场景平台快速覆盖，核心链路代码精耕”。</p>
+<p>选型节奏建议：先用平台 1-2 周跑通业务验证价值，跑出稳定流量后再评估是否值得为性能与可控性重写为代码——大多数内部应用会一直停在平台层，这也是合理的工程经济账。</p>
+<h2 id="8-Webhook-与定时触发"><a href="#8-Webhook-与定时触发" class="headerlink" title="8. Webhook 与定时触发"></a>8. Webhook 与定时触发</h2><ul>
+<li><strong>Webhook 触发</strong>：n8n 的 Webhook 节点生成 URL 供外部系统回调，支持 Test&#x2F;Production 双地址；Dify 侧可用”工作流应用”的 API 接收外部 POST。生产地址记得加签名校验或 IP 白名单。</li>
+<li><strong>定时触发</strong>：n8n 的 Schedule Trigger 配 cron，做”每日 8 点汇总昨日工单 → LLM 生成日报 → 发飞书”类任务；Dify 本身不含调度器，定时任务统一放 n8n 侧调 Dify API。</li>
+<li><strong>错误处理</strong>：n8n 工作流可配 Error Workflow（全局兜底告警）；节点级开”Continue On Fail + 重试 3 次”，AI 节点的超时单独放宽到 120s 以上。</li>
+</ul>
+<h2 id="9-企业落地案例：售后知识助手"><a href="#9-企业落地案例：售后知识助手" class="headerlink" title="9. 企业落地案例：售后知识助手"></a>9. 企业落地案例：售后知识助手</h2><p>背景：某 SaaS 公司售后团队 30 人，60% 工单是重复问题。</p>
+<p>方案：</p>
+<ol>
+<li><strong>Dify</strong>：产品文档、历史优质工单入知识库（父子分段 + 混合检索 + Rerank），建对话型应用，Agent 节点挂”订单查询”OpenAPI 工具；</li>
+<li><strong>n8n</strong>：新工单 Webhook → 调 Dify API 生成建议回复 → 置信度分流（高：自动回复；低：草稿入人工队列，客服一键采纳&#x2F;修改）；</li>
+<li><strong>运营闭环</strong>：客服的”修改后答案”通过 Dify 标注功能回流，每周增补知识库与提示词。</li>
+</ol>
+<p>效果口径：3 个月后自动解决率 41%，客服首次响应时长中位数从 4 分钟降到 40 秒。关键成功因素不是模型多强，而是<strong>置信度分流 + 人工兜底</strong>让业务敢用，<strong>标注回流</strong>让系统越用越准。</p>
+<p>上线节奏参考：</p>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>周期</th>
+<th>动作</th>
+<th>出口标准</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>影子期</td>
+<td>2 周</td>
+<td>AI 只出草稿不触达用户，客服对照使用</td>
+<td>草稿采纳率 &gt; 30%</td>
+</tr>
+<tr>
+<td>灰度期</td>
+<td>4 周</td>
+<td>10% 工单自动回复，其余走人工</td>
+<td>自动回复差评率 &lt; 人工基线</td>
+</tr>
+<tr>
+<td>放量期</td>
+<td>持续</td>
+<td>按类目逐步放开，每周复盘 badcase</td>
+<td>自动解决率稳定在 40%+</td>
+</tr>
+</tbody></table>
+<h2 id="常见坑-FAQ"><a href="#常见坑-FAQ" class="headerlink" title="常见坑 FAQ"></a>常见坑 FAQ</h2><ol>
+<li><strong>Q：Dify 升级后应用打不开&#x2F;接口报错？</strong> A：九成是跳版本升级漏了数据库 migration。恢复备份，按版本逐个升；升级前务必 <code>pg_dump</code>。</li>
+<li><strong>Q：知识库检索总是召回无关段落？</strong> A：先查分段是否把表格&#x2F;标题切碎了（换父子分段）；再开混合检索与 Rerank；最后检查 Embedding 模型是否匹配语种——英文模型跑中文库是隐形重灾区。</li>
+<li><strong>Q：Dify Agent 调内部 API 工具超时？</strong> A：工具默认超时较短，在自定义工具的 OpenAPI 配置里加大 timeout；慢接口改为异步任务 + 轮询模式。</li>
+<li><strong>Q：n8n 工作流跑了几次后内存暴涨？</strong> A：Execution 数据没清理。设置 <code>EXECUTIONS_DATA_MAX_AGE=168</code>（小时）并开定期清理；二进制数据走对象存储而非内存。</li>
+<li><strong>Q：两边都有 RAG，到底用哪边？</strong> A：面向用户的高质量问答用 Dify（有运营工具）；自动化流程里”顺带查一下”的轻量检索用 n8n 向量节点即可。</li>
+<li><strong>Q：Dify 的 API 并发扛不住？</strong> A：worker 水平扩容（<code>docker compose up -d --scale worker=3</code>），检查 Celery 队列积压；同时把模型端点指向<a href="/ai-engineering/07-llm-inference-deployment/">第八章</a>的 vLLM 集群而非共享 Key。</li>
+</ol>
+<h2 id="生产实践清单"><a href="#生产实践清单" class="headerlink" title="生产实践清单"></a>生产实践清单</h2><ul>
+<li><input disabled="" type="checkbox"> Dify：SECRET_KEY &#x2F; 存储 &#x2F; 向量库按生产标准配置，PostgreSQL 定期备份</li>
+<li><input disabled="" type="checkbox"> 知识库：父子分段 + 混合检索 + Rerank，建立 50+ 条评测集持续回归</li>
+<li><input disabled="" type="checkbox"> Agent 工具：凭据存平台加密存储，max_iterations 与超时显式设置</li>
+<li><input disabled="" type="checkbox"> n8n：N8N_ENCRYPTION_KEY 固定并离线备份，Execution 数据定期清理</li>
+<li><input disabled="" type="checkbox"> Webhook 端点加签名校验，AI 节点超时 ≥120s</li>
+<li><input disabled="" type="checkbox"> 高置信度自动化、低置信度人工兜底的流量分流设计</li>
+<li><input disabled="" type="checkbox"> 标注与 badcase 回流机制，每周运营例会过数据</li>
+<li><input disabled="" type="checkbox"> 模型调用统一走<a href="/ai-engineering/10-ai-gateway-guide/">第十一章</a>的 AI 网关，便于限流与成本核算</li>
+</ul>
+<h2 id="扩展阅读"><a href="#扩展阅读" class="headerlink" title="扩展阅读"></a>扩展阅读</h2><ul>
+<li>Dify 官方文档与自托管指南：<a target="_blank" rel="noopener" href="https://docs.dify.ai/">https://docs.dify.ai/</a></li>
+<li>n8n 官方文档：<a target="_blank" rel="noopener" href="https://docs.n8n.io/">https://docs.n8n.io/</a></li>
+<li>Dify GitHub（docker-compose 与升级说明）：<a target="_blank" rel="noopener" href="https://github.com/langgenius/dify">https://github.com/langgenius/dify</a></li>
+<li>n8n AI Agent 节点教程（官方 Blog）</li>
+<li>LangChain vs 编排平台选型讨论（LangChain 官方 Blog）</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/AI/" rel="tag"># AI</a>
+              <a href="/tags/Dify/" rel="tag"># Dify</a>
+              <a href="/tags/n8n/" rel="tag"># n8n</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/ai-engineering/08-llm-finetuning-practice/" rel="prev" title="第九章：LLM 微调实战：LoRA、QLoRA 与 DPO">
+                  <i class="fa fa-angle-left"></i> 第九章：LLM 微调实战：LoRA、QLoRA 与 DPO
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/ai-engineering/10-ai-gateway-guide/" rel="next" title="第十一章：AI 网关：多模型路由、限流与成本治理">
+                  第十一章：AI 网关：多模型路由、限流与成本治理 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">60:37</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

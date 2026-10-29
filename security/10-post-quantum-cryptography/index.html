@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第十章：后量子密码迁移：ML-KEM 落地路线图 量子计算机还没到，但你今天的密文已经在被「先存后解」——迁移必须现在启动。  系列导航   章节 链接    第一章 OpenSSL 命令行速查 &#x2F;security&#x2F;01-openssl-cli-guide&#x2F;   第二章 OpenSSL 特性与本地 CA &#x2F;security&#x2F;02-openssl-f">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第十章：后量子密码迁移：ML-KEM 落地路线图">
+<meta property="og:url" content="https://my919.github.io/security/10-post-quantum-cryptography/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第十章：后量子密码迁移：ML-KEM 落地路线图 量子计算机还没到，但你今天的密文已经在被「先存后解」——迁移必须现在启动。  系列导航   章节 链接    第一章 OpenSSL 命令行速查 &#x2F;security&#x2F;01-openssl-cli-guide&#x2F;   第二章 OpenSSL 特性与本地 CA &#x2F;security&#x2F;02-openssl-f">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-10-28T01:02:00.000Z">
+<meta property="article:modified_time" content="2026-10-29T15:31:07.922Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="后量子密码">
+<meta property="article:tag" content="安全">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/security/10-post-quantum-cryptography/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/security/10-post-quantum-cryptography/","path":"security/10-post-quantum-cryptography/","title":"第十章：后量子密码迁移：ML-KEM 落地路线图"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第十章：后量子密码迁移：ML-KEM 落地路线图 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式与机器人</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>音视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 与接口</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具与效率</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端与移动端</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 与平台工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>职业与管理</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测与稳定性</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>云原生与 Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>工程规范与代码质量</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%8D%81%E7%AB%A0%EF%BC%9A%E5%90%8E%E9%87%8F%E5%AD%90%E5%AF%86%E7%A0%81%E8%BF%81%E7%A7%BB%EF%BC%9AML-KEM-%E8%90%BD%E5%9C%B0%E8%B7%AF%E7%BA%BF%E5%9B%BE"><span class="nav-number">1.</span> <span class="nav-text">第十章：后量子密码迁移：ML-KEM 落地路线图</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B3%BB%E5%88%97%E5%AF%BC%E8%88%AA"><span class="nav-number">1.1.</span> <span class="nav-text">系列导航</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%A8%81%E8%83%81%E6%A8%A1%E5%9E%8B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E7%8E%B0%E5%9C%A8%E8%A1%8C%E5%8A%A8"><span class="nav-number">1.2.</span> <span class="nav-text">1. 威胁模型：为什么要现在行动</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-Shor-%E7%AE%97%E6%B3%95%E4%B8%8E%E7%BB%8F%E5%85%B8%E5%AF%86%E7%A0%81%E7%9A%84%E6%AD%BB%E5%88%91%E5%88%A4%E5%86%B3"><span class="nav-number">1.2.1.</span> <span class="nav-text">1.1 Shor 算法与经典密码的死刑判决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E3%80%8C%E5%85%88%E5%AD%98%E5%90%8E%E8%A7%A3%E3%80%8D%EF%BC%88Harvest-Now-Decrypt-Later%EF%BC%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">1.2 「先存后解」（Harvest Now, Decrypt Later）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E6%97%B6%E9%97%B4%E7%BA%BF%E6%84%9F%E7%9F%A5"><span class="nav-number">1.2.3.</span> <span class="nav-text">1.3 时间线感知</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-NIST-%E6%A0%87%E5%87%86%EF%BC%9A%E4%B8%89%E4%BB%B6%E5%A5%97"><span class="nav-number">1.3.</span> <span class="nav-text">2. NIST 标准：三件套</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-ML-KEM-%E5%8F%82%E6%95%B0%E9%9B%86"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 ML-KEM 参数集</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E9%80%89%E5%9E%8B%E5%BB%BA%E8%AE%AE"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 选型建议</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E6%B7%B7%E5%90%88%E5%AF%86%E9%92%A5%E4%BA%A4%E6%8D%A2%EF%BC%9A%E8%BF%87%E6%B8%A1%E6%9C%9F%E7%9A%84%E8%A1%8C%E4%B8%9A%E6%A0%87%E5%87%86%E5%A7%BF%E5%8A%BF"><span class="nav-number">1.4.</span> <span class="nav-text">3. 混合密钥交换：过渡期的行业标准姿势</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-TLS-1-3-%E4%B8%AD%E7%9A%84%E6%B7%B7%E5%90%88%E7%BB%84"><span class="nav-number">1.4.1.</span> <span class="nav-text">3.1 TLS 1.3 中的混合组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E7%8E%B0%E5%AE%9E%E4%B8%AD%E7%9A%84%E9%83%A8%E7%BD%B2%E7%8A%B6%E5%86%B5"><span class="nav-number">1.4.2.</span> <span class="nav-text">3.2 现实中的部署状况</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-OpenSSL-3-5-%E5%AE%9E%E6%93%8D"><span class="nav-number">1.5.</span> <span class="nav-text">4. OpenSSL 3.5 实操</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E5%AF%86%E9%92%A5%E7%94%9F%E6%88%90%E4%B8%8E%E6%9F%A5%E7%9C%8B"><span class="nav-number">1.5.1.</span> <span class="nav-text">4.1 密钥生成与查看</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E7%94%A8-ML-DSA-%E5%81%9A%E7%AD%BE%E5%90%8D%E9%AA%8C%E7%AD%BE"><span class="nav-number">1.5.2.</span> <span class="nav-text">4.2 用 ML-DSA 做签名验签</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-TLS-%E6%B7%B7%E5%90%88%E6%8F%A1%E6%89%8B%E6%B5%8B%E8%AF%95"><span class="nav-number">1.5.3.</span> <span class="nav-text">4.3 TLS 混合握手测试</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-%E6%97%A7%E7%89%88%E6%9C%AC%E9%80%80%E8%B7%AF%EF%BC%9Aoqsprovider"><span class="nav-number">1.5.4.</span> <span class="nav-text">4.4 旧版本退路：oqsprovider</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E8%AF%81%E4%B9%A6%E4%B8%8E-PKI-%E8%BF%81%E7%A7%BB%E9%9A%BE%E7%82%B9"><span class="nav-number">1.6.</span> <span class="nav-text">5. 证书与 PKI 迁移难点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E4%BA%94%E4%B8%AA%E7%8E%B0%E5%AE%9E%E9%9A%BE%E9%A2%98"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.1 五个现实难题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E5%8A%A1%E5%AE%9E%E7%AD%96%E7%95%A5"><span class="nav-number">1.6.2.</span> <span class="nav-text">5.2 务实策略</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E6%80%A7%E8%83%BD%E5%BC%80%E9%94%80%E5%AE%9E%E6%B5%8B%E5%8F%82%E8%80%83"><span class="nav-number">1.7.</span> <span class="nav-text">6. 性能开销实测参考</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%88%86%E9%98%B6%E6%AE%B5%E8%BF%81%E7%A7%BB%E8%B7%AF%E7%BA%BF%E5%9B%BE"><span class="nav-number">1.8.</span> <span class="nav-text">7. 分阶段迁移路线图</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5-0%EF%BC%9A%E7%9B%98%E7%82%B9%E4%B8%8E%E6%95%8F%E6%8D%B7%E6%80%A7%EF%BC%88%E7%8E%B0%E5%9C%A8-6-%E4%B8%AA%E6%9C%88%EF%BC%89"><span class="nav-number">1.8.1.</span> <span class="nav-text">阶段 0：盘点与敏捷性（现在 - 6 个月）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5-1%EF%BC%9A%E6%B7%B7%E5%90%88%E5%AF%86%E9%92%A5%E4%BA%A4%E6%8D%A2%EF%BC%886-18-%E4%B8%AA%E6%9C%88%EF%BC%89"><span class="nav-number">1.8.2.</span> <span class="nav-text">阶段 1：混合密钥交换（6-18 个月）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5-2%EF%BC%9A%E7%AD%BE%E5%90%8D%E4%B8%8E%E6%95%B0%E6%8D%AE%E9%9D%A2%EF%BC%8818-36-%E4%B8%AA%E6%9C%88%EF%BC%89"><span class="nav-number">1.8.3.</span> <span class="nav-text">阶段 2：签名与数据面（18-36 个月）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%B6%E6%AE%B5-3%EF%BC%9A%E7%BA%AF-PQC-%E4%B8%8E%E7%BB%8F%E5%85%B8%E9%80%80%E5%BD%B9%EF%BC%8836-%E4%B8%AA%E6%9C%88-%EF%BC%8C%E9%9A%8F%E6%A0%87%E5%87%86%E6%BC%94%E8%BF%9B%EF%BC%89"><span class="nav-number">1.8.4.</span> <span class="nav-text">阶段 3：纯 PQC 与经典退役（36 个月+，随标准演进）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91-FAQ"><span class="nav-number">1.9.</span> <span class="nav-text">常见坑 FAQ</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%90%BD%E5%9C%B0%E6%B8%85%E5%8D%95"><span class="nav-number">1.10.</span> <span class="nav-text">落地清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB"><span class="nav-number">1.11.</span> <span class="nav-text">扩展阅读</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">462</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">73</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">421</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/security/10-post-quantum-cryptography/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第十章：后量子密码迁移：ML-KEM 落地路线图 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第十章：后量子密码迁移：ML-KEM 落地路线图
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-10-28 09:02:00" itemprop="dateCreated datePublished" datetime="2026-10-28T09:02:00+08:00">2026-10-28</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%AE%89%E5%85%A8/" itemprop="url" rel="index"><span itemprop="name">安全</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>7.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第十章：后量子密码迁移：ML-KEM-落地路线图"><a href="#第十章：后量子密码迁移：ML-KEM-落地路线图" class="headerlink" title="第十章：后量子密码迁移：ML-KEM 落地路线图"></a>第十章：后量子密码迁移：ML-KEM 落地路线图</h1><blockquote>
+<p>量子计算机还没到，但你今天的密文已经在被「先存后解」——迁移必须现在启动。</p>
+</blockquote>
+<h2 id="系列导航"><a href="#系列导航" class="headerlink" title="系列导航"></a>系列导航</h2><table>
+<thead>
+<tr>
+<th>章节</th>
+<th>链接</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>第一章 OpenSSL 命令行速查</td>
+<td><a href="/security/01-openssl-cli-guide/">&#x2F;security&#x2F;01-openssl-cli-guide&#x2F;</a></td>
+</tr>
+<tr>
+<td>第二章 OpenSSL 特性与本地 CA</td>
+<td><a href="/security/02-openssl-features-local-ca/">&#x2F;security&#x2F;02-openssl-features-local-ca&#x2F;</a></td>
+</tr>
+<tr>
+<td>第三章 OpenSSL 哈希算法</td>
+<td><a href="/security/03-openssl-hash-algorithms/">&#x2F;security&#x2F;03-openssl-hash-algorithms&#x2F;</a></td>
+</tr>
+<tr>
+<td>第四章 OpenSSL 对称加密</td>
+<td><a href="/security/04-openssl-symmetric-encryption/">&#x2F;security&#x2F;04-openssl-symmetric-encryption&#x2F;</a></td>
+</tr>
+<tr>
+<td>第五章 OpenSSL 非对称与密钥交换</td>
+<td><a href="/security/05-openssl-asymmetric-key-exchange/">&#x2F;security&#x2F;05-openssl-asymmetric-key-exchange&#x2F;</a></td>
+</tr>
+<tr>
+<td>第六章 OpenSSL 数字签名与 HMAC</td>
+<td><a href="/security/06-openssl-digital-signature-hmac/">&#x2F;security&#x2F;06-openssl-digital-signature-hmac&#x2F;</a></td>
+</tr>
+<tr>
+<td>第七章 OpenSSL KDF 与随机数</td>
+<td><a href="/security/07-openssl-kdf-random/">&#x2F;security&#x2F;07-openssl-kdf-random&#x2F;</a></td>
+</tr>
+<tr>
+<td>第八章 软件供应链安全</td>
+<td><a href="/security/08-supply-chain-security/">&#x2F;security&#x2F;08-supply-chain-security&#x2F;</a></td>
+</tr>
+<tr>
+<td>第九章 零信任架构落地</td>
+<td><a href="/security/09-zero-trust-architecture/">&#x2F;security&#x2F;09-zero-trust-architecture&#x2F;</a></td>
+</tr>
+<tr>
+<td>第十章 后量子密码迁移（本篇）</td>
+<td><a href="/security/10-post-quantum-cryptography/">&#x2F;security&#x2F;10-post-quantum-cryptography&#x2F;</a></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-威胁模型：为什么要现在行动"><a href="#1-威胁模型：为什么要现在行动" class="headerlink" title="1. 威胁模型：为什么要现在行动"></a>1. 威胁模型：为什么要现在行动</h2><h3 id="1-1-Shor-算法与经典密码的死刑判决"><a href="#1-1-Shor-算法与经典密码的死刑判决" class="headerlink" title="1.1 Shor 算法与经典密码的死刑判决"></a>1.1 Shor 算法与经典密码的死刑判决</h3><p>1994 年 Peter Shor 证明：<strong>足够大的量子计算机可以在多项式时间内分解大整数、求解离散对数</strong>。这意味着：</p>
+<ul>
+<li><strong>RSA（所有密钥长度）</strong>：基于大整数分解，全部被破；</li>
+<li><strong>ECC（ECDH&#x2F;ECDSA&#x2F;Ed25519）</strong>：基于椭圆曲线离散对数，全部被破；</li>
+<li><strong>DH&#x2F;DSA</strong>：基于有限域离散对数，全部被破。</li>
+</ul>
+<p>唯一幸存的是<strong>对称密码与哈希</strong>：Grover 算法仅带来平方根级加速，AES-128 变 64 位有效强度不够看，但 <strong>AES-256、SHA-256&#x2F;384 依然是后量子安全的</strong>——把密钥和输出加长即可。</p>
+<h3 id="1-2-「先存后解」（Harvest-Now-Decrypt-Later）"><a href="#1-2-「先存后解」（Harvest-Now-Decrypt-Later）" class="headerlink" title="1.2 「先存后解」（Harvest Now, Decrypt Later）"></a>1.2 「先存后解」（Harvest Now, Decrypt Later）</h3><p>这是推动迁移的<strong>最现实威胁</strong>：攻击者今天就录制你的 TLS 流量、归档你的加密数据，等 10-15 年后量子计算机成熟再解密。</p>
+<p>判断你受不受影响的公式（Mosca 不等式）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">数据保密期 X + 迁移耗时 Y &gt; 量子计算机到来时间 Z  ⇒  已经迟到</span><br></pre></td></tr></table></figure>
+
+<p>举例：医疗数据要保密 30 年（X&#x3D;30），全公司迁移要 5 年（Y&#x3D;5），业界对 Z 的中位数估计约 15 年——<strong>30+5 远大于 15，现在就必须动</strong>。</p>
+<h3 id="1-3-时间线感知"><a href="#1-3-时间线感知" class="headerlink" title="1.3 时间线感知"></a>1.3 时间线感知</h3><ul>
+<li>2016：NIST 启动 PQC 标准化征集；</li>
+<li>2022：NIST 公布首批入选算法（CRYSTALS-Kyber&#x2F;Dilithium 等）；</li>
+<li>2024 年 8 月：<strong>FIPS 203&#x2F;204&#x2F;205 正式发布</strong>，标准落地；</li>
+<li>2024-2025：Chrome、Cloudflare、Apple iMessage（PQ3）等大规模部署混合密钥交换；</li>
+<li>业界估计：2030-2035 年出现密码学相关量子计算机（CRQC）的概率不可忽略。</li>
+</ul>
+<hr>
+<h2 id="2-NIST-标准：三件套"><a href="#2-NIST-标准：三件套" class="headerlink" title="2. NIST 标准：三件套"></a>2. NIST 标准：三件套</h2><table>
+<thead>
+<tr>
+<th>标准</th>
+<th>算法</th>
+<th>用途</th>
+<th>数学基础</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>FIPS 203</strong></td>
+<td>ML-KEM（源自 CRYSTALS-Kyber）</td>
+<td>密钥封装（替代 ECDH）</td>
+<td>模格上 Module-LWE</td>
+</tr>
+<tr>
+<td><strong>FIPS 204</strong></td>
+<td>ML-DSA（源自 CRYSTALS-Dilithium）</td>
+<td>数字签名（替代 RSA&#x2F;ECDSA 主选）</td>
+<td>模格</td>
+</tr>
+<tr>
+<td><strong>FIPS 205</strong></td>
+<td>SLH-DSA（源自 SPHINCS+）</td>
+<td>数字签名（保守备选）</td>
+<td>纯哈希，无格假设</td>
+</tr>
+</tbody></table>
+<p>另有一个 FALCON（FIPS 206 制定中）用于签名尺寸敏感场景。</p>
+<h3 id="2-1-ML-KEM-参数集"><a href="#2-1-ML-KEM-参数集" class="headerlink" title="2.1 ML-KEM 参数集"></a>2.1 ML-KEM 参数集</h3><table>
+<thead>
+<tr>
+<th>参数集</th>
+<th>对标经典强度</th>
+<th>公钥</th>
+<th>私钥</th>
+<th>密文</th>
+<th>共享密钥</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ML-KEM-512</td>
+<td>AES-128</td>
+<td>800 B</td>
+<td>1632 B</td>
+<td>768 B</td>
+<td>32 B</td>
+</tr>
+<tr>
+<td><strong>ML-KEM-768</strong></td>
+<td>AES-192（推荐默认）</td>
+<td>1184 B</td>
+<td>2400 B</td>
+<td>1088 B</td>
+<td>32 B</td>
+</tr>
+<tr>
+<td>ML-KEM-1024</td>
+<td>AES-256</td>
+<td>1568 B</td>
+<td>3168 B</td>
+<td>1568 B</td>
+<td>32 B</td>
+</tr>
+</tbody></table>
+<p>对比 X25519：公钥 32 字节、密文 32 字节——<strong>ML-KEM 的字节数大约 40 倍</strong>，这是迁移中最直观的工程成本。</p>
+<h3 id="2-2-选型建议"><a href="#2-2-选型建议" class="headerlink" title="2.2 选型建议"></a>2.2 选型建议</h3><ul>
+<li><strong>密钥交换</strong>：ML-KEM-768 是行业共识默认（IETF TLS、Chrome、Cloudflare 均采用）；</li>
+<li><strong>签名</strong>：优先 ML-DSA；合规保守场景（ Firmware 签名，一签管十年）可考虑 SLH-DSA——它只依赖哈希函数安全性，但签名约 8-40 KB、速度慢一个数量级；</li>
+<li>避开非主流算法的自研组合，只跟 NIST 标准和 IETF RFC 走。</li>
+</ul>
+<hr>
+<h2 id="3-混合密钥交换：过渡期的行业标准姿势"><a href="#3-混合密钥交换：过渡期的行业标准姿势" class="headerlink" title="3. 混合密钥交换：过渡期的行业标准姿势"></a>3. 混合密钥交换：过渡期的行业标准姿势</h2><p>纯 PQC 直接替换的风险：格密码数学假设只有十几年研究史，万一被经典算法攻破呢？<strong>混合模式</strong>给出了答案：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">shared_secret = KDF( X25519_secret || ML-KEM-768_secret )</span><br></pre></td></tr></table></figure>
+
+<p><strong>只要两个方案中任何一个安全，整体就安全。</strong> X25519 兜底经典安全性，ML-KEM 提供量子防护——这是 2024-2026 年 TLS 部署的事实标准。</p>
+<h3 id="3-1-TLS-1-3-中的混合组"><a href="#3-1-TLS-1-3-中的混合组" class="headerlink" title="3.1 TLS 1.3 中的混合组"></a>3.1 TLS 1.3 中的混合组</h3><p>IETF 标准化了混合密钥交换组标识：</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>组成</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>X25519MLKEM768</code> (0x11EC)</td>
+<td>X25519 + ML-KEM-768</td>
+<td>Chrome&#x2F;Edge&#x2F;Firefox 已默认启用</td>
+</tr>
+<tr>
+<td><code>SecP256r1MLKEM768</code></td>
+<td>P-256 + ML-KEM-768</td>
+<td>合规场景（FIPS 认证要求 NIST 曲线）</td>
+</tr>
+<tr>
+<td><code>SecP384r1MLKEM1024</code></td>
+<td>P-384 + ML-KEM-1024</td>
+<td>高安全等级</td>
+</tr>
+</tbody></table>
+<p>ClientHello 中 key_share 同时携带两份公钥，服务端响应两份密文，握手仍然 <strong>1-RTT</strong>，只是消息变大（约 +2.3 KB）。</p>
+<h3 id="3-2-现实中的部署状况"><a href="#3-2-现实中的部署状况" class="headerlink" title="3.2 现实中的部署状况"></a>3.2 现实中的部署状况</h3><ul>
+<li><strong>Chrome 124+</strong>：默认对支持的站点发送 <code>X25519MLKEM768</code>；</li>
+<li><strong>Cloudflare</strong>：边缘流量过半已使用后量子握手（2024 年底数据）；</li>
+<li><strong>OpenSSH 10</strong>：默认混合密钥交换 <code>mlkem768x25519-sha256</code>；</li>
+<li><strong>Apple iMessage PQ3</strong>：Signal 协议层面的后量子加固（含周期性重密钥）。</li>
+</ul>
+<hr>
+<h2 id="4-OpenSSL-3-5-实操"><a href="#4-OpenSSL-3-5-实操" class="headerlink" title="4. OpenSSL 3.5 实操"></a>4. OpenSSL 3.5 实操</h2><p>OpenSSL 3.5（2025 年发布）<strong>原生内置 ML-KEM &#x2F; ML-DSA &#x2F; SLH-DSA</strong>，不再需要外挂 oqsprovider。这是生产可用的分水岭。</p>
+<h3 id="4-1-密钥生成与查看"><a href="#4-1-密钥生成与查看" class="headerlink" title="4.1 密钥生成与查看"></a>4.1 密钥生成与查看</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成 ML-KEM-768 密钥对</span></span><br><span class="line">openssl genpkey -algorithm ML-KEM-768 -out mlkem-key.pem</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看公钥参数</span></span><br><span class="line">openssl pkey -<span class="keyword">in</span> mlkem-key.pem -pubout -text -noout</span><br><span class="line"></span><br><span class="line"><span class="comment"># 生成 ML-DSA-65 签名密钥</span></span><br><span class="line">openssl genpkey -algorithm ML-DSA-65 -out mldsa-key.pem</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-用-ML-DSA-做签名验签"><a href="#4-2-用-ML-DSA-做签名验签" class="headerlink" title="4.2 用 ML-DSA 做签名验签"></a>4.2 用 ML-DSA 做签名验签</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">openssl pkeyutl -sign -inkey mldsa-key.pem \</span><br><span class="line">  -rawin -<span class="keyword">in</span> message.bin -out sig.bin</span><br><span class="line"></span><br><span class="line">openssl pkeyutl -verify -pubin -inkey mldsa-pub.pem \</span><br><span class="line">  -rawin -<span class="keyword">in</span> message.bin -sigfile sig.bin</span><br></pre></td></tr></table></figure>
+
+<p>注意 ML-DSA 签名约 3.3 KB（ML-DSA-65），比 Ed25519 的 64 字节大 50 倍，嵌入 JWT、固件头前要先评估尺寸预算。</p>
+<h3 id="4-3-TLS-混合握手测试"><a href="#4-3-TLS-混合握手测试" class="headerlink" title="4.3 TLS 混合握手测试"></a>4.3 TLS 混合握手测试</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 服务端（OpenSSL 3.5 自带 s_server）</span></span><br><span class="line">openssl s_server -accept 4433 \</span><br><span class="line">  -cert server.crt -key server.key \</span><br><span class="line">  -<span class="built_in">groups</span> X25519MLKEM768:X25519 -tls1_3</span><br><span class="line"></span><br><span class="line"><span class="comment"># 客户端指定混合组</span></span><br><span class="line">openssl s_client -connect localhost:4433 \</span><br><span class="line">  -<span class="built_in">groups</span> X25519MLKEM768 -tls1_3</span><br></pre></td></tr></table></figure>
+
+<p>握手成功后查看协商结果：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> | openssl s_client -connect pq.example.com:443 \</span><br><span class="line">  -<span class="built_in">groups</span> X25519MLKEM768 2&gt;/dev/null | grep -E <span class="string">&quot;Negotiated|group&quot;</span></span><br><span class="line"><span class="comment"># 期望输出类似：Negotiated TLS1.3 group: X25519MLKEM768</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-旧版本退路：oqsprovider"><a href="#4-4-旧版本退路：oqsprovider" class="headerlink" title="4.4 旧版本退路：oqsprovider"></a>4.4 旧版本退路：oqsprovider</h3><p>若环境停留在 OpenSSL 3.0-3.4，可加载 OQS 社区的 provider：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/open-quantum-safe/oqs-provider</span><br><span class="line"><span class="comment"># 构建后在 openssl.cnf 中激活</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[provider_sect]</span></span><br><span class="line"><span class="attr">default</span> = default_sect</span><br><span class="line"><span class="attr">oqsprovider</span> = oqsprovider_sect</span><br><span class="line"><span class="section">[default_sect]</span></span><br><span class="line"><span class="attr">activate</span> = <span class="number">1</span></span><br><span class="line"><span class="section">[oqsprovider_sect]</span></span><br><span class="line"><span class="attr">activate</span> = <span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p>升级路径上建议直接上 3.5，oqsprovider 定位为过渡方案。</p>
+<hr>
+<h2 id="5-证书与-PKI-迁移难点"><a href="#5-证书与-PKI-迁移难点" class="headerlink" title="5. 证书与 PKI 迁移难点"></a>5. 证书与 PKI 迁移难点</h2><p>密钥交换可以「混合」无痛上线，<strong>证书链是真正的硬骨头</strong>。</p>
+<h3 id="5-1-五个现实难题"><a href="#5-1-五个现实难题" class="headerlink" title="5.1 五个现实难题"></a>5.1 五个现实难题</h3><ol>
+<li><strong>证书尺寸膨胀</strong>：ML-DSA-65 公钥约 1.9 KB、签名约 3.3 KB，一条三级证书链从 ~4 KB 涨到 ~15 KB，触发 TLS 分片、MTU 问题，部分老旧中间件直接拒收；</li>
+<li><strong>HSM 不支持</strong>：多数现网 HSM 固件尚无 PQC 算法，密钥保护体系要整体换代，周期长、费用高；</li>
+<li><strong>CA 生态未就绪</strong>：公共 CA 的 PQC 根证书与浏览器信任计划仍在试点（ISRG、DigiCert 已有测试目录），企业内 CA 需先行自建（可结合第二章本地 CA 流程，把签名算法换成 ML-DSA）；</li>
+<li><strong>协议协商缺失</strong>：TLS 的 signature_algorithms 扩展对 PQC 的支持在各 TLS 栈中落地不一，混合证书（一张证书两种签名）的 RFC 仍在草案阶段；</li>
+<li><strong>嵌入式&#x2F;IoT</strong>：固件验签若换 SLH-DSA，验签耗时与存储占用都需实测，部分 MCU 直接放不下。</li>
+</ol>
+<h3 id="5-2-务实策略"><a href="#5-2-务实策略" class="headerlink" title="5.2 务实策略"></a>5.2 务实策略</h3><ul>
+<li><strong>密钥交换先行</strong>：它不需要证书体系配合，先把混合 ECDHE 打开，立刻消除「先存后解」风险——这是性价比最高的一步；</li>
+<li><strong>证书分步走</strong>：根&#x2F;中间 CA 签名寿命长、签发量小，可以晚迁（它们被破解影响的是伪造，不是解密存量数据）；但<strong>长寿命设备的固件签名</strong>要早规划；</li>
+<li>内网 mTLS（呼应第九章零信任）可以先于公网 PKI 完成 PQC 化——你自己控制两端，不必等浏览器和公共 CA。</li>
+</ul>
+<hr>
+<h2 id="6-性能开销实测参考"><a href="#6-性能开销实测参考" class="headerlink" title="6. 性能开销实测参考"></a>6. 性能开销实测参考</h2><p>以下为典型 x86_64 服务器（单核，3GHz 级）数量级数据，用于容量规划参考，<strong>以你环境的实测为准</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>X25519</th>
+<th>ML-KEM-768</th>
+<th>倍数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>密钥生成</td>
+<td>~50 µs</td>
+<td>~50 µs</td>
+<td>≈1x</td>
+</tr>
+<tr>
+<td>封装&#x2F;解密</td>
+<td>~70 µs</td>
+<td>~60 µs</td>
+<td>≈1x（计算侧 PQC 不慢）</td>
+</tr>
+<tr>
+<td>握手消息增量</td>
+<td>64 B</td>
+<td>~2.3 KB</td>
+<td><strong>网络侧是主成本</strong></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>Ed25519</th>
+<th>ML-DSA-65</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>签名</td>
+<td>~50 µs</td>
+<td>~150 µs</td>
+<td>慢 3 倍，可接受</td>
+</tr>
+<tr>
+<td>验签</td>
+<td>~120 µs</td>
+<td>~100 µs</td>
+<td>基本持平</td>
+</tr>
+<tr>
+<td>签名尺寸</td>
+<td>64 B</td>
+<td>~3309 B</td>
+<td><strong>尺寸是主成本</strong></td>
+</tr>
+</tbody></table>
+<p><strong>结论</strong>：</p>
+<ul>
+<li>计算性能 ML-KEM 与 X25519 同量级，<strong>CPU 不是瓶颈</strong>；</li>
+<li>真正的成本在<strong>带宽与消息尺寸</strong>：握手包 +2.3 KB，移动端弱网 RTT 敏感的链路要实测；HTTP&#x2F;3（QUIC）对大包 Initial 有放大限制，需关注；</li>
+<li>CDN&#x2F;边缘节点已替你验证过规模化可行性——Cloudflare 全网默认开启，说明开销可控。</li>
+</ul>
+<hr>
+<h2 id="7-分阶段迁移路线图"><a href="#7-分阶段迁移路线图" class="headerlink" title="7. 分阶段迁移路线图"></a>7. 分阶段迁移路线图</h2><pre>
+<code class="mermaid">
+
+flowchart LR
+  P0[阶段0 盘点&lt;br&#x2F;&gt;密码学资产清单] --&gt; P1[阶段1 混合&lt;br&#x2F;&gt;TLS&#x2F;SSH 混合密钥交换]
+  P1 --&gt; P2[阶段2 内网 PQC&lt;br&#x2F;&gt;mTLS&#x2F;代码签名&#x2F;数据加密]
+  P2 --&gt; P3[阶段3 纯 PQC&lt;br&#x2F;&gt;经典算法退役]
+  P0 -.-&gt;|持续| CBOM[密码学敏捷性建设]
+</code>
+</pre>
+
+<h3 id="阶段-0：盘点与敏捷性（现在-6-个月）"><a href="#阶段-0：盘点与敏捷性（现在-6-个月）" class="headerlink" title="阶段 0：盘点与敏捷性（现在 - 6 个月）"></a>阶段 0：盘点与敏捷性（现在 - 6 个月）</h3><ul>
+<li>建 <strong>CBOM（密码学物料清单）</strong>：哪些系统用了 RSA&#x2F;ECDH&#x2F;ECDSA，密钥多长，数据要保密多少年。工具：<code>cryptobom-tool</code>、CodeQL 密码学查询、syft+自定义规则；</li>
+<li>标出<strong>长保密期数据</strong>（医疗、政务、知识产权、身份生物特征）——它们是「先存后解」的头号目标；</li>
+<li>建立<strong>密码学敏捷性（Crypto Agility）</strong>：算法从配置&#x2F;协议协商来，不写死在代码里；TLS 栈、依赖库保持可升级；</li>
+<li>升级基础组件：OpenSSL ≥ 3.5、BoringSSL&#x2F;最新浏览器、支持混合组的负载均衡器。</li>
+</ul>
+<h3 id="阶段-1：混合密钥交换（6-18-个月）"><a href="#阶段-1：混合密钥交换（6-18-个月）" class="headerlink" title="阶段 1：混合密钥交换（6-18 个月）"></a>阶段 1：混合密钥交换（6-18 个月）</h3><ul>
+<li>对外 TLS 终结点开启 <code>X25519MLKEM768</code>（合规场景用 <code>SecP256r1MLKEM768</code>）——Nginx 1.27+&#x2F;HAProxy 3.x + OpenSSL 3.5 即可；</li>
+<li>内部东西向 mTLS 同步开启混合组（与第九章网格落地并行）；</li>
+<li>SSH、VPN（IPSec&#x2F;WireGuard 社区方案）、消息协议逐一覆盖；</li>
+<li>灰度监控：握手失败率、MTU&#x2F;分片异常、老旧客户端兼容性，保留经典组回退。</li>
+</ul>
+<h3 id="阶段-2：签名与数据面（18-36-个月）"><a href="#阶段-2：签名与数据面（18-36-个月）" class="headerlink" title="阶段 2：签名与数据面（18-36 个月）"></a>阶段 2：签名与数据面（18-36 个月）</h3><ul>
+<li>内网 CA 增加 ML-DSA 签发能力，内部服务证书逐步换发；</li>
+<li>代码签名、制品签名（对接第八章 cosign，关注 Sigstore PQC 路线）迁移到 ML-DSA；</li>
+<li>静态数据加密：信封加密的 KEK 轮换支持 PQC 封装；备份归档重新加密或加外层 PQC 封装；</li>
+<li>HSM&#x2F;KMS 换代采购，FIPS 140-3 + PQC 算法认证写入需求书。</li>
+</ul>
+<h3 id="阶段-3：纯-PQC-与经典退役（36-个月-，随标准演进）"><a href="#阶段-3：纯-PQC-与经典退役（36-个月-，随标准演进）" class="headerlink" title="阶段 3：纯 PQC 与经典退役（36 个月+，随标准演进）"></a>阶段 3：纯 PQC 与经典退役（36 个月+，随标准演进）</h3><ul>
+<li>跟踪监管时间表（如美国 CNSA 2.0 要求 2030-2033 年完成迁移；国内关注商用密码相关政策）；</li>
+<li>经典算法先降级为「仅兼容模式」，监控残存调用方；</li>
+<li>最终关闭纯 X25519&#x2F;P-256 组，全链路纯 PQC 或长期混合（业界共识倾向长期保留混合，成本极低）。</li>
+</ul>
+<hr>
+<h2 id="常见坑-FAQ"><a href="#常见坑-FAQ" class="headerlink" title="常见坑 FAQ"></a>常见坑 FAQ</h2><p><strong>Q1：量子计算机不是还很远吗，急什么？</strong><br>「先存后解」让风险前置：今天被录走的流量，保密期覆盖到 CRQC 时代的部分已经实质泄露。且迁移本身要 3-5 年，等你看到量子机新闻再动就晚了。</p>
+<p><strong>Q2：ML-KEM 会不会像某些候选算法一样被攻破？</strong><br>NIST 流程经过 6 年多轮全球公开评审，ML-KEM（Kyber）安全性有充分分析；且混合模式保证了「即使格被攻破，仍有 X25519 兜底」。这正是行业标准要求混合的原因。</p>
+<p><strong>Q3：握手包变大把老客户端打挂怎么办？</strong><br>混合组是<strong>协商制</strong>：不支持的客户端自然回退 X25519&#x2F;P-256。真正要测的是中间件（旧 TLS inspector、防火墙）对大包 ClientHello 的容忍度——灰度+遥测，不要一把梭。</p>
+<p><strong>Q4：国密合规场景怎么选？</strong><br>国内路线是 SM2&#x2F;SM3&#x2F;SM4 体系，后量子方向由中国密码学会与相关标准组织推进，与国际 ML-KEM 体系并行。跨国业务建议架构上做到「算法可插拔」，区域化配置不同的合规算法套件。</p>
+<p><strong>Q5：固件签名用 ML-DSA 还是 SLH-DSA？</strong><br>固件签名寿命极长（设备可能 10 年不更新根信任），且验签失败影响远小于签名被伪造，保守选 <strong>SLH-DSA</strong>（只依赖哈希安全性）；若验签性能或尺寸受限，选 ML-DSA-87 并保留远程换根能力。</p>
+<p><strong>Q6：怎么验证我的站点已经支持混合握手？</strong><br><code>openssl s_client -groups X25519MLKEM768</code> 看协商组；或用 Cloudflare 的检测页、SSL Labs（已标注 PQ 支持）。</p>
+<h2 id="落地清单"><a href="#落地清单" class="headerlink" title="落地清单"></a>落地清单</h2><ul>
+<li><input disabled="" type="checkbox"> 完成 CBOM 密码学资产盘点，标注长保密期数据</li>
+<li><input disabled="" type="checkbox"> 基础组件升级：OpenSSL ≥ 3.5 &#x2F; 最新 TLS 栈</li>
+<li><input disabled="" type="checkbox"> 对外 TLS 开启 X25519MLKEM768 混合组并灰度</li>
+<li><input disabled="" type="checkbox"> 内部 mTLS 网格同步启用混合密钥交换</li>
+<li><input disabled="" type="checkbox"> 中间件&#x2F;防火墙大包 ClientHello 兼容性测试通过</li>
+<li><input disabled="" type="checkbox"> 内网 CA 具备 ML-DSA 签发能力</li>
+<li><input disabled="" type="checkbox"> 代码&#x2F;制品签名 PQC 迁移方案评审</li>
+<li><input disabled="" type="checkbox"> HSM&#x2F;KMS PQC 支持写入采购需求</li>
+<li><input disabled="" type="checkbox"> 静态数据与备份的 PQC 再加密计划排期</li>
+<li><input disabled="" type="checkbox"> 建立算法协商能力（crypto agility），杜绝硬编码</li>
+</ul>
+<h2 id="扩展阅读"><a href="#扩展阅读" class="headerlink" title="扩展阅读"></a>扩展阅读</h2><ul>
+<li>NIST FIPS 203（ML-KEM）：<a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/fips/203/final">https://csrc.nist.gov/pubs/fips/203/final</a></li>
+<li>NIST FIPS 204（ML-DSA）：<a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/fips/204/final">https://csrc.nist.gov/pubs/fips/204/final</a></li>
+<li>NIST FIPS 205（SLH-DSA）：<a target="_blank" rel="noopener" href="https://csrc.nist.gov/pubs/fips/205/final">https://csrc.nist.gov/pubs/fips/205/final</a></li>
+<li>NIST PQC 项目主页：<a target="_blank" rel="noopener" href="https://csrc.nist.gov/projects/post-quantum-cryptography">https://csrc.nist.gov/projects/post-quantum-cryptography</a></li>
+<li>OpenSSL 3.5 PQC 文档：<a target="_blank" rel="noopener" href="https://docs.openssl.org/master/man7/EVP_PKEY-ML-KEM/">https://docs.openssl.org/master/man7/EVP_PKEY-ML-KEM/</a></li>
+<li>Cloudflare PQC 博客系列：<a target="_blank" rel="noopener" href="https://blog.cloudflare.com/post-quantum-for-all/">https://blog.cloudflare.com/post-quantum-for-all/</a></li>
+<li>Apple iMessage PQ3 分析：<a target="_blank" rel="noopener" href="https://security.apple.com/blog/imessage-pq3/">https://security.apple.com/blog/imessage-pq3/</a></li>
+<li>Open Quantum Safe 项目：<a target="_blank" rel="noopener" href="https://openquantumsafe.org/">https://openquantumsafe.org</a></li>
+<li>CNSA 2.0 时间表（NSA）：<a target="_blank" rel="noopener" href="https://www.nsa.gov/Press-Room/News-Highlights/Article/Article/3284203/">https://www.nsa.gov/Press-Room/News-Highlights/Article/Article/3284203/</a></li>
+<li>Mosca 不等式原文：《Cybersecurity in an era with quantum computers》</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%AE%89%E5%85%A8/" rel="tag"># 安全</a>
+              <a href="/tags/%E5%90%8E%E9%87%8F%E5%AD%90%E5%AF%86%E7%A0%81/" rel="tag"># 后量子密码</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/security/09-zero-trust-architecture/" rel="prev" title="第九章：零信任架构落地：身份、设备与持续验证">
+                  <i class="fa fa-angle-left"></i> 第九章：零信任架构落地：身份、设备与持续验证
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/realtime/01-crdt-yjs-collaboration/" rel="next" title="第一章：CRDT 与 Yjs：实时协同编辑的原理与实战">
+                  第一章：CRDT 与 Yjs：实时协同编辑的原理与实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">60:37</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

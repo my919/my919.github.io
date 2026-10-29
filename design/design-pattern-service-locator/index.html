@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="设计模式 · 服务定位器 J2EE 核心模式（非 GoF）。意图 · 结构 · 代码实现 · 应用场景 · 优缺点 · 与依赖注入对比。  1. 模式概述（意图）服务定位器（Service Locator）提供一个中央注册表，客户端通过它查找并获取服务实例——缓存已查到的服务，避免重复创建。 12意图：集中管理服务的查找与缓存，客户端通过定位器获取服务分类：J2EE 模式（非 GoF 23）  2">
+<meta property="og:type" content="article">
+<meta property="og:title" content="服务定位器模式详解（Service Locator）">
+<meta property="og:url" content="https://my919.github.io/design/design-pattern-service-locator/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="设计模式 · 服务定位器 J2EE 核心模式（非 GoF）。意图 · 结构 · 代码实现 · 应用场景 · 优缺点 · 与依赖注入对比。  1. 模式概述（意图）服务定位器（Service Locator）提供一个中央注册表，客户端通过它查找并获取服务实例——缓存已查到的服务，避免重复创建。 12意图：集中管理服务的查找与缓存，客户端通过定位器获取服务分类：J2EE 模式（非 GoF 23）  2">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-14T14:55:00.000Z">
+<meta property="article:modified_time" content="2026-10-29T15:31:07.889Z">
+<meta property="article:author" content="my">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/design/design-pattern-service-locator/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/design/design-pattern-service-locator/","path":"design/design-pattern-service-locator/","title":"服务定位器模式详解（Service Locator）"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>服务定位器模式详解（Service Locator） | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式与机器人</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>音视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 与接口</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具与效率</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端与移动端</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 与平台工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>职业与管理</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测与稳定性</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>云原生与 Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>工程规范与代码质量</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-%C2%B7-%E6%9C%8D%E5%8A%A1%E5%AE%9A%E4%BD%8D%E5%99%A8"><span class="nav-number">1.</span> <span class="nav-text">设计模式 · 服务定位器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A8%A1%E5%BC%8F%E6%A6%82%E8%BF%B0%EF%BC%88%E6%84%8F%E5%9B%BE%EF%BC%89"><span class="nav-number">1.1.</span> <span class="nav-text">1. 模式概述（意图）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E8%A6%81%E8%A7%A3%E5%86%B3%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-number">1.2.</span> <span class="nav-text">2. 要解决的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%BB%93%E6%9E%84%EF%BC%88%E8%A7%92%E8%89%B2%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">3. 结构（角色）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.4.</span> <span class="nav-text">4. 代码实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">1.5.</span> <span class="nav-text">5. 应用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="nav-number">1.6.</span> <span class="nav-text">6. 优缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E4%B8%8E%E4%BE%9D%E8%B5%96%E6%B3%A8%E5%85%A5%E5%AF%B9%E6%AF%94%EF%BC%88%E9%AB%98%E9%A2%91%E8%80%83%E7%82%B9%EF%BC%89"><span class="nav-number">1.7.</span> <span class="nav-text">7. 与依赖注入对比（高频考点）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%B8%B8%E8%A7%81%E8%AF%AF%E7%94%A8%E4%B8%8E%E9%99%B7%E9%98%B1"><span class="nav-number">1.8.</span> <span class="nav-text">8. 常见误用与陷阱</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E9%80%9F%E6%9F%A5%E5%8D%A1%E7%89%87"><span class="nav-number">1.9.</span> <span class="nav-text">9. 速查卡片</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-%E9%80%89%E6%8B%A9%E6%8C%87%E5%8D%97"><span class="nav-number">1.10.</span> <span class="nav-text">10. 选择指南</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">462</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">73</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">421</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/design/design-pattern-service-locator/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="服务定位器模式详解（Service Locator） | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          服务定位器模式详解（Service Locator）
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-09-14 22:55:00" itemprop="dateCreated datePublished" datetime="2026-09-14T22:55:00+08:00">2026-09-14</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">设计模式</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>3.5k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>3 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="设计模式-·-服务定位器"><a href="#设计模式-·-服务定位器" class="headerlink" title="设计模式 · 服务定位器"></a>设计模式 · 服务定位器</h1><blockquote>
+<p>J2EE 核心模式（非 GoF）。意图 · 结构 · 代码实现 · 应用场景 · 优缺点 · 与依赖注入对比。</p>
+</blockquote>
+<h2 id="1-模式概述（意图）"><a href="#1-模式概述（意图）" class="headerlink" title="1. 模式概述（意图）"></a>1. 模式概述（意图）</h2><p><strong>服务定位器（Service Locator）<strong>提供一个</strong>中央注册表</strong>，客户端通过它查找并获取服务实例——<strong>缓存</strong>已查到的服务，避免重复创建。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">意图：集中管理服务的查找与缓存，客户端通过定位器获取服务</span><br><span class="line">分类：J2EE 模式（非 GoF 23）</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-要解决的问题"><a href="#2-要解决的问题" class="headerlink" title="2. 要解决的问题"></a>2. 要解决的问题</h2><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>服务获取逻辑分散</td>
+<td>各处 new&#x2F;初始化服务</td>
+</tr>
+<tr>
+<td>服务创建昂贵</td>
+<td>连接池、客户端对象重复创建</td>
+</tr>
+<tr>
+<td>查找逻辑重复</td>
+<td>每个使用方都要知道怎么拿服务</td>
+</tr>
+</tbody></table>
+<p><strong>典型场景</strong>：JNDI 查找、EJB 容器、老式企业应用、需要”运行时按名字找服务”的框架。</p>
+<h2 id="3-结构（角色）"><a href="#3-结构（角色）" class="headerlink" title="3. 结构（角色）"></a>3. 结构（角色）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ServiceLocator（定位器）── 查找入口 + 缓存</span><br><span class="line">Cache（缓存）── 已获取的服务缓存</span><br><span class="line">InitialContext（上下文）── 真正创建/查找服务（首次）</span><br><span class="line">Service（服务接口）── 业务服务</span><br><span class="line">客户端 ── locator.getService(&quot;name&quot;) → 缓存命中直接返回</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-代码实现"><a href="#4-代码实现" class="headerlink" title="4. 代码实现"></a>4. 代码实现</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 服务接口</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">MessageService</span> &#123;</span><br><span class="line">    <span class="type">void</span> <span class="title function_">send</span><span class="params">(String to, String content)</span>;</span><br><span class="line">    <span class="type">String</span> <span class="title function_">getName</span><span class="params">()</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 具体服务1：短信</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SmsService</span> <span class="keyword">implements</span> <span class="title class_">MessageService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">send</span><span class="params">(String to, String content)</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;[短信] &quot;</span> + to + <span class="string">&quot;: &quot;</span> + content);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">String</span> <span class="title function_">getName</span><span class="params">()</span> &#123; <span class="keyword">return</span> <span class="string">&quot;sms&quot;</span>; &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 具体服务2：邮件（创建昂贵，模拟：构造打日志）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">EmailService</span> <span class="keyword">implements</span> <span class="title class_">MessageService</span> &#123;</span><br><span class="line">    <span class="type">public</span> <span class="title function_">EmailService</span><span class="params">()</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;  [初始化] 创建 EmailService（建立连接池...）&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">void</span> <span class="title function_">send</span><span class="params">(String to, String content)</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;[邮件] &quot;</span> + to + <span class="string">&quot;: &quot;</span> + content);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">String</span> <span class="title function_">getName</span><span class="params">()</span> &#123; <span class="keyword">return</span> <span class="string">&quot;email&quot;</span>; &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4. 初始上下文：首次创建服务（真实查找/创建）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">InitialContext</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">MessageService</span> <span class="title function_">lookup</span><span class="params">(String name)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">switch</span> (name) &#123;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">&quot;sms&quot;</span>   -&gt; <span class="keyword">new</span> <span class="title class_">SmsService</span>();</span><br><span class="line">            <span class="keyword">case</span> <span class="string">&quot;email&quot;</span> -&gt; <span class="keyword">new</span> <span class="title class_">EmailService</span>();</span><br><span class="line">            <span class="keyword">default</span> -&gt; <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">IllegalArgumentException</span>(<span class="string">&quot;未知服务: &quot;</span> + name);</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 5. 服务定位器：查找 + 缓存（核心）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ServiceLocator</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Map</span>&lt;String, MessageService&gt; <span class="variable">CACHE</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">InitialContext</span> <span class="variable">CTX</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">InitialContext</span>();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">MessageService</span> <span class="title function_">getService</span><span class="params">(String name)</span> &#123;</span><br><span class="line">        <span class="type">MessageService</span> <span class="variable">cached</span> <span class="operator">=</span> CACHE.get(name);</span><br><span class="line">        <span class="keyword">if</span> (cached != <span class="literal">null</span>) &#123;</span><br><span class="line">            System.out.println(<span class="string">&quot;[定位器] 命中缓存: &quot;</span> + name);</span><br><span class="line">            <span class="keyword">return</span> cached;                     <span class="comment">// 缓存复用（单例效果）</span></span><br><span class="line">        &#125;</span><br><span class="line">        System.out.println(<span class="string">&quot;[定位器] 首次获取: &quot;</span> + name);</span><br><span class="line">        <span class="type">MessageService</span> <span class="variable">service</span> <span class="operator">=</span> CTX.lookup(name);</span><br><span class="line">        CACHE.put(name, service);              <span class="comment">// 缓存供下次</span></span><br><span class="line">        <span class="keyword">return</span> service;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 6. 客户端：只面向定位器</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Client</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="type">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="type">MessageService</span> <span class="variable">sms</span> <span class="operator">=</span> ServiceLocator.getService(<span class="string">&quot;sms&quot;</span>);</span><br><span class="line">        sms.send(<span class="string">&quot;13800001111&quot;</span>, <span class="string">&quot;验证码 1234&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="type">MessageService</span> <span class="variable">email</span> <span class="operator">=</span> ServiceLocator.getService(<span class="string">&quot;email&quot;</span>);</span><br><span class="line">        email.send(<span class="string">&quot;ops@example.com&quot;</span>, <span class="string">&quot;部署完成&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="type">MessageService</span> <span class="variable">emailAgain</span> <span class="operator">=</span> ServiceLocator.getService(<span class="string">&quot;email&quot;</span>);</span><br><span class="line">        <span class="comment">// 输出 [定位器] 命中缓存: email —— 没有重复创建连接池</span></span><br><span class="line">        emailAgain.send(<span class="string">&quot;admin@example.com&quot;</span>, <span class="string">&quot;再次通知&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-应用场景"><a href="#5-应用场景" class="headerlink" title="5. 应用场景"></a>5. 应用场景</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>JNDI 查找</td>
+<td>Java EE 服务查找</td>
+</tr>
+<tr>
+<td>框架容器</td>
+<td>运行时按名取服务</td>
+</tr>
+<tr>
+<td>多实现选择</td>
+<td>按配置选择服务实现</td>
+</tr>
+<tr>
+<td>客户端缓存</td>
+<td>昂贵的客户端对象复用</td>
+</tr>
+</tbody></table>
+<h2 id="6-优缺点"><a href="#6-优缺点" class="headerlink" title="6. 优缺点"></a>6. 优缺点</h2><table>
+<thead>
+<tr>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>服务获取统一</td>
+<td><strong>隐藏依赖</strong>（代码看不出来用了什么服务）</td>
+</tr>
+<tr>
+<td>缓存提升性能</td>
+<td>测试困难（全局静态缓存）</td>
+</tr>
+<tr>
+<td>按名查找灵活</td>
+<td>违反依赖倒置（依赖定位器而非接口）</td>
+</tr>
+<tr>
+<td>实现简单</td>
+<td>定位器易成”上帝对象”</td>
+</tr>
+</tbody></table>
+<h2 id="7-与依赖注入对比（高频考点）"><a href="#7-与依赖注入对比（高频考点）" class="headerlink" title="7. 与依赖注入对比（高频考点）"></a>7. 与依赖注入对比（高频考点）</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>服务定位器</th>
+<th>依赖注入（DI）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>依赖可见性</td>
+<td>代码内查找（隐藏）</td>
+<td>构造器&#x2F;注解声明（显式）</td>
+</tr>
+<tr>
+<td>测试</td>
+<td>难（全局状态）</td>
+<td>易（注入 mock）</td>
+</tr>
+<tr>
+<td>反转</td>
+<td>客户端主动找（弱反转）</td>
+<td>容器注入（强反转）</td>
+</tr>
+<tr>
+<td>现代实践</td>
+<td>老式方案</td>
+<td><strong>现代首选</strong>（Spring 容器）</td>
+</tr>
+</tbody></table>
+<p><strong>结论</strong>：新项目一律用 DI（Spring IoC 容器），服务定位器只出现在遗留系统。</p>
+<h2 id="8-常见误用与陷阱"><a href="#8-常见误用与陷阱" class="headerlink" title="8. 常见误用与陷阱"></a>8. 常见误用与陷阱</h2><table>
+<thead>
+<tr>
+<th>坑</th>
+<th>现象</th>
+<th>解法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>隐藏依赖导致不可测</td>
+<td>类内部 <code>ServiceLocator.get(&quot;x&quot;)</code>，单测不读源码不知道要 mock 什么</td>
+<td>依赖走构造器注入、测试传 mock；定位器只留在组合根</td>
+</tr>
+<tr>
+<td>与依赖注入取舍失当</td>
+<td>新 Spring 项目仍手写静态定位器，放弃容器能力</td>
+<td>能用容器注入就不用定位器；仅「运行时按名动态选择」保留注册表</td>
+</tr>
+<tr>
+<td>定位器变全局可变注册表</td>
+<td>任意代码都能 register&#x2F;put，服务在运行时被悄悄替换</td>
+<td>注册表启动期一次性填充、只暴露查找；禁止运行时 mutate</td>
+</tr>
+<tr>
+<td>缓存有状态服务</td>
+<td>静态缓存的实例带成员变量，并发请求共享后串数据</td>
+<td>缓存只放无状态单例；有状态对象交容器按作用域管理</td>
+</tr>
+<tr>
+<td>查找失败返回 null</td>
+<td>未知服务名返回 null，调用方漏判再次 NPE</td>
+<td>未知名字快速失败抛异常，或显式返回 Optional</td>
+</tr>
+</tbody></table>
+<h2 id="9-速查卡片"><a href="#9-速查卡片" class="headerlink" title="9. 速查卡片"></a>9. 速查卡片</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">一句话：按名字从中央注册表取服务，顺手缓存昂贵对象</span><br><span class="line">信号：各处重复 new 带连接池的客户端，或满屏 JNDI lookup</span><br><span class="line">边界：它让依赖从函数签名里消失——可测性代价要认账</span><br><span class="line">易踩：静态 Map 谁都能改、缓存有状态服务、测试间互相污染</span><br><span class="line">框架版：Spring 容器就是更好的定位器，优先构造器注入</span><br></pre></td></tr></table></figure>
+
+<h2 id="10-选择指南"><a href="#10-选择指南" class="headerlink" title="10. 选择指南"></a>10. 选择指南</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">新项目/Spring 项目 → 依赖注入（@Autowired/构造器注入）</span><br><span class="line">遗留系统（EJB/JNDI）→ 服务定位器</span><br><span class="line">需要运行时按名选择服务 → 定位器思想（注册表）+ DI 组合</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/design/design-pattern-intercepting-filter/" rel="prev" title="拦截过滤器模式详解（Intercepting Filter）">
+                  <i class="fa fa-angle-left"></i> 拦截过滤器模式详解（Intercepting Filter）
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/performance/api-performance-guide/" rel="next" title="接口性能优化实战">
+                  接口性能优化实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">60:37</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

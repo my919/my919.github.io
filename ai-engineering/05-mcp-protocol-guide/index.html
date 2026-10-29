@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第六章：MCP 协议实战：从原理到 Server 开发 MCP（Model Context Protocol）是 Anthropic 于 2024 年底开源的”AI 工具接入标准”，用一套协议统一了 LLM 应用与外部工具、数据源、提示词之间的连接方式——本章从协议原理讲到用 TypeScript SDK 与 Python FastMCP 各写一个可上线的 MCP Server。  本章导读">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第六章：MCP 协议实战：从原理到 Server 开发">
+<meta property="og:url" content="https://my919.github.io/ai-engineering/05-mcp-protocol-guide/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第六章：MCP 协议实战：从原理到 Server 开发 MCP（Model Context Protocol）是 Anthropic 于 2024 年底开源的”AI 工具接入标准”，用一套协议统一了 LLM 应用与外部工具、数据源、提示词之间的连接方式——本章从协议原理讲到用 TypeScript SDK 与 Python FastMCP 各写一个可上线的 MCP Server。  本章导读">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-10-28T00:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-29T15:31:07.837Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="AI">
+<meta property="article:tag" content="MCP">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/ai-engineering/05-mcp-protocol-guide/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/ai-engineering/05-mcp-protocol-guide/","path":"ai-engineering/05-mcp-protocol-guide/","title":"第六章：MCP 协议实战：从原理到 Server 开发"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第六章：MCP 协议实战：从原理到 Server 开发 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式与机器人</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>音视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 与接口</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具与效率</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端与移动端</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 与平台工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>职业与管理</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测与稳定性</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>云原生与 Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>工程规范与代码质量</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%85%AD%E7%AB%A0%EF%BC%9AMCP-%E5%8D%8F%E8%AE%AE%E5%AE%9E%E6%88%98%EF%BC%9A%E4%BB%8E%E5%8E%9F%E7%90%86%E5%88%B0-Server-%E5%BC%80%E5%8F%91"><span class="nav-number">1.</span> <span class="nav-text">第六章：MCP 协议实战：从原理到 Server 开发</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.1.</span> <span class="nav-text">本章导读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-MCP-%E8%A7%A3%E5%86%B3%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="nav-number">1.2.</span> <span class="nav-text">1. MCP 解决什么问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%8D%8F%E8%AE%AE%E6%9E%B6%E6%9E%84%EF%BC%9AHost-Client-Server"><span class="nav-number">1.3.</span> <span class="nav-text">2. 协议架构：Host &#x2F; Client &#x2F; Server</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E4%BC%A0%E8%BE%93%E5%B1%82%E4%B8%8E-JSON-RPC-%E6%B6%88%E6%81%AF"><span class="nav-number">1.4.</span> <span class="nav-text">3. 传输层与 JSON-RPC 消息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E4%B8%89%E5%A4%A7%E5%8E%9F%E8%AF%AD%EF%BC%9ATools-Resources-Prompts"><span class="nav-number">1.5.</span> <span class="nav-text">4. 三大原语：Tools &#x2F; Resources &#x2F; Prompts</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-TypeScript-SDK-%E5%AE%9E%E6%88%98%EF%BC%9A%E5%AE%8C%E6%95%B4-MCP-Server"><span class="nav-number">1.6.</span> <span class="nav-text">5. TypeScript SDK 实战：完整 MCP Server</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-Python-FastMCP-%E5%AE%9E%E6%88%98"><span class="nav-number">1.7.</span> <span class="nav-text">6. Python FastMCP 实战</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E4%B8%8E-Claude-Desktop-Cursor-%E9%9B%86%E6%88%90"><span class="nav-number">1.8.</span> <span class="nav-text">7. 与 Claude Desktop &#x2F; Cursor 集成</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E6%9D%83%E9%99%90%E4%B8%8E%E5%AE%89%E5%85%A8%E8%BE%B9%E7%95%8C"><span class="nav-number">1.9.</span> <span class="nav-text">8. 权限与安全边界</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E7%94%9F%E6%80%81%E7%9B%98%E7%82%B9"><span class="nav-number">1.10.</span> <span class="nav-text">9. 生态盘点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91-FAQ"><span class="nav-number">1.11.</span> <span class="nav-text">常见坑 FAQ</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E5%AE%9E%E8%B7%B5%E6%B8%85%E5%8D%95"><span class="nav-number">1.12.</span> <span class="nav-text">生产实践清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB"><span class="nav-number">1.13.</span> <span class="nav-text">扩展阅读</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">462</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">73</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">421</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/ai-engineering/05-mcp-protocol-guide/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第六章：MCP 协议实战：从原理到 Server 开发 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第六章：MCP 协议实战：从原理到 Server 开发
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-10-28 08:00:00" itemprop="dateCreated datePublished" datetime="2026-10-28T08:00:00+08:00">2026-10-28</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/AI-%E5%B7%A5%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">AI 工程</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>10k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>9 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第六章：MCP-协议实战：从原理到-Server-开发"><a href="#第六章：MCP-协议实战：从原理到-Server-开发" class="headerlink" title="第六章：MCP 协议实战：从原理到 Server 开发"></a>第六章：MCP 协议实战：从原理到 Server 开发</h1><blockquote>
+<p>MCP（Model Context Protocol）是 Anthropic 于 2024 年底开源的”AI 工具接入标准”，用一套协议统一了 LLM 应用与外部工具、数据源、提示词之间的连接方式——本章从协议原理讲到用 TypeScript SDK 与 Python FastMCP 各写一个可上线的 MCP Server。</p>
+</blockquote>
+<h2 id="本章导读"><a href="#本章导读" class="headerlink" title="本章导读"></a>本章导读</h2><table>
+<thead>
+<tr>
+<th>章节</th>
+<th>主题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/ai-engineering/01-agent-intro-core-concepts/">第一章：AI Agent 入门与核心概念</a></td>
+<td>Agent 的组成与 ReAct 范式</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/02-agent-frameworks-practice/">第二章：Agent 框架实战</a></td>
+<td>LangChain &#x2F; LangGraph 落地</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/03-agent-tool-calling-orchestration/">第三章：Agent 工具调用与函数编排</a></td>
+<td>Function Calling 原理</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/04-agent-production-engineering/">第四章：Agent 生产化与工程实践</a></td>
+<td>可观测与稳定性</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/04-rag-vector-retrieval-practice/">第五章：RAG 与向量检索实战</a></td>
+<td>RAG 检索链路</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/05-mcp-protocol-guide/">第六章：MCP 协议实战：从原理到 Server 开发</a></td>
+<td>本章</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/06-coding-agent-workflow/">第七章：Coding Agent 工作流</a></td>
+<td>AI 编程落地</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/07-llm-inference-deployment/">第八章：LLM 推理与部署</a></td>
+<td>vLLM 与量化</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/08-llm-finetuning-practice/">第九章：LLM 微调实战</a></td>
+<td>LoRA &#x2F; DPO</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/09-dify-n8n-ai-orchestration/">第十章：AI 应用编排</a></td>
+<td>Dify 与 n8n</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/10-ai-gateway-guide/">第十一章：AI 网关</a></td>
+<td>路由与成本治理</td>
+</tr>
+</tbody></table>
+<p>在<a href="/ai-engineering/03-agent-tool-calling-orchestration/">第三章</a>里我们实现了 Function Calling，但每接一个工具都要在应用里手写胶水代码；MCP 把这件事标准化为”<strong>任何 Host 都能插任何 Server</strong>“，如同 USB-C 之于外设。</p>
+<hr>
+<h2 id="1-MCP-解决什么问题"><a href="#1-MCP-解决什么问题" class="headerlink" title="1. MCP 解决什么问题"></a>1. MCP 解决什么问题</h2><p>没有 MCP 之前，接入 N 个工具到 M 个 AI 应用是 <strong>M×N</strong> 的适配矩阵；MCP 之后变成 <strong>M+N</strong>：工具方只写一次 MCP Server，应用方只实现一次 MCP Client。</p>
+<ul>
+<li><strong>统一协议</strong>：工具列表、入参 Schema、调用结果、错误码都有标准格式。</li>
+<li><strong>动态发现</strong>：Host 启动时向 Server 询问”你有什么能力”，无需硬编码。</li>
+<li><strong>双向能力</strong>：Server 不仅能提供工具，还能反向请求 LLM 采样（Sampling）、向用户征求确认（Elicitation）。</li>
+<li><strong>安全边界清晰</strong>：工具运行在 Server 进程里，凭据不进入 LLM 上下文。</li>
+</ul>
+<p>适用场景判断：工具会被<strong>多个 Host 复用</strong>、或要<strong>分发给第三方</strong>时用 MCP；只在一个 LangChain 应用内部用的工具，直接写 Function 更简单。</p>
+<h2 id="2-协议架构：Host-Client-Server"><a href="#2-协议架构：Host-Client-Server" class="headerlink" title="2. 协议架构：Host &#x2F; Client &#x2F; Server"></a>2. 协议架构：Host &#x2F; Client &#x2F; Server</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  subgraph Host[&quot;Host 进程（如 Claude Desktop / Cursor）&quot;]</span><br><span class="line">    direction TB</span><br><span class="line">    UI[聊天 UI] --&gt; C1[Client A]</span><br><span class="line">    UI --&gt; C2[Client B]</span><br><span class="line">    UI --&gt; C3[Client C]</span><br><span class="line">  end</span><br><span class="line">  C1 &lt;--&gt;|stdio| S1[本地 MCP Server&lt;br/&gt;文件系统]</span><br><span class="line">  C2 &lt;--&gt;|Streamable HTTP| S2[远程 MCP Server&lt;br/&gt;公司内部 API]</span><br><span class="line">  C3 &lt;--&gt;|stdio| S3[本地 MCP Server&lt;br/&gt;Git]</span><br></pre></td></tr></table></figure>
+
+<p>三个角色的职责：</p>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>职责</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Host</strong></td>
+<td>承载 LLM 与用户交互，管理生命周期与权限</td>
+<td>Claude Desktop、Cursor、VS Code</td>
+</tr>
+<tr>
+<td><strong>Client</strong></td>
+<td>Host 内部组件，与某个 Server 保持 1:1 会话</td>
+<td><code>mcp.ClientSession</code></td>
+</tr>
+<tr>
+<td><strong>Server</strong></td>
+<td>暴露 Tools &#x2F; Resources &#x2F; Prompts</td>
+<td>你写的工具进程</td>
+</tr>
+</tbody></table>
+<p>关键设计：<strong>Client 与 Server 是 1:1 的</strong>。一个 Host 接三个 Server，就起三个 Client。这样做让权限隔离、错误隔离、能力协商都按 Server 粒度进行。</p>
+<h2 id="3-传输层与-JSON-RPC-消息"><a href="#3-传输层与-JSON-RPC-消息" class="headerlink" title="3. 传输层与 JSON-RPC 消息"></a>3. 传输层与 JSON-RPC 消息</h2><p>MCP 消息格式是 <strong>JSON-RPC 2.0</strong>，只有三种报文：Request（带 id）、Response（带 id）、Notification（不带 id）。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;jsonrpc&quot;</span><span class="punctuation">:</span> <span class="string">&quot;2.0&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;id&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;method&quot;</span><span class="punctuation">:</span> <span class="string">&quot;tools/call&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;params&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;name&quot;</span><span class="punctuation">:</span> <span class="string">&quot;read_file&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;arguments&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;path&quot;</span><span class="punctuation">:</span> <span class="string">&quot;/etc/hosts&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>三种官方传输方式：</p>
+<table>
+<thead>
+<tr>
+<th>传输</th>
+<th>适用</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>stdio</strong></td>
+<td>本地子进程</td>
+<td>Host 拉起 Server 子进程，走标准输入输出；零网络配置，最常用</td>
+</tr>
+<tr>
+<td><strong>SSE（已废弃）</strong></td>
+<td>远程</td>
+<td>2024 版规范，HTTP POST 发请求 + SSE 推回包；被 Streamable HTTP 取代</td>
+</tr>
+<tr>
+<td><strong>Streamable HTTP</strong></td>
+<td>远程</td>
+<td>单端点 POST&#x2F;GET，可选升级为 SSE 流；支持无状态水平扩容</td>
+</tr>
+</tbody></table>
+<p><strong>握手流程</strong>（生命周期三个阶段）：</p>
+<ol>
+<li><strong>初始化</strong>：Client 发 <code>initialize</code>（携带协议版本、自身能力）→ Server 回 <code>InitializeResult</code>（携带 <code>serverInfo</code>、能力清单）→ Client 发 <code>notifications/initialized</code>。</li>
+<li><strong>运行期</strong>：<code>tools/list</code>、<code>tools/call</code>、<code>resources/read</code>、<code>prompts/get</code>，以及 Server 反向发起的 <code>sampling/createMessage</code>。</li>
+<li><strong>关闭</strong>：stdio 下关闭子进程；HTTP 下关闭会话。</li>
+</ol>
+<p>版本协商很重要：Client 报 <code>protocolVersion: &quot;2025-06-18&quot;</code>，Server 若不支持需返回自己支持的版本，双方取交集；谈不拢必须报错而不是静默降级。</p>
+<h2 id="4-三大原语：Tools-Resources-Prompts"><a href="#4-三大原语：Tools-Resources-Prompts" class="headerlink" title="4. 三大原语：Tools &#x2F; Resources &#x2F; Prompts"></a>4. 三大原语：Tools &#x2F; Resources &#x2F; Prompts</h2><table>
+<thead>
+<tr>
+<th>原语</th>
+<th>控制方</th>
+<th>类比</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Tools</strong></td>
+<td>模型决定调用</td>
+<td>POST 接口</td>
+<td>有副作用或可计算的动作：查库、发消息、跑命令</td>
+</tr>
+<tr>
+<td><strong>Resources</strong></td>
+<td>应用&#x2F;用户选择</td>
+<td>GET 接口</td>
+<td>只读上下文：文件内容、数据库行、日志</td>
+</tr>
+<tr>
+<td><strong>Prompts</strong></td>
+<td>用户触发</td>
+<td>模板</td>
+<td>预置提示词模板，可带参数插值</td>
+</tr>
+</tbody></table>
+<p><strong>Tool 定义</strong>示例（<code>tools/list</code> 返回）：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;name&quot;</span><span class="punctuation">:</span> <span class="string">&quot;query_orders&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;description&quot;</span><span class="punctuation">:</span> <span class="string">&quot;按手机号查询最近订单，最多返回 10 条&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;inputSchema&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;object&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;properties&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;phone&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;string&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;pattern&quot;</span><span class="punctuation">:</span> <span class="string">&quot;^1[0-9]&#123;10&#125;$&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;required&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;phone&quot;</span><span class="punctuation">]</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Resource</strong> 用 URI 寻址，如 <code>file:///project/README.md</code>、<code>postgres://db/users/42</code>；支持模板 URI（<code>file:///{path}</code>）让 Server 暴露一族资源。</p>
+<p><strong>Prompt</strong> 示例：<code>prompts/get</code> 传 <code>name: &quot;code_review&quot;</code>、<code>arguments: {lang: &quot;python&quot;}</code>，Server 返回拼好的 messages 列表，Host 直接塞进对话。</p>
+<p><strong>Roots</strong> 是另一个容易被忽略的机制：Host 告诉 Server “我被授权访问的根目录是 <code>/project</code>“，文件类 Server 据此限定操作范围，防止越权读写。</p>
+<h2 id="5-TypeScript-SDK-实战：完整-MCP-Server"><a href="#5-TypeScript-SDK-实战：完整-MCP-Server" class="headerlink" title="5. TypeScript SDK 实战：完整 MCP Server"></a>5. TypeScript SDK 实战：完整 MCP Server</h2><p>安装与初始化：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">npm init -y</span><br><span class="line">npm install @modelcontextprotocol/sdk zod</span><br><span class="line">npm install -D typescript tsx</span><br><span class="line">npx tsc --init</span><br></pre></td></tr></table></figure>
+
+<p><code>src/server.ts</code>——一个带工具、资源、Prompt 的文件笔记 Server：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; <span class="title class_">McpServer</span> &#125; <span class="keyword">from</span> <span class="string">&quot;@modelcontextprotocol/sdk/server/mcp.js&quot;</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; <span class="title class_">StdioServerTransport</span> &#125; <span class="keyword">from</span> <span class="string">&quot;@modelcontextprotocol/sdk/server/stdio.js&quot;</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; z &#125; <span class="keyword">from</span> <span class="string">&quot;zod&quot;</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; readFile, writeFile, readdir &#125; <span class="keyword">from</span> <span class="string">&quot;node:fs/promises&quot;</span>;</span><br><span class="line"><span class="keyword">import</span> path <span class="keyword">from</span> <span class="string">&quot;node:path&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> <span class="variable constant_">NOTES_DIR</span> = process.<span class="property">env</span>.<span class="property">NOTES_DIR</span> ?? <span class="string">&quot;./notes&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> server = <span class="keyword">new</span> <span class="title class_">McpServer</span>(&#123;</span><br><span class="line">  <span class="attr">name</span>: <span class="string">&quot;notes-server&quot;</span>,</span><br><span class="line">  <span class="attr">version</span>: <span class="string">&quot;1.0.0&quot;</span>,</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="comment">// ---- Tool：写笔记 ----</span></span><br><span class="line">server.<span class="title function_">registerTool</span>(</span><br><span class="line">  <span class="string">&quot;create_note&quot;</span>,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="attr">title</span>: <span class="string">&quot;创建笔记&quot;</span>,</span><br><span class="line">    <span class="attr">description</span>: <span class="string">&quot;在笔记目录下创建一个 Markdown 文件&quot;</span>,</span><br><span class="line">    <span class="attr">inputSchema</span>: &#123;</span><br><span class="line">      <span class="attr">title</span>: z.<span class="title function_">string</span>().<span class="title function_">min</span>(<span class="number">1</span>).<span class="title function_">max</span>(<span class="number">80</span>),</span><br><span class="line">      <span class="attr">content</span>: z.<span class="title function_">string</span>(),</span><br><span class="line">    &#125;,</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="title function_">async</span> (&#123; title, content &#125;) =&gt; &#123;</span><br><span class="line">    <span class="keyword">const</span> safe = title.<span class="title function_">replace</span>(<span class="regexp">/[^\w\u4e00-\u9fa5-]/g</span>, <span class="string">&quot;_&quot;</span>);</span><br><span class="line">    <span class="keyword">const</span> file = path.<span class="title function_">join</span>(<span class="variable constant_">NOTES_DIR</span>, <span class="string">`<span class="subst">$&#123;safe&#125;</span>.md`</span>);</span><br><span class="line">    <span class="keyword">await</span> <span class="title function_">writeFile</span>(file, content, <span class="string">&quot;utf-8&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> &#123;</span><br><span class="line">      <span class="attr">content</span>: [&#123; <span class="attr">type</span>: <span class="string">&quot;text&quot;</span>, <span class="attr">text</span>: <span class="string">`已创建笔记：<span class="subst">$&#123;file&#125;</span>`</span> &#125;],</span><br><span class="line">    &#125;;</span><br><span class="line">  &#125;</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="comment">// ---- Tool：列出笔记 ----</span></span><br><span class="line">server.<span class="title function_">registerTool</span>(</span><br><span class="line">  <span class="string">&quot;list_notes&quot;</span>,</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="attr">title</span>: <span class="string">&quot;列出笔记&quot;</span>,</span><br><span class="line">    <span class="attr">description</span>: <span class="string">&quot;返回笔记目录下全部 .md 文件名&quot;</span>,</span><br><span class="line">    <span class="attr">inputSchema</span>: &#123;&#125;,</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="title function_">async</span> () =&gt; &#123;</span><br><span class="line">    <span class="keyword">const</span> files = (<span class="keyword">await</span> <span class="title function_">readdir</span>(<span class="variable constant_">NOTES_DIR</span>)).<span class="title function_">filter</span>(<span class="function">(<span class="params">f</span>) =&gt;</span> f.<span class="title function_">endsWith</span>(<span class="string">&quot;.md&quot;</span>));</span><br><span class="line">    <span class="keyword">return</span> &#123;</span><br><span class="line">      <span class="attr">content</span>: [&#123; <span class="attr">type</span>: <span class="string">&quot;text&quot;</span>, <span class="attr">text</span>: <span class="title class_">JSON</span>.<span class="title function_">stringify</span>(files, <span class="literal">null</span>, <span class="number">2</span>) &#125;],</span><br><span class="line">    &#125;;</span><br><span class="line">  &#125;</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="comment">// ---- Resource：读笔记 ----</span></span><br><span class="line">server.<span class="title function_">registerResource</span>(</span><br><span class="line">  <span class="string">&quot;note&quot;</span>,</span><br><span class="line">  <span class="string">&quot;note://&#123;title&#125;&quot;</span>,</span><br><span class="line">  &#123; <span class="attr">description</span>: <span class="string">&quot;按标题读取笔记内容&quot;</span> &#125;,</span><br><span class="line">  <span class="title function_">async</span> (uri) =&gt; &#123;</span><br><span class="line">    <span class="keyword">const</span> title = uri.<span class="property">pathname</span>.<span class="title function_">replace</span>(<span class="regexp">/^\//</span>, <span class="string">&quot;&quot;</span>);</span><br><span class="line">    <span class="keyword">const</span> file = path.<span class="title function_">join</span>(<span class="variable constant_">NOTES_DIR</span>, <span class="string">`<span class="subst">$&#123;title&#125;</span>.md`</span>);</span><br><span class="line">    <span class="keyword">const</span> text = <span class="keyword">await</span> <span class="title function_">readFile</span>(file, <span class="string">&quot;utf-8&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> &#123;</span><br><span class="line">      <span class="attr">contents</span>: [&#123; <span class="attr">uri</span>: uri.<span class="property">href</span>, <span class="attr">mimeType</span>: <span class="string">&quot;text/markdown&quot;</span>, text &#125;],</span><br><span class="line">    &#125;;</span><br><span class="line">  &#125;</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="comment">// ---- Prompt：笔记总结模板 ----</span></span><br><span class="line">server.<span class="title function_">registerPrompt</span>(</span><br><span class="line">  <span class="string">&quot;summarize_notes&quot;</span>,</span><br><span class="line">  &#123; <span class="attr">description</span>: <span class="string">&quot;总结某篇笔记并给出行动项&quot;</span> &#125;,</span><br><span class="line">  <span class="title function_">async</span> () =&gt; (&#123;</span><br><span class="line">    <span class="attr">messages</span>: [</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="attr">role</span>: <span class="string">&quot;user&quot;</span>,</span><br><span class="line">        <span class="attr">content</span>: &#123;</span><br><span class="line">          <span class="attr">type</span>: <span class="string">&quot;text&quot;</span>,</span><br><span class="line">          <span class="attr">text</span>: <span class="string">&quot;请阅读 note:// 指定的笔记，输出 3 条要点和 2 个行动项。&quot;</span>,</span><br><span class="line">        &#125;,</span><br><span class="line">      &#125;,</span><br><span class="line">    ],</span><br><span class="line">  &#125;)</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> transport = <span class="keyword">new</span> <span class="title class_">StdioServerTransport</span>();</span><br><span class="line"><span class="keyword">await</span> server.<span class="title function_">connect</span>(transport);</span><br><span class="line"><span class="variable language_">console</span>.<span class="title function_">error</span>(<span class="string">&quot;notes-server running on stdio&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>要点：</p>
+<ul>
+<li>日志只能写 <strong>stderr</strong>，stdout 被协议占用，任何 <code>console.log</code> 都会污染 JSON-RPC 通道。</li>
+<li>工具返回 <code>{content: [...]}</code>，每个元素是 <code>text</code> &#x2F; <code>image</code> &#x2F; <code>resource</code> 类型；报错返回 <code>{isError: true, content: [...]}</code>，不要直接 throw 裸错误给模型。</li>
+<li>入参用 zod 声明，SDK 会自动生成 JSON Schema 并校验。</li>
+</ul>
+<p>本地调试：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">npx tsx src/server.ts            <span class="comment"># 直接跑</span></span><br><span class="line">npx @modelcontextprotocol/inspector npx tsx src/server.ts   <span class="comment"># 官方调试器</span></span><br></pre></td></tr></table></figure>
+
+<p>Inspector 会起一个 Web UI，可以交互式列工具、发调用、看原始 JSON-RPC 报文，是开发期必备。</p>
+<h2 id="6-Python-FastMCP-实战"><a href="#6-Python-FastMCP-实战" class="headerlink" title="6. Python FastMCP 实战"></a>6. Python FastMCP 实战</h2><p>FastMCP 2.x 是 Python 生态事实标准，装饰器风格，几行就能起一个 Server：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pip install fastmcp</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># weather_server.py</span></span><br><span class="line"><span class="keyword">from</span> fastmcp <span class="keyword">import</span> FastMCP</span><br><span class="line"><span class="keyword">import</span> httpx</span><br><span class="line"></span><br><span class="line">mcp = FastMCP(<span class="string">&quot;weather-server&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="meta">@mcp.tool</span></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">get_weather</span>(<span class="params">city: <span class="built_in">str</span>, days: <span class="built_in">int</span> = <span class="number">1</span></span>) -&gt; <span class="built_in">dict</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;查询城市未来天气。</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    Args:</span></span><br><span class="line"><span class="string">        city: 城市名，如 &quot;杭州&quot;</span></span><br><span class="line"><span class="string">        days: 预报天数，1-7</span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line">    days = <span class="built_in">max</span>(<span class="number">1</span>, <span class="built_in">min</span>(days, <span class="number">7</span>))</span><br><span class="line">    <span class="keyword">async</span> <span class="keyword">with</span> httpx.AsyncClient(timeout=<span class="number">10</span>) <span class="keyword">as</span> client:</span><br><span class="line">        resp = <span class="keyword">await</span> client.get(</span><br><span class="line">            <span class="string">&quot;https://wttr.in/&quot;</span> + city,</span><br><span class="line">            params=&#123;<span class="string">&quot;format&quot;</span>: <span class="string">&quot;j1&quot;</span>&#125;,</span><br><span class="line">        )</span><br><span class="line">        resp.raise_for_status()</span><br><span class="line">        data = resp.json()</span><br><span class="line">    current = data[<span class="string">&quot;current_condition&quot;</span>][<span class="number">0</span>]</span><br><span class="line">    <span class="keyword">return</span> &#123;</span><br><span class="line">        <span class="string">&quot;city&quot;</span>: city,</span><br><span class="line">        <span class="string">&quot;temp_c&quot;</span>: current[<span class="string">&quot;temp_C&quot;</span>],</span><br><span class="line">        <span class="string">&quot;desc&quot;</span>: current[<span class="string">&quot;weatherDesc&quot;</span>][<span class="number">0</span>][<span class="string">&quot;value&quot;</span>],</span><br><span class="line">        <span class="string">&quot;forecast_days&quot;</span>: days,</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@mcp.resource(<span class="params"><span class="string">&quot;config://limits&quot;</span></span>)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">rate_limits</span>() -&gt; <span class="built_in">str</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;本 Server 的调用限额说明&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;每 Host 每分钟最多 20 次调用&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@mcp.prompt</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">travel_plan</span>(<span class="params">city: <span class="built_in">str</span></span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;生成行程规划提示词&quot;&quot;&quot;</span></span><br><span class="line">    <span class="keyword">return</span> <span class="string">f&quot;结合 <span class="subst">&#123;city&#125;</span> 未来 3 天天气，给出穿衣和行程建议。&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&quot;__main__&quot;</span>:</span><br><span class="line">    mcp.run(transport=<span class="string">&quot;stdio&quot;</span>)          <span class="comment"># 本地 stdio</span></span><br><span class="line">    <span class="comment"># mcp.run(transport=&quot;http&quot;, port=8000)  # Streamable HTTP</span></span><br></pre></td></tr></table></figure>
+
+<p>FastMCP 会自动从<strong>函数签名 + docstring</strong> 推导工具名、描述和入参 Schema，docstring 质量直接决定模型用得对不对——把 <code>Args:</code> 写清楚比改 prompt 更有效。</p>
+<p>远程部署时改用 HTTP 传输，前面挂 Nginx 做 TLS 与鉴权：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mcp.run(transport=<span class="string">&quot;http&quot;</span>, host=<span class="string">&quot;0.0.0.0&quot;</span>, port=<span class="number">8000</span>, path=<span class="string">&quot;/mcp&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h2 id="7-与-Claude-Desktop-Cursor-集成"><a href="#7-与-Claude-Desktop-Cursor-集成" class="headerlink" title="7. 与 Claude Desktop &#x2F; Cursor 集成"></a>7. 与 Claude Desktop &#x2F; Cursor 集成</h2><p><strong>Claude Desktop</strong> 配置（<code>%APPDATA%\Claude\claude_desktop_config.json</code>）：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;mcpServers&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;notes&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;command&quot;</span><span class="punctuation">:</span> <span class="string">&quot;npx&quot;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;args&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;tsx&quot;</span><span class="punctuation">,</span> <span class="string">&quot;G:/projects/notes-mcp/src/server.ts&quot;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;env&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;NOTES_DIR&quot;</span><span class="punctuation">:</span> <span class="string">&quot;G:/notes&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;weather&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;command&quot;</span><span class="punctuation">:</span> <span class="string">&quot;python&quot;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;args&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;G:/projects/weather-mcp/weather_server.py&quot;</span><span class="punctuation">]</span></span><br><span class="line">    <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;internal-api&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;url&quot;</span><span class="punctuation">:</span> <span class="string">&quot;https://mcp.internal.example.com/mcp&quot;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;headers&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;Authorization&quot;</span><span class="punctuation">:</span> <span class="string">&quot;Bearer $&#123;INTERNAL_TOKEN&#125;&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Cursor</strong>：<code>~/.cursor/mcp.json</code> 格式相同；也可以在项目根放 <code>.cursor/mcp.json</code> 做项目级 Server。改完配置需重启 Host；工具列表是<strong>启动时拉取的</strong>，Server 端改了工具签名必须重启生效。</p>
+<p>验证步骤：重启后看设置页 MCP 面板是否绿灯 → 在对话里问”列出我的笔记” → 观察是否弹出工具调用确认。失败排查先看 Host 的 MCP 日志（Claude Desktop 在 <code>logs/mcp-server-*.log</code>）。</p>
+<h2 id="8-权限与安全边界"><a href="#8-权限与安全边界" class="headerlink" title="8. 权限与安全边界"></a>8. 权限与安全边界</h2><p>MCP 把”模型能做什么”变成可治理的工程问题：</p>
+<ol>
+<li><strong>用户确认（Human-in-the-loop）</strong>：Host 应在工具调用前展示工具名与参数，写操作必须显式确认。不要把”始终允许”当默认值。</li>
+<li><strong>Roots 限定</strong>：文件类 Server 只接受 Host 声明的根目录之内的路径，Server 侧还要自己做 <code>path.resolve</code> 后的前缀校验，防 <code>../</code> 逃逸。</li>
+<li><strong>凭据隔离</strong>：API Key 放 Server 环境变量，绝不作为工具入参让模型传——模型上下文可能被泄露到日志。</li>
+<li><strong>输入校验即注入防线</strong>：工具入参是”模型生成的字符串”，一律按不可信输入处理：SQL 用参数化、Shell 禁拼接、路径做白名单。</li>
+<li><strong>远程 Server 鉴权</strong>：Streamable HTTP 端点必须加 Bearer Token 或 OAuth 2.1（新版规范内置）；公网裸奔等于把内网工具开放给所有人。</li>
+<li><strong>Tool Poisoning 防护</strong>：第三方 Server 的 description 也是提示词注入面——只装可信来源的 Server，审查其工具描述是否夹带”忽略之前指令”类内容。</li>
+</ol>
+<h2 id="9-生态盘点"><a href="#9-生态盘点" class="headerlink" title="9. 生态盘点"></a>9. 生态盘点</h2><ul>
+<li><strong>官方仓库 <code>modelcontextprotocol/servers</code></strong>：filesystem、git、postgres、slack、memory 等参考实现，适合抄结构。</li>
+<li><strong>聚合网关</strong>：<code>mcpo</code>（把 MCP 转 OpenAPI）、FastMCP Proxy（把多个 Server 聚合成一个端点）适合工具多时收敛出口。</li>
+<li><strong>注册中心</strong>：官方 Registry 已上线，Smithery、MCP.so 做发现与排行；企业内部建议自建私有 Registry 管审批。</li>
+<li><strong>客户端覆盖</strong>：Claude Desktop &#x2F; Cursor &#x2F; Cline &#x2F; Zed &#x2F; Cherry Studio；OpenAI 的 Agents SDK 也已支持作为 MCP Client。</li>
+<li><strong>替代品对比</strong>：纯 REST + OpenAPI 适合给人调；MCP 的差异化在于<strong>模型可发现的语义描述 + 会话生命周期 + 双向采样</strong>。</li>
+</ul>
+<h2 id="常见坑-FAQ"><a href="#常见坑-FAQ" class="headerlink" title="常见坑 FAQ"></a>常见坑 FAQ</h2><ol>
+<li><strong>Q：Server 起了但 Host 里看不到工具？</strong> A：九成是 stdout 被污染。检查代码里所有 <code>print</code>&#x2F;<code>console.log</code> 是否写到了 stdout；Python 里第三方库的启动横幅也算。用 Inspector 复现能看到具体哪条报文解析失败。</li>
+<li><strong>Q：改了工具代码不生效？</strong> A：Host 只在启动时建立会话并拉一次 <code>tools/list</code>，必须重启 Host 或重连该 Server。</li>
+<li><strong>Q：工具返回大文本把上下文撑爆？</strong> A：Server 侧做截断与分页（<code>limit/offset</code> 参数），大文件用 Resource 返回 URI 让 Host 按需取，而不是一次性塞进 Tool 结果。</li>
+<li><strong>Q：stdio 下 Server 启动慢导致超时？</strong> A：Host 默认等初始化数秒；把重初始化（建连接池、加载模型）挪到首次调用时懒加载，或改 HTTP 常驻部署。</li>
+<li><strong>Q：Windows 下 <code>npx</code> 起不来？</strong> A：Claude Desktop 对 <code>npx</code> 的 PATH 解析有坑，用 <code>cmd /c npx ...</code> 包裹，或直接写 node 的绝对路径加脚本路径。</li>
+<li><strong>Q：想让模型”主动”用某个工具但它不用？</strong> A：检查工具名与 description 是否和任务语义匹配；描述里写清”何时该用、何时不该用”，比调参有效得多。</li>
+</ol>
+<h2 id="生产实践清单"><a href="#生产实践清单" class="headerlink" title="生产实践清单"></a>生产实践清单</h2><ul>
+<li><input disabled="" type="checkbox"> 所有工具入参用 zod &#x2F; pydantic 严格校验，错误信息面向模型可自纠</li>
+<li><input disabled="" type="checkbox"> 写操作工具全部要求 Host 侧用户确认，Server 侧二次鉴权</li>
+<li><input disabled="" type="checkbox"> 日志走 stderr &#x2F; 文件，stdout 保持纯净</li>
+<li><input disabled="" type="checkbox"> 远程 Server：HTTPS + Token&#x2F;OAuth，按 Client 维度限流</li>
+<li><input disabled="" type="checkbox"> 工具返回做大小上限（建议 ≤ 20KB），超限分页</li>
+<li><input disabled="" type="checkbox"> 路径类参数做 resolve 后白名单校验</li>
+<li><input disabled="" type="checkbox"> CI 里加 <code>tools/list</code> 快照测试，防止 Schema 无意变更</li>
+<li><input disabled="" type="checkbox"> 关键工具接入审计日志（谁、何时、传了什么参数）</li>
+</ul>
+<h2 id="扩展阅读"><a href="#扩展阅读" class="headerlink" title="扩展阅读"></a>扩展阅读</h2><ul>
+<li>Model Context Protocol 官方规范：<a target="_blank" rel="noopener" href="https://modelcontextprotocol.io/specification">https://modelcontextprotocol.io/specification</a></li>
+<li>官方 servers 参考实现：<a target="_blank" rel="noopener" href="https://github.com/modelcontextprotocol/servers">https://github.com/modelcontextprotocol/servers</a></li>
+<li>FastMCP 文档：<a target="_blank" rel="noopener" href="https://gofastmcp.com/">https://gofastmcp.com/</a></li>
+<li>MCP Security Best Practices（官方安全指南）</li>
+<li>《Building Effective Agents》（Anthropic 工程博客，理解工具设计哲学）</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/AI/" rel="tag"># AI</a>
+              <a href="/tags/MCP/" rel="tag"># MCP</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/database/mongodb-guide/" rel="prev" title="MongoDB 从入门到落地">
+                  <i class="fa fa-angle-left"></i> MongoDB 从入门到落地
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/ai-engineering/06-coding-agent-workflow/" rel="next" title="第七章：Coding Agent 工作流：AI 编程落地实践">
+                  第七章：Coding Agent 工作流：AI 编程落地实践 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">60:37</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

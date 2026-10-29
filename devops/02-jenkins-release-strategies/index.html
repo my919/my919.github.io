@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="Jenkins 与发布策略概念基础 Jenkins 定位：开源、可自托管的流水线引擎之王，靠插件生态覆盖几乎所有语言&#x2F;云&#x2F;部署场景；与 GitHub Actions”云原生 SaaS”不同，Jenkins 强在完全可控、内网部署、Agent 可挂物理机&#x2F;容器&#x2F;K8s，劣势是运维成本高、插件兼容性坑多。 Declarative vs Scripted Pipe">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Jenkins 与发布策略">
+<meta property="og:url" content="https://my919.github.io/devops/02-jenkins-release-strategies/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="Jenkins 与发布策略概念基础 Jenkins 定位：开源、可自托管的流水线引擎之王，靠插件生态覆盖几乎所有语言&#x2F;云&#x2F;部署场景；与 GitHub Actions”云原生 SaaS”不同，Jenkins 强在完全可控、内网部署、Agent 可挂物理机&#x2F;容器&#x2F;K8s，劣势是运维成本高、插件兼容性坑多。 Declarative vs Scripted Pipe">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-02T02:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-29T15:31:07.889Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="CICD">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/devops/02-jenkins-release-strategies/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/devops/02-jenkins-release-strategies/","path":"devops/02-jenkins-release-strategies/","title":"Jenkins 与发布策略"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Jenkins 与发布策略 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式与机器人</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>音视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 与接口</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具与效率</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端与移动端</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 与平台工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>职业与管理</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测与稳定性</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>云原生与 Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>工程规范与代码质量</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Jenkins-%E4%B8%8E%E5%8F%91%E5%B8%83%E7%AD%96%E7%95%A5"><span class="nav-number">1.</span> <span class="nav-text">Jenkins 与发布策略</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5%E5%9F%BA%E7%A1%80"><span class="nav-number">1.1.</span> <span class="nav-text">概念基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Jenkins-%E5%AE%89%E8%A3%85%E4%B8%8E%E6%9E%B6%E6%9E%84"><span class="nav-number">1.2.</span> <span class="nav-text">一、Jenkins 安装与架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Docker-%E9%83%A8%E7%BD%B2-Master"><span class="nav-number">1.2.1.</span> <span class="nav-text">Docker 部署 Master</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Agent-Master-%E6%9E%B6%E6%9E%84"><span class="nav-number">1.2.2.</span> <span class="nav-text">Agent &#x2F; Master 架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Kubernetes-Plugin-%E5%BC%B9%E6%80%A7-Agent"><span class="nav-number">1.2.3.</span> <span class="nav-text">Kubernetes Plugin 弹性 Agent</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8F%92%E4%BB%B6%E4%B8%8E%E5%87%AD%E6%8D%AE%E7%AE%A1%E7%90%86"><span class="nav-number">1.2.4.</span> <span class="nav-text">插件与凭据管理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81Jenkinsfile-Pipeline-%E5%AE%9E%E6%88%98"><span class="nav-number">1.3.</span> <span class="nav-text">二、Jenkinsfile Pipeline 实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Declarative-Pipeline-%E8%AF%AD%E6%B3%95%E8%A6%81%E7%82%B9"><span class="nav-number">1.3.1.</span> <span class="nav-text">Declarative Pipeline 语法要点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8C%E6%95%B4-Jenkinsfile-%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.3.2.</span> <span class="nav-text">完整 Jenkinsfile 示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B1%E4%BA%AB%E5%BA%93%EF%BC%88Shared-Library%EF%BC%89"><span class="nav-number">1.3.3.</span> <span class="nav-text">共享库（Shared Library）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81K8s-%E9%83%A8%E7%BD%B2%E6%B5%81%E6%B0%B4%E7%BA%BF"><span class="nav-number">1.4.</span> <span class="nav-text">三、K8s 部署流水线</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#kubectl-apply-%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5"><span class="nav-number">1.4.1.</span> <span class="nav-text">kubectl apply + 健康检查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Helm-%E9%83%A8%E7%BD%B2"><span class="nav-number">1.4.2.</span> <span class="nav-text">Helm 部署</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Kustomize-%E5%A4%9A%E7%8E%AF%E5%A2%83-overlay"><span class="nav-number">1.4.3.</span> <span class="nav-text">Kustomize 多环境 overlay</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BB%9A%E5%8A%A8%E6%9B%B4%E6%96%B0%E9%85%8D%E7%BD%AE%EF%BC%88%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5%E5%BF%85%E5%A4%87%EF%BC%89"><span class="nav-number">1.4.4.</span> <span class="nav-text">滚动更新配置（健康检查必备）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E5%8F%91%E5%B8%83%E7%AD%96%E7%95%A5%E8%AF%A6%E8%A7%A3"><span class="nav-number">1.5.</span> <span class="nav-text">四、发布策略详解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%93%9D%E7%BB%BF%E9%83%A8%E7%BD%B2%EF%BC%88%E5%8F%8C%E5%80%8D%E8%B5%84%E6%BA%90-%E5%88%87%E6%B5%81%EF%BC%89"><span class="nav-number">1.5.1.</span> <span class="nav-text">蓝绿部署（双倍资源 + 切流）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%91%E4%B8%9D%E9%9B%80%EF%BC%88%E6%8C%89%E6%B5%81%E9%87%8F%E7%81%B0%E5%BA%A6%EF%BC%89"><span class="nav-number">1.5.2.</span> <span class="nav-text">金丝雀（按流量灰度）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BB%9A%E5%8A%A8%EF%BC%88maxSurge-maxUnavailable%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">滚动（maxSurge &#x2F; maxUnavailable）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E7%AD%96%E7%95%A5%E5%AF%B9%E6%AF%94"><span class="nav-number">1.5.4.</span> <span class="nav-text">三策略对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%93%9D%E7%BB%BF%E5%8F%91%E5%B8%83%E5%AE%8C%E6%95%B4-Jenkinsfile"><span class="nav-number">1.5.5.</span> <span class="nav-text">蓝绿发布完整 Jenkinsfile</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%91%E4%B8%9D%E9%9B%80%E8%87%AA%E5%8A%A8%E5%88%86%E6%9E%90"><span class="nav-number">1.5.6.</span> <span class="nav-text">金丝雀自动分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E5%9B%9E%E6%BB%9A%E4%B8%8E%E5%BA%94%E6%80%A5"><span class="nav-number">1.6.</span> <span class="nav-text">五、回滚与应急</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#K8s-rollout-undo"><span class="nav-number">1.6.1.</span> <span class="nav-text">K8s rollout undo</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Helm-rollback"><span class="nav-number">1.6.2.</span> <span class="nav-text">Helm rollback</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%98%E6%9B%B4%E5%9B%9E%E6%BB%9A%E7%AD%96%E7%95%A5"><span class="nav-number">1.6.3.</span> <span class="nav-text">数据库变更回滚策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%89%B9%E5%BE%81%E5%BC%80%E5%85%B3%E5%BF%AB%E9%80%9F%E5%9B%9E%E9%80%80"><span class="nav-number">1.6.4.</span> <span class="nav-text">特征开关快速回退</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81GitOps-%E4%B8%8E-ArgoCD"><span class="nav-number">1.7.</span> <span class="nav-text">六、GitOps 与 ArgoCD</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#GitOps-%E7%90%86%E5%BF%B5"><span class="nav-number">1.7.1.</span> <span class="nav-text">GitOps 理念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ArgoCD-%E6%9E%B6%E6%9E%84"><span class="nav-number">1.7.2.</span> <span class="nav-text">ArgoCD 架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Application-CRD"><span class="nav-number">1.7.3.</span> <span class="nav-text">Application CRD</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%87%AA%E5%8A%A8%E5%90%8C%E6%AD%A5-vs-%E6%89%8B%E5%8A%A8%E5%90%8C%E6%AD%A5"><span class="nav-number">1.7.4.</span> <span class="nav-text">自动同步 vs 手动同步</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%8E-CI-%E8%A1%94%E6%8E%A5"><span class="nav-number">1.7.5.</span> <span class="nav-text">与 CI 衔接</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%81%BF%E5%9D%91"><span class="nav-number">1.8.</span> <span class="nav-text">常见避坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%B0%8F%E7%BB%93"><span class="nav-number">1.9.</span> <span class="nav-text">本章小结</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">462</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">73</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">421</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/devops/02-jenkins-release-strategies/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Jenkins 与发布策略 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Jenkins 与发布策略
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-09-02 10:00:00" itemprop="dateCreated datePublished" datetime="2026-09-02T10:00:00+08:00">2026-09-02</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/DevOps-%E4%B8%8E%E5%B9%B3%E5%8F%B0%E5%B7%A5%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">DevOps 与平台工程</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>12k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>11 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="Jenkins-与发布策略"><a href="#Jenkins-与发布策略" class="headerlink" title="Jenkins 与发布策略"></a>Jenkins 与发布策略</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>Jenkins 定位</strong>：开源、可自托管的<strong>流水线引擎之王</strong>，靠插件生态覆盖几乎所有语言&#x2F;云&#x2F;部署场景；与 GitHub Actions”云原生 SaaS”不同，Jenkins 强在<strong>完全可控、内网部署、Agent 可挂物理机&#x2F;容器&#x2F;K8s</strong>，劣势是<strong>运维成本高、插件兼容性坑多</strong>。</li>
+<li><strong>Declarative vs Scripted Pipeline</strong>：Declarative 用 <code>pipeline { stages {} }</code> 结构化语法，<strong>可读、可静态校验、对 IDE 友好</strong>，适合 90% 场景；Scripted 用 Groovy 自由编程，<strong>灵活但难审阅</strong>，仅复杂动态逻辑才回退 Scripted，二者底层都是同一套 <code>Graph</code> 执行模型。</li>
+<li><strong>蓝绿 &#x2F; 金丝雀 &#x2F; 滚动</strong> 是三大发布策略：<strong>蓝绿</strong>准备一套完整备用环境<strong>瞬间切流</strong>（需双倍资源）；<strong>金丝雀</strong>按<strong>小比例流量灰度</strong>观察后再放量（需流量分流能力）；<strong>滚动</strong>逐批替换 Pod（<strong>默认策略</strong>，资源增量小但发布期间新旧并存）。</li>
+<li><strong>回滚策略</strong>遵循”<strong>代码可秒退，数据需慢退</strong>“：K8s <code>rollout undo</code> 与 Helm <code>rollback</code> 可瞬间切回上一版本镜像；但<strong>数据库 schema 变更必须前向兼容</strong>（扩列先加后删），靠”<strong>发布分两步</strong>“避免锁死回滚路径。</li>
+<li><strong>基础设施即代码（IaC）</strong> 是 GitOps 的前提：K8s 清单、Helm values、Kustomize overlay 全部进 Git，<strong>Git 即单一可信源</strong>，部署不靠”登录 master 手敲 kubectl”，而是<strong>PR 合并即同步</strong>，可审计、可回滚、可重现。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/devops/01-cicd-github-actions-guide/">第一章：CI&#x2F;CD 入门与 GitHub Actions</a> 的 CI 基础，进入 Jenkins 流水线与零停机发布策略实战。</p>
+</blockquote>
+<hr>
+<h2 id="一、Jenkins-安装与架构"><a href="#一、Jenkins-安装与架构" class="headerlink" title="一、Jenkins 安装与架构"></a>一、Jenkins 安装与架构</h2><h3 id="Docker-部署-Master"><a href="#Docker-部署-Master" class="headerlink" title="Docker 部署 Master"></a>Docker 部署 Master</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 持久化数据卷挂到 /var/jenkins_home，避免容器重建丢配置</span></span><br><span class="line">docker run -d --name jenkins \</span><br><span class="line">  --restart=unless-stopped \</span><br><span class="line">  -p 8080:8080 -p 50000:50000 \</span><br><span class="line">  -v jenkins_home:/var/jenkins_home \</span><br><span class="line">  -v /var/run/docker.sock:/var/run/docker.sock \</span><br><span class="line">  jenkins/jenkins:lts-jdk21</span><br><span class="line"><span class="comment"># 首次启动查看初始密码</span></span><br><span class="line">docker <span class="built_in">exec</span> jenkins <span class="built_in">cat</span> /var/jenkins_home/secrets/initialAdminPassword</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>版本说明</strong>：Jenkins 仅维护 <strong>LTS</strong> 与周更两条线，生产一律选 LTS；自 2023 年中起 LTS <strong>要求 JDK 17 或 21</strong>（推荐 <code>lts-jdk21</code> 镜像），JDK 11 已停止支持。</p>
+</blockquote>
+<h3 id="Agent-Master-架构"><a href="#Agent-Master-架构" class="headerlink" title="Agent &#x2F; Master 架构"></a>Agent &#x2F; Master 架构</h3><p>Master 只负责任务调度与 UI，<strong>实际构建压在 Agent</strong> 上；Agent 形态有 <strong>SSH Agent</strong>（常驻物理机）、<strong>JNLP Agent</strong>（Java 长连接）、<strong>Kubernetes Pod Agent</strong>（每 Job 起一个 Pod，用完即删，最流行）。K8s 插件让 Agent 弹性伸缩，避免排队。</p>
+<h3 id="Kubernetes-Plugin-弹性-Agent"><a href="#Kubernetes-Plugin-弹性-Agent" class="headerlink" title="Kubernetes Plugin 弹性 Agent"></a>Kubernetes Plugin 弹性 Agent</h3><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Jenkinsfile 内联 Pod 模板：每 Job 独立 Pod，构建完即回收</span></span><br><span class="line">pipeline &#123;</span><br><span class="line">  agent &#123;</span><br><span class="line">    kubernetes &#123;</span><br><span class="line">      yaml <span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">apiVersion: v1</span></span><br><span class="line"><span class="string">kind: Pod</span></span><br><span class="line"><span class="string">spec:</span></span><br><span class="line"><span class="string">  containers:</span></span><br><span class="line"><span class="string">    - name: maven</span></span><br><span class="line"><span class="string">      image: maven:3.9-eclipse-temurin-21</span></span><br><span class="line"><span class="string">      command: [&quot;sleep&quot;]</span></span><br><span class="line"><span class="string">      args: [&quot;infinity&quot;]</span></span><br><span class="line"><span class="string">      resources: &#123; requests: &#123; cpu: &quot;500m&quot;, memory: &quot;1Gi&quot; &#125;, limits: &#123; cpu: &quot;2&quot;, memory: &quot;2Gi&quot; &#125; &#125;</span></span><br><span class="line"><span class="string">    - name: kaniko</span></span><br><span class="line"><span class="string">      image: gcr.io/kaniko-project/executor:latest   # 无 Docker daemon 构建镜像</span></span><br><span class="line"><span class="string">      command: [&quot;sleep&quot;]</span></span><br><span class="line"><span class="string">      args: [&quot;infinity&quot;]</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  stages &#123;</span><br><span class="line">    stage(<span class="string">&#x27;Build&#x27;</span>) &#123;</span><br><span class="line">      steps &#123; container(<span class="string">&#x27;maven&#x27;</span>) &#123; sh <span class="string">&#x27;mvn -B -ntp clean package&#x27;</span> &#125; &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    stage(<span class="string">&#x27;Image&#x27;</span>) &#123;</span><br><span class="line">      steps &#123; container(<span class="string">&#x27;kaniko&#x27;</span>) &#123; sh <span class="string">&#x27;/kaniko/executor -c . -d registry/app:latest&#x27;</span> &#125; &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>高峰自动扩容 Pod、低谷归零，相比常驻 Agent 省资源且环境绝对干净；注意给 Jenkins 所在 namespace 配 <strong>ResourceQuota</strong> 防构建洪峰失控，镜像拉取慢时配 <code>imagePullSecrets</code> 与内网 registry mirror。</p>
+<h3 id="插件与凭据管理"><a href="#插件与凭据管理" class="headerlink" title="插件与凭据管理"></a>插件与凭据管理</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>推荐做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>插件</td>
+<td>只装必需，定期 <code>plugin-manager --plugins xxx</code> 升级，避免”插件地狱”</td>
+</tr>
+<tr>
+<td>凭据</td>
+<td>用 <strong>Credentials Binding</strong>，密码&#x2F;密钥进 <code>withCredentials</code>，日志自动打码</td>
+</tr>
+<tr>
+<td>Secret 文件</td>
+<td><code>secretFile</code> 注入 kubeconfig&#x2F;SA key，不落盘到工作区</td>
+</tr>
+<tr>
+<td>轮换</td>
+<td>凭据设过期时间，定期轮换，禁止”永久 Token”</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、Jenkinsfile-Pipeline-实战"><a href="#二、Jenkinsfile-Pipeline-实战" class="headerlink" title="二、Jenkinsfile Pipeline 实战"></a>二、Jenkinsfile Pipeline 实战</h2><h3 id="Declarative-Pipeline-语法要点"><a href="#Declarative-Pipeline-语法要点" class="headerlink" title="Declarative Pipeline 语法要点"></a>Declarative Pipeline 语法要点</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">pipeline &#123;</span><br><span class="line">  agent any                   # 执行节点</span><br><span class="line">  environment &#123; &#125;             // 全局环境变量、凭据注入</span><br><span class="line">  options &#123; timeoutTime(30); disableConcurrentBuilds() &#125;</span><br><span class="line">  parameters &#123; &#125;              // 构建参数（choice/string）</span><br><span class="line">  stages &#123; stage(&#x27;Build&#x27;)&#123; &#125; stage(&#x27;Test&#x27;)&#123; parallel&#123;&#125; &#125; &#125;   // stages + parallel</span><br><span class="line">  post &#123; always&#123;&#125;; success&#123;&#125;; failure&#123;&#125; &#125;    // 收尾回调</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键指令速查</strong>：<code>when { expression / branch / tag / changeset / buildingTag }</code> 控制 stage 执行；<code>input</code> 人工卡点（生产部署前审批）；<code>retry(3)</code>&#x2F;<code>timeout</code>&#x2F;<code>timestamps</code> 进 <code>options</code>；<code>stash</code>&#x2F;<code>unstash</code> 跨 stage（跨节点）传文件；<code>script {}</code> 块内可写任意 Groovy 兜底复杂逻辑；<code>post</code> 还有 <code>unsuccessful</code>&#x2F;<code>changed</code>&#x2F;<code>fixed</code>&#x2F;<code>aborted</code> 细分通知时机；<code>tools { jdk &#39;jdk21&#39; }</code> 声明工具链版本。</p>
+<h3 id="完整-Jenkinsfile-示例"><a href="#完整-Jenkinsfile-示例" class="headerlink" title="完整 Jenkinsfile 示例"></a>完整 Jenkinsfile 示例</h3><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">pipeline &#123;</span><br><span class="line">  agent &#123; label <span class="string">&#x27;linux&#x27;</span> &#125;</span><br><span class="line">  options &#123;</span><br><span class="line">    timeout(<span class="attr">time:</span> <span class="number">30</span>, <span class="attr">unit:</span> <span class="string">&#x27;MINUTES&#x27;</span>)</span><br><span class="line">    buildDiscarder(logRotator(<span class="attr">numToKeepStr:</span> <span class="string">&#x27;20&#x27;</span>))</span><br><span class="line">    disableConcurrentBuilds()         <span class="comment">// 同分支禁止并发，避免覆盖产物</span></span><br><span class="line">  &#125;</span><br><span class="line">  environment &#123;</span><br><span class="line">    IMAGE = <span class="string">&quot;registry.cn-hangzhou.aliyuncs.com/myorg/app&quot;</span></span><br><span class="line">    TAG  = <span class="string">&quot;$&#123;env.BRANCH_NAME ?: &#x27;local&#x27;&#125;-$&#123;env.BUILD_NUMBER&#125;&quot;</span></span><br><span class="line">    DOCKER_PASS = credentials(<span class="string">&#x27;acr-push-token&#x27;</span>)   <span class="comment">// 凭据注入环境变量，日志打码</span></span><br><span class="line">  &#125;</span><br><span class="line">  parameters &#123;</span><br><span class="line">    choice(<span class="attr">name:</span> <span class="string">&#x27;ENV&#x27;</span>, <span class="attr">choices:</span> [<span class="string">&#x27;dev&#x27;</span>,<span class="string">&#x27;staging&#x27;</span>,<span class="string">&#x27;prod&#x27;</span>], <span class="attr">description:</span> <span class="string">&#x27;部署环境&#x27;</span>)</span><br><span class="line">  &#125;</span><br><span class="line">  stages &#123;</span><br><span class="line">    stage(<span class="string">&#x27;Build &amp; Test&#x27;</span>) &#123; steps &#123; sh <span class="string">&#x27;mvn -B -ntp clean verify&#x27;</span> &#125; &#125;</span><br><span class="line">    stage(<span class="string">&#x27;Scan&#x27;</span>)         &#123; steps &#123; sh <span class="string">&#x27;mvn -B -ntp sonar:sonar&#x27;</span> &#125; &#125;</span><br><span class="line">    stage(<span class="string">&#x27;Quality Gates&#x27;</span>) &#123;</span><br><span class="line">      parallel &#123;   <span class="comment">// 并行质量门禁，省时间</span></span><br><span class="line">        stage(<span class="string">&#x27;Lint&#x27;</span>)  &#123; steps &#123; sh <span class="string">&#x27;npm run lint&#x27;</span> &#125; &#125;</span><br><span class="line">        stage(<span class="string">&#x27;Audit&#x27;</span>) &#123; steps &#123; sh <span class="string">&#x27;npm audit --audit-level=high&#x27;</span> &#125; &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    stage(<span class="string">&#x27;Docker&#x27;</span>) &#123;</span><br><span class="line">      steps &#123;</span><br><span class="line">        sh <span class="string">&#x27;&#x27;&#x27;echo &quot;$DOCKER_PASS&quot; | docker login $IMAGE -u &quot;$DOCKER_PASS_USR&quot; --password-stdin</span></span><br><span class="line"><span class="string">              docker build -t $IMAGE:$TAG . &amp;&amp; docker push $IMAGE:$TAG&#x27;&#x27;&#x27;</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    stage(<span class="string">&#x27;Deploy&#x27;</span>) &#123;</span><br><span class="line">      <span class="comment">// when 条件：仅 main 分支或显式选 prod 才部署，otherwise 跳过</span></span><br><span class="line">      when &#123; anyOf &#123; branch <span class="string">&#x27;main&#x27;</span>; expression &#123; params.ENV == <span class="string">&#x27;prod&#x27;</span> &#125; &#125; &#125;</span><br><span class="line">      steps &#123; sh <span class="string">&quot;kubectl --context=$ENV set image deploy/app app=$IMAGE:$TAG&quot;</span> &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  post &#123;</span><br><span class="line">    always  &#123; junit <span class="string">&#x27;**/target/surefire-reports/*.xml&#x27;</span>; archiveArtifacts <span class="string">&#x27;target/*.jar&#x27;</span> &#125;</span><br><span class="line">    success &#123; slackSend <span class="attr">channel:</span> <span class="string">&#x27;#release&#x27;</span>, <span class="attr">message:</span> <span class="string">&quot;✅ $&#123;env.JOB_NAME&#125; 部署 $params.ENV 成功&quot;</span> &#125;</span><br><span class="line">    failure &#123; slackSend <span class="attr">channel:</span> <span class="string">&#x27;#release&#x27;</span>, <span class="attr">message:</span> <span class="string">&quot;❌ $&#123;env.JOB_NAME&#125; 失败，见 $&#123;env.BUILD_URL&#125;&quot;</span> &#125;</span><br><span class="line">    cleanup &#123; cleanWs() &#125;   <span class="comment">// 清理工作区，避免磁盘爆满</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="共享库（Shared-Library）"><a href="#共享库（Shared-Library）" class="headerlink" title="共享库（Shared Library）"></a>共享库（Shared Library）</h3><p>把公共步骤抽到独立 Git 仓库，多 Job 复用：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">shared-lib/</span><br><span class="line">├── vars/            # 全局函数，文件名即步骤名</span><br><span class="line">│   └── buildJava.groovy</span><br><span class="line">├── src/org/demo/    # 类库（复杂逻辑）</span><br><span class="line">│   └── Docker.groovy</span><br><span class="line">└── resources/       # 模板文件（sh 脚本、yaml）</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// vars/buildJava.groovy</span></span><br><span class="line"><span class="keyword">def</span> call(Map cfg = [:]) &#123;</span><br><span class="line">  container(<span class="string">&#x27;maven&#x27;</span>) &#123;</span><br><span class="line">    sh <span class="string">&quot;mvn -B -ntp clean $&#123;cfg.goal ?: &#x27;package&#x27;&#125;&quot;</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 业务 Jenkinsfile</span></span><br><span class="line"><span class="meta">@Library</span>(<span class="string">&#x27;shared-lib@v2.3&#x27;</span>) _</span><br><span class="line">pipeline &#123;</span><br><span class="line">  agent &#123; kubernetes &#123; yaml <span class="string">&#x27;...&#x27;</span> &#125; &#125;</span><br><span class="line">  stages &#123;</span><br><span class="line">    stage(<span class="string">&#x27;Build&#x27;</span>) &#123; steps &#123; buildJava(<span class="attr">goal:</span> <span class="string">&#x27;verify&#x27;</span>) &#125; &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在 <strong>Manage Jenkins → System → Global Trusted Pipeline Libraries</strong> 注册仓库并<strong>锁版本</strong>（<code>@v2.3</code>），避免库更新悄然改变所有流水线行为；可信库（Global Trusted）可用 <code>@NonCPS</code> 等特权，业务侧项目库默认沙箱执行。</p>
+<hr>
+<h2 id="三、K8s-部署流水线"><a href="#三、K8s-部署流水线" class="headerlink" title="三、K8s 部署流水线"></a>三、K8s 部署流水线</h2><h3 id="kubectl-apply-健康检查"><a href="#kubectl-apply-健康检查" class="headerlink" title="kubectl apply + 健康检查"></a>kubectl apply + 健康检查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 用 sed 渲染镜像 tag 后 apply，避免手改 yaml</span></span><br><span class="line">sed -i <span class="string">&quot;s|IMAGE_PLACEHOLDER|<span class="variable">$IMAGE</span>:<span class="variable">$TAG</span>|&quot;</span> deploy.yaml</span><br><span class="line">kubectl apply -f deploy.yaml -n <span class="variable">$ENV</span></span><br><span class="line"><span class="comment"># 滚动更新默认策略，rollout status 阻塞至全部就绪</span></span><br><span class="line">kubectl rollout status deploy/app -n <span class="variable">$ENV</span> --<span class="built_in">timeout</span>=5m</span><br></pre></td></tr></table></figure>
+
+<h3 id="Helm-部署"><a href="#Helm-部署" class="headerlink" title="Helm 部署"></a>Helm 部署</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 升级或安装，--atomic 失败自动回滚，--wait 等就绪</span></span><br><span class="line">helm upgrade --install app ./chart \</span><br><span class="line">  --namespace <span class="variable">$ENV</span> --create-namespace \</span><br><span class="line">  --<span class="built_in">set</span> image.repository=<span class="variable">$IMAGE</span> \</span><br><span class="line">  --<span class="built_in">set</span> image.tag=<span class="variable">$TAG</span> \</span><br><span class="line">  --<span class="built_in">set</span> replicaCount=3 \</span><br><span class="line">  --<span class="built_in">wait</span> --<span class="built_in">timeout</span> 5m --atomic</span><br><span class="line">helm <span class="built_in">history</span> app -n <span class="variable">$ENV</span>    <span class="comment"># 历史版本供回滚</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Kustomize-多环境-overlay"><a href="#Kustomize-多环境-overlay" class="headerlink" title="Kustomize 多环境 overlay"></a>Kustomize 多环境 overlay</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">base/               # 共享清单：deployment.yaml + kustomization.yaml</span><br><span class="line">overlays/</span><br><span class="line">├── dev/            # replicas=1, resources 小</span><br><span class="line">└── prod/           # replicas=5, HPA, 亲和性</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kustomize build overlays/<span class="variable">$ENV</span> | kubectl apply -f -</span><br></pre></td></tr></table></figure>
+
+<h3 id="滚动更新配置（健康检查必备）"><a href="#滚动更新配置（健康检查必备）" class="headerlink" title="滚动更新配置（健康检查必备）"></a>滚动更新配置（健康检查必备）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">strategy:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">RollingUpdate</span></span><br><span class="line">    <span class="attr">rollingUpdate:</span></span><br><span class="line">      <span class="attr">maxSurge:</span> <span class="number">25</span><span class="string">%</span>         <span class="comment"># 滚动期间最多多出 25% 副本</span></span><br><span class="line">      <span class="attr">maxUnavailable:</span> <span class="number">0</span>     <span class="comment"># 不允许减少可用副本，保证零停机</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">app</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">registry/app:v1.2.3</span></span><br><span class="line">          <span class="comment"># readiness 失败不入流量，liveness 失败重启，二者必备</span></span><br><span class="line">          <span class="attr">readinessProbe:</span> &#123; <span class="attr">httpGet:</span> &#123; <span class="attr">path:</span> <span class="string">/healthz</span>, <span class="attr">port:</span> <span class="number">8080</span> &#125;, <span class="attr">initialDelaySeconds:</span> <span class="number">5</span> &#125;</span><br><span class="line">          <span class="attr">livenessProbe:</span>  &#123; <span class="attr">httpGet:</span> &#123; <span class="attr">path:</span> <span class="string">/healthz</span>, <span class="attr">port:</span> <span class="number">8080</span> &#125;, <span class="attr">initialDelaySeconds:</span> <span class="number">15</span> &#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、发布策略详解"><a href="#四、发布策略详解" class="headerlink" title="四、发布策略详解"></a>四、发布策略详解</h2><h3 id="蓝绿部署（双倍资源-切流）"><a href="#蓝绿部署（双倍资源-切流）" class="headerlink" title="蓝绿部署（双倍资源 + 切流）"></a>蓝绿部署（双倍资源 + 切流）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Service 同时选 blue 与 green，靠 label 切流</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Service</span></span><br><span class="line"><span class="attr">metadata:</span> &#123; <span class="attr">name:</span> <span class="string">app</span> &#125;</span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">selector:</span> &#123; <span class="attr">version:</span> <span class="string">green</span> &#125;   <span class="comment"># 改这一行即切流，回滚改回 blue</span></span><br><span class="line">  <span class="attr">ports:</span> [&#123; <span class="attr">port:</span> <span class="number">80</span>, <span class="attr">targetPort:</span> <span class="number">8080</span> &#125;]</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 先扩 green，验证通过后切 selector，再下线 blue</span></span><br><span class="line">kubectl scale deploy/app-green --replicas=5 -n prod</span><br><span class="line">kubectl patch svc app -p <span class="string">&#x27;&#123;&quot;spec&quot;:&#123;&quot;selector&quot;:&#123;&quot;version&quot;:&quot;green&quot;&#125;&#125;&#125;&#x27;</span></span><br><span class="line">kubectl scale deploy/app-blue --replicas=0</span><br></pre></td></tr></table></figure>
+
+<p><strong>特点</strong>：瞬间切换、回滚秒级；代价是<strong>双倍资源</strong>，适合核心交易链路。</p>
+<h3 id="金丝雀（按流量灰度）"><a href="#金丝雀（按流量灰度）" class="headerlink" title="金丝雀（按流量灰度）"></a>金丝雀（按流量灰度）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 用 Istio/Ingress 按 header 或权重分流，仅 10% 流量进新版本</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">networking.istio.io/v1beta1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">VirtualService</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">http:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">route:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">destination:</span> &#123; <span class="attr">host:</span> <span class="string">app</span>, <span class="attr">subset:</span> <span class="string">stable</span>, <span class="attr">weight:</span> <span class="number">90</span> &#125;</span><br><span class="line">        <span class="bullet">-</span> <span class="attr">destination:</span> &#123; <span class="attr">host:</span> <span class="string">app</span>, <span class="attr">subset:</span> <span class="string">canary</span>, <span class="attr">weight:</span> <span class="number">10</span> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>灰度节奏建议 <strong>10% → 50% → 100%</strong>，每档观察错误率&#x2F;延迟 10 分钟，<strong>异常自动回退</strong>。</p>
+<h3 id="滚动（maxSurge-maxUnavailable）"><a href="#滚动（maxSurge-maxUnavailable）" class="headerlink" title="滚动（maxSurge &#x2F; maxUnavailable）"></a>滚动（maxSurge &#x2F; maxUnavailable）</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>推荐值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>maxSurge</code></td>
+<td>滚动期间最多多出多少副本</td>
+<td><code>25%</code></td>
+</tr>
+<tr>
+<td><code>maxUnavailable</code></td>
+<td>滚动期间最少多少副本不可用</td>
+<td><code>0</code>（零停机）或 <code>25%</code>（省资源）</td>
+</tr>
+</tbody></table>
+<p>滚动是 K8s <strong>默认策略</strong>，资源增量小，但<strong>新旧版本并存期间接口必须向后兼容</strong>。</p>
+<h3 id="三策略对比"><a href="#三策略对比" class="headerlink" title="三策略对比"></a>三策略对比</h3><table>
+<thead>
+<tr>
+<th>策略</th>
+<th>资源</th>
+<th>切流速度</th>
+<th>回滚速度</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>蓝绿</td>
+<td>双倍</td>
+<td>瞬间</td>
+<td>秒级</td>
+<td>核心交易、需快速回滚</td>
+</tr>
+<tr>
+<td>金丝雀</td>
+<td>1.1x</td>
+<td>渐进</td>
+<td>分钟</td>
+<td>新功能、需观察指标</td>
+</tr>
+<tr>
+<td>滚动</td>
+<td>1.25x</td>
+<td>渐进</td>
+<td>分钟</td>
+<td>日常迭代、兼容性有保障</td>
+</tr>
+</tbody></table>
+<h3 id="蓝绿发布完整-Jenkinsfile"><a href="#蓝绿发布完整-Jenkinsfile" class="headerlink" title="蓝绿发布完整 Jenkinsfile"></a>蓝绿发布完整 Jenkinsfile</h3><figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">pipeline &#123;</span><br><span class="line">  agent any</span><br><span class="line">  environment &#123;</span><br><span class="line">    COLOR = sh(<span class="attr">script:</span> <span class="string">&quot;kubectl get svc app -o jsonpath=&#x27;&#123;.spec.selector.version&#125;&#x27;&quot;</span>, <span class="attr">returnStdout:</span> <span class="literal">true</span>).trim() == <span class="string">&#x27;blue&#x27;</span> ? <span class="string">&#x27;green&#x27;</span> : <span class="string">&#x27;blue&#x27;</span></span><br><span class="line">  &#125;</span><br><span class="line">  stages &#123;</span><br><span class="line">    stage(<span class="string">&#x27;部署备用环境&#x27;</span>) &#123;</span><br><span class="line">      steps &#123; sh <span class="string">&quot;kubectl apply -f deploy-$COLOR.yaml &amp;&amp; kubectl rollout status deploy/app-$COLOR --timeout=5m&quot;</span> &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    stage(<span class="string">&#x27;冒烟验证&#x27;</span>) &#123;</span><br><span class="line">      steps &#123; sh <span class="string">&quot;curl -fsS http://app-$COLOR/healthz&quot;</span> &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    stage(<span class="string">&#x27;切流确认&#x27;</span>) &#123;</span><br><span class="line">      steps &#123; input <span class="attr">message:</span> <span class="string">&quot;验证通过，切流到 $COLOR？&quot;</span>, <span class="attr">ok:</span> <span class="string">&#x27;切流&#x27;</span> &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    stage(<span class="string">&#x27;切流&#x27;</span>) &#123;</span><br><span class="line">      steps &#123; sh <span class="string">&quot;kubectl patch svc app -p &#x27;&#123;\&quot;spec\&quot;:&#123;\&quot;selector\&quot;:&#123;\&quot;version\&quot;:\&quot;$COLOR\&quot;&#125;&#125;&#125;&#x27;&quot;</span> &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    stage(<span class="string">&#x27;下线旧环境&#x27;</span>) &#123;</span><br><span class="line">      steps &#123; sh <span class="string">&quot;kubectl scale deploy/app-$&#123;COLOR == &#x27;green&#x27; ? &#x27;blue&#x27; : &#x27;green&#x27;&#125; --replicas=0&quot;</span> &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  post &#123; failure &#123; echo <span class="string">&#x27;备用环境未切流，线上无影响&#x27;</span> &#125; &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="金丝雀自动分析"><a href="#金丝雀自动分析" class="headerlink" title="金丝雀自动分析"></a>金丝雀自动分析</h3><p>金丝雀阶段用脚本对比新旧版本指标，超阈值自动回退：</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">stage(<span class="string">&#x27;金丝雀 10%&#x27;</span>) &#123;</span><br><span class="line">  steps &#123;</span><br><span class="line">    sh <span class="string">&#x27;kubectl apply -f canary-10.yaml&#x27;</span></span><br><span class="line">    script &#123;</span><br><span class="line">      sleep <span class="number">600</span></span><br><span class="line">      <span class="keyword">def</span> errRate = sh(<span class="attr">script:</span> <span class="string">&quot;curl -s &#x27;http://prometheus:9090/api/v1/query?query=sum(rate(http_requests_total&#123;version=\&quot;canary\&quot;,status=~\&quot;5..\&quot;&#125;[5m]))&#x27; | jq -r &#x27;.data.result[0].value[1]&#x27;&quot;</span>, <span class="attr">returnStdout:</span> <span class="literal">true</span>).trim() <span class="keyword">as</span> <span class="type">double</span></span><br><span class="line">      <span class="keyword">if</span> (errRate &gt; <span class="number">0.01</span>) &#123;</span><br><span class="line">        sh <span class="string">&#x27;kubectl delete -f canary-10.yaml&#x27;</span></span><br><span class="line">        error(<span class="string">&#x27;金丝雀错误率超阈值，已自动回退&#x27;</span>)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>生产落地建议用 <strong>Flagger &#x2F; Argo Rollouts</strong> 替代手写脚本：声明 <code>canaryAnalysis</code>（间隔、阈值、指标查询）即可自动完成”放量 → 分析 → 回退&#x2F;全量”闭环。</p>
+<hr>
+<h2 id="五、回滚与应急"><a href="#五、回滚与应急" class="headerlink" title="五、回滚与应急"></a>五、回滚与应急</h2><h3 id="K8s-rollout-undo"><a href="#K8s-rollout-undo" class="headerlink" title="K8s rollout undo"></a>K8s rollout undo</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看历史 revision，每个对应一次 spec 变更</span></span><br><span class="line">kubectl rollout <span class="built_in">history</span> deploy/app -n prod</span><br><span class="line"><span class="comment"># 回到上一版（瞬间切镜像，最快）</span></span><br><span class="line">kubectl rollout undo deploy/app -n prod</span><br><span class="line"><span class="comment"># 回到指定 revision</span></span><br><span class="line">kubectl rollout undo deploy/app --to-revision=3 -n prod</span><br></pre></td></tr></table></figure>
+
+<h3 id="Helm-rollback"><a href="#Helm-rollback" class="headerlink" title="Helm rollback"></a>Helm rollback</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 不带版本号默认回上一 Release，秒级</span></span><br><span class="line">helm rollback app 4 -n prod</span><br><span class="line"><span class="comment"># 注意：rollback 只回退 Helm 管理的资源，CRD/手动资源不回退</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="数据库变更回滚策略"><a href="#数据库变更回滚策略" class="headerlink" title="数据库变更回滚策略"></a>数据库变更回滚策略</h3><p>数据库是回滚最大难点，<strong>遵循前向兼容原则</strong>，分两版操作避免锁死回滚路径：</p>
+<table>
+<thead>
+<tr>
+<th>变更类型</th>
+<th>安全做法</th>
+<th>不可回滚操作</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>加列</td>
+<td>先加（默认 NULL），再发版用</td>
+<td>——</td>
+</tr>
+<tr>
+<td>删列</td>
+<td>分两版：先停用，下版再删</td>
+<td>直接 DROP COLUMN</td>
+</tr>
+<tr>
+<td>改类型</td>
+<td>加新列迁移，停用旧列</td>
+<td>原地 ALTER 锁表</td>
+</tr>
+<tr>
+<td>重命名</td>
+<td>加新名双写，再切，最后删旧</td>
+<td>直接 RENAME</td>
+</tr>
+</tbody></table>
+<h3 id="特征开关快速回退"><a href="#特征开关快速回退" class="headerlink" title="特征开关快速回退"></a>特征开关快速回退</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 用 Unleash/LaunchDarkly 控制，无需重新部署即可关闭新功能</span></span><br><span class="line"><span class="keyword">if</span> feature_flag.is_enabled(<span class="string">&quot;new_checkout&quot;</span>, user):</span><br><span class="line">    <span class="keyword">return</span> new_checkout()</span><br><span class="line"><span class="keyword">return</span> legacy_checkout()</span><br></pre></td></tr></table></figure>
+
+<p>线上故障时<strong>一键关开关</strong>即回退，比重新构建镜像快得多。</p>
+<hr>
+<h2 id="六、GitOps-与-ArgoCD"><a href="#六、GitOps-与-ArgoCD" class="headerlink" title="六、GitOps 与 ArgoCD"></a>六、GitOps 与 ArgoCD</h2><h3 id="GitOps-理念"><a href="#GitOps-理念" class="headerlink" title="GitOps 理念"></a>GitOps 理念</h3><p><strong>Git 即唯一可信源</strong>：声明式清单进 Git，集群状态向 Git 收敛；<strong>PR 合并 &#x3D; 部署</strong>，可审计、可回滚（Git revert 即回滚集群）；CI 只产出镜像，<strong>CD 由 ArgoCD 拉取</strong>而非推送，避免凭据散落 CI 侧。</p>
+<h3 id="ArgoCD-架构"><a href="#ArgoCD-架构" class="headerlink" title="ArgoCD 架构"></a>ArgoCD 架构</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Git/Helm 仓库 ─→ ArgoCD Server（API/UI）──→ Controller 比对 Git 与集群 ↓ diff</span><br><span class="line">                                          Sync 引擎 ── apply ──→ K8s 集群</span><br></pre></td></tr></table></figure>
+
+<h3 id="Application-CRD"><a href="#Application-CRD" class="headerlink" title="Application CRD"></a>Application CRD</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">argoproj.io/v1alpha1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Application</span></span><br><span class="line"><span class="attr">metadata:</span> &#123; <span class="attr">name:</span> <span class="string">app</span>, <span class="attr">namespace:</span> <span class="string">argocd</span> &#125;</span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">source:</span> &#123; <span class="attr">repoURL:</span> <span class="string">https://github.com/org/k8s-manifests</span>, <span class="attr">targetRevision:</span> <span class="string">main</span>, <span class="attr">path:</span> <span class="string">overlays/prod</span> &#125;</span><br><span class="line">  <span class="attr">destination:</span> &#123; <span class="attr">server:</span> <span class="string">https://kubernetes.api</span>, <span class="attr">namespace:</span> <span class="string">prod</span> &#125;</span><br><span class="line">  <span class="attr">syncPolicy:</span></span><br><span class="line">    <span class="attr">automated:</span> &#123; <span class="attr">prune:</span> <span class="literal">true</span>, <span class="attr">selfHeal:</span> <span class="literal">true</span> &#125;   <span class="comment"># 自动同步 + 删孤儿资源 + 纠回手动改动</span></span><br><span class="line">    <span class="attr">syncOptions:</span> [<span class="string">CreateNamespace=true</span>]</span><br></pre></td></tr></table></figure>
+
+<h3 id="自动同步-vs-手动同步"><a href="#自动同步-vs-手动同步" class="headerlink" title="自动同步 vs 手动同步"></a>自动同步 vs 手动同步</h3><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>行为</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>automated</td>
+<td>Git 一变即同步</td>
+<td>dev&#x2F;staging</td>
+</tr>
+<tr>
+<td>manual</td>
+<td>需人工点”Sync”按钮</td>
+<td>prod（需审批）</td>
+</tr>
+<tr>
+<td>selfHeal</td>
+<td>有人手动 kubectl 改了自动纠回</td>
+<td>强一致要求场景</td>
+</tr>
+</tbody></table>
+<h3 id="与-CI-衔接"><a href="#与-CI-衔接" class="headerlink" title="与 CI 衔接"></a>与 CI 衔接</h3><p>CI（Jenkins&#x2F;GitHub Actions）产出<strong>镜像</strong>并推 GHCR → 更新 manifests 仓库的镜像 tag → 提 PR → ArgoCD 检测到 diff 自动&#x2F;手动同步。<strong>CI 不持有 kubeconfig</strong>，凭据收敛到 ArgoCD 一处，安全边界清晰。</p>
+<hr>
+<h2 id="常见避坑"><a href="#常见避坑" class="headerlink" title="常见避坑"></a>常见避坑</h2><table>
+<thead>
+<tr>
+<th>坑</th>
+<th>现象</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Agent 跑在 master</td>
+<td>构建打挂 master，UI 卡死</td>
+<td>用 K8s Pod Agent，每 Job 独立 Pod</td>
+</tr>
+<tr>
+<td><code>@latest</code> 插件</td>
+<td>升级后 Pipeline 报错</td>
+<td>锁版本 + 先在 staging 验证</td>
+</tr>
+<tr>
+<td>凭据写进 Jenkinsfile</td>
+<td>被 Git 历史泄露</td>
+<td>用 <code>credentials()</code>，日志自动打码</td>
+</tr>
+<tr>
+<td>滚动 <code>maxUnavailable: 100%</code></td>
+<td>一次全停，发布即宕机</td>
+<td>设 <code>0</code> 保零停机</td>
+</tr>
+<tr>
+<td>金丝雀无监控</td>
+<td>灰度了但没人看指标</td>
+<td>配 Prometheus + 自动回退阈值</td>
+</tr>
+<tr>
+<td>DB 直接 DROP COLUMN</td>
+<td>回滚发现旧版读不到列</td>
+<td>前向兼容，分两版删除</td>
+</tr>
+<tr>
+<td>ArgoCD <code>selfHeal</code> 滥用</td>
+<td>运维改完即被纠回</td>
+<td>prod 关 selfHeal 或加 ignoreDifferences</td>
+</tr>
+<tr>
+<td>Helm <code>--atomic</code> 不加 <code>--wait</code></td>
+<td>失败未回滚</td>
+<td>二者同用，失败自动回退</td>
+</tr>
+<tr>
+<td>蓝绿切流后忘下线旧环境</td>
+<td>双倍资源常驻</td>
+<td>切流验证后立即 scale 0 旧环境</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Jenkins 定位</td>
+<td>可自托管、插件生态全、Agent 弹性伸缩</td>
+</tr>
+<tr>
+<td>Declarative vs Scripted</td>
+<td>优先 Declarative，复杂逻辑才 Scripted</td>
+</tr>
+<tr>
+<td>Jenkinsfile</td>
+<td>stages + post + when 三件套</td>
+</tr>
+<tr>
+<td>K8s 部署</td>
+<td>kubectl&#x2F;Helm&#x2F;Kustomize 三选一，rollout status 阻塞至就绪</td>
+</tr>
+<tr>
+<td>发布策略</td>
+<td>蓝绿秒切、金丝雀灰度、滚动默认</td>
+</tr>
+<tr>
+<td>回滚</td>
+<td>镜像秒退、DB 前向兼容、特征开关一键退</td>
+</tr>
+<tr>
+<td>GitOps</td>
+<td>Git 单一可信源，CI 产镜像、CD 拉同步</td>
+</tr>
+</tbody></table>
+<hr>
+<p>至此 CI&#x2F;CD 两章闭环：<a href="/devops/01-cicd-github-actions-guide/">第一章：CI&#x2F;CD 入门与 GitHub Actions</a> 解决”构建与测试自动化”，本章解决”流水线编排与零停机发布”。其中涉及的集群对象、<code>kubectl</code> 操作详见 <a href="/kubernetes/kubernetes-guide/">第二章：Kubernetes 容器编排入门</a>，Helm Chart 模板与回滚详见 <a href="/kubernetes/04-helm-guide/">第一章：Helm 应用包管理入门</a>，GitOps 所依赖的 Git 分支与协作模型见 <a href="/tool/git-guide/">Git 版本控制入门</a>。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CICD/" rel="tag"># CICD</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/observability/01-prometheus-grafana/" rel="prev" title="第一章：Prometheus 指标监控与 Grafana 可视化">
+                  <i class="fa fa-angle-left"></i> 第一章：Prometheus 指标监控与 Grafana 可视化
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/devops/01-cicd-github-actions-guide/" rel="next" title="CI&#x2F;CD 入门与 GitHub Actions">
+                  CI/CD 入门与 GitHub Actions <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">60:37</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

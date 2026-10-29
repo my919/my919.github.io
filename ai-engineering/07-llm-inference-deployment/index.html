@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="第八章：LLM 推理与部署：vLLM、SGLang 与量化 自托管 LLM 的核心矛盾是”显存装不下、吞吐上不去、延迟降不来”——本章讲透 vLLM 的 PagedAttention 与连续批处理、SGLang 的 RadixAttention、GGUF&#x2F;AWQ&#x2F;GPTQ 量化取舍，以及 KV Cache 显存估算、压测与 OpenAI 兼容服务化的完整生产链路。  本章导读">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第八章：LLM 推理与部署：vLLM、SGLang 与量化">
+<meta property="og:url" content="https://my919.github.io/ai-engineering/07-llm-inference-deployment/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="第八章：LLM 推理与部署：vLLM、SGLang 与量化 自托管 LLM 的核心矛盾是”显存装不下、吞吐上不去、延迟降不来”——本章讲透 vLLM 的 PagedAttention 与连续批处理、SGLang 的 RadixAttention、GGUF&#x2F;AWQ&#x2F;GPTQ 量化取舍，以及 KV Cache 显存估算、压测与 OpenAI 兼容服务化的完整生产链路。  本章导读">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-10-28T00:02:00.000Z">
+<meta property="article:modified_time" content="2026-10-29T15:31:07.838Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="AI">
+<meta property="article:tag" content="LLM 部署">
+<meta property="article:tag" content="vLLM">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/ai-engineering/07-llm-inference-deployment/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/ai-engineering/07-llm-inference-deployment/","path":"ai-engineering/07-llm-inference-deployment/","title":"第八章：LLM 推理与部署：vLLM、SGLang 与量化"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>第八章：LLM 推理与部署：vLLM、SGLang 与量化 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式与机器人</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>音视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 与接口</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具与效率</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端与移动端</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 与平台工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>职业与管理</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测与稳定性</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>云原生与 Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>工程规范与代码质量</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%AC%E5%85%AB%E7%AB%A0%EF%BC%9ALLM-%E6%8E%A8%E7%90%86%E4%B8%8E%E9%83%A8%E7%BD%B2%EF%BC%9AvLLM%E3%80%81SGLang-%E4%B8%8E%E9%87%8F%E5%8C%96"><span class="nav-number">1.</span> <span class="nav-text">第八章：LLM 推理与部署：vLLM、SGLang 与量化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E7%AB%A0%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.1.</span> <span class="nav-text">本章导读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1%E7%9A%84%E6%8A%80%E6%9C%AF%E6%8C%91%E6%88%98"><span class="nav-number">1.2.</span> <span class="nav-text">1. 推理服务的技术挑战</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-vLLM%EF%BC%9APagedAttention-%E4%B8%8E%E8%BF%9E%E7%BB%AD%E6%89%B9%E5%A4%84%E7%90%86"><span class="nav-number">1.3.</span> <span class="nav-text">2. vLLM：PagedAttention 与连续批处理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-PagedAttention%EF%BC%9A%E5%83%8F%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%AE%A1%E5%86%85%E5%AD%98%E4%B8%80%E6%A0%B7%E7%AE%A1-KV-Cache"><span class="nav-number">1.3.1.</span> <span class="nav-text">2.1 PagedAttention：像操作系统管内存一样管 KV Cache</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E8%BF%9E%E7%BB%AD%E6%89%B9%E5%A4%84%E7%90%86%EF%BC%88Continuous-Batching%EF%BC%89"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.2 连续批处理（Continuous Batching）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E4%B8%8A%E6%89%8B"><span class="nav-number">1.3.3.</span> <span class="nav-text">2.3 上手</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-SGLang%EF%BC%9ARadixAttention-%E4%B8%8E%E7%BB%93%E6%9E%84%E5%8C%96%E7%94%9F%E6%88%90"><span class="nav-number">1.4.</span> <span class="nav-text">3. SGLang：RadixAttention 与结构化生成</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-Ollama%EF%BC%9A%E6%9C%AC%E5%9C%B0%E4%B8%8E%E5%B0%8F%E5%9B%A2%E9%98%9F%E9%83%A8%E7%BD%B2"><span class="nav-number">1.5.</span> <span class="nav-text">4. Ollama：本地与小团队部署</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E9%87%8F%E5%8C%96%E5%AF%B9%E6%AF%94%EF%BC%9AGGUF-AWQ-GPTQ"><span class="nav-number">1.6.</span> <span class="nav-text">5. 量化对比：GGUF &#x2F; AWQ &#x2F; GPTQ</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-KV-Cache-%E6%98%BE%E5%AD%98%E4%BC%B0%E7%AE%97%E5%85%AC%E5%BC%8F"><span class="nav-number">1.7.</span> <span class="nav-text">6. KV Cache 显存估算公式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%8E%8B%E6%B5%8B%EF%BC%9A%E5%90%9E%E5%90%90%E4%B8%8E%E5%BB%B6%E8%BF%9F%E6%80%8E%E4%B9%88%E6%B5%8B"><span class="nav-number">1.8.</span> <span class="nav-text">7. 压测：吞吐与延迟怎么测</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E5%A4%9A%E5%8D%A1%E4%B8%8E%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C"><span class="nav-number">1.9.</span> <span class="nav-text">8. 多卡与张量并行</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E7%94%9F%E4%BA%A7%E6%9C%8D%E5%8A%A1%E5%8C%96%EF%BC%9AOpenAI-%E5%85%BC%E5%AE%B9-API"><span class="nav-number">1.10.</span> <span class="nav-text">9. 生产服务化：OpenAI 兼容 API</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E5%9D%91-FAQ"><span class="nav-number">1.11.</span> <span class="nav-text">常见坑 FAQ</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E5%AE%9E%E8%B7%B5%E6%B8%85%E5%8D%95"><span class="nav-number">1.12.</span> <span class="nav-text">生产实践清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB"><span class="nav-number">1.13.</span> <span class="nav-text">扩展阅读</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">462</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">73</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">421</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/ai-engineering/07-llm-inference-deployment/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="第八章：LLM 推理与部署：vLLM、SGLang 与量化 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          第八章：LLM 推理与部署：vLLM、SGLang 与量化
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-10-28 08:02:00" itemprop="dateCreated datePublished" datetime="2026-10-28T08:02:00+08:00">2026-10-28</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/AI-%E5%B7%A5%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">AI 工程</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>7.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="第八章：LLM-推理与部署：vLLM、SGLang-与量化"><a href="#第八章：LLM-推理与部署：vLLM、SGLang-与量化" class="headerlink" title="第八章：LLM 推理与部署：vLLM、SGLang 与量化"></a>第八章：LLM 推理与部署：vLLM、SGLang 与量化</h1><blockquote>
+<p>自托管 LLM 的核心矛盾是”显存装不下、吞吐上不去、延迟降不来”——本章讲透 vLLM 的 PagedAttention 与连续批处理、SGLang 的 RadixAttention、GGUF&#x2F;AWQ&#x2F;GPTQ 量化取舍，以及 KV Cache 显存估算、压测与 OpenAI 兼容服务化的完整生产链路。</p>
+</blockquote>
+<h2 id="本章导读"><a href="#本章导读" class="headerlink" title="本章导读"></a>本章导读</h2><table>
+<thead>
+<tr>
+<th>章节</th>
+<th>主题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="/ai-engineering/01-agent-intro-core-concepts/">第一章：AI Agent 入门与核心概念</a></td>
+<td>Agent 的组成与 ReAct 范式</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/02-agent-frameworks-practice/">第二章：Agent 框架实战</a></td>
+<td>LangChain &#x2F; LangGraph 落地</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/03-agent-tool-calling-orchestration/">第三章：Agent 工具调用与函数编排</a></td>
+<td>Function Calling 原理</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/04-agent-production-engineering/">第四章：Agent 生产化与工程实践</a></td>
+<td>可观测与稳定性</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/04-rag-vector-retrieval-practice/">第五章：RAG 与向量检索实战</a></td>
+<td>RAG 检索链路</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/05-mcp-protocol-guide/">第六章：MCP 协议实战</a></td>
+<td>MCP Server 开发</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/06-coding-agent-workflow/">第七章：Coding Agent 工作流</a></td>
+<td>AI 编程落地</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/07-llm-inference-deployment/">第八章：LLM 推理与部署</a></td>
+<td>本章</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/08-llm-finetuning-practice/">第九章：LLM 微调实战</a></td>
+<td>LoRA &#x2F; DPO</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/09-dify-n8n-ai-orchestration/">第十章：AI 应用编排</a></td>
+<td>Dify 与 n8n</td>
+</tr>
+<tr>
+<td><a href="/ai-engineering/10-ai-gateway-guide/">第十一章：AI 网关</a></td>
+<td>路由与成本治理</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-推理服务的技术挑战"><a href="#1-推理服务的技术挑战" class="headerlink" title="1. 推理服务的技术挑战"></a>1. 推理服务的技术挑战</h2><p>LLM 推理与训练完全不同：它是<strong>自回归逐 token 生成</strong>，每个新 token 都要读一遍全部权重。由此产生三个工程瓶颈：</p>
+<ol>
+<li><strong>显存墙</strong>：权重 + KV Cache + 激活，7B 模型 FP16 权重就占 14GB；</li>
+<li><strong>内存带宽墙</strong>：解码阶段每 token 都要把权重从 HBM 搬进 SM，<strong>解码是访存密集型</strong>，算力空转；</li>
+<li><strong>批处理难</strong>：请求长短不一、到达时间随机，静态批处理要么浪费要么排队。</li>
+</ol>
+<p>一个关键认知：<strong>Prefill（首 token）是计算密集，Decode（后续 token）是访存密集</strong>。优化目标因此分裂——首 token 延迟（TTFT）靠算力，吞吐靠带宽利用率。vLLM 与 SGLang 的所有黑科技都围绕这两个阶段展开。</p>
+<h2 id="2-vLLM：PagedAttention-与连续批处理"><a href="#2-vLLM：PagedAttention-与连续批处理" class="headerlink" title="2. vLLM：PagedAttention 与连续批处理"></a>2. vLLM：PagedAttention 与连续批处理</h2><h3 id="2-1-PagedAttention：像操作系统管内存一样管-KV-Cache"><a href="#2-1-PagedAttention：像操作系统管内存一样管-KV-Cache" class="headerlink" title="2.1 PagedAttention：像操作系统管内存一样管 KV Cache"></a>2.1 PagedAttention：像操作系统管内存一样管 KV Cache</h3><p>传统实现为每个请求预分配 <code>max_seq_len</code> 的连续显存，内部碎片浪费 60% 以上。PagedAttention 把 KV Cache 切成<strong>固定大小的 Block（如 16 token&#x2F;块）</strong>，用页表映射逻辑块到物理块：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  subgraph 逻辑视图</span><br><span class="line">    L[请求 A 的 token 序列&lt;br/&gt;块0→块1→块2]</span><br><span class="line">  end</span><br><span class="line">  subgraph 物理显存池</span><br><span class="line">    P0[Block 5] </span><br><span class="line">    P1[Block 2]</span><br><span class="line">    P2[Block 9]</span><br><span class="line">    P3[Block 空闲]</span><br><span class="line">  end</span><br><span class="line">  L --页表映射--&gt; P0</span><br><span class="line">  L --&gt; P1</span><br><span class="line">  L --&gt; P2</span><br></pre></td></tr></table></figure>
+
+<p>收益：碎片率降到 4% 以内；<strong>前缀共享</strong>天然支持（多个请求共享 system prompt 的块，写时复制）；显存利用率翻倍直接转化为更大的 batch。</p>
+<h3 id="2-2-连续批处理（Continuous-Batching）"><a href="#2-2-连续批处理（Continuous-Batching）" class="headerlink" title="2.2 连续批处理（Continuous Batching）"></a>2.2 连续批处理（Continuous Batching）</h3><p>静态批处理等整批跑完才返回；连续批处理在<strong>每个 decode 步</strong>检查：有请求结束就踢出、有新请求就插入。GPU 永远满载，吞吐提升 2-4 倍（相对 HF Transformers 裸跑可达 10 倍以上）。</p>
+<h3 id="2-3-上手"><a href="#2-3-上手" class="headerlink" title="2.3 上手"></a>2.3 上手</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pip install vllm</span><br><span class="line">python -m vllm.entrypoints.openai.api_server \</span><br><span class="line">  --model Qwen/Qwen2.5-7B-Instruct \</span><br><span class="line">  --max-model-len 8192 \</span><br><span class="line">  --gpu-memory-utilization 0.9 \</span><br><span class="line">  --port 8000</span><br></pre></td></tr></table></figure>
+
+<p>Python 内嵌用法：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> vllm <span class="keyword">import</span> LLM, SamplingParams</span><br><span class="line"></span><br><span class="line">llm = LLM(model=<span class="string">&quot;Qwen/Qwen2.5-7B-Instruct&quot;</span>, max_model_len=<span class="number">8192</span>)</span><br><span class="line">params = SamplingParams(temperature=<span class="number">0.7</span>, top_p=<span class="number">0.9</span>, max_tokens=<span class="number">512</span>)</span><br><span class="line">outputs = llm.generate([<span class="string">&quot;用三句话介绍 PagedAttention&quot;</span>], params)</span><br><span class="line"><span class="built_in">print</span>(outputs[<span class="number">0</span>].outputs[<span class="number">0</span>].text)</span><br></pre></td></tr></table></figure>
+
+<p>生产关键参数：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>经验值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>gpu-memory-utilization</code></td>
+<td>显存占用上限比例</td>
+<td>0.85–0.92，留余量防 OOM</td>
+</tr>
+<tr>
+<td><code>max-model-len</code></td>
+<td>最大上下文</td>
+<td>按需设小，直接决定 KV Cache 预算</td>
+</tr>
+<tr>
+<td><code>max-num-seqs</code></td>
+<td>并发序列上限</td>
+<td>256 起，看延迟调</td>
+</tr>
+<tr>
+<td><code>enable-prefix-caching</code></td>
+<td>前缀缓存</td>
+<td>Agent&#x2F;RAG 场景必开</td>
+</tr>
+<tr>
+<td><code>swap-space</code></td>
+<td>CPU 交换区 GB</td>
+<td>突发长文兜底，4–16</td>
+</tr>
+</tbody></table>
+<h2 id="3-SGLang：RadixAttention-与结构化生成"><a href="#3-SGLang：RadixAttention-与结构化生成" class="headerlink" title="3. SGLang：RadixAttention 与结构化生成"></a>3. SGLang：RadixAttention 与结构化生成</h2><p>SGLang 的杀手锏是 <strong>RadixAttention</strong>：把 KV Cache 组织成<strong>基数树（Radix Tree）</strong>，请求间自动共享最长公共前缀。vLLM 的前缀缓存是块级 LRU，RadixAttention 是树级精确匹配——在<strong>多轮对话、少样本提示、Agent 反复带同一系统提示</strong>的场景，缓存命中率显著更高，TTFT 可再降 30%–50%。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pip install <span class="string">&quot;sglang[all]&quot;</span></span><br><span class="line">python -m sglang.launch_server --model-path Qwen/Qwen2.5-7B-Instruct --port 30000</span><br></pre></td></tr></table></figure>
+
+<p>SGLang 的另一优势是<strong>约束解码</strong>：原生支持 regex &#x2F; JSON Schema 约束生成，输出结构合法性由引擎保证，不用在提示词里求模型”只输出 JSON”：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> requests</span><br><span class="line">resp = requests.post(<span class="string">&quot;http://localhost:30000/generate&quot;</span>, json=&#123;</span><br><span class="line">    <span class="string">&quot;text&quot;</span>: <span class="string">&quot;生成一条用户记录：&quot;</span>,</span><br><span class="line">    <span class="string">&quot;sampling_params&quot;</span>: &#123;<span class="string">&quot;max_new_tokens&quot;</span>: <span class="number">128</span>&#125;,</span><br><span class="line">    <span class="string">&quot;json_schema&quot;</span>: &#123;</span><br><span class="line">        <span class="string">&quot;type&quot;</span>: <span class="string">&quot;object&quot;</span>,</span><br><span class="line">        <span class="string">&quot;properties&quot;</span>: &#123;</span><br><span class="line">            <span class="string">&quot;name&quot;</span>: &#123;<span class="string">&quot;type&quot;</span>: <span class="string">&quot;string&quot;</span>&#125;,</span><br><span class="line">            <span class="string">&quot;age&quot;</span>: &#123;<span class="string">&quot;type&quot;</span>: <span class="string">&quot;integer&quot;</span>&#125;</span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&quot;required&quot;</span>: [<span class="string">&quot;name&quot;</span>, <span class="string">&quot;age&quot;</span>]</span><br><span class="line">    &#125;</span><br><span class="line">&#125;)</span><br><span class="line"><span class="built_in">print</span>(resp.json())</span><br></pre></td></tr></table></figure>
+
+<p>选型建议：常规高并发对话选 vLLM（生态大、文档全）；<strong>前缀共享率高 + 需要严格结构化输出</strong>（Agent、信息抽取）选 SGLang。两者都暴露 OpenAI 兼容接口，可以并存灰度。</p>
+<h2 id="4-Ollama：本地与小团队部署"><a href="#4-Ollama：本地与小团队部署" class="headerlink" title="4. Ollama：本地与小团队部署"></a>4. Ollama：本地与小团队部署</h2><p>Ollama 基于 llama.cpp，面向<strong>个人开发机与小团队内网</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Linux</span></span><br><span class="line">curl -fsSL https://ollama.com/install.sh | sh</span><br><span class="line">ollama pull qwen2.5:7b-instruct-q4_K_M</span><br><span class="line">ollama serve            <span class="comment"># 默认 11434 端口，OpenAI 兼容在 /v1</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 一行跑起来 + 自定义</span></span><br><span class="line">ollama run qwen2.5:7b-instruct-q4_K_M</span><br></pre></td></tr></table></figure>
+
+<p><code>Modelfile</code> 定制系统提示与参数：</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> qwen2.<span class="number">5</span>:<span class="number">7</span>b-instruct-q4_K_M</span><br><span class="line">PARAMETER temperature <span class="number">0.3</span></span><br><span class="line">PARAMETER num_ctx <span class="number">8192</span></span><br><span class="line">SYSTEM <span class="string">&quot;你是公司的内部知识库助手，回答必须引用来源。&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ollama create kb-assistant -f Modelfile</span><br><span class="line">ollama run kb-assistant</span><br></pre></td></tr></table></figure>
+
+<p>定位很清晰：<strong>开发调试、PoC、离线环境首选</strong>；生产高并发还是上 vLLM&#x2F;SGLang（GGUF 格式在 GPU 上的吞吐远低于 vLLM 的原生 FP16&#x2F;AWQ 路径）。</p>
+<h2 id="5-量化对比：GGUF-AWQ-GPTQ"><a href="#5-量化对比：GGUF-AWQ-GPTQ" class="headerlink" title="5. 量化对比：GGUF &#x2F; AWQ &#x2F; GPTQ"></a>5. 量化对比：GGUF &#x2F; AWQ &#x2F; GPTQ</h2><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>GGUF（llama.cpp）</th>
+<th>AWQ</th>
+<th>GPTQ</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>位宽</td>
+<td>Q2–Q8 灵活</td>
+<td>主打 W4A16</td>
+<td>W4&#x2F;W3A16</td>
+</tr>
+<tr>
+<td>运行后端</td>
+<td>CPU 优先，GPU 部分卸载</td>
+<td>GPU（vLLM&#x2F;SGLang&#x2F;TensorRT）</td>
+<td>GPU（vLLM&#x2F;ExLlama）</td>
+</tr>
+<tr>
+<td>精度损失</td>
+<td>Q4_K_M 约 1-2% 困惑度上升</td>
+<td>低（激活感知保护关键权重）</td>
+<td>低-中（依赖校准集）</td>
+</tr>
+<tr>
+<td>量化速度</td>
+<td>快（无需校准）</td>
+<td>需小规模校准</td>
+<td>需校准，较慢</td>
+</tr>
+<tr>
+<td>典型场景</td>
+<td>个人机、CPU、边缘</td>
+<td>生产 GPU 服务主力</td>
+<td>老显卡兼容兜底</td>
+</tr>
+</tbody></table>
+<p>经验结论：</p>
+<ul>
+<li>GPU 生产服务：<strong>AWQ 4bit</strong> 是甜点，显存省 65%+，吞吐反升（权重读取少了）；</li>
+<li>个人 Mac&#x2F;PC：<strong>GGUF Q4_K_M</strong>，7B 模型压到 4GB 出头；</li>
+<li>别在 7B 以下的小模型上激进 Q2&#x2F;Q3，精度崩得比省下的显存值钱；</li>
+<li>KV Cache 量化（vLLM 的 <code>--kv-cache-dtype fp8</code>）是独立于权重量化的另一层优化，长上下文场景再省一半。</li>
+</ul>
+<h2 id="6-KV-Cache-显存估算公式"><a href="#6-KV-Cache-显存估算公式" class="headerlink" title="6. KV Cache 显存估算公式"></a>6. KV Cache 显存估算公式</h2><p>总显存 ≈ <strong>权重 + KV Cache + 激活&#x2F;碎片余量</strong>。</p>
+<p>KV Cache 单个 token 占用：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kv_bytes_per_token = 2（K和V） × num_layers × num_kv_heads × head_dim × dtype_bytes</span><br></pre></td></tr></table></figure>
+
+<p>以 Qwen2.5-7B（28 层、GQA 4 个 KV head、head_dim 128、FP16）为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">2 × 28 × 4 × 128 × 2B = 57,344 B ≈ 56 KB / token</span><br></pre></td></tr></table></figure>
+
+<p>一个 8K 上下文的请求：56KB × 8192 ≈ <strong>448 MB</strong>。20 个并发长文请求 ≈ 9GB——这就是为什么 7B 模型 FP16 权重 14GB，一张 24GB 的 4090 也只能开十几个长文并发。</p>
+<p>注意 <strong>GQA&#x2F;MQA 的收益体现在这里</strong>：Qwen2.5 用 4 个 KV head 而非 32 个，KV Cache 直接除 8。选模型时 <code>num_key_value_heads</code> 是部署侧最该看的架构参数之一。</p>
+<p>快速估算脚本：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">kv_cache_gb</span>(<span class="params">layers, kv_heads, head_dim, ctx, batch, dtype_bytes=<span class="number">2</span></span>):</span><br><span class="line">    <span class="keyword">return</span> <span class="number">2</span> * layers * kv_heads * head_dim * dtype_bytes * ctx * batch / <span class="number">1024</span>**<span class="number">3</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">print</span>(kv_cache_gb(<span class="number">28</span>, <span class="number">4</span>, <span class="number">128</span>, <span class="number">8192</span>, <span class="number">20</span>))   <span class="comment"># ≈ 8.5 GB</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="7-压测：吞吐与延迟怎么测"><a href="#7-压测：吞吐与延迟怎么测" class="headerlink" title="7. 压测：吞吐与延迟怎么测"></a>7. 压测：吞吐与延迟怎么测</h2><p>核心指标：</p>
+<ul>
+<li><strong>TTFT</strong>（首 token 延迟）：交互体验的生命线，目标 &lt; 1s；</li>
+<li><strong>TPOT &#x2F; ITL</strong>（每 token 间隔）：决定”打字机速度”，目标 &lt; 50ms；</li>
+<li><strong>Throughput</strong>：总 token&#x2F;s，换算成本的核心；</li>
+<li><strong>P99 延迟</strong>：容量规划依据，别看均值。</li>
+</ul>
+<p>vLLM 自带基准：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">python -m vllm.entrypoints.openai.api_server --model ... &amp;</span><br><span class="line"></span><br><span class="line">python benchmarks/benchmark_serving.py \</span><br><span class="line">  --backend openai \</span><br><span class="line">  --model Qwen/Qwen2.5-7B-Instruct \</span><br><span class="line">  --dataset-name sharegpt \</span><br><span class="line">  --num-prompts 500 \</span><br><span class="line">  --request-rate 10</span><br></pre></td></tr></table></figure>
+
+<p>或用 genai-perf &#x2F; llmperf。压测纪律：</p>
+<ol>
+<li>用<strong>真实长度分布</strong>的数据集（ShareGPT 或线上采样），别用 “hi” 压出虚假高吞吐；</li>
+<li>阶梯加压（1→4→16→64 并发），找到延迟拐点即容量上限；</li>
+<li>分开报告 prefill 重（长输入短输出）与 decode 重（短输入长输出）两组结果；</li>
+<li>压测时锁 <code>max-model-len</code> 等参数，参数变了结果不可比。</li>
+</ol>
+<h2 id="8-多卡与张量并行"><a href="#8-多卡与张量并行" class="headerlink" title="8. 多卡与张量并行"></a>8. 多卡与张量并行</h2><p>单卡装不下时：</p>
+<ul>
+<li><strong>张量并行（TP）</strong>：把每层的权重矩阵切到多卡，all-reduce 通信。NVLink 内高效，跨机慎用于 decode。</li>
+<li><strong>流水并行（PP）</strong>：按层切段，通信少但有气泡，适合跨机补充。</li>
+<li><strong>数据并行（DP）</strong>：多副本 + 负载均衡，<strong>扩容吞吐的首选</strong>，无通信开销。</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 2 卡 TP 跑 32B 模型</span></span><br><span class="line">python -m vllm.entrypoints.openai.api_server \</span><br><span class="line">  --model Qwen/Qwen2.5-32B-Instruct-AWQ \</span><br><span class="line">  --tensor-parallel-size 2 \</span><br><span class="line">  --port 8000</span><br></pre></td></tr></table></figure>
+
+<p>经验：能单卡就别 TP（通信损耗 10-20%）；要吞吐优先加副本做 DP，要装大模型才 TP；8 卡机内 TP&#x3D;8 是上限，再大走 PP 或专家并行（MoE 模型）。</p>
+<h2 id="9-生产服务化：OpenAI-兼容-API"><a href="#9-生产服务化：OpenAI-兼容-API" class="headerlink" title="9. 生产服务化：OpenAI 兼容 API"></a>9. 生产服务化：OpenAI 兼容 API</h2><p>vLLM &#x2F; SGLang 都内置 <code>/v1/chat/completions</code>，客户端零改动：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> openai <span class="keyword">import</span> OpenAI</span><br><span class="line"></span><br><span class="line">client = OpenAI(base_url=<span class="string">&quot;http://gpu-server:8000/v1&quot;</span>, api_key=<span class="string">&quot;EMPTY&quot;</span>)</span><br><span class="line">resp = client.chat.completions.create(</span><br><span class="line">    model=<span class="string">&quot;Qwen/Qwen2.5-7B-Instruct&quot;</span>,</span><br><span class="line">    messages=[&#123;<span class="string">&quot;role&quot;</span>: <span class="string">&quot;user&quot;</span>, <span class="string">&quot;content&quot;</span>: <span class="string">&quot;你好&quot;</span>&#125;],</span><br><span class="line">    stream=<span class="literal">True</span>,</span><br><span class="line">)</span><br><span class="line"><span class="keyword">for</span> chunk <span class="keyword">in</span> resp:</span><br><span class="line">    <span class="built_in">print</span>(chunk.choices[<span class="number">0</span>].delta.content <span class="keyword">or</span> <span class="string">&quot;&quot;</span>, end=<span class="string">&quot;&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>生产架构最小集：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  C[业务服务] --&gt; GW[AI 网关&lt;br/&gt;限流/鉴权/路由]</span><br><span class="line">  GW --&gt; LB[负载均衡]</span><br><span class="line">  LB --&gt; V1[vLLM 实例 1]</span><br><span class="line">  LB --&gt; V2[vLLM 实例 2]</span><br><span class="line">  LB --&gt; V3[vLLM 实例 3]</span><br><span class="line">  V1 &amp; V2 &amp; V3 --&gt; M[Prometheus 指标]</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>网关层做鉴权、配额、降级（见<a href="/ai-engineering/10-ai-gateway-guide/">第十一章</a>）；</li>
+<li>健康检查要检查<strong>引擎内部队列深度</strong>而不只是端口存活；</li>
+<li>关注 vLLM 暴露的 <code>vllm:num_requests_waiting</code>、<code>vllm:gpu_cache_usage_perc</code> 指标，cache 使用率 &gt;90% 就该扩容或限流；</li>
+<li>滚动升级用”–enable-lora 灰度 + 蓝绿实例”二选一，别在单实例上热换模型。</li>
+</ul>
+<h2 id="常见坑-FAQ"><a href="#常见坑-FAQ" class="headerlink" title="常见坑 FAQ"></a>常见坑 FAQ</h2><ol>
+<li><strong>Q：起服务就 OOM，明明权重算得过来？</strong> A：KV Cache 是按 <code>max-model-len × max-num-seqs</code> 预分配预算的。先把 <code>max-model-len</code> 砍到业务真实上限，<code>gpu-memory-utilization</code> 降到 0.85 试。</li>
+<li><strong>Q：吞吐上去了但用户嫌慢？</strong> A：高吞吐靠大 batch，大 batch 拉高 TTFT。交互场景限 <code>max-num-seqs</code> 或按延迟 SLO 定并发上限，鱼和熊掌要显式取舍。</li>
+<li><strong>Q：AWQ 模型某些 case 输出明显变蠢？</strong> A：检查量化校准集是否与业务分布匹配；对精度敏感的任务（数学、代码）回退 FP16&#x2F;BF16 或用 8bit。</li>
+<li><strong>Q：长上下文请求把短请求拖死？</strong> A：开 chunked prefill（vLLM <code>--enable-chunked-prefill</code>），把长 prefill 切片与 decode 混合调度，避免队头阻塞。</li>
+<li><strong>Q：Ollama 上生产为什么被劝退？</strong> A：GGUF 在 GPU 上 decode 吞吐远低于 vLLM 的 PagedAttention 路径，且并发调度简单；它适合 ≤10 并发的内网工具，不适合 C 端流量。</li>
+<li><strong>Q：多轮对话越来越慢？</strong> A：历史全量重算是元凶。确认前缀缓存已开启（vLLM <code>--enable-prefix-caching</code> 或 SGLang 默认开启），且消息结构保持前缀稳定——系统提示里别塞时间戳。</li>
+</ol>
+<h2 id="生产实践清单"><a href="#生产实践清单" class="headerlink" title="生产实践清单"></a>生产实践清单</h2><ul>
+<li><input disabled="" type="checkbox"> 按业务真实上下文长度设 <code>max-model-len</code>，不盲目拉满模型标称值</li>
+<li><input disabled="" type="checkbox"> 显存预算 &#x3D; 权重 + KV Cache（用公式核算）+ 10% 余量</li>
+<li><input disabled="" type="checkbox"> Agent&#x2F;RAG 场景开启前缀缓存，系统提示放消息最前且保持稳定</li>
+<li><input disabled="" type="checkbox"> 上线前用真实分布数据集做阶梯压测，确定并发上限与 P99</li>
+<li><input disabled="" type="checkbox"> 监控 TTFT &#x2F; TPOT &#x2F; 队列深度 &#x2F; cache 使用率四类指标</li>
+<li><input disabled="" type="checkbox"> 量化模型上线前跑精度回归集（自建 100+ 条业务 case）</li>
+<li><input disabled="" type="checkbox"> OpenAI 兼容接口 + 网关统一鉴权限流，引擎不直接暴露公网</li>
+<li><input disabled="" type="checkbox"> 模型升级走蓝绿，保留旧版本快速回滚</li>
+</ul>
+<h2 id="扩展阅读"><a href="#扩展阅读" class="headerlink" title="扩展阅读"></a>扩展阅读</h2><ul>
+<li>vLLM 文档与 PagedAttention 论文：<a target="_blank" rel="noopener" href="https://docs.vllm.ai/">https://docs.vllm.ai/</a></li>
+<li>SGLang 与 RadixAttention 论文：<a target="_blank" rel="noopener" href="https://github.com/sgl-project/sglang">https://github.com/sgl-project/sglang</a></li>
+<li>llama.cpp &#x2F; GGUF 格式说明：<a target="_blank" rel="noopener" href="https://github.com/ggml-org/llama.cpp">https://github.com/ggml-org/llama.cpp</a></li>
+<li>AWQ 论文（Activation-aware Weight Quantization）</li>
+<li>NVIDIA TensorRT-LLM 性能调优指南（极致性能场景）</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/AI/" rel="tag"># AI</a>
+              <a href="/tags/LLM-%E9%83%A8%E7%BD%B2/" rel="tag"># LLM 部署</a>
+              <a href="/tags/vLLM/" rel="tag"># vLLM</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/ai-engineering/06-coding-agent-workflow/" rel="prev" title="第七章：Coding Agent 工作流：AI 编程落地实践">
+                  <i class="fa fa-angle-left"></i> 第七章：Coding Agent 工作流：AI 编程落地实践
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/ai-engineering/08-llm-finetuning-practice/" rel="next" title="第九章：LLM 微调实战：LoRA、QLoRA 与 DPO">
+                  第九章：LLM 微调实战：LoRA、QLoRA 与 DPO <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">60:37</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>
