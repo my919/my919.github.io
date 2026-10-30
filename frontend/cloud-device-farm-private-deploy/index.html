@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"my919.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.29.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="云真机私有化部署实战 数据不出内网、设备自己掌控——用 STF 把闲置手机变成公司级云真机平台。本文给出从单机验证到多节点生产集群的完整部署方案、iOS 扩展路线与运维要点。  1. 私有化方案现状（2026）   方案 状态 说明    STF (DeviceFarmer) 维护中，v3.8.0（2026-09） 开源私有化唯一活跃选择，Android 为主   Sonic 官方已停止维护 存量">
+<meta property="og:type" content="article">
+<meta property="og:title" content="云真机私有化部署实战：STF 集群搭建与运维指南">
+<meta property="og:url" content="https://my919.github.io/frontend/cloud-device-farm-private-deploy/index.html">
+<meta property="og:site_name" content="my">
+<meta property="og:description" content="云真机私有化部署实战 数据不出内网、设备自己掌控——用 STF 把闲置手机变成公司级云真机平台。本文给出从单机验证到多节点生产集群的完整部署方案、iOS 扩展路线与运维要点。  1. 私有化方案现状（2026）   方案 状态 说明    STF (DeviceFarmer) 维护中，v3.8.0（2026-09） 开源私有化唯一活跃选择，Android 为主   Sonic 官方已停止维护 存量">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-10-30T07:30:00.000Z">
+<meta property="article:modified_time" content="2026-10-30T15:46:00.797Z">
+<meta property="article:author" content="my">
+<meta property="article:tag" content="Appium">
+<meta property="article:tag" content="STF">
+<meta property="article:tag" content="云真机">
+<meta property="article:tag" content="私有化部署">
+<meta property="article:tag" content="移动测试">
+<meta property="article:tag" content="运维">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://my919.github.io/frontend/cloud-device-farm-private-deploy/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://my919.github.io/frontend/cloud-device-farm-private-deploy/","path":"frontend/cloud-device-farm-private-deploy/","title":"云真机私有化部署实战：STF 集群搭建与运维指南"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>云真机私有化部署实战：STF 集群搭建与运维指南 | my</title>
+  
+
+
+
+
+
+
+
+
+  
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":{"light":"default","dark":"dark"},"js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">false</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"ams","display_overflow":"scroll","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-mml-chtml.js","integrity":"sha256-ihPtDDm7pTmSF9ViEsItlvsrBTsNkz0MOXMchzOwCQw="}}</script>
+<script src="/js/third-party/math/mathjax.js" defer></script>
+
+
+<style>
+.links-of-author-item a[href*="gitee.com"] i {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  background: #C71D23;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+  line-height: 1.25em;
+  text-align: center;
+  font-size: 0.75em;
+  color: #fff;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.links-of-author-item a[href*="gitee.com"] i::before {
+  content: "G";
+}
+.links-of-author-item a[href*="gitee.com"] i > * {
+  display: none;
+}
+</style>
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">my</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索引擎" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li><li class="menu-item menu-item-design"><a href="/design/" rel="section"><i class="fa fa-cubes fa-fw"></i>设计模式</a></li><li class="menu-item menu-item-network"><a href="/network/" rel="section"><i class="fa fa-network-wired fa-fw"></i>计算机网络</a></li><li class="menu-item menu-item-algorithm"><a href="/algorithm/" rel="section"><i class="fa fa-code-branch fa-fw"></i>数据结构与算法</a></li><li class="menu-item menu-item-concurrency"><a href="/concurrency/" rel="section"><i class="fa fa-random fa-fw"></i>并发编程</a></li><li class="menu-item menu-item-database"><a href="/database/" rel="section"><i class="fa fa-database fa-fw"></i>数据库</a></li><li class="menu-item menu-item-distributed"><a href="/distributed/" rel="section"><i class="fa fa-project-diagram fa-fw"></i>分布式</a></li><li class="menu-item menu-item-c"><a href="/c/" rel="section"><i class="fa fa-file-code-o fa-fw"></i>C 语言</a></li><li class="menu-item menu-item-embedded"><a href="/embedded/" rel="section"><i class="fa fa-microchip fa-fw"></i>嵌入式与机器人</a></li><li class="menu-item menu-item-opencv"><a href="/opencv/" rel="section"><i class="fa fa-eye fa-fw"></i>OpenCV</a></li><li class="menu-item menu-item-video"><a href="/video/" rel="section"><i class="fa fa-video fa-fw"></i>音视频</a></li><li class="menu-item menu-item-ai"><a href="/ai/" rel="section"><i class="fa fa-robot fa-fw"></i>人工智能</a></li><li class="menu-item menu-item-python"><a href="/python/" rel="section"><i class="fab fa-python fa-fw"></i>Python</a></li><li class="menu-item menu-item-java"><a href="/java/" rel="section"><i class="fab fa-java fa-fw"></i>Java</a></li><li class="menu-item menu-item-vue"><a href="/vue/" rel="section"><i class="fab fa-vuejs fa-fw"></i>Vue</a></li><li class="menu-item menu-item-linux"><a href="/linux/" rel="section"><i class="fab fa-linux fa-fw"></i>Linux</a></li><li class="menu-item menu-item-netty"><a href="/netty/" rel="section"><i class="fa fa-plug fa-fw"></i>Netty</a></li><li class="menu-item menu-item-springboot"><a href="/springboot/" rel="section"><i class="fa fa-leaf fa-fw"></i>SpringBoot</a></li><li class="menu-item menu-item-redis"><a href="/redis/" rel="section"><i class="fa fa-bolt fa-fw"></i>Redis 缓存</a></li><li class="menu-item menu-item-mq"><a href="/mq/" rel="section"><i class="fa fa-exchange fa-fw"></i>消息队列</a></li><li class="menu-item menu-item-docker"><a href="/docker/" rel="section"><i class="fab fa-docker fa-fw"></i>Docker 容器化</a></li><li class="menu-item menu-item-test"><a href="/test/" rel="section"><i class="fa fa-vial fa-fw"></i>自动化测试</a></li><li class="menu-item menu-item-dal"><a href="/dal/" rel="section"><i class="fa fa-layer-group fa-fw"></i>数据访问层</a></li><li class="menu-item menu-item-nginx"><a href="/nginx/" rel="section"><i class="fa fa-balance-scale fa-fw"></i>Nginx</a></li><li class="menu-item menu-item-jvm"><a href="/jvm/" rel="section"><i class="fa fa-coffee fa-fw"></i>JVM</a></li><li class="menu-item menu-item-api"><a href="/api/" rel="section"><i class="fa fa-code fa-fw"></i>API 与接口</a></li><li class="menu-item menu-item-blockchain"><a href="/blockchain/" rel="section"><i class="fa fa-link fa-fw"></i>区块链</a></li><li class="menu-item menu-item-tool"><a href="/tool/" rel="section"><i class="fa fa-tools fa-fw"></i>工具与效率</a></li><li class="menu-item menu-item-springcloudalibaba"><a href="/springcloudalibaba/" rel="section"><i class="fa fa-cloud fa-fw"></i>SpringCloudAlibaba</a></li><li class="menu-item menu-item-security"><a href="/security/" rel="section"><i class="fa fa-shield-alt fa-fw"></i>安全</a></li><li class="menu-item menu-item-performance"><a href="/performance/" rel="section"><i class="fa fa-tachometer-alt fa-fw"></i>性能优化</a></li><li class="menu-item menu-item-frontend"><a href="/frontend/" rel="section"><i class="fa fa-desktop fa-fw"></i>前端与移动端</a></li><li class="menu-item menu-item-golang"><a href="/golang/" rel="section"><i class="fa fa-code fa-fw"></i>Go 语言</a></li><li class="menu-item menu-item-architecture"><a href="/architecture/" rel="section"><i class="fa fa-drafting-compass fa-fw"></i>系统架构</a></li><li class="menu-item menu-item-devops"><a href="/devops/" rel="section"><i class="fa fa-infinity fa-fw"></i>DevOps 与平台工程</a></li><li class="menu-item menu-item-datascience"><a href="/datascience/" rel="section"><i class="fa fa-chart-bar fa-fw"></i>数据工程</a></li><li class="menu-item menu-item-rust"><a href="/rust/" rel="section"><i class="fa fa-cog fa-fw"></i>Rust 语言</a></li><li class="menu-item menu-item-management"><a href="/management/" rel="section"><i class="fa fa-users fa-fw"></i>职业与管理</a></li><li class="menu-item menu-item-nodejs"><a href="/nodejs/" rel="section"><i class="fab fa-node-js fa-fw"></i>Node.js 全栈</a></li><li class="menu-item menu-item-observability"><a href="/observability/" rel="section"><i class="fa fa-chart-line fa-fw"></i>可观测与稳定性</a></li><li class="menu-item menu-item-search"><a href="/search/" rel="section"><i class="fa fa-search fa-fw"></i>搜索引擎</a></li><li class="menu-item menu-item-realtime"><a href="/realtime/" rel="section"><i class="fa fa-broadcast-tower fa-fw"></i>实时通信</a></li><li class="menu-item menu-item-kubernetes"><a href="/kubernetes/" rel="section"><i class="fa fa-dharmachakra fa-fw"></i>云原生与 Kubernetes</a></li><li class="menu-item menu-item-mysql"><a href="/mysql/" rel="section"><i class="fa fa-database fa-fw"></i>MySQL 深入</a></li><li class="menu-item menu-item-ai-engineering"><a href="/ai-engineering/" rel="section"><i class="fa fa-brain fa-fw"></i>AI 工程化</a></li><li class="menu-item menu-item-linear-algebra"><a href="/linear-algebra/" rel="section"><i class="fa fa-square-root-alt fa-fw"></i>MIT 线性代数</a></li><li class="menu-item menu-item-advanced-math"><a href="/advanced-math/" rel="section"><i class="fa fa-integral fa-fw"></i>高等数学</a></li><li class="menu-item menu-item-codereview"><a href="/codereview/" rel="section"><i class="fa fa-search fa-fw"></i>工程规范与代码质量</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索引擎
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%91%E7%9C%9F%E6%9C%BA%E7%A7%81%E6%9C%89%E5%8C%96%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98"><span class="nav-number">1.</span> <span class="nav-text">云真机私有化部署实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E7%A7%81%E6%9C%89%E5%8C%96%E6%96%B9%E6%A1%88%E7%8E%B0%E7%8A%B6%EF%BC%882026%EF%BC%89"><span class="nav-number">1.1.</span> <span class="nav-text">1. 私有化方案现状（2026）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E6%9E%B6%E6%9E%84%E4%B8%8E%E7%BB%84%E4%BB%B6"><span class="nav-number">1.2.</span> <span class="nav-text">2. 架构与组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%8D%95%E6%9C%BA%E9%AA%8C%E8%AF%81%EF%BC%8830-%E5%88%86%E9%92%9F%E8%B7%91%E9%80%9A%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">3. 单机验证（30 分钟跑通）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E7%94%9F%E4%BA%A7%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2"><span class="nav-number">1.4.</span> <span class="nav-text">4. 生产集群部署</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E8%8A%82%E7%82%B9%E8%A7%84%E5%88%92%EF%BC%8850-%E5%8F%B0%E8%AE%BE%E5%A4%87%E5%8F%82%E8%80%83%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">4.1 节点规划（50 台设备参考）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-Provider-%E8%8A%82%E7%82%B9%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE"><span class="nav-number">1.4.2.</span> <span class="nav-text">4.2 Provider 节点关键配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E7%A1%AC%E4%BB%B6%E4%B8%8E%E5%B8%83%E7%BA%BF%EF%BC%88%E6%9C%80%E5%AE%B9%E6%98%93%E8%B8%A9%E7%9A%84%E5%9D%91%EF%BC%89"><span class="nav-number">1.4.3.</span> <span class="nav-text">4.3 硬件与布线（最容易踩的坑）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-%E8%AE%A4%E8%AF%81%E4%B8%8E%E9%AB%98%E5%8F%AF%E7%94%A8"><span class="nav-number">1.4.4.</span> <span class="nav-text">4.4 认证与高可用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-iOS-%E6%89%A9%E5%B1%95%E8%B7%AF%E7%BA%BF"><span class="nav-number">1.5.</span> <span class="nav-text">5. iOS 扩展路线</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E4%B8%8E-CI-%E9%9B%86%E6%88%90"><span class="nav-number">1.6.</span> <span class="nav-text">6. 与 CI 集成</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E8%BD%BB%E9%87%8F%E6%9B%BF%E4%BB%A3%EF%BC%9A%E5%8F%AA%E8%A6%81%E8%BF%9C%E7%A8%8B%E6%8A%95%E5%B1%8F"><span class="nav-number">1.7.</span> <span class="nav-text">7. 轻量替代：只要远程投屏</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#8-%E8%BF%90%E7%BB%B4%E4%B8%8E%E7%9B%91%E6%8E%A7"><span class="nav-number">1.8.</span> <span class="nav-text">8. 运维与监控</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#9-%E5%AE%B9%E9%87%8F%E4%BC%B0%E7%AE%97"><span class="nav-number">1.9.</span> <span class="nav-text">9. 容量估算</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#10-%E9%80%9F%E6%9F%A5%E5%8D%A1%E7%89%87"><span class="nav-number">1.10.</span> <span class="nav-text">10. 速查卡片</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">my</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">468</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">73</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">444</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/my919" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://gitee.com/my919" title="Gitee → https:&#x2F;&#x2F;gitee.com&#x2F;my919" rel="noopener me" target="_blank"><i class="fab fa-gitee fa-fw"></i>Gitee</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:yeal166@163.com" title="E-Mail → mailto:yeal166@163.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/frontend/cloud-device-farm-private-deploy/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="云真机私有化部署实战：STF 集群搭建与运维指南 | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          云真机私有化部署实战：STF 集群搭建与运维指南
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-10-30 15:30:00 / 修改时间：23:46:00" itemprop="dateCreated datePublished" datetime="2026-10-30T15:30:00+08:00">2026-10-30</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%89%8D%E7%AB%AF%E4%B8%8E%E7%A7%BB%E5%8A%A8%E7%AB%AF/" itemprop="url" rel="index"><span itemprop="name">前端与移动端</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.2k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>5 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="云真机私有化部署实战"><a href="#云真机私有化部署实战" class="headerlink" title="云真机私有化部署实战"></a>云真机私有化部署实战</h1><blockquote>
+<p>数据不出内网、设备自己掌控——用 STF 把闲置手机变成公司级云真机平台。本文给出从单机验证到多节点生产集群的完整部署方案、iOS 扩展路线与运维要点。</p>
+</blockquote>
+<h2 id="1-私有化方案现状（2026）"><a href="#1-私有化方案现状（2026）" class="headerlink" title="1. 私有化方案现状（2026）"></a>1. 私有化方案现状（2026）</h2><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>STF (DeviceFarmer)</strong></td>
+<td>维护中，v3.8.0（2026-09）</td>
+<td>开源私有化唯一活跃选择，Android 为主</td>
+</tr>
+<tr>
+<td>Sonic</td>
+<td><strong>官方已停止维护</strong></td>
+<td>存量用户建议规划迁移到 STF；新项目勿入</td>
+</tr>
+<tr>
+<td>商用私有化（WeTest 专有云、Testin 等）</td>
+<td>在售</td>
+<td>预算充足、要 iOS + 厂商支持时选型</td>
+</tr>
+<tr>
+<td>自研（minicap&#x2F;scrcpy + Appium）</td>
+<td>可行</td>
+<td>只需远程投屏操控时可轻量自研，见第 7 节</td>
+</tr>
+</tbody></table>
+<p>结论：<strong>私有化自建 &#x3D; STF</strong>。本文以此为基线，Docker Compose 起步，逐层扩展到生产集群。</p>
+<h2 id="2-架构与组件"><a href="#2-架构与组件" class="headerlink" title="2. 架构与组件"></a>2. 架构与组件</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">                ┌──────────┐</span><br><span class="line">                │ Nginx/LB │  HTTPS 终结、SSO 前置</span><br><span class="line">                └────┬─────┘</span><br><span class="line">      ┌──────────────┼──────────────┐</span><br><span class="line">      │              │              │</span><br><span class="line">stf-app(可横向扩展) stf-api    stf-websocket</span><br><span class="line">      │              │              │</span><br><span class="line">      └──────────────┼──────────────┘</span><br><span class="line">               triproxy (ZeroMQ)</span><br><span class="line">              /    |     \</span><br><span class="line">┌────────────┐   ┌────────────┐   ┌─────────┐</span><br><span class="line">│ provider-1 │   │ provider-2 │   │  reaper │  ← 设备离线回收</span><br><span class="line">│ 10~15台手机 │   │ 10~15台手机 │   └─────────┘</span><br><span class="line">└────────────┘   └────────────┘</span><br><span class="line">┌─────────────────────────────────┐</span><br><span class="line">│ RethinkDB（设备状态）+ MinIO（截图/APK）│</span><br><span class="line">└─────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>单元</th>
+<th>职责</th>
+<th>扩展策略</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>stf-app</code></td>
+<td>Web 控制台</td>
+<td>无状态，按并发用户横向扩</td>
+</tr>
+<tr>
+<td><code>stf-api</code></td>
+<td>REST API（CI 占机&#x2F;释放）</td>
+<td>无状态，横向扩</td>
+</tr>
+<tr>
+<td><code>stf-websocket</code></td>
+<td>投屏视频流</td>
+<td>按带宽扩，单节点千兆≈30 路 1080p</td>
+</tr>
+<tr>
+<td><code>stf-provider</code></td>
+<td>USB 设备接入、minicap&#x2F;minitouch</td>
+<td><strong>核心扩展单位</strong>：一台 Linux 带 10~15 台 Android</td>
+</tr>
+<tr>
+<td><code>stf-processor</code></td>
+<td>消息处理</td>
+<td>按设备数扩，每百台 2~4 个</td>
+</tr>
+<tr>
+<td><code>triproxy</code></td>
+<td>ZeroMQ 路由</td>
+<td>一般 1 主 1 备即可</td>
+</tr>
+<tr>
+<td><code>reaper</code></td>
+<td>清理”僵尸设备”会话</td>
+<td>单实例</td>
+</tr>
+</tbody></table>
+<h2 id="3-单机验证（30-分钟跑通）"><a href="#3-单机验证（30-分钟跑通）" class="headerlink" title="3. 单机验证（30 分钟跑通）"></a>3. 单机验证（30 分钟跑通）</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># docker-compose.yml</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line">  <span class="attr">rethinkdb:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">rethinkdb:2.4</span></span><br><span class="line">    <span class="attr">restart:</span> <span class="string">unless-stopped</span></span><br><span class="line">    <span class="attr">volumes:</span> [<span class="string">&quot;rethinkdb-data:/data&quot;</span>]</span><br><span class="line"></span><br><span class="line">  <span class="attr">adb:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">devicefarmer/stf:3.8.0</span></span><br><span class="line">    <span class="attr">command:</span> <span class="string">stf</span> <span class="string">provider</span> <span class="string">--name</span> <span class="string">local</span> <span class="string">--min-port</span> <span class="number">7400</span> <span class="string">--max-port</span> <span class="number">7700</span> <span class="string">\</span></span><br><span class="line">      <span class="string">--connect-sub</span> <span class="string">tcp://stf:7150</span> <span class="string">--connect-push</span> <span class="string">tcp://stf:7170</span> <span class="string">\</span></span><br><span class="line">      <span class="string">--storage-url</span> <span class="string">http://localhost:7100/</span> <span class="string">--public-ip</span> <span class="string">$&#123;HOST_IP&#125;</span></span><br><span class="line">    <span class="attr">privileged:</span> <span class="literal">true</span></span><br><span class="line">    <span class="attr">volumes:</span> [<span class="string">&quot;/dev/bus/usb:/dev/bus/usb&quot;</span>]</span><br><span class="line"></span><br><span class="line">  <span class="attr">stf:</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">devicefarmer/stf:3.8.0</span></span><br><span class="line">    <span class="attr">command:</span> <span class="string">stf</span> <span class="string">local</span> <span class="string">--public-ip</span> <span class="string">$&#123;HOST_IP&#125;</span> <span class="string">--allow-remote</span> <span class="string">\</span></span><br><span class="line">      <span class="string">--adb-host</span> <span class="string">adb</span> <span class="string">--port</span> <span class="number">7100</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;7100:7100&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;7110:7110&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;7400-7700:7400-7700&quot;</span></span><br><span class="line">    <span class="attr">depends_on:</span> [<span class="string">rethinkdb</span>]</span><br><span class="line"></span><br><span class="line"><span class="attr">volumes:</span></span><br><span class="line">  <span class="attr">rethinkdb-data:</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">HOST_IP=192.168.1.100 docker compose up -d</span><br><span class="line"><span class="comment"># 手机开 USB 调试插到部署机 → 浏览器打开 http://192.168.1.100:7100</span></span><br></pre></td></tr></table></figure>
+
+<p>验证清单：设备列表出现手机 → 点击能投屏操控 → <code>adb connect</code> 端口可连 → API 能占机。</p>
+<h2 id="4-生产集群部署"><a href="#4-生产集群部署" class="headerlink" title="4. 生产集群部署"></a>4. 生产集群部署</h2><h3 id="4-1-节点规划（50-台设备参考）"><a href="#4-1-节点规划（50-台设备参考）" class="headerlink" title="4.1 节点规划（50 台设备参考）"></a>4.1 节点规划（50 台设备参考）</h3><table>
+<thead>
+<tr>
+<th>节点</th>
+<th>配置</th>
+<th>部署</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>接入层 ×1</td>
+<td>4C8G</td>
+<td>Nginx + stf-app ×2 + stf-api ×2</td>
+</tr>
+<tr>
+<td>消息&#x2F;数据层 ×1</td>
+<td>8C16G</td>
+<td>RethinkDB（SSD）+ MinIO + triproxy + reaper</td>
+</tr>
+<tr>
+<td>Provider ×4</td>
+<td>8C16G + USB 3.0 ×2</td>
+<td>每台 provider + 12 台手机</td>
+</tr>
+<tr>
+<td>WebSocket ×1</td>
+<td>4C8G</td>
+<td>stf-websocket ×2（与投屏并发匹配）</td>
+</tr>
+</tbody></table>
+<h3 id="4-2-Provider-节点关键配置"><a href="#4-2-Provider-节点关键配置" class="headerlink" title="4.2 Provider 节点关键配置"></a>4.2 Provider 节点关键配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">stf provider --name provider-01 \</span><br><span class="line">  --connect-sub tcp://mq.internal:7150 \</span><br><span class="line">  --connect-push tcp://mq.internal:7170 \</span><br><span class="line">  --storage-url https://stf.internal/ \</span><br><span class="line">  --min-port 7400 --max-port 7700 \</span><br><span class="line">  --heartbeat-interval 10000 \</span><br><span class="line">  --screen-ws-url-pattern <span class="string">&quot;wss://stf.internal/d/&lt;%= publicIp %&gt;/&lt;%= serial %&gt;/&lt;%= publicPort %&gt;/&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-硬件与布线（最容易踩的坑）"><a href="#4-3-硬件与布线（最容易踩的坑）" class="headerlink" title="4.3 硬件与布线（最容易踩的坑）"></a>4.3 硬件与布线（最容易踩的坑）</h3><table>
+<thead>
+<tr>
+<th>项</th>
+<th>经验值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>USB HUB</td>
+<td>必须<strong>独立供电</strong>的工业级 Hub（如 16 口 90W 以上），总线供电带不动多机同时充电+投屏</td>
+</tr>
+<tr>
+<td>散热</td>
+<td>12 台手机叠放充电投屏，温度轻松上 45°C；机柜加风扇直吹，或间隔立式支架</td>
+</tr>
+<tr>
+<td>电池</td>
+<td>长期 100% 充电鼓包是最大安全隐患；用带<strong>充电阈值控制</strong>的 ROM&#x2F;内核，或智能插座定时断电循环（如每天 0:00-6:00 断电放到 40% 再充）</td>
+</tr>
+<tr>
+<td>网络</td>
+<td>手机走 WiFi 时与 Provider 间建议有线回程；投屏单路 2~6 Mbps，50 台并发预留 300 Mbps</td>
+</tr>
+<tr>
+<td>供电</td>
+<td>机柜独立空开，UPS 至少撑过断电告警窗口</td>
+</tr>
+</tbody></table>
+<h3 id="4-4-认证与高可用"><a href="#4-4-认证与高可用" class="headerlink" title="4.4 认证与高可用"></a>4.4 认证与高可用</h3><ul>
+<li><strong>认证</strong>：生产必须关掉 mock 登录。企业接 LDAP：<code>--auth-type ldap --auth-options &#39;[&quot;--ldap-url&quot;,&quot;ldap://ad.internal&quot;,&quot;--ldap-bind-dn&quot;,&quot;...&quot;]&#39;</code>；或用 OAuth2&#x2F;SAML 前置到 Nginx</li>
+<li><strong>HTTPS</strong>：Nginx 终结 TLS，WebSocket 记得 <code>proxy_set_header Upgrade $http_upgrade;</code></li>
+<li><strong>RethinkDB</strong>：单节点够用但要做每日 <code>rethinkdb dump</code> 备份；状态丢了最多设备重新注册，不是致命数据</li>
+<li><strong>Provider 冗余</strong>：同区域部署 2 台 Provider，USB 故障时手机 5 分钟内换插重连</li>
+</ul>
+<h2 id="5-iOS-扩展路线"><a href="#5-iOS-扩展路线" class="headerlink" title="5. iOS 扩展路线"></a>5. iOS 扩展路线</h2><p>STF 官方不覆盖 iOS，私有化有三条路：</p>
+<table>
+<thead>
+<tr>
+<th>路线</th>
+<th>原理</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>WebDriverAgent + tidevice</td>
+<td>WDA 提供 :8100 HTTP 控制 + :9100 MJPEG 投屏，套一层自研 Web 前端</td>
+<td>需要 Mac 机柜 + Apple 开发者签名（企业证书或 7 天重签自动化）</td>
+</tr>
+<tr>
+<td>Appium 3 + XCUITest 直控</td>
+<td>不做投屏，只做自动化占机调度</td>
+<td>无实时画面，只能看截图日志</td>
+</tr>
+<tr>
+<td>商用私有化补 iOS</td>
+<td>WeTest 专有云等混合部署</td>
+<td>预算高，省心</td>
+</tr>
+</tbody></table>
+<p>实践经验：<strong>Android 私有化 + iOS 用商用公有云</strong>是多数团队的性价比最优解——iOS 自建的签名维护和 Mac 硬件折旧远超订阅费。</p>
+<h2 id="6-与-CI-集成"><a href="#6-与-CI-集成" class="headerlink" title="6. 与 CI 集成"></a>6. 与 CI 集成</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 占机 → 跑测 → 释放，异常时兜底释放</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">STFDevice</span>:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, stf_url, token, serial</span>):</span><br><span class="line">        <span class="variable language_">self</span>.stf, <span class="variable language_">self</span>.token, <span class="variable language_">self</span>.serial = stf_url, token, serial</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__enter__</span>(<span class="params">self</span>):</span><br><span class="line">        r = requests.post(<span class="string">f&quot;<span class="subst">&#123;self.stf&#125;</span>/api/v1/user/devices/<span class="subst">&#123;self.serial&#125;</span>&quot;</span>,</span><br><span class="line">                          headers=&#123;<span class="string">&quot;Authorization&quot;</span>: <span class="string">f&quot;Bearer <span class="subst">&#123;self.token&#125;</span>&quot;</span>&#125;)</span><br><span class="line">        r.raise_for_status()</span><br><span class="line">        <span class="variable language_">self</span>.remote = r.json()[<span class="string">&quot;device&quot;</span>][<span class="string">&quot;remoteConnectUrl&quot;</span>]</span><br><span class="line">        subprocess.run([<span class="string">&quot;adb&quot;</span>, <span class="string">&quot;connect&quot;</span>, <span class="variable language_">self</span>.remote], check=<span class="literal">True</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.remote</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__exit__</span>(<span class="params">self, *exc</span>):</span><br><span class="line">        subprocess.run([<span class="string">&quot;adb&quot;</span>, <span class="string">&quot;disconnect&quot;</span>, <span class="variable language_">self</span>.remote])</span><br><span class="line">        requests.delete(<span class="string">f&quot;<span class="subst">&#123;self.stf&#125;</span>/api/v1/user/devices/<span class="subst">&#123;self.serial&#125;</span>&quot;</span>,</span><br><span class="line">                        headers=&#123;<span class="string">&quot;Authorization&quot;</span>: <span class="string">f&quot;Bearer <span class="subst">&#123;self.token&#125;</span>&quot;</span>&#125;)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">False</span></span><br></pre></td></tr></table></figure>
+
+<p>调度建议：</p>
+<ul>
+<li><strong>按标签分池</strong>：给设备打 tag（<code>smoke</code>&#x2F;<code>regression</code>&#x2F;<code>低端机</code>），CI 按标签占机，冒烟和全量不互相抢</li>
+<li><strong>超时强制释放</strong>：CI 任务挂死时设备被占住不放，加看门狗——超过 2 小时无心跳自动调 API 释放并告警</li>
+<li><strong>队列化</strong>：用例并发数 ≠ 设备数时，用消息队列排队，空闲设备主动拉取任务</li>
+</ul>
+<h2 id="7-轻量替代：只要远程投屏"><a href="#7-轻量替代：只要远程投屏" class="headerlink" title="7. 轻量替代：只要远程投屏"></a>7. 轻量替代：只要远程投屏</h2><p>如果需求只是”让异地同事能看到并操作这台手机”，不需要完整 STF：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># scrcpy 方案：一台 Provider + Web 化投屏</span></span><br><span class="line">scrcpy --tcpip=192.168.1.101:5555 --max-size 1080 --max-fps 30</span><br><span class="line"><span class="comment"># 配合 ws-scrcpy（开源 Web 前端）即可浏览器多设备投屏</span></span><br></pre></td></tr></table></figure>
+
+<p><code>scrcpy + ws-scrcpy + Appium Grid</code> 三件套能以 1&#x2F;5 的复杂度覆盖 70% 场景（投屏、远控、自动化），代价是没有设备池管理、认证和占机排队——团队规模超过 10 人再切 STF。</p>
+<h2 id="8-运维与监控"><a href="#8-运维与监控" class="headerlink" title="8. 运维与监控"></a>8. 运维与监控</h2><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>采集</th>
+<th>告警阈值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>设备在线率</td>
+<td>STF API 轮询 &#x2F; Prometheus exporter</td>
+<td>&lt; 90% 持续 10 分钟</td>
+</tr>
+<tr>
+<td>Provider USB 掉线</td>
+<td>dmesg + provider 日志</td>
+<td>单机每小时 &gt; 3 次</td>
+</tr>
+<tr>
+<td>投屏延迟</td>
+<td>websocket 心跳 RTT</td>
+<td>P95 &gt; 500ms</td>
+</tr>
+<tr>
+<td>占机排队时长</td>
+<td>调度队列埋点</td>
+<td>P95 &gt; 5 分钟 → 加设备</td>
+</tr>
+<tr>
+<td>手机电池温度</td>
+<td>ADB <code>dumpsys battery</code></td>
+<td>&gt; 45°C 自动断电</td>
+</tr>
+<tr>
+<td>RethinkDB 磁盘</td>
+<td>node_exporter</td>
+<td>&gt; 80%</td>
+</tr>
+</tbody></table>
+<p>每周例行：清理卸载残留测试包、检查电池鼓包、轮换 USB 线缆（损耗品）、<code>adb reconnect</code> 全量一轮。</p>
+<h2 id="9-容量估算"><a href="#9-容量估算" class="headerlink" title="9. 容量估算"></a>9. 容量估算</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">设备数 = ceil(日自动化用例数 × 单用例时长 ÷ 有效机时 ÷ 0.7 利用率) + 调试预留</span><br><span class="line">示例：2000 用例 × 3 分钟 ÷ 20 小时 ÷ 0.7 ≈ 8 台 + 调试 4 台 = 12 台</span><br><span class="line">Provider 数 = ceil(设备数 ÷ 12)</span><br></pre></td></tr></table></figure>
+
+<h2 id="10-速查卡片"><a href="#10-速查卡片" class="headerlink" title="10. 速查卡片"></a>10. 速查卡片</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">私有化自建唯一活跃开源：STF (DeviceFarmer) v3.8.0</span><br><span class="line">起步：docker-compose 单机（30 分钟）→ 生产：接入/消息/Provider 分层部署</span><br><span class="line">扩展单位：1 台 Linux Provider 带 10~15 台 Android（工业供电 Hub + 强制散热）</span><br><span class="line">iOS：WDA + tidevice 自研或干脆买商用；Android 自建 + iOS 公有云最划算</span><br><span class="line">轻量替代：scrcpy + ws-scrcpy 覆盖纯投屏远控</span><br><span class="line">运维核心：电池安全（充电阈值）、USB 稳定性、占机超时强制释放</span><br></pre></td></tr></table></figure>
+
+<p>相关阅读：<a href="/frontend/cloud-device-farm-guide/">手机云真机方案实战指南：选型、自建与自动化接入</a> · <a href="/test/02-integration-e2e-testing/">集成测试与 E2E 测试</a> · <a href="/docker/docker-guide/">Docker 实战指南</a></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%BF%90%E7%BB%B4/" rel="tag"># 运维</a>
+              <a href="/tags/%E4%BA%91%E7%9C%9F%E6%9C%BA/" rel="tag"># 云真机</a>
+              <a href="/tags/%E7%A7%BB%E5%8A%A8%E6%B5%8B%E8%AF%95/" rel="tag"># 移动测试</a>
+              <a href="/tags/STF/" rel="tag"># STF</a>
+              <a href="/tags/Appium/" rel="tag"># Appium</a>
+              <a href="/tags/%E7%A7%81%E6%9C%89%E5%8C%96%E9%83%A8%E7%BD%B2/" rel="tag"># 私有化部署</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/frontend/cloud-device-farm-guide/" rel="prev" title="手机云真机方案实战指南：选型、自建与自动化接入">
+                  <i class="fa fa-angle-left"></i> 手机云真机方案实战指南：选型、自建与自动化接入
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/architecture/enterprise-architecture-diagrams-guide/" rel="next" title="企业经典架构图详解：从单体到云原生的十张图">
+                  企业经典架构图详解：从单体到云原生的十张图 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">my</span>
+  </div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">4m</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">61:01</span>
+  </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>
