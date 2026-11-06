@@ -28,7 +28,7 @@
 <meta property="og:description" content="第八章：LLM 推理与部署：vLLM、SGLang 与量化 自托管 LLM 的核心矛盾是”显存装不下、吞吐上不去、延迟降不来”——本章讲透 vLLM 的 PagedAttention 与连续批处理、SGLang 的 RadixAttention、GGUF&#x2F;AWQ&#x2F;GPTQ 量化取舍，以及 KV Cache 显存估算、压测与 OpenAI 兼容服务化的完整生产链路。  本章导读">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-10-28T00:02:00.000Z">
-<meta property="article:modified_time" content="2026-11-04T17:28:26.636Z">
+<meta property="article:modified_time" content="2026-11-06T12:20:41.435Z">
 <meta property="article:author" content="my">
 <meta property="article:tag" content="AI">
 <meta property="article:tag" content="LLM 部署">
@@ -288,7 +288,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-11-05 01:28:26" itemprop="dateModified" datetime="2026-11-05T01:28:26+08:00">2026-11-05</time>
+      <time title="修改时间：2026-11-06 20:20:41" itemprop="dateModified" datetime="2026-11-06T20:20:41+08:00">2026-11-06</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -307,14 +307,14 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>7.2k</span>
+      <span>7.1k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
         <i class="far fa-clock"></i>
       </span>
       <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>7 分钟</span>
+      <span>6 分钟</span>
     </span>
 </div>
 
@@ -388,7 +388,26 @@
 </ol>
 <p>一个关键认知：<strong>Prefill（首 token）是计算密集，Decode（后续 token）是访存密集</strong>。优化目标因此分裂——首 token 延迟（TTFT）靠算力，吞吐靠带宽利用率。vLLM 与 SGLang 的所有黑科技都围绕这两个阶段展开。</p>
 <h2 id="2-vLLM：PagedAttention-与连续批处理"><a href="#2-vLLM：PagedAttention-与连续批处理" class="headerlink" title="2. vLLM：PagedAttention 与连续批处理"></a>2. vLLM：PagedAttention 与连续批处理</h2><h3 id="2-1-PagedAttention：像操作系统管内存一样管-KV-Cache"><a href="#2-1-PagedAttention：像操作系统管内存一样管-KV-Cache" class="headerlink" title="2.1 PagedAttention：像操作系统管内存一样管 KV Cache"></a>2.1 PagedAttention：像操作系统管内存一样管 KV Cache</h3><p>传统实现为每个请求预分配 <code>max_seq_len</code> 的连续显存，内部碎片浪费 60% 以上。PagedAttention 把 KV Cache 切成<strong>固定大小的 Block（如 16 token&#x2F;块）</strong>，用页表映射逻辑块到物理块：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  subgraph 逻辑视图</span><br><span class="line">    L[请求 A 的 token 序列&lt;br/&gt;块0→块1→块2]</span><br><span class="line">  end</span><br><span class="line">  subgraph 物理显存池</span><br><span class="line">    P0[Block 5] </span><br><span class="line">    P1[Block 2]</span><br><span class="line">    P2[Block 9]</span><br><span class="line">    P3[Block 空闲]</span><br><span class="line">  end</span><br><span class="line">  L --页表映射--&gt; P0</span><br><span class="line">  L --&gt; P1</span><br><span class="line">  L --&gt; P2</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+flowchart LR
+  subgraph 逻辑视图
+    L[请求 A 的 token 序列&lt;br&#x2F;&gt;块0→块1→块2]
+  end
+  subgraph 物理显存池
+    P0[Block 5] 
+    P1[Block 2]
+    P2[Block 9]
+    P3[Block 空闲]
+  end
+  L --页表映射--&gt; P0
+  L --&gt; P1
+  L --&gt; P2
+
+</code>
+</pre>
 
 <p>收益：碎片率降到 4% 以内；<strong>前缀共享</strong>天然支持（多个请求共享 system prompt 的块，写时复制）；显存利用率翻倍直接转化为更大的 batch。</p>
 <h3 id="2-2-连续批处理（Continuous-Batching）"><a href="#2-2-连续批处理（Continuous-Batching）" class="headerlink" title="2.2 连续批处理（Continuous Batching）"></a>2.2 连续批处理（Continuous Batching）</h3><p>静态批处理等整批跑完才返回；连续批处理在<strong>每个 decode 步</strong>检查：有请求结束就踢出、有新请求就插入。GPU 永远满载，吞吐提升 2-4 倍（相对 HF Transformers 裸跑可达 10 倍以上）。</p>
@@ -539,7 +558,20 @@
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> openai <span class="keyword">import</span> OpenAI</span><br><span class="line"></span><br><span class="line">client = OpenAI(base_url=<span class="string">&quot;http://gpu-server:8000/v1&quot;</span>, api_key=<span class="string">&quot;EMPTY&quot;</span>)</span><br><span class="line">resp = client.chat.completions.create(</span><br><span class="line">    model=<span class="string">&quot;Qwen/Qwen2.5-7B-Instruct&quot;</span>,</span><br><span class="line">    messages=[&#123;<span class="string">&quot;role&quot;</span>: <span class="string">&quot;user&quot;</span>, <span class="string">&quot;content&quot;</span>: <span class="string">&quot;你好&quot;</span>&#125;],</span><br><span class="line">    stream=<span class="literal">True</span>,</span><br><span class="line">)</span><br><span class="line"><span class="keyword">for</span> chunk <span class="keyword">in</span> resp:</span><br><span class="line">    <span class="built_in">print</span>(chunk.choices[<span class="number">0</span>].delta.content <span class="keyword">or</span> <span class="string">&quot;&quot;</span>, end=<span class="string">&quot;&quot;</span>)</span><br></pre></td></tr></table></figure>
 
 <p>生产架构最小集：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  C[业务服务] --&gt; GW[AI 网关&lt;br/&gt;限流/鉴权/路由]</span><br><span class="line">  GW --&gt; LB[负载均衡]</span><br><span class="line">  LB --&gt; V1[vLLM 实例 1]</span><br><span class="line">  LB --&gt; V2[vLLM 实例 2]</span><br><span class="line">  LB --&gt; V3[vLLM 实例 3]</span><br><span class="line">  V1 &amp; V2 &amp; V3 --&gt; M[Prometheus 指标]</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+flowchart LR
+  C[业务服务] --&gt; GW[AI 网关&lt;br&#x2F;&gt;限流&#x2F;鉴权&#x2F;路由]
+  GW --&gt; LB[负载均衡]
+  LB --&gt; V1[vLLM 实例 1]
+  LB --&gt; V2[vLLM 实例 2]
+  LB --&gt; V3[vLLM 实例 3]
+  V1 &amp; V2 &amp; V3 --&gt; M[Prometheus 指标]
+
+</code>
+</pre>
 
 <ul>
 <li>网关层做鉴权、配额、降级（见<a href="/ai-engineering/10-ai-gateway-guide/">第十一章</a>）；</li>

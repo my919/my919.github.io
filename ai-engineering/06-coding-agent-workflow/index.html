@@ -28,7 +28,7 @@
 <meta property="og:description" content="第七章：Coding Agent 工作流：AI 编程落地实践 Coding Agent 不是”更快的补全”，而是”会读仓库、会跑测试、会改多个文件的协作者”——本章对比 Claude Code &#x2F; Cursor &#x2F; Cline 的工作流，给出 CLAUDE.md 工程约定、Spec 驱动开发、Subagent 自动化、CI 接入与团队度量的完整落地方案。  本章导读   章节">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-10-28T00:01:00.000Z">
-<meta property="article:modified_time" content="2026-11-04T17:28:26.635Z">
+<meta property="article:modified_time" content="2026-11-06T12:20:41.435Z">
 <meta property="article:author" content="my">
 <meta property="article:tag" content="AI">
 <meta property="article:tag" content="Coding Agent">
@@ -287,7 +287,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-11-05 01:28:26" itemprop="dateModified" datetime="2026-11-05T01:28:26+08:00">2026-11-05</time>
+      <time title="修改时间：2026-11-06 20:20:41" itemprop="dateModified" datetime="2026-11-06T20:20:41+08:00">2026-11-06</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -306,7 +306,7 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>7.2k</span>
+      <span>7.3k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
@@ -379,7 +379,17 @@
 </tr>
 </tbody></table>
 <hr>
-<h2 id="1-从补全到-Agent：编程范式的三级跳"><a href="#1-从补全到-Agent：编程范式的三级跳" class="headerlink" title="1. 从补全到 Agent：编程范式的三级跳"></a>1. 从补全到 Agent：编程范式的三级跳</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  A[阶段一&lt;br/&gt;行内补全&lt;br/&gt;Copilot 2021] --&gt; B[阶段二&lt;br/&gt;对话式编程&lt;br/&gt;Chat 改单文件]</span><br><span class="line">  B --&gt; C[阶段三&lt;br/&gt;Agentic 编程&lt;br/&gt;多文件+跑命令+自验证]</span><br><span class="line">  C --&gt; D[阶段四&lt;br/&gt;异步 Agent 队列&lt;br/&gt;人做 Review，Agent 干活]</span><br></pre></td></tr></table></figure>
+<h2 id="1-从补全到-Agent：编程范式的三级跳"><a href="#1-从补全到-Agent：编程范式的三级跳" class="headerlink" title="1. 从补全到 Agent：编程范式的三级跳"></a>1. 从补全到 Agent：编程范式的三级跳</h2><pre>
+<code class="mermaid">
+
+
+flowchart LR
+  A[阶段一&lt;br&#x2F;&gt;行内补全&lt;br&#x2F;&gt;Copilot 2021] --&gt; B[阶段二&lt;br&#x2F;&gt;对话式编程&lt;br&#x2F;&gt;Chat 改单文件]
+  B --&gt; C[阶段三&lt;br&#x2F;&gt;Agentic 编程&lt;br&#x2F;&gt;多文件+跑命令+自验证]
+  C --&gt; D[阶段四&lt;br&#x2F;&gt;异步 Agent 队列&lt;br&#x2F;&gt;人做 Review，Agent 干活]
+
+</code>
+</pre>
 
 <p>三级跳的本质差异：</p>
 <ul>
@@ -453,7 +463,18 @@
 <li><strong>分层放置</strong>：根目录放全局，子目录可放局部 <code>CLAUDE.md</code>（如 <code>themes/next/CLAUDE.md</code> 写主题特有规矩），就近生效。</li>
 </ul>
 <h2 id="4-Spec-驱动开发：需求-→-计划-→-任务-→-实现"><a href="#4-Spec-驱动开发：需求-→-计划-→-任务-→-实现" class="headerlink" title="4. Spec 驱动开发：需求 → 计划 → 任务 → 实现"></a>4. Spec 驱动开发：需求 → 计划 → 任务 → 实现</h2><p>直接让 Agent “帮我实现 XX 功能”，大改动必翻车。稳定的工作流是<strong>四段式</strong>：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">  R[需求&lt;br/&gt;spec.md 写清用户故事与验收标准] --&gt; P[计划&lt;br/&gt;plan.md 技术方案+改动面]</span><br><span class="line">  P --&gt; T[任务&lt;br/&gt;tasks.md 勾选式小步清单]</span><br><span class="line">  T --&gt; I[实现&lt;br/&gt;逐任务执行+跑测试]</span><br><span class="line">  I --&gt;|失败| T</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+flowchart TD
+  R[需求&lt;br&#x2F;&gt;spec.md 写清用户故事与验收标准] --&gt; P[计划&lt;br&#x2F;&gt;plan.md 技术方案+改动面]
+  P --&gt; T[任务&lt;br&#x2F;&gt;tasks.md 勾选式小步清单]
+  T --&gt; I[实现&lt;br&#x2F;&gt;逐任务执行+跑测试]
+  I --&gt;|失败| T
+
+</code>
+</pre>
 
 <p>以 Kiro &#x2F; Spec Kit 风格为例，在仓库建 <code>.specs/user-profile/</code>：</p>
 <figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section"># .specs/user-profile/spec.md</span></span><br><span class="line"><span class="section">## 需求</span></span><br><span class="line">用户可以在 /settings 页修改昵称与头像。</span><br><span class="line"></span><br><span class="line"><span class="section">## 验收标准</span></span><br><span class="line"><span class="bullet">-</span> 昵称为空时提交按钮禁用</span><br><span class="line"><span class="bullet">-</span> 头像超过 2MB 前端拦截并提示</span><br><span class="line"><span class="bullet">-</span> 修改成功后右上角 toast，列表页同步刷新</span><br><span class="line"></span><br><span class="line"><span class="section">## 非目标</span></span><br><span class="line"><span class="bullet">-</span> 不做实名认证、不做昵称敏感词审核（二期）</span><br></pre></td></tr></table></figure>

@@ -28,7 +28,7 @@
 <meta property="og:description" content="第十章：AI 应用编排：Dify 与 n8n 工作流实战 Dify 是”AI 应用的低代码 IDE”，n8n 是”带 AI 节点的自动化 Zapier”——本章讲清两者的架构差异、Dify 私有化部署与 RAG 编排、n8n 自动化接入 AI 节点，以及二者组合打通”AI 能力 ↔ 业务系统”的落地路径。  本章导读   章节 主题    第一章：AI Agent 入门与核心概念 Agent 的组">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-10-28T00:04:00.000Z">
-<meta property="article:modified_time" content="2026-11-04T17:28:26.636Z">
+<meta property="article:modified_time" content="2026-11-06T12:20:41.435Z">
 <meta property="article:author" content="my">
 <meta property="article:tag" content="AI">
 <meta property="article:tag" content="Dify">
@@ -288,7 +288,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-11-05 01:28:26" itemprop="dateModified" datetime="2026-11-05T01:28:26+08:00">2026-11-05</time>
+      <time title="修改时间：2026-11-06 20:20:41" itemprop="dateModified" datetime="2026-11-06T20:20:41+08:00">2026-11-06</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -388,7 +388,23 @@
 <li><strong>权限与协作</strong>：多人编辑、版本管理、环境分离。</li>
 </ul>
 <p>代价是灵活性受限与平台锁定。判断标准：<strong>流程变更频率 &gt; 每月一次、参与方含非研发</strong> → 上编排平台；核心交易链路、极致性能场景 → 自己写代码。</p>
-<h2 id="2-Dify-架构与私有化部署"><a href="#2-Dify-架构与私有化部署" class="headerlink" title="2. Dify 架构与私有化部署"></a>2. Dify 架构与私有化部署</h2><h3 id="2-1-架构速览"><a href="#2-1-架构速览" class="headerlink" title="2.1 架构速览"></a>2.1 架构速览</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">  U[用户/业务系统] --&gt; W[Web 前端]</span><br><span class="line">  U --&gt; API[api 服务&lt;br/&gt;Flask]</span><br><span class="line">  API --&gt; WK[worker 服务&lt;br/&gt;Celery 异步任务]</span><br><span class="line">  API --&gt; PG[(PostgreSQL&lt;br/&gt;应用元数据)]</span><br><span class="line">  API --&gt; R[(Redis&lt;br/&gt;缓存/队列)]</span><br><span class="line">  API --&gt; V[(向量库&lt;br/&gt;Weaviate/Qdrant/PGVector)]</span><br><span class="line">  API --&gt; S[(对象存储&lt;br/&gt;S3/MinIO)]</span><br><span class="line">  WK --&gt; PG &amp; R &amp; V</span><br><span class="line">  API --&gt; LLM[模型供应商&lt;br/&gt;OpenAI/自托管 vLLM]</span><br></pre></td></tr></table></figure>
+<h2 id="2-Dify-架构与私有化部署"><a href="#2-Dify-架构与私有化部署" class="headerlink" title="2. Dify 架构与私有化部署"></a>2. Dify 架构与私有化部署</h2><h3 id="2-1-架构速览"><a href="#2-1-架构速览" class="headerlink" title="2.1 架构速览"></a>2.1 架构速览</h3><pre>
+<code class="mermaid">
+
+
+flowchart TD
+  U[用户&#x2F;业务系统] --&gt; W[Web 前端]
+  U --&gt; API[api 服务&lt;br&#x2F;&gt;Flask]
+  API --&gt; WK[worker 服务&lt;br&#x2F;&gt;Celery 异步任务]
+  API --&gt; PG[(PostgreSQL&lt;br&#x2F;&gt;应用元数据)]
+  API --&gt; R[(Redis&lt;br&#x2F;&gt;缓存&#x2F;队列)]
+  API --&gt; V[(向量库&lt;br&#x2F;&gt;Weaviate&#x2F;Qdrant&#x2F;PGVector)]
+  API --&gt; S[(对象存储&lt;br&#x2F;&gt;S3&#x2F;MinIO)]
+  WK --&gt; PG &amp; R &amp; V
+  API --&gt; LLM[模型供应商&lt;br&#x2F;&gt;OpenAI&#x2F;自托管 vLLM]
+
+</code>
+</pre>
 
 <h3 id="2-2-docker-compose-部署"><a href="#2-2-docker-compose-部署" class="headerlink" title="2.2 docker-compose 部署"></a>2.2 docker-compose 部署</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/langgenius/dify.git</span><br><span class="line"><span class="built_in">cd</span> dify/docker</span><br><span class="line"><span class="built_in">cp</span> .env.example .<span class="built_in">env</span></span><br><span class="line">docker compose up -d</span><br></pre></td></tr></table></figure>
 
@@ -406,7 +422,19 @@
 <li>索引方式：<strong>高质量</strong>（向量）为主，混合检索（向量 + 关键词）对专有名词、编号类查询显著更准；</li>
 <li>上传文档触发异步解析，worker 日志可观察分段结果。</li>
 </ol>
-<h3 id="3-2-应用侧编排"><a href="#3-2-应用侧编排" class="headerlink" title="3.2 应用侧编排"></a>3.2 应用侧编排</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  Q[用户问题] --&gt; K[知识检索节点&lt;br/&gt;TopK=5]</span><br><span class="line">  K --&gt; C&#123;相关度判断&lt;br/&gt;score ≥ 0.5?&#125;</span><br><span class="line">  C --&gt;|有命中| L[LLM 节点&lt;br/&gt;带引用回答]</span><br><span class="line">  C --&gt;|无命中| F[固定回复&lt;br/&gt;转人工话术]</span><br><span class="line">  L --&gt; A[答案+引用来源]</span><br></pre></td></tr></table></figure>
+<h3 id="3-2-应用侧编排"><a href="#3-2-应用侧编排" class="headerlink" title="3.2 应用侧编排"></a>3.2 应用侧编排</h3><pre>
+<code class="mermaid">
+
+
+flowchart LR
+  Q[用户问题] --&gt; K[知识检索节点&lt;br&#x2F;&gt;TopK&#x3D;5]
+  K --&gt; C{相关度判断&lt;br&#x2F;&gt;score ≥ 0.5?}
+  C --&gt;|有命中| L[LLM 节点&lt;br&#x2F;&gt;带引用回答]
+  C --&gt;|无命中| F[固定回复&lt;br&#x2F;&gt;转人工话术]
+  L --&gt; A[答案+引用来源]
+
+</code>
+</pre>
 
 <p>关键配置：</p>
 <ul>
@@ -492,7 +520,20 @@
 <li><strong>向量存储节点</strong>：接 Qdrant&#x2F;PGVector 做 RAG，与 Dify 知识库同构。</li>
 </ul>
 <p>典型工作流——“新工单自动分类并回复”：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  T[Webhook 触发&lt;br/&gt;新工单] --&gt; E[Embedding&lt;br/&gt;向量化]</span><br><span class="line">  E --&gt; V[向量检索&lt;br/&gt;相似历史工单]</span><br><span class="line">  V --&gt; A[AI Agent 节点&lt;br/&gt;分类+草拟回复]</span><br><span class="line">  A --&gt; H&#123;置信度&gt;0.8?&#125;</span><br><span class="line">  H --&gt;|是| S[HTTP 节点&lt;br/&gt;调工单系统 API 回帖]</span><br><span class="line">  H --&gt;|否| M[人工审核队列&lt;br/&gt;飞书通知]</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+flowchart LR
+  T[Webhook 触发&lt;br&#x2F;&gt;新工单] --&gt; E[Embedding&lt;br&#x2F;&gt;向量化]
+  E --&gt; V[向量检索&lt;br&#x2F;&gt;相似历史工单]
+  V --&gt; A[AI Agent 节点&lt;br&#x2F;&gt;分类+草拟回复]
+  A --&gt; H{置信度&gt;0.8?}
+  H --&gt;|是| S[HTTP 节点&lt;br&#x2F;&gt;调工单系统 API 回帖]
+  H --&gt;|否| M[人工审核队列&lt;br&#x2F;&gt;飞书通知]
+
+</code>
+</pre>
 
 <h3 id="6-3-Code-节点兜底"><a href="#6-3-Code-节点兜底" class="headerlink" title="6.3 Code 节点兜底"></a>6.3 Code 节点兜底</h3><p>遇到预置节点搞不定的逻辑，Code 节点写 JavaScript&#x2F;Python 直接处理 item 数组：</p>
 <figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 去重并按时间排序</span></span><br><span class="line"><span class="keyword">const</span> seen = <span class="keyword">new</span> <span class="title class_">Set</span>();</span><br><span class="line"><span class="keyword">return</span> $input.<span class="title function_">all</span>()</span><br><span class="line">  .<span class="title function_">filter</span>(<span class="function"><span class="params">item</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> id = item.<span class="property">json</span>.<span class="property">ticket_id</span>;</span><br><span class="line">    <span class="keyword">if</span> (seen.<span class="title function_">has</span>(id)) <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    seen.<span class="title function_">add</span>(id); <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">  &#125;)</span><br><span class="line">  .<span class="title function_">sort</span>(<span class="function">(<span class="params">a, b</span>) =&gt;</span> <span class="keyword">new</span> <span class="title class_">Date</span>(a.<span class="property">json</span>.<span class="property">created_at</span>) - <span class="keyword">new</span> <span class="title class_">Date</span>(b.<span class="property">json</span>.<span class="property">created_at</span>));</span><br></pre></td></tr></table></figure>
@@ -532,7 +573,22 @@
 </tr>
 </tbody></table>
 <p><strong>组合用法（推荐架构）</strong>：Dify 做 AI 能力层并暴露 API，n8n 做业务胶水层调用 Dify：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  subgraph n8n工作流</span><br><span class="line">    W[Webhook/定时触发] --&gt; P[数据预处理节点]</span><br><span class="line">    P --&gt; D1[HTTP 调 Dify 应用 API]</span><br><span class="line">    D1 --&gt; R[结果写回业务系统]</span><br><span class="line">  end</span><br><span class="line">  subgraph Dify</span><br><span class="line">    D1 -.API.-&gt; APP[RAG 应用/Agent 应用]</span><br><span class="line">  end</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+flowchart LR
+  subgraph n8n工作流
+    W[Webhook&#x2F;定时触发] --&gt; P[数据预处理节点]
+    P --&gt; D1[HTTP 调 Dify 应用 API]
+    D1 --&gt; R[结果写回业务系统]
+  end
+  subgraph Dify
+    D1 -.API.-&gt; APP[RAG 应用&#x2F;Agent 应用]
+  end
+
+</code>
+</pre>
 
 <p>这样 AI 提示词与知识库在 Dify 里被专业运营，业务触发与系统对接在 n8n 里灵活编排，<strong>两边各自用最强的部分</strong>。</p>
 <p>什么情况下<strong>不该用编排平台</strong>、回归自研代码：</p>

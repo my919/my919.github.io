@@ -2000,6 +2000,362 @@ flowchart TB
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/netty/04-netty-codec-sticky-packet/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content=" | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/netty/04-netty-codec-sticky-packet/" class="post-title-link" itemprop="url">第三章：编解码与粘包拆包</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-05-01 12:33:20" itemprop="dateCreated datePublished" datetime="2026-05-01T12:33:20+08:00">2026-05-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-11-05 00:40:53" itemprop="dateModified" datetime="2026-11-05T00:40:53+08:00">2026-11-05</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Netty/" itemprop="url" rel="index"><span itemprop="name">Netty</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>9k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>8 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="第三章：编解码与粘包拆包"><a href="#第三章：编解码与粘包拆包" class="headerlink" title="第三章：编解码与粘包拆包"></a>第三章：编解码与粘包拆包</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>TCP 是字节流，不是消息流</strong>：发送方连续 <code>write</code> 两条消息，接收方可能<strong>一次读到两条粘在一起</strong>（粘包），也可能<strong>读到半条</strong>（拆包）。这是 TCP 本性，不是 bug。</li>
+<li><strong>Netty 的解决思路</strong>：在 Pipeline 入口加一个 <strong><code>FrameDecoder</code></strong>（帧解码器），按某种<strong>边界规则</strong>把字节流切成一条条完整消息，再交给后续 Handler。</li>
+<li><strong>编解码两层</strong>：<strong>解码（Decoder）</strong> 把字节→对象（入站方向），<strong>编码（Encoder）</strong> 把对象→字节（出站方向）。二者常成对出现，组成「协议层」。</li>
+<li><strong>内置即用</strong>：Netty 预置了按换行、分隔符、长度域等切分的解码器，覆盖大多数二进制协议；不满足时继承 <strong><code>ByteToMessageDecoder</code></strong> 自定义。</li>
+<li><strong>正确性 &gt; 性能</strong>：编解码是协议正确性的根基，错一个长度域会触发<strong>整条连接崩溃</strong>。务必先保证语义正确，再做池化&#x2F;零拷贝优化。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/netty/03-netty-core-components/">第二章：Netty 核心组件深入</a> 的 Pipeline &#x2F; ByteBuf 知识，把「字节流如何变成消息」讲透。</p>
+</blockquote>
+<hr>
+<h2 id="一、粘包与拆包现象"><a href="#一、粘包与拆包现象" class="headerlink" title="一、粘包与拆包现象"></a>一、粘包与拆包现象</h2><pre>
+<code class="mermaid">
+
+flowchart TB
+  subgraph send [发送方发了两条：ABC 与 DEF]
+    M1[消息1 ABC] 
+    M2[消息2 DEF]
+  end
+  subgraph recv [接收方可能看到]
+    R1[&quot;情况1 粘包：ABCDEF 一次到&quot;]
+    R2[&quot;情况2 拆包：AB 一次，CDEF 一次&quot;]
+    R3[&quot;情况3 正常：ABC 一次，DEF 一次&quot;]
+  end
+  M1 --&gt; R1
+  M2 --&gt; R1
+  M1 --&gt; R2
+  M1 --&gt; R3
+  M2 --&gt; R2
+  M2 --&gt; R3
+</code>
+</pre>
+
+<p>不解决粘包，业务 Handler 里 <code>channelRead</code> 拿到的 <code>ByteBuf</code> 可能含<strong>多条半消息</strong>，无法正确解析。<strong>必须在业务 Handler 之前加帧解码器</strong>。</p>
+<h3 id="为什么会发生（三个叠加因素）"><a href="#为什么会发生（三个叠加因素）" class="headerlink" title="为什么会发生（三个叠加因素）"></a>为什么会发生（三个叠加因素）</h3><ol>
+<li><strong>发送端合并</strong>：<strong>Nagle 算法</strong>攒小包一起发，多条消息被合并进一个 TCP 段。</li>
+<li><strong>网络层分段</strong>：单个应用消息超过 <strong>MSS</strong>（约 1460 字节）会被拆成多个段，接收端一次 <code>read</code> 可能只拿到半个消息。</li>
+<li><strong>接收端缓冲</strong>：内核接收缓冲里的字节是<strong>连续无边界</strong>的，<code>read</code> 拿到多少取决于时序——可能一次吐出三轮消息，也可能半轮。</li>
+</ol>
+<p><strong>结论</strong>：TCP 协议里<strong>根本没有「消息」概念</strong>，边界必须由应用层协议自己定义——这就是帧解码器存在的理由。</p>
+<hr>
+<h2 id="二、内置帧解码器（解决切分边界）"><a href="#二、内置帧解码器（解决切分边界）" class="headerlink" title="二、内置帧解码器（解决切分边界）"></a>二、内置帧解码器（解决切分边界）</h2><p>Netty 的帧解码器都继承 <code>ByteToMessageDecoder</code>，按规则把入站 <code>ByteBuf</code> 切成完整帧。</p>
+<h3 id="0-四种解码器对比速查"><a href="#0-四种解码器对比速查" class="headerlink" title="0. 四种解码器对比速查"></a>0. 四种解码器对比速查</h3><table>
+<thead>
+<tr>
+<th>解码器</th>
+<th>切分依据</th>
+<th>关键参数</th>
+<th>适用协议</th>
+<th>典型坑</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>FixedLengthFrameDecoder</code></strong></td>
+<td>固定字节数</td>
+<td><code>frameLength</code></td>
+<td>定长二进制报文</td>
+<td>业务字段长度不定就不适用</td>
+</tr>
+<tr>
+<td><strong><code>LineBasedFrameDecoder</code></strong></td>
+<td><code>\n</code> 或 <code>\r\n</code></td>
+<td><code>maxLength</code></td>
+<td>文本协议（HTTP 头、Redis RESP）</td>
+<td>数据本身含换行就错乱</td>
+</tr>
+<tr>
+<td><strong><code>DelimiterBasedFrameDecoder</code></strong></td>
+<td>自定义分隔符</td>
+<td><code>maxFrameLength</code> + 分隔符</td>
+<td>自定义文本协议</td>
+<td>分隔符必须保证不出现在数据里</td>
+</tr>
+<tr>
+<td><strong><code>LengthFieldBasedFrameDecoder</code></strong></td>
+<td>头部长度字段</td>
+<td>5 参数（见下）</td>
+<td><strong>绝大多数二进制协议</strong></td>
+<td>参数配错位，一直读到错数据</td>
+</tr>
+</tbody></table>
+<p>选择顺序：<strong>先看协议有没有长度字段（有就用长度域），没有再看能否找到不出现在数据里的分隔符，文本协议用换行，都不行再自定义 <code>ByteToMessageDecoder</code></strong>。</p>
+<h3 id="1-固定长度：FixedLengthFrameDecoder"><a href="#1-固定长度：FixedLengthFrameDecoder" class="headerlink" title="1. 固定长度：FixedLengthFrameDecoder"></a>1. 固定长度：FixedLengthFrameDecoder</h3><p>每条消息定长，不足则累积等待：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 每条消息固定 8 字节</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">FixedLengthFrameDecoder</span>(<span class="number">8</span>));</span><br></pre></td></tr></table></figure>
+
+<p>适合定长报文（如某些金融报文），应用面窄。</p>
+<h3 id="2-换行符：LineBasedFrameDecoder"><a href="#2-换行符：LineBasedFrameDecoder" class="headerlink" title="2. 换行符：LineBasedFrameDecoder"></a>2. 换行符：LineBasedFrameDecoder</h3><p>按 <code>LF</code>（<code>\n</code>）或 <code>CRLF</code>（<code>\r\n</code>）切分，适合文本协议（HTTP 头、Redis RESP）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 最大长度 1024，超出抛 TooLongFrameException；stripEnd=true 去掉换行符</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">LineBasedFrameDecoder</span>(<span class="number">1024</span>));</span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">StringDecoder</span>(CharsetUtil.UTF_8)); <span class="comment">// 字节→String</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">StringEncoder</span>(CharsetUtil.UTF_8));</span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">MyLineHandler</span>()); <span class="comment">// 收到的是 String</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-分隔符：DelimiterBasedFrameDecoder"><a href="#3-分隔符：DelimiterBasedFrameDecoder" class="headerlink" title="3. 分隔符：DelimiterBasedFrameDecoder"></a>3. 分隔符：DelimiterBasedFrameDecoder</h3><p>自定义分隔符：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 以 $$ 为分隔符</span></span><br><span class="line"><span class="type">ByteBuf</span> <span class="variable">delim</span> <span class="operator">=</span> Unpooled.copiedBuffer(<span class="string">&quot;$$&quot;</span>, CharsetUtil.UTF_8);</span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">DelimiterBasedFrameDecoder</span>(<span class="number">1024</span>, delim));</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-长度域：LengthFieldBasedFrameDecoder（最通用）"><a href="#4-长度域：LengthFieldBasedFrameDecoder（最通用）" class="headerlink" title="4. 长度域：LengthFieldBasedFrameDecoder（最通用）"></a>4. 长度域：LengthFieldBasedFrameDecoder（最通用）</h3><p>绝大多数二进制协议采用「<strong>长度字段 + 载荷</strong>」。该解码器按长度字段读取完整帧，参数含义：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 构造参数（最常用四参形式）</span></span><br><span class="line"><span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(</span><br><span class="line">    maxFrameLength,        <span class="comment">// 最大帧长，超限抛异常防 OOM</span></span><br><span class="line">    lengthFieldOffset,     <span class="comment">// 长度字段在帧中的偏移（前面可能有魔数/版本）</span></span><br><span class="line">    lengthFieldLength,     <span class="comment">// 长度字段自身占几个字节（1/2/3/4/8）</span></span><br><span class="line">    lengthAdjustment,      <span class="comment">// 长度值与后续载荷的修正量</span></span><br><span class="line">    initialBytesToStrip    <span class="comment">// 解码后跳过头部多少字节（通常跳过长度字段本身）</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p><strong>示例</strong>：协议为 <code>[4字节长度(含自身)][载荷]</code>，长度字段值 &#x3D; 整帧总长，希望解码后<strong>去掉长度字段</strong>只留载荷：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 协议：长度字段 4 字节，值表示「载荷长度」(不含长度字段本身)</span></span><br><span class="line"><span class="comment">// lengthAdjustment=0：长度值之后就是 N 字节载荷，无额外修正</span></span><br><span class="line"><span class="comment">// initialBytesToStrip=4：解码后跳过 4 字节长度字段</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(<span class="number">65535</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">4</span>));</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>参数易配错。务必对照真实协议字节布局逐项核对，并用 <code>HexDumpHandler</code> 或日志打印解码后的字节验证。</p>
+</blockquote>
+<h4 id="参数逐项推导（三个真实布局）"><a href="#参数逐项推导（三个真实布局）" class="headerlink" title="参数逐项推导（三个真实布局）"></a>参数逐项推导（三个真实布局）</h4><p><strong>场景 A：长度字段在最前，值&#x3D;载荷长度</strong></p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">| 4字节长度N | N字节载荷 |</span><br><span class="line">offset=0, length=4, adjustment=0, strip=4   → 解码出纯载荷</span><br></pre></td></tr></table></figure>
+
+<p><strong>场景 B：长度字段在中间，值&#x3D;「长度字段之后」全部字节</strong></p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">| 2字节魔数 | 2字节版本 | 4字节长度N | N字节载荷 |</span><br><span class="line">offset=4, length=4, adjustment=0, strip=8   → 解码出纯载荷（头部 8 字节全剥掉）</span><br></pre></td></tr></table></figure>
+
+<p><strong>场景 C：长度值含长度字段自身（常见老协议）</strong></p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">| 4字节长度N(含自身) | (N-4)字节载荷 |</span><br><span class="line">offset=0, length=4, adjustment=-4, strip=4  → adjustment 把「多算的自身」减回去</span><br></pre></td></tr></table></figure>
+
+<p><strong>记忆法</strong>：<code>adjustment</code> 永远是「<strong>长度值</strong> 与 <strong>长度字段后剩余真实字节数</strong> 的差」；<code>strip</code> 是「解码输出还要从头扔几个字节」。拿不准时把一帧十六进制打印出来，对着布局数格子。</p>
+<hr>
+<h2 id="三、MessageToMessageDecoder：消息→消息"><a href="#三、MessageToMessageDecoder：消息→消息" class="headerlink" title="三、MessageToMessageDecoder：消息→消息"></a>三、MessageToMessageDecoder：消息→消息</h2><p>帧解码器输出的是 <code>ByteBuf</code>（一条完整帧）。若需把 <code>ByteBuf</code> 再转成业务对象，用 <strong><code>MessageToMessageDecoder&lt;I&gt;</code></strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 把一条完整帧 ByteBuf 解析为 Request 对象</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">RequestDecoder</span> <span class="keyword">extends</span> <span class="title class_">MessageToMessageDecoder</span>&lt;ByteBuf&gt; &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="comment">// 此时 in 已是完整帧（前面有 FrameDecoder 保证）</span></span><br><span class="line">        <span class="type">int</span> <span class="variable">type</span> <span class="operator">=</span> in.readByte();</span><br><span class="line">        <span class="type">int</span> <span class="variable">len</span> <span class="operator">=</span> in.readInt();</span><br><span class="line">        <span class="type">byte</span>[] <span class="variable">data</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[len];</span><br><span class="line">        in.readBytes(data);</span><br><span class="line">        out.add(<span class="keyword">new</span> <span class="title class_">Request</span>(type, <span class="keyword">new</span> <span class="title class_">String</span>(data, CharsetUtil.UTF_8)));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(<span class="number">65535</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">4</span>));</span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">RequestDecoder</span>());   <span class="comment">// ByteBuf → Request</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">RequestHandler</span>());   <span class="comment">// 处理 Request</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、ByteToMessageDecoder：字节→消息（自定义）"><a href="#四、ByteToMessageDecoder：字节→消息（自定义）" class="headerlink" title="四、ByteToMessageDecoder：字节→消息（自定义）"></a>四、ByteToMessageDecoder：字节→消息（自定义）</h2><p>当内置帧解码器都不满足时，直接继承 <strong><code>ByteToMessageDecoder</code></strong>，自己控制累积缓冲的读取。它会把多次到达的字节累积到内部缓冲，直到数据足够：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 自定义：魔数 + 1字节类型 + 4字节长度 + 载荷</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MagicFrameDecoder</span> <span class="keyword">extends</span> <span class="title class_">ByteToMessageDecoder</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">byte</span> <span class="variable">MAGIC</span> <span class="operator">=</span> (<span class="type">byte</span>) <span class="number">0xAB</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="comment">// 1. 至少要能读到头部（魔数1 + 类型1 + 长度4 = 6 字节）</span></span><br><span class="line">        <span class="keyword">if</span> (in.readableBytes() &lt; <span class="number">6</span>) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2. 标记当前读指针，校验魔数失败时回滚</span></span><br><span class="line">        in.markReaderIndex();</span><br><span class="line">        <span class="keyword">if</span> (in.readByte() != MAGIC) &#123;</span><br><span class="line">            in.resetReaderIndex();</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">DecoderException</span>(<span class="string">&quot;非法魔数&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="type">byte</span> <span class="variable">type</span> <span class="operator">=</span> in.readByte();</span><br><span class="line">        <span class="type">int</span> <span class="variable">len</span> <span class="operator">=</span> in.readInt();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3. 载荷没到齐，回滚等待下次</span></span><br><span class="line">        <span class="keyword">if</span> (in.readableBytes() &lt; len) &#123;</span><br><span class="line">            in.resetReaderIndex();</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4. 足够了，切出载荷</span></span><br><span class="line">        <span class="type">ByteBuf</span> <span class="variable">payload</span> <span class="operator">=</span> in.readBytes(len);</span><br><span class="line">        out.add(<span class="keyword">new</span> <span class="title class_">Frame</span>(type, payload)); <span class="comment">// payload 由调用方释放</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>三个要点</strong>：</p>
+<ol>
+<li><strong>不足时 <code>return</code> 前 <code>resetReaderIndex</code></strong>，让下次 <code>decode</code> 从头部重新读。</li>
+<li><strong>切出的 <code>ByteBuf</code> 若放进 <code>out</code></strong>，所有权转移给下游，由下游 release；不要在这里 release。</li>
+<li>多次 <code>decode</code> 调用是 Netty 自动驱动的，<strong>不要自己写循环</strong>等待（框架已处理）。</li>
+</ol>
+<hr>
+<h2 id="五、编码器：对象→字节"><a href="#五、编码器：对象→字节" class="headerlink" title="五、编码器：对象→字节"></a>五、编码器：对象→字节</h2><p>出站方向对称。两类基类：</p>
+<table>
+<thead>
+<tr>
+<th>基类</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>MessageToByteEncoder&lt;I&gt;</code></strong></td>
+<td>对象→单个 <code>ByteBuf</code></td>
+</tr>
+<tr>
+<td><strong><code>MessageToMessageEncoder&lt;I&gt;</code></strong></td>
+<td>对象→对象（如对象→另一种对象）</td>
+</tr>
+</tbody></table>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Request → ByteBuf</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">RequestEncoder</span> <span class="keyword">extends</span> <span class="title class_">MessageToByteEncoder</span>&lt;Request&gt; &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">encode</span><span class="params">(ChannelHandlerContext ctx, Request req, ByteBuf out)</span> &#123;</span><br><span class="line">        <span class="type">byte</span>[] <span class="variable">data</span> <span class="operator">=</span> req.payload.getBytes(CharsetUtil.UTF_8);</span><br><span class="line">        out.writeByte(req.type);          <span class="comment">// 类型</span></span><br><span class="line">        out.writeInt(data.length);        <span class="comment">// 长度</span></span><br><span class="line">        out.writeBytes(data);             <span class="comment">// 载荷</span></span><br><span class="line">        <span class="comment">// out 由框架释放，无需手动 release</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong><code>MessageToByteEncoder</code></strong> 只在出站消息<strong>类型匹配 <code>I</code></strong> 时触发，其他类型直接跳过——可安全混用多种出站消息。</p>
+</blockquote>
+<hr>
+<h2 id="六、编解码器一体：MessageToMessageCodec"><a href="#六、编解码器一体：MessageToMessageCodec" class="headerlink" title="六、编解码器一体：MessageToMessageCodec"></a>六、编解码器一体：MessageToMessageCodec</h2><p>把成对的编解码器合并成一个 <strong><code>MessageToMessageCodec&lt;INBOUND, OUTBOUND&gt;</code></strong>，便于组织：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@ChannelHandler</span>.Sharable</span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">RequestCodec</span></span><br><span class="line">        <span class="keyword">extends</span> <span class="title class_">MessageToMessageCodec</span>&lt;ByteBuf, Request&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 入站：ByteBuf → Request</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="comment">// 解析为 Request，加入 out</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 出站：Request → ByteBuf</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">encode</span><span class="params">(ChannelHandlerContext ctx, Request req, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="type">ByteBuf</span> <span class="variable">buf</span> <span class="operator">=</span> ctx.alloc().buffer();</span><br><span class="line">        <span class="comment">// 编码写入 buf...</span></span><br><span class="line">        out.add(buf);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意：Codec 仍需配合 <strong>FrameDecoder</strong> 使用（它本身不做粘包切分）。</p>
+<hr>
+<h2 id="六之二、ReplayingDecoder：写起来更「直」的自定义解码器"><a href="#六之二、ReplayingDecoder：写起来更「直」的自定义解码器" class="headerlink" title="六之二、ReplayingDecoder：写起来更「直」的自定义解码器"></a>六之二、ReplayingDecoder：写起来更「直」的自定义解码器</h2><p>继承 <strong><code>ReplayingDecoder&lt;S&gt;</code></strong> 后，<code>decode</code> 里<strong>可以不加可读字节数判断</strong>：读到不足会抛内部 <code>Error</code>（不是真异常），框架捕获后<strong>自动回滚读指针、等数据齐了再重放</strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SimpleDecoder</span> <span class="keyword">extends</span> <span class="title class_">ReplayingDecoder</span>&lt;Void&gt; &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="comment">// 没有 if (in.readableBytes() &lt; 6) 之类的守卫，代码直线式</span></span><br><span class="line">        <span class="type">byte</span> <span class="variable">type</span> <span class="operator">=</span> in.readByte();</span><br><span class="line">        <span class="type">int</span> <span class="variable">len</span> <span class="operator">=</span> in.readInt();</span><br><span class="line">        <span class="type">ByteBuf</span> <span class="variable">payload</span> <span class="operator">=</span> in.readBytes(len); <span class="comment">// 不足时自动回滚重放</span></span><br><span class="line">        out.add(<span class="keyword">new</span> <span class="title class_">Frame</span>(type, payload));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>取舍</strong>：代码更直观，但每次「重放」都要从头重读，<strong>性能低于手写守卫的 <code>ByteToMessageDecoder</code></strong>；且不能在 <code>decode</code> 里做有副作用的操作（会执行多次）。<strong>追求极限性能选前者，追求可读性且吞吐要求一般选后者</strong>。</p>
+<hr>
+<h2 id="七、调试手段：把字节看清楚"><a href="#七、调试手段：把字节看清楚" class="headerlink" title="七、调试手段：把字节看清楚"></a>七、调试手段：把字节看清楚</h2><p>编解码排障 90% 是「实际字节和想象的不一样」。两件套：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 日志 Handler：打印入站/出站每个事件与 ByteBuf 十六进制</span></span><br><span class="line">pipeline.addFirst(<span class="string">&quot;log&quot;</span>, <span class="keyword">new</span> <span class="title class_">LoggingHandler</span>(LogLevel.DEBUG));</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 2. 在自定义解码器里临时打点</span></span><br><span class="line">System.out.println(ByteBufUtil.hexDump(in, in.readerIndex(), Math.min(in.readableBytes(), <span class="number">64</span>)));</span><br></pre></td></tr></table></figure>
+
+<p>配合单测可<strong>不起网络</strong>验证解码器——用 <strong><code>EmbeddedChannel</code></strong>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">EmbeddedChannel</span> <span class="variable">ch</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">EmbeddedChannel</span>(<span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(<span class="number">64</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">4</span>));</span><br><span class="line"><span class="type">ByteBuf</span> <span class="variable">wire</span> <span class="operator">=</span> Unpooled.buffer();</span><br><span class="line">wire.writeInt(<span class="number">5</span>).writeBytes(<span class="string">&quot;hello&quot;</span>.getBytes());</span><br><span class="line">ch.writeInbound(wire);              <span class="comment">// 模拟网络入站</span></span><br><span class="line"><span class="type">ByteBuf</span> <span class="variable">frame</span> <span class="operator">=</span> ch.readInbound();   <span class="comment">// 取解码产物</span></span><br><span class="line"><span class="keyword">assert</span> frame.readableBytes() == <span class="number">5</span>;</span><br><span class="line">ch.finishAndReleaseAll();</span><br></pre></td></tr></table></figure>
+
+<p><strong>真实协议对照</strong>（看看成熟协议怎么切包）：<strong>Redis RESP</strong> 用 <code>\r\n</code> 行分隔 + <code>$&lt;len&gt;</code> 长度前缀（混合分隔与长度）；<strong>HTTP&#x2F;1.1</strong> 头部 <code>\r\n\r\n</code> 定界、正文靠 <code>Content-Length</code>&#x2F;<code>chunked</code>；<strong>gRPC</strong> 是「1 字节压缩标志 + 4 字节长度」前缀帧——都是本章模式的变体。</p>
+<hr>
+<h2 id="八、典型-Pipeline-编排模板"><a href="#八、典型-Pipeline-编排模板" class="headerlink" title="八、典型 Pipeline 编排模板"></a>八、典型 Pipeline 编排模板</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(<span class="number">65535</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">4</span>)); <span class="comment">// 拆包</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">RequestDecoder</span>());   <span class="comment">// ByteBuf → Request  (入站)</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">ResponseEncoder</span>());  <span class="comment">// Response → ByteBuf (出站)</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">IdleStateHandler</span>(<span class="number">60</span>, <span class="number">0</span>, <span class="number">0</span>, TimeUnit.SECONDS));    <span class="comment">// 心跳</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">BusinessHandler</span>());  <span class="comment">// 业务（入站，处理 Request）</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>顺序原则</strong>：帧解码器<strong>最前</strong>→编解码器→心跳→业务。出站编码器位置不影响出站触发（出站会从调用者向链头反向经过所有出站 Handler），但放业务前更清晰。</p>
+<hr>
+<h2 id="九、常见陷阱"><a href="#九、常见陷阱" class="headerlink" title="九、常见陷阱"></a>九、常见陷阱</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>漏 FrameDecoder</strong></td>
+<td>业务直接读 <code>ByteBuf</code>，粘包下解析错乱。<strong>任何二进制协议都必须先切包</strong></td>
+</tr>
+<tr>
+<td><strong>MessageToByteEncoder 不释放</strong></td>
+<td>框架会释放 <code>encode</code> 产出的 <code>ByteBuf</code>；但若你 <code>write</code> 的是外部传入的 <code>ByteBuf</code>，需自己管理引用计数</td>
+</tr>
+<tr>
+<td><strong>解码 throw 异常未处理</strong></td>
+<td>异常会触发 <code>exceptionCaught</code>，默认关闭连接；非法帧应记录日志后 <code>ctx.close()</code></td>
+</tr>
+<tr>
+<td><strong><code>LengthFieldBasedFrameDecoder</code> 参数错</strong></td>
+<td>长度值含不含长度字段自身、有没有调整量，配错会一直读到错位数据。打印十六进制对照</td>
+</tr>
+<tr>
+<td><strong>未限制最大帧长</strong></td>
+<td><code>maxFrameLength</code> 过大或缺失，恶意端发巨帧触发 OOM</td>
+</tr>
+<tr>
+<td><strong><code>StringDecoder</code> 后又当 ByteBuf 用</strong></td>
+<td>一旦解码成 String，下游类型已变，不会再有 ByteBuf</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="十、常见面试题速览"><a href="#十、常见面试题速览" class="headerlink" title="十、常见面试题速览"></a>十、常见面试题速览</h2><ol>
+<li><strong>TCP 为什么会粘包</strong>——字节流无消息边界 + Nagle 合并 + MSS 分段 + 接收缓冲时序，四者叠加。</li>
+<li><strong>怎么解决</strong>——应用层自己定界：定长 &#x2F; 分隔符 &#x2F; 长度字段，Netty 用帧解码器承载这三种思路。</li>
+<li><strong><code>LengthFieldBasedFrameDecoder</code> 五参数</strong>——<code>maxFrameLength</code>、<code>lengthFieldOffset</code>、<code>lengthFieldLength</code>、<code>lengthAdjustment</code>、<code>initialBytesToStrip</code>；后两个最易配错。</li>
+<li><strong>解码器里数据不够怎么办</strong>——<code>return</code> 前 <code>resetReaderIndex</code> 等下次，或直接用 <code>ReplayingDecoder</code> 自动重放。</li>
+<li><strong>帧解码器与业务解码器的分工</strong>——前者切出完整字节帧（ByteToMessage），后者把帧解析成对象（MessageToMessage）。</li>
+<li><strong>如何防恶意巨帧</strong>——<code>maxFrameLength</code> 限制 + 解码失败 <code>ctx.close()</code>，缺一不可。</li>
+<li><strong>怎么单测解码器</strong>——<code>EmbeddedChannel</code> 喂字节取产物，不起网络（见「调试手段」一节）。</li>
+<li><strong>MessageToByteEncoder 里要手动 release 吗</strong>——<code>encode</code> 产出的 <code>out</code> 由框架释放；但方法外自己 <code>retain</code> 过的引用仍归你管。</li>
+<li><strong>帧解码器能放 @Sharable 吗</strong>——不能：内部累积缓冲是有状态的，共享会串包；每个 Channel 独立实例。</li>
+<li><strong>换行解码器能用于二进制协议吗</strong>——不能：二进制载荷可能恰好含 <code>0x0A</code>，会被误切；二进制一律走长度域或自定义。</li>
+<li><strong>解码器报 TooLongFrameException 怎么办</strong>——先确认是恶意流量还是 <code>maxFrameLength</code> 设小；正常大报文协议应按业务上限重设。</li>
+</ol>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>粘包拆包</td>
+<td>TCP 字节流本性，<strong>必须</strong>用帧解码器切分，业务 Handler 才能拿到完整消息</td>
+</tr>
+<tr>
+<td>内置帧解码器</td>
+<td>定长 <code>FixedLength</code>、换行 <code>LineBased</code>、分隔符 <code>DelimiterBased</code>、<strong>长度域 <code>LengthFieldBasedFrameDecoder</code> 最通用</strong></td>
+</tr>
+<tr>
+<td>两层抽象</td>
+<td><code>ByteToMessageDecoder</code>：字节→消息（含切包）；<code>MessageToMessageDecoder</code>：消息→消息</td>
+</tr>
+<tr>
+<td>编码器</td>
+<td><code>MessageToByteEncoder&lt;I&gt;</code> 对象→ByteBuf；只在类型匹配时触发</td>
+</tr>
+<tr>
+<td>一体化</td>
+<td><code>MessageToMessageCodec</code> 合并编解码，但<strong>仍需 FrameDecoder</strong> 切包</td>
+</tr>
+<tr>
+<td>Pipeline 顺序</td>
+<td>帧解码 → 业务编解码 → 心跳 → 业务 Handler</td>
+</tr>
+<tr>
+<td>安全</td>
+<td>限制 <code>maxFrameLength</code>、处理非法帧异常、对照十六进制调试长度域参数</td>
+</tr>
+</tbody></table>
+<p>进入 <a href="/netty/netty-protocol-guide/">第五章：自定义协议实战</a>，把本章的编解码器组装成一套完整的私有协议客户端&#x2F;服务端。</p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
     <link itemprop="mainEntityOfPage" href="https://my919.github.io/netty/03-netty-core-components/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2524,362 +2880,6 @@ sequenceDiagram
 </tr>
 </tbody></table>
 <p>掌握了组件协作，下一步进入 <a href="/netty/04-netty-codec-sticky-packet/">第三章：编解码与粘包拆包</a>，学习如何用 FrameDecoder 与自定义编解码器处理真实协议的字节流。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://my919.github.io/netty/04-netty-codec-sticky-packet/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="my">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="my">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | my">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/netty/04-netty-codec-sticky-packet/" class="post-title-link" itemprop="url">第三章：编解码与粘包拆包</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2026-05-01 12:33:20" itemprop="dateCreated datePublished" datetime="2026-05-01T12:33:20+08:00">2026-05-01</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-11-05 00:40:53" itemprop="dateModified" datetime="2026-11-05T00:40:53+08:00">2026-11-05</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/Netty/" itemprop="url" rel="index"><span itemprop="name">Netty</span></a>
-        </span>
-    </span>
-
-  
-    <span class="post-meta-break"></span>
-    <span class="post-meta-item" title="本文字数">
-      <span class="post-meta-item-icon">
-        <i class="far fa-file-word"></i>
-      </span>
-      <span class="post-meta-item-text">本文字数：</span>
-      <span>9k</span>
-    </span>
-    <span class="post-meta-item" title="阅读时长">
-      <span class="post-meta-item-icon">
-        <i class="far fa-clock"></i>
-      </span>
-      <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>8 分钟</span>
-    </span>
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h1 id="第三章：编解码与粘包拆包"><a href="#第三章：编解码与粘包拆包" class="headerlink" title="第三章：编解码与粘包拆包"></a>第三章：编解码与粘包拆包</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
-<li><strong>TCP 是字节流，不是消息流</strong>：发送方连续 <code>write</code> 两条消息，接收方可能<strong>一次读到两条粘在一起</strong>（粘包），也可能<strong>读到半条</strong>（拆包）。这是 TCP 本性，不是 bug。</li>
-<li><strong>Netty 的解决思路</strong>：在 Pipeline 入口加一个 <strong><code>FrameDecoder</code></strong>（帧解码器），按某种<strong>边界规则</strong>把字节流切成一条条完整消息，再交给后续 Handler。</li>
-<li><strong>编解码两层</strong>：<strong>解码（Decoder）</strong> 把字节→对象（入站方向），<strong>编码（Encoder）</strong> 把对象→字节（出站方向）。二者常成对出现，组成「协议层」。</li>
-<li><strong>内置即用</strong>：Netty 预置了按换行、分隔符、长度域等切分的解码器，覆盖大多数二进制协议；不满足时继承 <strong><code>ByteToMessageDecoder</code></strong> 自定义。</li>
-<li><strong>正确性 &gt; 性能</strong>：编解码是协议正确性的根基，错一个长度域会触发<strong>整条连接崩溃</strong>。务必先保证语义正确，再做池化&#x2F;零拷贝优化。</li>
-</ol>
-<blockquote>
-<p>本章承接 <a href="/netty/03-netty-core-components/">第二章：Netty 核心组件深入</a> 的 Pipeline &#x2F; ByteBuf 知识，把「字节流如何变成消息」讲透。</p>
-</blockquote>
-<hr>
-<h2 id="一、粘包与拆包现象"><a href="#一、粘包与拆包现象" class="headerlink" title="一、粘包与拆包现象"></a>一、粘包与拆包现象</h2><pre>
-<code class="mermaid">
-
-flowchart TB
-  subgraph send [发送方发了两条：ABC 与 DEF]
-    M1[消息1 ABC] 
-    M2[消息2 DEF]
-  end
-  subgraph recv [接收方可能看到]
-    R1[&quot;情况1 粘包：ABCDEF 一次到&quot;]
-    R2[&quot;情况2 拆包：AB 一次，CDEF 一次&quot;]
-    R3[&quot;情况3 正常：ABC 一次，DEF 一次&quot;]
-  end
-  M1 --&gt; R1
-  M2 --&gt; R1
-  M1 --&gt; R2
-  M1 --&gt; R3
-  M2 --&gt; R2
-  M2 --&gt; R3
-</code>
-</pre>
-
-<p>不解决粘包，业务 Handler 里 <code>channelRead</code> 拿到的 <code>ByteBuf</code> 可能含<strong>多条半消息</strong>，无法正确解析。<strong>必须在业务 Handler 之前加帧解码器</strong>。</p>
-<h3 id="为什么会发生（三个叠加因素）"><a href="#为什么会发生（三个叠加因素）" class="headerlink" title="为什么会发生（三个叠加因素）"></a>为什么会发生（三个叠加因素）</h3><ol>
-<li><strong>发送端合并</strong>：<strong>Nagle 算法</strong>攒小包一起发，多条消息被合并进一个 TCP 段。</li>
-<li><strong>网络层分段</strong>：单个应用消息超过 <strong>MSS</strong>（约 1460 字节）会被拆成多个段，接收端一次 <code>read</code> 可能只拿到半个消息。</li>
-<li><strong>接收端缓冲</strong>：内核接收缓冲里的字节是<strong>连续无边界</strong>的，<code>read</code> 拿到多少取决于时序——可能一次吐出三轮消息，也可能半轮。</li>
-</ol>
-<p><strong>结论</strong>：TCP 协议里<strong>根本没有「消息」概念</strong>，边界必须由应用层协议自己定义——这就是帧解码器存在的理由。</p>
-<hr>
-<h2 id="二、内置帧解码器（解决切分边界）"><a href="#二、内置帧解码器（解决切分边界）" class="headerlink" title="二、内置帧解码器（解决切分边界）"></a>二、内置帧解码器（解决切分边界）</h2><p>Netty 的帧解码器都继承 <code>ByteToMessageDecoder</code>，按规则把入站 <code>ByteBuf</code> 切成完整帧。</p>
-<h3 id="0-四种解码器对比速查"><a href="#0-四种解码器对比速查" class="headerlink" title="0. 四种解码器对比速查"></a>0. 四种解码器对比速查</h3><table>
-<thead>
-<tr>
-<th>解码器</th>
-<th>切分依据</th>
-<th>关键参数</th>
-<th>适用协议</th>
-<th>典型坑</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong><code>FixedLengthFrameDecoder</code></strong></td>
-<td>固定字节数</td>
-<td><code>frameLength</code></td>
-<td>定长二进制报文</td>
-<td>业务字段长度不定就不适用</td>
-</tr>
-<tr>
-<td><strong><code>LineBasedFrameDecoder</code></strong></td>
-<td><code>\n</code> 或 <code>\r\n</code></td>
-<td><code>maxLength</code></td>
-<td>文本协议（HTTP 头、Redis RESP）</td>
-<td>数据本身含换行就错乱</td>
-</tr>
-<tr>
-<td><strong><code>DelimiterBasedFrameDecoder</code></strong></td>
-<td>自定义分隔符</td>
-<td><code>maxFrameLength</code> + 分隔符</td>
-<td>自定义文本协议</td>
-<td>分隔符必须保证不出现在数据里</td>
-</tr>
-<tr>
-<td><strong><code>LengthFieldBasedFrameDecoder</code></strong></td>
-<td>头部长度字段</td>
-<td>5 参数（见下）</td>
-<td><strong>绝大多数二进制协议</strong></td>
-<td>参数配错位，一直读到错数据</td>
-</tr>
-</tbody></table>
-<p>选择顺序：<strong>先看协议有没有长度字段（有就用长度域），没有再看能否找到不出现在数据里的分隔符，文本协议用换行，都不行再自定义 <code>ByteToMessageDecoder</code></strong>。</p>
-<h3 id="1-固定长度：FixedLengthFrameDecoder"><a href="#1-固定长度：FixedLengthFrameDecoder" class="headerlink" title="1. 固定长度：FixedLengthFrameDecoder"></a>1. 固定长度：FixedLengthFrameDecoder</h3><p>每条消息定长，不足则累积等待：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 每条消息固定 8 字节</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">FixedLengthFrameDecoder</span>(<span class="number">8</span>));</span><br></pre></td></tr></table></figure>
-
-<p>适合定长报文（如某些金融报文），应用面窄。</p>
-<h3 id="2-换行符：LineBasedFrameDecoder"><a href="#2-换行符：LineBasedFrameDecoder" class="headerlink" title="2. 换行符：LineBasedFrameDecoder"></a>2. 换行符：LineBasedFrameDecoder</h3><p>按 <code>LF</code>（<code>\n</code>）或 <code>CRLF</code>（<code>\r\n</code>）切分，适合文本协议（HTTP 头、Redis RESP）：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 最大长度 1024，超出抛 TooLongFrameException；stripEnd=true 去掉换行符</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">LineBasedFrameDecoder</span>(<span class="number">1024</span>));</span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">StringDecoder</span>(CharsetUtil.UTF_8)); <span class="comment">// 字节→String</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">StringEncoder</span>(CharsetUtil.UTF_8));</span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">MyLineHandler</span>()); <span class="comment">// 收到的是 String</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="3-分隔符：DelimiterBasedFrameDecoder"><a href="#3-分隔符：DelimiterBasedFrameDecoder" class="headerlink" title="3. 分隔符：DelimiterBasedFrameDecoder"></a>3. 分隔符：DelimiterBasedFrameDecoder</h3><p>自定义分隔符：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 以 $$ 为分隔符</span></span><br><span class="line"><span class="type">ByteBuf</span> <span class="variable">delim</span> <span class="operator">=</span> Unpooled.copiedBuffer(<span class="string">&quot;$$&quot;</span>, CharsetUtil.UTF_8);</span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">DelimiterBasedFrameDecoder</span>(<span class="number">1024</span>, delim));</span><br></pre></td></tr></table></figure>
-
-<h3 id="4-长度域：LengthFieldBasedFrameDecoder（最通用）"><a href="#4-长度域：LengthFieldBasedFrameDecoder（最通用）" class="headerlink" title="4. 长度域：LengthFieldBasedFrameDecoder（最通用）"></a>4. 长度域：LengthFieldBasedFrameDecoder（最通用）</h3><p>绝大多数二进制协议采用「<strong>长度字段 + 载荷</strong>」。该解码器按长度字段读取完整帧，参数含义：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 构造参数（最常用四参形式）</span></span><br><span class="line"><span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(</span><br><span class="line">    maxFrameLength,        <span class="comment">// 最大帧长，超限抛异常防 OOM</span></span><br><span class="line">    lengthFieldOffset,     <span class="comment">// 长度字段在帧中的偏移（前面可能有魔数/版本）</span></span><br><span class="line">    lengthFieldLength,     <span class="comment">// 长度字段自身占几个字节（1/2/3/4/8）</span></span><br><span class="line">    lengthAdjustment,      <span class="comment">// 长度值与后续载荷的修正量</span></span><br><span class="line">    initialBytesToStrip    <span class="comment">// 解码后跳过头部多少字节（通常跳过长度字段本身）</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
-
-<p><strong>示例</strong>：协议为 <code>[4字节长度(含自身)][载荷]</code>，长度字段值 &#x3D; 整帧总长，希望解码后<strong>去掉长度字段</strong>只留载荷：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 协议：长度字段 4 字节，值表示「载荷长度」(不含长度字段本身)</span></span><br><span class="line"><span class="comment">// lengthAdjustment=0：长度值之后就是 N 字节载荷，无额外修正</span></span><br><span class="line"><span class="comment">// initialBytesToStrip=4：解码后跳过 4 字节长度字段</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(<span class="number">65535</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">4</span>));</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>参数易配错。务必对照真实协议字节布局逐项核对，并用 <code>HexDumpHandler</code> 或日志打印解码后的字节验证。</p>
-</blockquote>
-<h4 id="参数逐项推导（三个真实布局）"><a href="#参数逐项推导（三个真实布局）" class="headerlink" title="参数逐项推导（三个真实布局）"></a>参数逐项推导（三个真实布局）</h4><p><strong>场景 A：长度字段在最前，值&#x3D;载荷长度</strong></p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">| 4字节长度N | N字节载荷 |</span><br><span class="line">offset=0, length=4, adjustment=0, strip=4   → 解码出纯载荷</span><br></pre></td></tr></table></figure>
-
-<p><strong>场景 B：长度字段在中间，值&#x3D;「长度字段之后」全部字节</strong></p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">| 2字节魔数 | 2字节版本 | 4字节长度N | N字节载荷 |</span><br><span class="line">offset=4, length=4, adjustment=0, strip=8   → 解码出纯载荷（头部 8 字节全剥掉）</span><br></pre></td></tr></table></figure>
-
-<p><strong>场景 C：长度值含长度字段自身（常见老协议）</strong></p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">| 4字节长度N(含自身) | (N-4)字节载荷 |</span><br><span class="line">offset=0, length=4, adjustment=-4, strip=4  → adjustment 把「多算的自身」减回去</span><br></pre></td></tr></table></figure>
-
-<p><strong>记忆法</strong>：<code>adjustment</code> 永远是「<strong>长度值</strong> 与 <strong>长度字段后剩余真实字节数</strong> 的差」；<code>strip</code> 是「解码输出还要从头扔几个字节」。拿不准时把一帧十六进制打印出来，对着布局数格子。</p>
-<hr>
-<h2 id="三、MessageToMessageDecoder：消息→消息"><a href="#三、MessageToMessageDecoder：消息→消息" class="headerlink" title="三、MessageToMessageDecoder：消息→消息"></a>三、MessageToMessageDecoder：消息→消息</h2><p>帧解码器输出的是 <code>ByteBuf</code>（一条完整帧）。若需把 <code>ByteBuf</code> 再转成业务对象，用 <strong><code>MessageToMessageDecoder&lt;I&gt;</code></strong>：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 把一条完整帧 ByteBuf 解析为 Request 对象</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">RequestDecoder</span> <span class="keyword">extends</span> <span class="title class_">MessageToMessageDecoder</span>&lt;ByteBuf&gt; &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="comment">// 此时 in 已是完整帧（前面有 FrameDecoder 保证）</span></span><br><span class="line">        <span class="type">int</span> <span class="variable">type</span> <span class="operator">=</span> in.readByte();</span><br><span class="line">        <span class="type">int</span> <span class="variable">len</span> <span class="operator">=</span> in.readInt();</span><br><span class="line">        <span class="type">byte</span>[] <span class="variable">data</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">byte</span>[len];</span><br><span class="line">        in.readBytes(data);</span><br><span class="line">        out.add(<span class="keyword">new</span> <span class="title class_">Request</span>(type, <span class="keyword">new</span> <span class="title class_">String</span>(data, CharsetUtil.UTF_8)));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(<span class="number">65535</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">4</span>));</span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">RequestDecoder</span>());   <span class="comment">// ByteBuf → Request</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">RequestHandler</span>());   <span class="comment">// 处理 Request</span></span><br></pre></td></tr></table></figure>
-
-<hr>
-<h2 id="四、ByteToMessageDecoder：字节→消息（自定义）"><a href="#四、ByteToMessageDecoder：字节→消息（自定义）" class="headerlink" title="四、ByteToMessageDecoder：字节→消息（自定义）"></a>四、ByteToMessageDecoder：字节→消息（自定义）</h2><p>当内置帧解码器都不满足时，直接继承 <strong><code>ByteToMessageDecoder</code></strong>，自己控制累积缓冲的读取。它会把多次到达的字节累积到内部缓冲，直到数据足够：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 自定义：魔数 + 1字节类型 + 4字节长度 + 载荷</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MagicFrameDecoder</span> <span class="keyword">extends</span> <span class="title class_">ByteToMessageDecoder</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">byte</span> <span class="variable">MAGIC</span> <span class="operator">=</span> (<span class="type">byte</span>) <span class="number">0xAB</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="comment">// 1. 至少要能读到头部（魔数1 + 类型1 + 长度4 = 6 字节）</span></span><br><span class="line">        <span class="keyword">if</span> (in.readableBytes() &lt; <span class="number">6</span>) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2. 标记当前读指针，校验魔数失败时回滚</span></span><br><span class="line">        in.markReaderIndex();</span><br><span class="line">        <span class="keyword">if</span> (in.readByte() != MAGIC) &#123;</span><br><span class="line">            in.resetReaderIndex();</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">DecoderException</span>(<span class="string">&quot;非法魔数&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="type">byte</span> <span class="variable">type</span> <span class="operator">=</span> in.readByte();</span><br><span class="line">        <span class="type">int</span> <span class="variable">len</span> <span class="operator">=</span> in.readInt();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3. 载荷没到齐，回滚等待下次</span></span><br><span class="line">        <span class="keyword">if</span> (in.readableBytes() &lt; len) &#123;</span><br><span class="line">            in.resetReaderIndex();</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4. 足够了，切出载荷</span></span><br><span class="line">        <span class="type">ByteBuf</span> <span class="variable">payload</span> <span class="operator">=</span> in.readBytes(len);</span><br><span class="line">        out.add(<span class="keyword">new</span> <span class="title class_">Frame</span>(type, payload)); <span class="comment">// payload 由调用方释放</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>三个要点</strong>：</p>
-<ol>
-<li><strong>不足时 <code>return</code> 前 <code>resetReaderIndex</code></strong>，让下次 <code>decode</code> 从头部重新读。</li>
-<li><strong>切出的 <code>ByteBuf</code> 若放进 <code>out</code></strong>，所有权转移给下游，由下游 release；不要在这里 release。</li>
-<li>多次 <code>decode</code> 调用是 Netty 自动驱动的，<strong>不要自己写循环</strong>等待（框架已处理）。</li>
-</ol>
-<hr>
-<h2 id="五、编码器：对象→字节"><a href="#五、编码器：对象→字节" class="headerlink" title="五、编码器：对象→字节"></a>五、编码器：对象→字节</h2><p>出站方向对称。两类基类：</p>
-<table>
-<thead>
-<tr>
-<th>基类</th>
-<th>用途</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong><code>MessageToByteEncoder&lt;I&gt;</code></strong></td>
-<td>对象→单个 <code>ByteBuf</code></td>
-</tr>
-<tr>
-<td><strong><code>MessageToMessageEncoder&lt;I&gt;</code></strong></td>
-<td>对象→对象（如对象→另一种对象）</td>
-</tr>
-</tbody></table>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Request → ByteBuf</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">RequestEncoder</span> <span class="keyword">extends</span> <span class="title class_">MessageToByteEncoder</span>&lt;Request&gt; &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">encode</span><span class="params">(ChannelHandlerContext ctx, Request req, ByteBuf out)</span> &#123;</span><br><span class="line">        <span class="type">byte</span>[] <span class="variable">data</span> <span class="operator">=</span> req.payload.getBytes(CharsetUtil.UTF_8);</span><br><span class="line">        out.writeByte(req.type);          <span class="comment">// 类型</span></span><br><span class="line">        out.writeInt(data.length);        <span class="comment">// 长度</span></span><br><span class="line">        out.writeBytes(data);             <span class="comment">// 载荷</span></span><br><span class="line">        <span class="comment">// out 由框架释放，无需手动 release</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p><strong><code>MessageToByteEncoder</code></strong> 只在出站消息<strong>类型匹配 <code>I</code></strong> 时触发，其他类型直接跳过——可安全混用多种出站消息。</p>
-</blockquote>
-<hr>
-<h2 id="六、编解码器一体：MessageToMessageCodec"><a href="#六、编解码器一体：MessageToMessageCodec" class="headerlink" title="六、编解码器一体：MessageToMessageCodec"></a>六、编解码器一体：MessageToMessageCodec</h2><p>把成对的编解码器合并成一个 <strong><code>MessageToMessageCodec&lt;INBOUND, OUTBOUND&gt;</code></strong>，便于组织：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@ChannelHandler</span>.Sharable</span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">RequestCodec</span></span><br><span class="line">        <span class="keyword">extends</span> <span class="title class_">MessageToMessageCodec</span>&lt;ByteBuf, Request&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 入站：ByteBuf → Request</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="comment">// 解析为 Request，加入 out</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 出站：Request → ByteBuf</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">encode</span><span class="params">(ChannelHandlerContext ctx, Request req, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="type">ByteBuf</span> <span class="variable">buf</span> <span class="operator">=</span> ctx.alloc().buffer();</span><br><span class="line">        <span class="comment">// 编码写入 buf...</span></span><br><span class="line">        out.add(buf);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>注意：Codec 仍需配合 <strong>FrameDecoder</strong> 使用（它本身不做粘包切分）。</p>
-<hr>
-<h2 id="六之二、ReplayingDecoder：写起来更「直」的自定义解码器"><a href="#六之二、ReplayingDecoder：写起来更「直」的自定义解码器" class="headerlink" title="六之二、ReplayingDecoder：写起来更「直」的自定义解码器"></a>六之二、ReplayingDecoder：写起来更「直」的自定义解码器</h2><p>继承 <strong><code>ReplayingDecoder&lt;S&gt;</code></strong> 后，<code>decode</code> 里<strong>可以不加可读字节数判断</strong>：读到不足会抛内部 <code>Error</code>（不是真异常），框架捕获后<strong>自动回滚读指针、等数据齐了再重放</strong>：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SimpleDecoder</span> <span class="keyword">extends</span> <span class="title class_">ReplayingDecoder</span>&lt;Void&gt; &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="type">void</span> <span class="title function_">decode</span><span class="params">(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</span> &#123;</span><br><span class="line">        <span class="comment">// 没有 if (in.readableBytes() &lt; 6) 之类的守卫，代码直线式</span></span><br><span class="line">        <span class="type">byte</span> <span class="variable">type</span> <span class="operator">=</span> in.readByte();</span><br><span class="line">        <span class="type">int</span> <span class="variable">len</span> <span class="operator">=</span> in.readInt();</span><br><span class="line">        <span class="type">ByteBuf</span> <span class="variable">payload</span> <span class="operator">=</span> in.readBytes(len); <span class="comment">// 不足时自动回滚重放</span></span><br><span class="line">        out.add(<span class="keyword">new</span> <span class="title class_">Frame</span>(type, payload));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>取舍</strong>：代码更直观，但每次「重放」都要从头重读，<strong>性能低于手写守卫的 <code>ByteToMessageDecoder</code></strong>；且不能在 <code>decode</code> 里做有副作用的操作（会执行多次）。<strong>追求极限性能选前者，追求可读性且吞吐要求一般选后者</strong>。</p>
-<hr>
-<h2 id="七、调试手段：把字节看清楚"><a href="#七、调试手段：把字节看清楚" class="headerlink" title="七、调试手段：把字节看清楚"></a>七、调试手段：把字节看清楚</h2><p>编解码排障 90% 是「实际字节和想象的不一样」。两件套：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 日志 Handler：打印入站/出站每个事件与 ByteBuf 十六进制</span></span><br><span class="line">pipeline.addFirst(<span class="string">&quot;log&quot;</span>, <span class="keyword">new</span> <span class="title class_">LoggingHandler</span>(LogLevel.DEBUG));</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 2. 在自定义解码器里临时打点</span></span><br><span class="line">System.out.println(ByteBufUtil.hexDump(in, in.readerIndex(), Math.min(in.readableBytes(), <span class="number">64</span>)));</span><br></pre></td></tr></table></figure>
-
-<p>配合单测可<strong>不起网络</strong>验证解码器——用 <strong><code>EmbeddedChannel</code></strong>：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">EmbeddedChannel</span> <span class="variable">ch</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">EmbeddedChannel</span>(<span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(<span class="number">64</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">4</span>));</span><br><span class="line"><span class="type">ByteBuf</span> <span class="variable">wire</span> <span class="operator">=</span> Unpooled.buffer();</span><br><span class="line">wire.writeInt(<span class="number">5</span>).writeBytes(<span class="string">&quot;hello&quot;</span>.getBytes());</span><br><span class="line">ch.writeInbound(wire);              <span class="comment">// 模拟网络入站</span></span><br><span class="line"><span class="type">ByteBuf</span> <span class="variable">frame</span> <span class="operator">=</span> ch.readInbound();   <span class="comment">// 取解码产物</span></span><br><span class="line"><span class="keyword">assert</span> frame.readableBytes() == <span class="number">5</span>;</span><br><span class="line">ch.finishAndReleaseAll();</span><br></pre></td></tr></table></figure>
-
-<p><strong>真实协议对照</strong>（看看成熟协议怎么切包）：<strong>Redis RESP</strong> 用 <code>\r\n</code> 行分隔 + <code>$&lt;len&gt;</code> 长度前缀（混合分隔与长度）；<strong>HTTP&#x2F;1.1</strong> 头部 <code>\r\n\r\n</code> 定界、正文靠 <code>Content-Length</code>&#x2F;<code>chunked</code>；<strong>gRPC</strong> 是「1 字节压缩标志 + 4 字节长度」前缀帧——都是本章模式的变体。</p>
-<hr>
-<h2 id="八、典型-Pipeline-编排模板"><a href="#八、典型-Pipeline-编排模板" class="headerlink" title="八、典型 Pipeline 编排模板"></a>八、典型 Pipeline 编排模板</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">LengthFieldBasedFrameDecoder</span>(<span class="number">65535</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">4</span>)); <span class="comment">// 拆包</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">RequestDecoder</span>());   <span class="comment">// ByteBuf → Request  (入站)</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">ResponseEncoder</span>());  <span class="comment">// Response → ByteBuf (出站)</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">IdleStateHandler</span>(<span class="number">60</span>, <span class="number">0</span>, <span class="number">0</span>, TimeUnit.SECONDS));    <span class="comment">// 心跳</span></span><br><span class="line">pipeline.addLast(<span class="keyword">new</span> <span class="title class_">BusinessHandler</span>());  <span class="comment">// 业务（入站，处理 Request）</span></span><br></pre></td></tr></table></figure>
-
-<p><strong>顺序原则</strong>：帧解码器<strong>最前</strong>→编解码器→心跳→业务。出站编码器位置不影响出站触发（出站会从调用者向链头反向经过所有出站 Handler），但放业务前更清晰。</p>
-<hr>
-<h2 id="九、常见陷阱"><a href="#九、常见陷阱" class="headerlink" title="九、常见陷阱"></a>九、常见陷阱</h2><table>
-<thead>
-<tr>
-<th>陷阱</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>漏 FrameDecoder</strong></td>
-<td>业务直接读 <code>ByteBuf</code>，粘包下解析错乱。<strong>任何二进制协议都必须先切包</strong></td>
-</tr>
-<tr>
-<td><strong>MessageToByteEncoder 不释放</strong></td>
-<td>框架会释放 <code>encode</code> 产出的 <code>ByteBuf</code>；但若你 <code>write</code> 的是外部传入的 <code>ByteBuf</code>，需自己管理引用计数</td>
-</tr>
-<tr>
-<td><strong>解码 throw 异常未处理</strong></td>
-<td>异常会触发 <code>exceptionCaught</code>，默认关闭连接；非法帧应记录日志后 <code>ctx.close()</code></td>
-</tr>
-<tr>
-<td><strong><code>LengthFieldBasedFrameDecoder</code> 参数错</strong></td>
-<td>长度值含不含长度字段自身、有没有调整量，配错会一直读到错位数据。打印十六进制对照</td>
-</tr>
-<tr>
-<td><strong>未限制最大帧长</strong></td>
-<td><code>maxFrameLength</code> 过大或缺失，恶意端发巨帧触发 OOM</td>
-</tr>
-<tr>
-<td><strong><code>StringDecoder</code> 后又当 ByteBuf 用</strong></td>
-<td>一旦解码成 String，下游类型已变，不会再有 ByteBuf</td>
-</tr>
-</tbody></table>
-<hr>
-<h2 id="十、常见面试题速览"><a href="#十、常见面试题速览" class="headerlink" title="十、常见面试题速览"></a>十、常见面试题速览</h2><ol>
-<li><strong>TCP 为什么会粘包</strong>——字节流无消息边界 + Nagle 合并 + MSS 分段 + 接收缓冲时序，四者叠加。</li>
-<li><strong>怎么解决</strong>——应用层自己定界：定长 &#x2F; 分隔符 &#x2F; 长度字段，Netty 用帧解码器承载这三种思路。</li>
-<li><strong><code>LengthFieldBasedFrameDecoder</code> 五参数</strong>——<code>maxFrameLength</code>、<code>lengthFieldOffset</code>、<code>lengthFieldLength</code>、<code>lengthAdjustment</code>、<code>initialBytesToStrip</code>；后两个最易配错。</li>
-<li><strong>解码器里数据不够怎么办</strong>——<code>return</code> 前 <code>resetReaderIndex</code> 等下次，或直接用 <code>ReplayingDecoder</code> 自动重放。</li>
-<li><strong>帧解码器与业务解码器的分工</strong>——前者切出完整字节帧（ByteToMessage），后者把帧解析成对象（MessageToMessage）。</li>
-<li><strong>如何防恶意巨帧</strong>——<code>maxFrameLength</code> 限制 + 解码失败 <code>ctx.close()</code>，缺一不可。</li>
-<li><strong>怎么单测解码器</strong>——<code>EmbeddedChannel</code> 喂字节取产物，不起网络（见「调试手段」一节）。</li>
-<li><strong>MessageToByteEncoder 里要手动 release 吗</strong>——<code>encode</code> 产出的 <code>out</code> 由框架释放；但方法外自己 <code>retain</code> 过的引用仍归你管。</li>
-<li><strong>帧解码器能放 @Sharable 吗</strong>——不能：内部累积缓冲是有状态的，共享会串包；每个 Channel 独立实例。</li>
-<li><strong>换行解码器能用于二进制协议吗</strong>——不能：二进制载荷可能恰好含 <code>0x0A</code>，会被误切；二进制一律走长度域或自定义。</li>
-<li><strong>解码器报 TooLongFrameException 怎么办</strong>——先确认是恶意流量还是 <code>maxFrameLength</code> 设小；正常大报文协议应按业务上限重设。</li>
-</ol>
-<hr>
-<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
-<thead>
-<tr>
-<th>要点</th>
-<th>结论</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>粘包拆包</td>
-<td>TCP 字节流本性，<strong>必须</strong>用帧解码器切分，业务 Handler 才能拿到完整消息</td>
-</tr>
-<tr>
-<td>内置帧解码器</td>
-<td>定长 <code>FixedLength</code>、换行 <code>LineBased</code>、分隔符 <code>DelimiterBased</code>、<strong>长度域 <code>LengthFieldBasedFrameDecoder</code> 最通用</strong></td>
-</tr>
-<tr>
-<td>两层抽象</td>
-<td><code>ByteToMessageDecoder</code>：字节→消息（含切包）；<code>MessageToMessageDecoder</code>：消息→消息</td>
-</tr>
-<tr>
-<td>编码器</td>
-<td><code>MessageToByteEncoder&lt;I&gt;</code> 对象→ByteBuf；只在类型匹配时触发</td>
-</tr>
-<tr>
-<td>一体化</td>
-<td><code>MessageToMessageCodec</code> 合并编解码，但<strong>仍需 FrameDecoder</strong> 切包</td>
-</tr>
-<tr>
-<td>Pipeline 顺序</td>
-<td>帧解码 → 业务编解码 → 心跳 → 业务 Handler</td>
-</tr>
-<tr>
-<td>安全</td>
-<td>限制 <code>maxFrameLength</code>、处理非法帧异常、对照十六进制调试长度域参数</td>
-</tr>
-</tbody></table>
-<p>进入 <a href="/netty/netty-protocol-guide/">第五章：自定义协议实战</a>，把本章的编解码器组装成一套完整的私有协议客户端&#x2F;服务端。</p>
 
       
     </div>

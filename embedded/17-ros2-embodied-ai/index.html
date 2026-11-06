@@ -28,7 +28,7 @@
 <meta property="og:description" content="第十七章：ROS2 与具身智能开发入门 从 DDS 通信到 VLA 模型集成，系统梳理 ROS2 的核心概念、工具链与具身智能时代的开发范式。  1. 具身智能浪潮与 ROS2 的定位大模型把”智能”从纯文本扩展到视觉、语言与动作（Vision-Language-Action），机器人成为下一个主战场。具身智能（Embodied AI）要求算法真正驱动物理本体：感知、决策、控制、执行形成闭环。 在">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-10-28T02:01:00.000Z">
-<meta property="article:modified_time" content="2026-10-29T15:31:07.895Z">
+<meta property="article:modified_time" content="2026-11-06T12:20:41.436Z">
 <meta property="article:author" content="my">
 <meta property="article:tag" content="ROS2">
 <meta property="article:tag" content="具身智能">
@@ -288,7 +288,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+      <time title="修改时间：2026-11-06 20:20:41" itemprop="dateModified" datetime="2026-11-06T20:20:41+08:00">2026-11-06</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -307,7 +307,7 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>9.2k</span>
+      <span>9.3k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
@@ -388,7 +388,19 @@
 <h3 id="3-5-参数（Parameter）"><a href="#3-5-参数（Parameter）" class="headerlink" title="3.5 参数（Parameter）"></a>3.5 参数（Parameter）</h3><p>节点的运行时配置，支持动态修改：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ros2 param <span class="built_in">set</span> /planner max_vel_x 0.5</span><br></pre></td></tr></table></figure>
 
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">    Cam[相机节点] -- /image_raw topic --&gt; Det[检测节点]</span><br><span class="line">    Det -- /objects topic --&gt; Plan[规划节点]</span><br><span class="line">    Plan -- NavigateToPose action --&gt; Nav[Nav2]</span><br><span class="line">    Nav -- /cmd_vel topic --&gt; Base[底盘驱动节点]</span><br><span class="line">    Base -- /odom topic --&gt; TF[TF2]</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+graph LR
+    Cam[相机节点] -- &#x2F;image_raw topic --&gt; Det[检测节点]
+    Det -- &#x2F;objects topic --&gt; Plan[规划节点]
+    Plan -- NavigateToPose action --&gt; Nav[Nav2]
+    Nav -- &#x2F;cmd_vel topic --&gt; Base[底盘驱动节点]
+    Base -- &#x2F;odom topic --&gt; TF[TF2]
+
+</code>
+</pre>
 
 <h2 id="4-工作空间与-colcon-构建"><a href="#4-工作空间与-colcon-构建" class="headerlink" title="4. 工作空间与 colcon 构建"></a>4. 工作空间与 colcon 构建</h2><p>ROS2 用 colcon 作为构建工具（替代 ROS1 的 catkin）：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p ~/ros2_ws/src</span><br><span class="line"><span class="built_in">cd</span> ~/ros2_ws/src</span><br><span class="line">ros2 pkg create --build-type ament_python my_py_pkg</span><br><span class="line">ros2 pkg create --build-type ament_cmake my_cpp_pkg</span><br><span class="line"></span><br><span class="line"><span class="built_in">cd</span> ~/ros2_ws</span><br><span class="line">colcon build --symlink-install</span><br><span class="line"><span class="built_in">source</span> install/setup.bash</span><br></pre></td></tr></table></figure>
@@ -420,7 +432,20 @@
 <h3 id="8-2-Isaac-Sim（NVIDIA，GPU-加速）"><a href="#8-2-Isaac-Sim（NVIDIA，GPU-加速）" class="headerlink" title="8.2 Isaac Sim（NVIDIA，GPU 加速）"></a>8.2 Isaac Sim（NVIDIA，GPU 加速）</h3><p>基于 Omniverse，RTX 渲染 + PhysX，支持大规模并行仿真与域随机化（Domain Randomization），是当前具身智能数据采集的主流。通过 <code>omni.isaac.ros2_bridge</code> 扩展可直接发布 ROS2 topic（相机自动发布 <code>/rgb</code>、<code>/depth</code>、<code>/camera_info</code>）。</p>
 <p>选型：算法验证用 Gazebo；训练数据采集、合成视觉用 Isaac Sim；强化学习大规模并行用 Isaac Gym &#x2F; MuJoCo。</p>
 <h2 id="9-Nav2-导航栈"><a href="#9-Nav2-导航栈" class="headerlink" title="9. Nav2 导航栈"></a>9. Nav2 导航栈</h2><p>Nav2 是移动机器人导航的完整解决方案，行为树（Behavior Tree）驱动：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">graph TD</span><br><span class="line">    Goal[目标位姿] --&gt; BT[行为树]</span><br><span class="line">    BT --&gt; Planner[全局规划器 A*/Smac]</span><br><span class="line">    BT --&gt; Controller[局部控制器 DWB/MPPI]</span><br><span class="line">    Planner --&gt; Costmap[全局代价地图]</span><br><span class="line">    Controller --&gt; Costmap2[局部代价地图]</span><br><span class="line">    Controller --&gt; CmdVel[/cmd_vel]</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+graph TD
+    Goal[目标位姿] --&gt; BT[行为树]
+    BT --&gt; Planner[全局规划器 A*&#x2F;Smac]
+    BT --&gt; Controller[局部控制器 DWB&#x2F;MPPI]
+    Planner --&gt; Costmap[全局代价地图]
+    Controller --&gt; Costmap2[局部代价地图]
+    Controller --&gt; CmdVel[&#x2F;cmd_vel]
+
+</code>
+</pre>
 
 <p>启动示例：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ros2 launch nav2_bringup navigation_launch.py</span><br><span class="line">ros2 launch nav2_bringup rviz_launch.py</span><br></pre></td></tr></table></figure>
@@ -441,7 +466,19 @@
 <li>ros2_control：把规划结果下发到真实硬件的标准接口。</li>
 </ul>
 <h2 id="11-VLA-模型与-ROS2-的集成趋势"><a href="#11-VLA-模型与-ROS2-的集成趋势" class="headerlink" title="11. VLA 模型与 ROS2 的集成趋势"></a>11. VLA 模型与 ROS2 的集成趋势</h2><p>2024 年以来，RT-2、OpenVLA、π0 等视觉-语言-动作模型把”大模型推理”直接接到机械臂控制。典型 ROS2 集成架构：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">    Cam[相机] --&gt;|/image| VLAnode[VLA 推理节点]</span><br><span class="line">    Prompt[语言指令] --&gt;|/instruction| VLAnode</span><br><span class="line">    VLAnode --&gt;|action chunk| Bridge[动作桥接节点]</span><br><span class="line">    Bridge --&gt;|JointTrajectory| Controller[ros2_control]</span><br><span class="line">    Bridge --&gt;|/gripper_cmd| Grip[夹爪驱动]</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+graph LR
+    Cam[相机] --&gt;|&#x2F;image| VLAnode[VLA 推理节点]
+    Prompt[语言指令] --&gt;|&#x2F;instruction| VLAnode
+    VLAnode --&gt;|action chunk| Bridge[动作桥接节点]
+    Bridge --&gt;|JointTrajectory| Controller[ros2_control]
+    Bridge --&gt;|&#x2F;gripper_cmd| Grip[夹爪驱动]
+
+</code>
+</pre>
 
 <p>落地要点：</p>
 <ol>

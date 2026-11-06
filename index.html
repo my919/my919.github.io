@@ -271,9 +271,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-10-30 17:30:00 / 修改时间：23:46:00" itemprop="dateCreated datePublished" datetime="2026-10-30T17:30:00+08:00">2026-10-30</time>
+      <time title="创建时间：2026-10-30 17:30:00" itemprop="dateCreated datePublished" datetime="2026-10-30T17:30:00+08:00">2026-10-30</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-11-06 20:20:41" itemprop="dateModified" datetime="2026-11-06T20:20:41+08:00">2026-11-06</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -292,7 +298,7 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>5.7k</span>
+      <span>5.6k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
@@ -313,36 +319,247 @@
           <h1 id="企业经典架构图详解（进阶篇）"><a href="#企业经典架构图详解（进阶篇）" class="headerlink" title="企业经典架构图详解（进阶篇）"></a>企业经典架构图详解（进阶篇）</h1><blockquote>
 <p>续 <a href="/architecture/enterprise-architecture-diagrams-guide/">上篇</a>：再十张高频架构图，覆盖分布式事务、缓存一致性、LLM 应用、IoT、IM 等进阶场景，全部 Mermaid 可直接复用。</p>
 </blockquote>
-<h2 id="1-CQRS-架构（命令查询职责分离）"><a href="#1-CQRS-架构（命令查询职责分离）" class="headerlink" title="1. CQRS 架构（命令查询职责分离）"></a>1. CQRS 架构（命令查询职责分离）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    U[客户端] --&gt; GW[API 网关]</span><br><span class="line">    GW --&gt; CMD[命令侧&lt;br/&gt;Command Service]</span><br><span class="line">    GW --&gt; QRY[查询侧&lt;br/&gt;Query Service]</span><br><span class="line"></span><br><span class="line">    CMD --&gt; V&#123;业务校验&lt;br/&gt;领域模型&#125;</span><br><span class="line">    V --&gt; WDB[(写库&lt;br/&gt;MySQL 主库)]</span><br><span class="line">    CMD --&gt; EVT&#123;&#123;领域事件&#125;&#125;</span><br><span class="line">    EVT --&gt; SYNC[事件处理器]</span><br><span class="line">    SYNC --&gt; RDB1[(读库：MySQL 从库)]</span><br><span class="line">    SYNC --&gt; RDB2[(ES 搜索库)]</span><br><span class="line">    SYNC --&gt; RDB3[(Redis 缓存)]</span><br><span class="line"></span><br><span class="line">    QRY --&gt; RDB1 &amp; RDB2 &amp; RDB3</span><br></pre></td></tr></table></figure>
+<h2 id="1-CQRS-架构（命令查询职责分离）"><a href="#1-CQRS-架构（命令查询职责分离）" class="headerlink" title="1. CQRS 架构（命令查询职责分离）"></a>1. CQRS 架构（命令查询职责分离）</h2><pre>
+<code class="mermaid">
+
+
+flowchart LR
+    U[客户端] --&gt; GW[API 网关]
+    GW --&gt; CMD[命令侧&lt;br&#x2F;&gt;Command Service]
+    GW --&gt; QRY[查询侧&lt;br&#x2F;&gt;Query Service]
+
+    CMD --&gt; V{业务校验&lt;br&#x2F;&gt;领域模型}
+    V --&gt; WDB[(写库&lt;br&#x2F;&gt;MySQL 主库)]
+    CMD --&gt; EVT{{领域事件}}
+    EVT --&gt; SYNC[事件处理器]
+    SYNC --&gt; RDB1[(读库：MySQL 从库)]
+    SYNC --&gt; RDB2[(ES 搜索库)]
+    SYNC --&gt; RDB3[(Redis 缓存)]
+
+    QRY --&gt; RDB1 &amp; RDB2 &amp; RDB3
+
+</code>
+</pre>
 
 <p><strong>适用</strong>：读写比例悬殊（&gt;10:1）、查询模型与写入模型差异大（如订单写入是范式化表，查询是宽表+搜索）。<strong>关键设计点</strong>：读写模型各自演化、事件同步延迟必须可度量（监控 lag）、查询侧要容忍秒级不一致并在 UI 层做提示。<strong>反模式</strong>：没有读写分离痛点就强上 CQRS——一致性维护成本远超收益。</p>
-<h2 id="2-Saga-分布式事务（编排式-vs-编制式）"><a href="#2-Saga-分布式事务（编排式-vs-编制式）" class="headerlink" title="2. Saga 分布式事务（编排式 vs 编制式）"></a>2. Saga 分布式事务（编排式 vs 编制式）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    subgraph 编排式 Choreography</span><br><span class="line">        O1[订单服务] -- 订单创建事件 --&gt; B1&#123;&#123;MQ&#125;&#125;</span><br><span class="line">        B1 --&gt; I1[库存服务&lt;br/&gt;扣减] -- 扣减成功 --&gt; B2&#123;&#123;MQ&#125;&#125;</span><br><span class="line">        B2 --&gt; P1[支付服务&lt;br/&gt;扣款] -- 扣款失败 --&gt; B3&#123;&#123;MQ&#125;&#125;</span><br><span class="line">        B3 --&gt; I2[库存补偿&lt;br/&gt;回滚] --&gt; O2[订单关闭]</span><br><span class="line">    end</span><br></pre></td></tr></table></figure>
+<h2 id="2-Saga-分布式事务（编排式-vs-编制式）"><a href="#2-Saga-分布式事务（编排式-vs-编制式）" class="headerlink" title="2. Saga 分布式事务（编排式 vs 编制式）"></a>2. Saga 分布式事务（编排式 vs 编制式）</h2><pre>
+<code class="mermaid">
 
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    subgraph 编制式 Orchestration</span><br><span class="line">        SAGA[Saga 编排器&lt;br/&gt;状态机]</span><br><span class="line">        SAGA --&gt;|1 扣库存| INV[库存服务]</span><br><span class="line">        SAGA --&gt;|2 扣款| PAY[支付服务]</span><br><span class="line">        SAGA --&gt;|3 发货| SHIP[物流服务]</span><br><span class="line">        SHIP -- 失败 --&gt; SAGA</span><br><span class="line">        SAGA --&gt;|补偿: 退款| PAY</span><br><span class="line">        SAGA --&gt;|补偿: 回滚库存| INV</span><br><span class="line">    end</span><br></pre></td></tr></table></figure>
+
+flowchart TB
+    subgraph 编排式 Choreography
+        O1[订单服务] -- 订单创建事件 --&gt; B1{{MQ}}
+        B1 --&gt; I1[库存服务&lt;br&#x2F;&gt;扣减] -- 扣减成功 --&gt; B2{{MQ}}
+        B2 --&gt; P1[支付服务&lt;br&#x2F;&gt;扣款] -- 扣款失败 --&gt; B3{{MQ}}
+        B3 --&gt; I2[库存补偿&lt;br&#x2F;&gt;回滚] --&gt; O2[订单关闭]
+    end
+
+</code>
+</pre>
+
+<pre>
+<code class="mermaid">
+
+
+flowchart TB
+    subgraph 编制式 Orchestration
+        SAGA[Saga 编排器&lt;br&#x2F;&gt;状态机]
+        SAGA --&gt;|1 扣库存| INV[库存服务]
+        SAGA --&gt;|2 扣款| PAY[支付服务]
+        SAGA --&gt;|3 发货| SHIP[物流服务]
+        SHIP -- 失败 --&gt; SAGA
+        SAGA --&gt;|补偿: 退款| PAY
+        SAGA --&gt;|补偿: 回滚库存| INV
+    end
+
+</code>
+</pre>
 
 <p><strong>选型</strong>：步骤 ≤3 且参与方稳定的用编排式（无中心依赖）；步骤多、流程经常变、要可视化追踪的用编制式（状态机驱动，如 Seata Saga &#x2F; Temporal）。<strong>关键设计点</strong>：每步必须可补偿（补偿不能依赖原操作成功）、状态持久化防编排器崩溃、超时兜底定时对账。详见 <a href="/distributed/distributed-transaction-guide/">分布式事务实战</a>。</p>
-<h2 id="3-缓存一致性架构"><a href="#3-缓存一致性架构" class="headerlink" title="3. 缓存一致性架构"></a>3. 缓存一致性架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    subgraph 读路径</span><br><span class="line">        R[查询请求] --&gt; C1&#123;L1 本地缓存&lt;br/&gt;Caffeine 30s&#125;</span><br><span class="line">        C1 -- miss --&gt; C2&#123;L2 Redis&#125;</span><br><span class="line">        C2 -- miss --&gt; DB1[(MySQL 从库)]</span><br><span class="line">        DB1 --&gt; C2W[回写 L2 + 随机TTL]</span><br><span class="line">    end</span><br><span class="line">    subgraph 写路径</span><br><span class="line">        W[更新请求] --&gt; DB2[(MySQL 主库)]</span><br><span class="line">        DB2 --&gt; DEL1[删 Redis]</span><br><span class="line">        DB2 -. binlog .-&gt; CANAL[Canal 订阅]</span><br><span class="line">        CANAL --&gt; DEL2[二次删除 Redis&lt;br/&gt;+ 失效消息]</span><br><span class="line">        DEL2 -.广播.-&gt; C1X[L1 本地缓存失效]</span><br><span class="line">    end</span><br></pre></td></tr></table></figure>
+<h2 id="3-缓存一致性架构"><a href="#3-缓存一致性架构" class="headerlink" title="3. 缓存一致性架构"></a>3. 缓存一致性架构</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    subgraph 读路径
+        R[查询请求] --&gt; C1{L1 本地缓存&lt;br&#x2F;&gt;Caffeine 30s}
+        C1 -- miss --&gt; C2{L2 Redis}
+        C2 -- miss --&gt; DB1[(MySQL 从库)]
+        DB1 --&gt; C2W[回写 L2 + 随机TTL]
+    end
+    subgraph 写路径
+        W[更新请求] --&gt; DB2[(MySQL 主库)]
+        DB2 --&gt; DEL1[删 Redis]
+        DB2 -. binlog .-&gt; CANAL[Canal 订阅]
+        CANAL --&gt; DEL2[二次删除 Redis&lt;br&#x2F;&gt;+ 失效消息]
+        DEL2 -.广播.-&gt; C1X[L1 本地缓存失效]
+    end
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：更新采用”先写库、后删缓存”（Cache Aside）；主从延迟窗口用 binlog 订阅二次删除兜底；L1 通过消息广播失效；TTL 加随机抖动防雪崩。<strong>指标必看</strong>：缓存命中率、binlog 延迟、删除失败重试队列深度。详见 <a href="/redis/redis-cache-arch-guide/">Redis 缓存架构实战</a>。</p>
-<h2 id="4-分库分表架构"><a href="#4-分库分表架构" class="headerlink" title="4. 分库分表架构"></a>4. 分库分表架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    APP[应用集群] --&gt; PROXY[ShardingSphere Proxy&lt;br/&gt;SQL 路由/改写/归并]</span><br><span class="line">    PROXY --&gt; D1[(db_0&lt;br/&gt;user_0..user_3)]</span><br><span class="line">    PROXY --&gt; D2[(db_1&lt;br/&gt;user_0..user_3)]</span><br><span class="line">    PROXY --&gt; D3[(db_2&lt;br/&gt;user_0..user_3)]</span><br><span class="line">    PROXY --&gt; D4[(db_3&lt;br/&gt;user_0..user_3)]</span><br><span class="line"></span><br><span class="line">    D1 -.-&gt; M1[(从库)]</span><br><span class="line">    D2 -.-&gt; M2[(从库)]</span><br><span class="line">    D3 -.-&gt; M3[(从库)]</span><br><span class="line">    D4 -.-&gt; M4[(从库)]</span><br><span class="line"></span><br><span class="line">    GEN[分布式 ID 生成&lt;br/&gt;雪花/号段] --&gt; APP</span><br><span class="line">    JOB[扩容迁移任务&lt;br/&gt;存量搬迁+增量追平] -.-&gt; PROXY</span><br></pre></td></tr></table></figure>
+<h2 id="4-分库分表架构"><a href="#4-分库分表架构" class="headerlink" title="4. 分库分表架构"></a>4. 分库分表架构</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    APP[应用集群] --&gt; PROXY[ShardingSphere Proxy&lt;br&#x2F;&gt;SQL 路由&#x2F;改写&#x2F;归并]
+    PROXY --&gt; D1[(db_0&lt;br&#x2F;&gt;user_0..user_3)]
+    PROXY --&gt; D2[(db_1&lt;br&#x2F;&gt;user_0..user_3)]
+    PROXY --&gt; D3[(db_2&lt;br&#x2F;&gt;user_0..user_3)]
+    PROXY --&gt; D4[(db_3&lt;br&#x2F;&gt;user_0..user_3)]
+
+    D1 -.-&gt; M1[(从库)]
+    D2 -.-&gt; M2[(从库)]
+    D3 -.-&gt; M3[(从库)]
+    D4 -.-&gt; M4[(从库)]
+
+    GEN[分布式 ID 生成&lt;br&#x2F;&gt;雪花&#x2F;号段] --&gt; APP
+    JOB[扩容迁移任务&lt;br&#x2F;&gt;存量搬迁+增量追平] -.-&gt; PROXY
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：分片键选择决定一切（按高频查询维度，如 user_id 取模）；全局唯一 ID 前置解决；跨片查询走广播表或 ES 冗余；<strong>扩容不停机</strong>靠”存量迁移 + binlog 增量追平 + 秒级切换”。<strong>反模式</strong>：单表没过 5000 万行就分片——先垂直拆分和索引优化。</p>
-<h2 id="5-LLM-应用架构（RAG-Agent）"><a href="#5-LLM-应用架构（RAG-Agent）" class="headerlink" title="5. LLM 应用架构（RAG + Agent）"></a>5. LLM 应用架构（RAG + Agent）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    U[用户] --&gt; GW[AI 网关&lt;br/&gt;鉴权/限流/成本计量]</span><br><span class="line">    GW --&gt; ORCH[编排层&lt;br/&gt;LangChain/自研]</span><br><span class="line"></span><br><span class="line">    subgraph RAG 链路</span><br><span class="line">        ORCH --&gt; EMB[问题向量化]</span><br><span class="line">        EMB --&gt; VDB[(向量库&lt;br/&gt;Milvus/pgvector)]</span><br><span class="line">        VDB --&gt; RER[重排序 Rerank]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph Agent 工具</span><br><span class="line">        ORCH --&gt; T1[搜索工具]</span><br><span class="line">        ORCH --&gt; T2[数据库查询]</span><br><span class="line">        ORCH --&gt; T3[业务 API]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    RER --&gt; CTX[上下文组装] --&gt; LLM&#123;&#123;大模型&lt;br/&gt;主模型/小模型路由&#125;&#125;</span><br><span class="line">    T1 &amp; T2 &amp; T3 --&gt; CTX</span><br><span class="line">    LLM --&gt; GUARD[输出护栏&lt;br/&gt;敏感词/格式校验] --&gt; U</span><br><span class="line"></span><br><span class="line">    GW --&gt; OBS[LLM 可观测&lt;br/&gt;Token/延迟/评测]</span><br></pre></td></tr></table></figure>
+<h2 id="5-LLM-应用架构（RAG-Agent）"><a href="#5-LLM-应用架构（RAG-Agent）" class="headerlink" title="5. LLM 应用架构（RAG + Agent）"></a>5. LLM 应用架构（RAG + Agent）</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    U[用户] --&gt; GW[AI 网关&lt;br&#x2F;&gt;鉴权&#x2F;限流&#x2F;成本计量]
+    GW --&gt; ORCH[编排层&lt;br&#x2F;&gt;LangChain&#x2F;自研]
+
+    subgraph RAG 链路
+        ORCH --&gt; EMB[问题向量化]
+        EMB --&gt; VDB[(向量库&lt;br&#x2F;&gt;Milvus&#x2F;pgvector)]
+        VDB --&gt; RER[重排序 Rerank]
+    end
+
+    subgraph Agent 工具
+        ORCH --&gt; T1[搜索工具]
+        ORCH --&gt; T2[数据库查询]
+        ORCH --&gt; T3[业务 API]
+    end
+
+    RER --&gt; CTX[上下文组装] --&gt; LLM{{大模型&lt;br&#x2F;&gt;主模型&#x2F;小模型路由}}
+    T1 &amp; T2 &amp; T3 --&gt; CTX
+    LLM --&gt; GUARD[输出护栏&lt;br&#x2F;&gt;敏感词&#x2F;格式校验] --&gt; U
+
+    GW --&gt; OBS[LLM 可观测&lt;br&#x2F;&gt;Token&#x2F;延迟&#x2F;评测]
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：网关统一计量成本与限流、大小模型路由（简单问题走小模型省成本）、检索质量靠”向量召回 + 重排序”双段式、输出必须经过护栏。详见 <a href="/ai-engineering/05-rag-vector-retrieval-practice/">RAG 与向量检索实战</a>、<a href="/ai-engineering/10-ai-gateway-guide/">AI 网关实战</a>。</p>
-<h2 id="6-IoT-物联网平台架构"><a href="#6-IoT-物联网平台架构" class="headerlink" title="6. IoT 物联网平台架构"></a>6. IoT 物联网平台架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    subgraph 设备侧</span><br><span class="line">        DEV1[传感器/设备] &amp; DEV2[工业 PLC]</span><br><span class="line">    end</span><br><span class="line">    DEV1 -- MQTT --&gt; EDGE[边缘网关&lt;br/&gt;协议转换/本地缓存/规则引擎]</span><br><span class="line">    DEV2 -- Modbus/OPC-UA --&gt; EDGE</span><br><span class="line">    EDGE -- MQTT over TLS --&gt; LB[负载均衡]</span><br><span class="line"></span><br><span class="line">    subgraph 云端</span><br><span class="line">        LB --&gt; BROKER&#123;&#123;MQTT Broker 集群&lt;br/&gt;EMQX&#125;&#125;</span><br><span class="line">        BROKER --&gt; RULE[规则引擎]</span><br><span class="line">        RULE --&gt; TSDB[(时序库&lt;br/&gt;TDengine/InfluxDB)]</span><br><span class="line">        RULE --&gt; ALARM[告警引擎]</span><br><span class="line">        RULE --&gt; MQ&#123;&#123;Kafka&#125;&#125; --&gt; APP[业务应用]</span><br><span class="line">        SHADOW[设备影子/孪生] --&gt; APP</span><br><span class="line">        CMD[指令下发服务] --&gt; BROKER</span><br><span class="line">    end</span><br></pre></td></tr></table></figure>
+<h2 id="6-IoT-物联网平台架构"><a href="#6-IoT-物联网平台架构" class="headerlink" title="6. IoT 物联网平台架构"></a>6. IoT 物联网平台架构</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    subgraph 设备侧
+        DEV1[传感器&#x2F;设备] &amp; DEV2[工业 PLC]
+    end
+    DEV1 -- MQTT --&gt; EDGE[边缘网关&lt;br&#x2F;&gt;协议转换&#x2F;本地缓存&#x2F;规则引擎]
+    DEV2 -- Modbus&#x2F;OPC-UA --&gt; EDGE
+    EDGE -- MQTT over TLS --&gt; LB[负载均衡]
+
+    subgraph 云端
+        LB --&gt; BROKER{{MQTT Broker 集群&lt;br&#x2F;&gt;EMQX}}
+        BROKER --&gt; RULE[规则引擎]
+        RULE --&gt; TSDB[(时序库&lt;br&#x2F;&gt;TDengine&#x2F;InfluxDB)]
+        RULE --&gt; ALARM[告警引擎]
+        RULE --&gt; MQ{{Kafka}} --&gt; APP[业务应用]
+        SHADOW[设备影子&#x2F;孪生] --&gt; APP
+        CMD[指令下发服务] --&gt; BROKER
+    end
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：边缘侧断网续传（本地缓存 + 恢复后补传）、设备影子解耦”设备实时状态”与”业务查询”、指令下发与数据上行通道分离、证书一机一密。详见 <a href="/embedded/01-uart-protocol/">嵌入式与物联网协议系列</a>。</p>
-<h2 id="7-IM-即时通讯架构"><a href="#7-IM-即时通讯架构" class="headerlink" title="7. IM 即时通讯架构"></a>7. IM 即时通讯架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    C1[App] &amp; C2[Web] &amp; C3[PC] -- WebSocket/QUIC --&gt; LB[长连接接入层&lt;br/&gt;连接网关集群]</span><br><span class="line"></span><br><span class="line">    LB --&gt; ROUTE[路由服务&lt;br/&gt;userId → 网关节点]</span><br><span class="line">    LB --&gt; LOGIC[消息逻辑服务&lt;br/&gt;鉴权/去重/风控]</span><br><span class="line">    LOGIC --&gt; MQ&#123;&#123;消息队列&#125;&#125;</span><br><span class="line">    MQ --&gt; STORE[消息存储服务]</span><br><span class="line">    STORE --&gt; HOT[(热消息：Redis)]</span><br><span class="line">    STORE --&gt; COLD[(冷消息：HBase/对象存储)]</span><br><span class="line">    MQ --&gt; PUSH[离线推送&lt;br/&gt;APNs/厂商通道]</span><br><span class="line">    ROUTE --&gt; LB2[对端网关] --&gt; C4[接收方]</span><br><span class="line">    MQ --&gt; SYNC[多端同步服务]</span><br></pre></td></tr></table></figure>
+<h2 id="7-IM-即时通讯架构"><a href="#7-IM-即时通讯架构" class="headerlink" title="7. IM 即时通讯架构"></a>7. IM 即时通讯架构</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    C1[App] &amp; C2[Web] &amp; C3[PC] -- WebSocket&#x2F;QUIC --&gt; LB[长连接接入层&lt;br&#x2F;&gt;连接网关集群]
+
+    LB --&gt; ROUTE[路由服务&lt;br&#x2F;&gt;userId → 网关节点]
+    LB --&gt; LOGIC[消息逻辑服务&lt;br&#x2F;&gt;鉴权&#x2F;去重&#x2F;风控]
+    LOGIC --&gt; MQ{{消息队列}}
+    MQ --&gt; STORE[消息存储服务]
+    STORE --&gt; HOT[(热消息：Redis)]
+    STORE --&gt; COLD[(冷消息：HBase&#x2F;对象存储)]
+    MQ --&gt; PUSH[离线推送&lt;br&#x2F;&gt;APNs&#x2F;厂商通道]
+    ROUTE --&gt; LB2[对端网关] --&gt; C4[接收方]
+    MQ --&gt; SYNC[多端同步服务]
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：长连接网关与业务逻辑分离（网关无状态可水平扩）、消息 ID 全局有序（雪花 ID + 会话内序列号双保险）、消息”写扩散”到各端收件箱、离线消息拉取按 seq 增量同步、单聊写扩散&#x2F;群聊读扩散按群规模切换。</p>
-<h2 id="8-实时计算链路（CDC-→-秒级大屏）"><a href="#8-实时计算链路（CDC-→-秒级大屏）" class="headerlink" title="8. 实时计算链路（CDC → 秒级大屏）"></a>8. 实时计算链路（CDC → 秒级大屏）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    DB[(业务库)] -- binlog --&gt; CDC[Canal/Flink CDC]</span><br><span class="line">    LOG[埋点日志] -- Filebeat --&gt; K&#123;&#123;Kafka&#125;&#125;</span><br><span class="line">    CDC --&gt; K</span><br><span class="line">    K --&gt; FLINK[Flink 集群&lt;br/&gt;窗口聚合/双流 Join/CEP]</span><br><span class="line">    FLINK --&gt; OLAP[(ClickHouse/Doris)]</span><br><span class="line">    FLINK --&gt; KV[(Redis&lt;br/&gt;实时榜单/状态)]</span><br><span class="line">    OLAP --&gt; BI[实时大屏/报表]</span><br><span class="line">    KV --&gt; API[实时查询 API]</span><br><span class="line">    FLINK -- 异常事件 --&gt; ALERT[告警中心]</span><br></pre></td></tr></table></figure>
+<h2 id="8-实时计算链路（CDC-→-秒级大屏）"><a href="#8-实时计算链路（CDC-→-秒级大屏）" class="headerlink" title="8. 实时计算链路（CDC → 秒级大屏）"></a>8. 实时计算链路（CDC → 秒级大屏）</h2><pre>
+<code class="mermaid">
+
+
+flowchart LR
+    DB[(业务库)] -- binlog --&gt; CDC[Canal&#x2F;Flink CDC]
+    LOG[埋点日志] -- Filebeat --&gt; K{{Kafka}}
+    CDC --&gt; K
+    K --&gt; FLINK[Flink 集群&lt;br&#x2F;&gt;窗口聚合&#x2F;双流 Join&#x2F;CEP]
+    FLINK --&gt; OLAP[(ClickHouse&#x2F;Doris)]
+    FLINK --&gt; KV[(Redis&lt;br&#x2F;&gt;实时榜单&#x2F;状态)]
+    OLAP --&gt; BI[实时大屏&#x2F;报表]
+    KV --&gt; API[实时查询 API]
+    FLINK -- 异常事件 --&gt; ALERT[告警中心]
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：Exactly-Once 靠”Checkpoint + 两阶段提交 Sink”、状态后端用 RocksDB 并监控 state size、乱序容忍用 Watermark、维表 Join 走异步 IO + 缓存。详见 <a href="/datascience/01-flink-realtime-guide/">Flink 实时计算实战</a>（如站内编号有变以 datascience 索引为准）。</p>
-<h2 id="9-API-开放平台架构"><a href="#9-API-开放平台架构" class="headerlink" title="9. API 开放平台架构"></a>9. API 开放平台架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    ISV[第三方开发者] --&gt; DOC[开发者门户&lt;br/&gt;文档/沙箱/申请]</span><br><span class="line">    ISV --&gt; GW[开放网关]</span><br><span class="line">    GW --&gt; AUTH&#123;OAuth2 鉴权&lt;br/&gt;+ 签名验签&#125;</span><br><span class="line">    AUTH --&gt; QUOTA[配额/计量&lt;br/&gt;QPS 限流 + 计费]</span><br><span class="line">    QUOTA --&gt; ROUTER[路由]</span><br><span class="line">    ROUTER --&gt; SVC1[内部服务 A]</span><br><span class="line">    ROUTER --&gt; SVC2[内部服务 B]</span><br><span class="line"></span><br><span class="line">    GW --&gt; AUDIT[(调用审计日志)]</span><br><span class="line">    GW --&gt; MOCK[沙箱环境&lt;br/&gt;Mock 数据]</span><br><span class="line">    KEY[密钥管理&lt;br/&gt;AK/SK 轮换] --&gt; AUTH</span><br></pre></td></tr></table></figure>
+<h2 id="9-API-开放平台架构"><a href="#9-API-开放平台架构" class="headerlink" title="9. API 开放平台架构"></a>9. API 开放平台架构</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    ISV[第三方开发者] --&gt; DOC[开发者门户&lt;br&#x2F;&gt;文档&#x2F;沙箱&#x2F;申请]
+    ISV --&gt; GW[开放网关]
+    GW --&gt; AUTH{OAuth2 鉴权&lt;br&#x2F;&gt;+ 签名验签}
+    AUTH --&gt; QUOTA[配额&#x2F;计量&lt;br&#x2F;&gt;QPS 限流 + 计费]
+    QUOTA --&gt; ROUTER[路由]
+    ROUTER --&gt; SVC1[内部服务 A]
+    ROUTER --&gt; SVC2[内部服务 B]
+
+    GW --&gt; AUDIT[(调用审计日志)]
+    GW --&gt; MOCK[沙箱环境&lt;br&#x2F;&gt;Mock 数据]
+    KEY[密钥管理&lt;br&#x2F;&gt;AK&#x2F;SK 轮换] --&gt; AUTH
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：对外契约与内部实现解耦（内部重构不影响开放 API 版本）、签名防篡改 + 时间戳防重放、配额计量与计费一体、沙箱环境降低接入成本、密钥支持平滑轮换。详见 <a href="/api/api-security-guide/">接口安全实战</a>。</p>
-<h2 id="10-Serverless-架构"><a href="#10-Serverless-架构" class="headerlink" title="10. Serverless 架构"></a>10. Serverless 架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    U[客户端] --&gt; CDN --&gt; APIGW[API 网关&lt;br/&gt;按调用计费]</span><br><span class="line">    APIGW --&gt; F1[函数: 鉴权]</span><br><span class="line">    APIGW --&gt; F2[函数: 业务处理]</span><br><span class="line">    APIGW --&gt; F3[函数: 缩略图生成]</span><br><span class="line"></span><br><span class="line">    F2 --&gt; DB[(Serverless DB&lt;br/&gt;Aurora Serverless)]</span><br><span class="line">    F2 --&gt; QUEUE&#123;&#123;SQS/EventBridge&#125;&#125;</span><br><span class="line">    QUEUE --&gt; F4[异步函数: 通知]</span><br><span class="line"></span><br><span class="line">    F3 --&gt; OBJ[(对象存储)]</span><br><span class="line">    OBJ -- 上传事件 --&gt; F3</span><br><span class="line"></span><br><span class="line">    CRON[定时触发器] --&gt; F5[函数: 日终对账]</span><br></pre></td></tr></table></figure>
+<h2 id="10-Serverless-架构"><a href="#10-Serverless-架构" class="headerlink" title="10. Serverless 架构"></a>10. Serverless 架构</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    U[客户端] --&gt; CDN --&gt; APIGW[API 网关&lt;br&#x2F;&gt;按调用计费]
+    APIGW --&gt; F1[函数: 鉴权]
+    APIGW --&gt; F2[函数: 业务处理]
+    APIGW --&gt; F3[函数: 缩略图生成]
+
+    F2 --&gt; DB[(Serverless DB&lt;br&#x2F;&gt;Aurora Serverless)]
+    F2 --&gt; QUEUE{{SQS&#x2F;EventBridge}}
+    QUEUE --&gt; F4[异步函数: 通知]
+
+    F3 --&gt; OBJ[(对象存储)]
+    OBJ -- 上传事件 --&gt; F3
+
+    CRON[定时触发器] --&gt; F5[函数: 日终对账]
+
+</code>
+</pre>
 
 <p><strong>适用</strong>：流量波动剧烈（秒杀、活动页）、低频任务（对账、报表）、事件驱动处理（图片&#x2F;视频转码）。<strong>关键设计点</strong>：冷启动延迟要实测（预留并发&#x2F;预热）、函数保持无状态、单次执行有时限（长任务拆步骤或用 Step Functions 编排）、<strong>成本模型反直觉</strong>——稳定高并发时 FaaS 可能比常驻实例贵 3 倍，算账再选型。</p>
 <h2 id="11-进阶图选型速查"><a href="#11-进阶图选型速查" class="headerlink" title="11. 进阶图选型速查"></a>11. 进阶图选型速查</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">读写模型差异大、读多写少          → CQRS</span><br><span class="line">跨服务事务、步骤可补偿           → Saga（≤3 步编排式，复杂用编制式）</span><br><span class="line">缓存与库强一致要求               → binlog 订阅二次删除 + 广播失效</span><br><span class="line">单表 &gt;5000 万行、写入瓶颈        → 分库分表（分片键定生死）</span><br><span class="line">接入 LLM、要控成本               → AI 网关 + 大小模型路由 + RAG</span><br><span class="line">设备接入 &gt;1 万台                 → MQTT Broker 集群 + 边缘网关</span><br><span class="line">长连接消息系统                   → 接入层与逻辑层分离 + 写扩散</span><br><span class="line">秒级报表/实时风控                → CDC + Kafka + Flink + OLAP</span><br><span class="line">对外开放能力                     → 契约隔离 + 配额计费 + 沙箱</span><br><span class="line">流量脉冲型/事件处理型负载         → Serverless（先算成本账）</span><br></pre></td></tr></table></figure>
@@ -402,9 +619,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-10-30 16:30:00 / 修改时间：23:46:00" itemprop="dateCreated datePublished" datetime="2026-10-30T16:30:00+08:00">2026-10-30</time>
+      <time title="创建时间：2026-10-30 16:30:00" itemprop="dateCreated datePublished" datetime="2026-10-30T16:30:00+08:00">2026-10-30</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-11-06 20:20:41" itemprop="dateModified" datetime="2026-11-06T20:20:41+08:00">2026-11-06</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -423,7 +646,7 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>4.8k</span>
+      <span>4.7k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
@@ -475,34 +698,219 @@
 </tr>
 </tbody></table>
 <p>推荐用 <strong>C4 模型</strong>控制粒度：System Context（系统在哪）→ Container（由哪些应用&#x2F;存储组成）→ Component（应用内部结构）→ Code（类级，可选）。一张图只画一层。</p>
-<h2 id="2-经典分层架构（单体时代基线）"><a href="#2-经典分层架构（单体时代基线）" class="headerlink" title="2. 经典分层架构（单体时代基线）"></a>2. 经典分层架构（单体时代基线）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    subgraph 接入层</span><br><span class="line">        A[负载均衡 SLB] --&gt; B[Nginx / API 网关]</span><br><span class="line">    end</span><br><span class="line">    subgraph 应用层</span><br><span class="line">        B --&gt; C[Web 应用集群&lt;br/&gt;Controller + Service]</span><br><span class="line">    end</span><br><span class="line">    subgraph 数据层</span><br><span class="line">        C --&gt; D[(MySQL 主从)]</span><br><span class="line">        C --&gt; E[(Redis 缓存)]</span><br><span class="line">        C --&gt; F[(文件存储 OSS)]</span><br><span class="line">    end</span><br></pre></td></tr></table></figure>
+<h2 id="2-经典分层架构（单体时代基线）"><a href="#2-经典分层架构（单体时代基线）" class="headerlink" title="2. 经典分层架构（单体时代基线）"></a>2. 经典分层架构（单体时代基线）</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    subgraph 接入层
+        A[负载均衡 SLB] --&gt; B[Nginx &#x2F; API 网关]
+    end
+    subgraph 应用层
+        B --&gt; C[Web 应用集群&lt;br&#x2F;&gt;Controller + Service]
+    end
+    subgraph 数据层
+        C --&gt; D[(MySQL 主从)]
+        C --&gt; E[(Redis 缓存)]
+        C --&gt; F[(文件存储 OSS)]
+    end
+
+</code>
+</pre>
 
 <p><strong>适用</strong>：中小系统、业务早期。<strong>关键设计点</strong>：无状态应用层（Session 外置到 Redis）、数据库主从读写分离、静态资源走 CDN。瓶颈通常先出现在数据库，横向扩容只解决应用层。</p>
-<h2 id="3-微服务架构（当前主流基线）"><a href="#3-微服务架构（当前主流基线）" class="headerlink" title="3. 微服务架构（当前主流基线）"></a>3. 微服务架构（当前主流基线）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    U[用户/客户端] --&gt; G[API 网关&lt;br/&gt;鉴权 · 限流 · 路由]</span><br><span class="line">    G --&gt; S1[订单服务]</span><br><span class="line">    G --&gt; S2[用户服务]</span><br><span class="line">    G --&gt; S3[库存服务]</span><br><span class="line">    G --&gt; S4[支付服务]</span><br><span class="line"></span><br><span class="line">    S1 &amp; S2 &amp; S3 &amp; S4 -.注册/发现.-&gt; N[(Nacos&lt;br/&gt;注册中心)]</span><br><span class="line">    S1 &amp; S2 &amp; S3 &amp; S4 -.拉取配置.-&gt; Cfg[(Nacos / Apollo&lt;br/&gt;配置中心)]</span><br><span class="line"></span><br><span class="line">    S1 --&gt; MQ&#123;&#123;RocketMQ&lt;br/&gt;削峰/解耦/最终一致&#125;&#125;</span><br><span class="line">    MQ --&gt; S3</span><br><span class="line"></span><br><span class="line">    S1 --&gt; D1[(订单库)]</span><br><span class="line">    S2 --&gt; D2[(用户库)]</span><br><span class="line">    S3 --&gt; D3[(库存库)]</span><br><span class="line"></span><br><span class="line">    subgraph 可观测</span><br><span class="line">        P[Prometheus] &amp; T[SkyWalking] &amp; L[ELK]</span><br><span class="line">    end</span><br><span class="line">    S1 &amp; S2 &amp; S3 &amp; S4 -.指标/链路/日志.-&gt; P</span><br></pre></td></tr></table></figure>
+<h2 id="3-微服务架构（当前主流基线）"><a href="#3-微服务架构（当前主流基线）" class="headerlink" title="3. 微服务架构（当前主流基线）"></a>3. 微服务架构（当前主流基线）</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    U[用户&#x2F;客户端] --&gt; G[API 网关&lt;br&#x2F;&gt;鉴权 · 限流 · 路由]
+    G --&gt; S1[订单服务]
+    G --&gt; S2[用户服务]
+    G --&gt; S3[库存服务]
+    G --&gt; S4[支付服务]
+
+    S1 &amp; S2 &amp; S3 &amp; S4 -.注册&#x2F;发现.-&gt; N[(Nacos&lt;br&#x2F;&gt;注册中心)]
+    S1 &amp; S2 &amp; S3 &amp; S4 -.拉取配置.-&gt; Cfg[(Nacos &#x2F; Apollo&lt;br&#x2F;&gt;配置中心)]
+
+    S1 --&gt; MQ{{RocketMQ&lt;br&#x2F;&gt;削峰&#x2F;解耦&#x2F;最终一致}}
+    MQ --&gt; S3
+
+    S1 --&gt; D1[(订单库)]
+    S2 --&gt; D2[(用户库)]
+    S3 --&gt; D3[(库存库)]
+
+    subgraph 可观测
+        P[Prometheus] &amp; T[SkyWalking] &amp; L[ELK]
+    end
+    S1 &amp; S2 &amp; S3 &amp; S4 -.指标&#x2F;链路&#x2F;日志.-&gt; P
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：服务自治（每服务独立数据库）、治理下沉到注册配置中心、可观测三件套是必选项不是可选项。<strong>反面教材</strong>：微服务共享同一个数据库——拆了个寂寞。</p>
-<h2 id="4-高并发交易链路（大促架构）"><a href="#4-高并发交易链路（大促架构）" class="headerlink" title="4. 高并发交易链路（大促架构）"></a>4. 高并发交易链路（大促架构）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    U[用户] --&gt; CDN --&gt; WAF[WAF/防火墙] --&gt; G[网关集群]</span><br><span class="line">    G --&gt; C1&#123;L1 本地缓存&lt;br/&gt;Caffeine&#125;</span><br><span class="line">    C1 -- 未命中 --&gt; C2&#123;L2 分布式缓存&lt;br/&gt;Redis Cluster&#125;</span><br><span class="line">    C2 -- 未命中 --&gt; S[交易服务集群]</span><br><span class="line">    S --&gt; MQ&#123;&#123;MQ 削峰&lt;br/&gt;下单异步化&#125;&#125;</span><br><span class="line">    MQ --&gt; W[写服务] --&gt; DB[(MySQL 分库分表)]</span><br><span class="line">    S --&gt; R[(读库/ES)]</span><br><span class="line">    DB -. binlog 同步 .-&gt; R</span><br></pre></td></tr></table></figure>
+<h2 id="4-高并发交易链路（大促架构）"><a href="#4-高并发交易链路（大促架构）" class="headerlink" title="4. 高并发交易链路（大促架构）"></a>4. 高并发交易链路（大促架构）</h2><pre>
+<code class="mermaid">
+
+
+flowchart LR
+    U[用户] --&gt; CDN --&gt; WAF[WAF&#x2F;防火墙] --&gt; G[网关集群]
+    G --&gt; C1{L1 本地缓存&lt;br&#x2F;&gt;Caffeine}
+    C1 -- 未命中 --&gt; C2{L2 分布式缓存&lt;br&#x2F;&gt;Redis Cluster}
+    C2 -- 未命中 --&gt; S[交易服务集群]
+    S --&gt; MQ{{MQ 削峰&lt;br&#x2F;&gt;下单异步化}}
+    MQ --&gt; W[写服务] --&gt; DB[(MySQL 分库分表)]
+    S --&gt; R[(读库&#x2F;ES)]
+    DB -. binlog 同步 .-&gt; R
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：读路径多级缓存逐级兜底、写路径 MQ 削峰填谷、读写在存储层分离（binlog → ES&#x2F;读库）、每一层都要有<strong>降级开关</strong>——缓存挂了限流直读，MQ 挂了同步降级。详见 <a href="/architecture/03-high-concurrency-system-design/">高并发系统设计</a>。</p>
-<h2 id="5-事件驱动架构（最终一致性）"><a href="#5-事件驱动架构（最终一致性）" class="headerlink" title="5. 事件驱动架构（最终一致性）"></a>5. 事件驱动架构（最终一致性）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    O[订单服务] -- 订单已支付事件 --&gt; B&#123;&#123;消息队列&#125;&#125;</span><br><span class="line">    B --&gt; I[库存服务&lt;br/&gt;扣减]</span><br><span class="line">    B --&gt; P[积分服务&lt;br/&gt;累加]</span><br><span class="line">    B --&gt; N[通知服务&lt;br/&gt;发短信]</span><br><span class="line">    B --&gt; W[数据仓库&lt;br/&gt;同步宽表]</span><br><span class="line"></span><br><span class="line">    I -- 失败 --&gt; DL[死信队列] --&gt; R[人工/自动补偿]</span><br></pre></td></tr></table></figure>
+<h2 id="5-事件驱动架构（最终一致性）"><a href="#5-事件驱动架构（最终一致性）" class="headerlink" title="5. 事件驱动架构（最终一致性）"></a>5. 事件驱动架构（最终一致性）</h2><pre>
+<code class="mermaid">
+
+
+flowchart LR
+    O[订单服务] -- 订单已支付事件 --&gt; B{{消息队列}}
+    B --&gt; I[库存服务&lt;br&#x2F;&gt;扣减]
+    B --&gt; P[积分服务&lt;br&#x2F;&gt;累加]
+    B --&gt; N[通知服务&lt;br&#x2F;&gt;发短信]
+    B --&gt; W[数据仓库&lt;br&#x2F;&gt;同步宽表]
+
+    I -- 失败 --&gt; DL[死信队列] --&gt; R[人工&#x2F;自动补偿]
+
+</code>
+</pre>
 
 <p><strong>适用</strong>：跨服务业务流程（Saga）、读写分离同步、审计日志。<strong>关键设计点</strong>：消息至少一次投递 + 消费端幂等、死信队列必须有补偿流程、事件即事实（Event Sourcing 时再存事件本身）。详见 <a href="/architecture/eda-guide/">事件驱动架构实战指南</a>。</p>
-<h2 id="6-中台架构（阿里式，慎入）"><a href="#6-中台架构（阿里式，慎入）" class="headerlink" title="6. 中台架构（阿里式，慎入）"></a>6. 中台架构（阿里式，慎入）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    subgraph 前台业务</span><br><span class="line">        F1[App] &amp; F2[小程序] &amp; F3[H5/PC]</span><br><span class="line">    end</span><br><span class="line">    subgraph 业务中台</span><br><span class="line">        M1[交易中心] &amp; M2[用户中心] &amp; M3[商品中心] &amp; M4[营销中心]</span><br><span class="line">    end</span><br><span class="line">    subgraph 数据中台</span><br><span class="line">        D1[数据采集] --&gt; D2[统一数仓] --&gt; D3[数据服务 API]</span><br><span class="line">    end</span><br><span class="line">    subgraph 技术底座</span><br><span class="line">        T1[微服务平台] &amp; T2[DevOps] &amp; T3[监控告警]</span><br><span class="line">    end</span><br><span class="line">    F1 &amp; F2 &amp; F3 --&gt; M1 &amp; M2 &amp; M3 &amp; M4</span><br><span class="line">    M1 &amp; M2 &amp; M3 &amp; M4 --&gt; D1</span><br><span class="line">    D3 --&gt; F1</span><br></pre></td></tr></table></figure>
+<h2 id="6-中台架构（阿里式，慎入）"><a href="#6-中台架构（阿里式，慎入）" class="headerlink" title="6. 中台架构（阿里式，慎入）"></a>6. 中台架构（阿里式，慎入）</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    subgraph 前台业务
+        F1[App] &amp; F2[小程序] &amp; F3[H5&#x2F;PC]
+    end
+    subgraph 业务中台
+        M1[交易中心] &amp; M2[用户中心] &amp; M3[商品中心] &amp; M4[营销中心]
+    end
+    subgraph 数据中台
+        D1[数据采集] --&gt; D2[统一数仓] --&gt; D3[数据服务 API]
+    end
+    subgraph 技术底座
+        T1[微服务平台] &amp; T2[DevOps] &amp; T3[监控告警]
+    end
+    F1 &amp; F2 &amp; F3 --&gt; M1 &amp; M2 &amp; M3 &amp; M4
+    M1 &amp; M2 &amp; M3 &amp; M4 --&gt; D1
+    D3 --&gt; F1
+
+</code>
+</pre>
 
 <p><strong>适用</strong>：多条相似业务线、组织能力跟得上的中大厂。<strong>反面教材</strong>：业务线只有一两条就上中台——中台的成本是组织协作成本，不是技术成本。多数公司”中台”最后做成”又一层网关”。</p>
-<h2 id="7-数据架构（湖仓一体）"><a href="#7-数据架构（湖仓一体）" class="headerlink" title="7. 数据架构（湖仓一体）"></a>7. 数据架构（湖仓一体）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    subgraph 数据源</span><br><span class="line">        A1[业务库 binlog] &amp; A2[埋点日志] &amp; A3[第三方数据]</span><br><span class="line">    end</span><br><span class="line">    A1 &amp; A2 &amp; A3 --&gt; K&#123;&#123;Kafka&#125;&#125;</span><br><span class="line">    K --&gt; F[Flink 实时计算]</span><br><span class="line">    K --&gt; L[(数据湖&lt;br/&gt;Iceberg/Hudi)]</span><br><span class="line">    F --&gt; L</span><br><span class="line">    L --&gt; T[Trino/Spark&lt;br/&gt;查询引擎]</span><br><span class="line">    T --&gt; O1[BI 报表]</span><br><span class="line">    T --&gt; O2[即席分析]</span><br><span class="line">    F --&gt; O3[实时大屏/告警]</span><br><span class="line">    L --&gt; O4[AI 训练数据集]</span><br></pre></td></tr></table></figure>
+<h2 id="7-数据架构（湖仓一体）"><a href="#7-数据架构（湖仓一体）" class="headerlink" title="7. 数据架构（湖仓一体）"></a>7. 数据架构（湖仓一体）</h2><pre>
+<code class="mermaid">
+
+
+flowchart LR
+    subgraph 数据源
+        A1[业务库 binlog] &amp; A2[埋点日志] &amp; A3[第三方数据]
+    end
+    A1 &amp; A2 &amp; A3 --&gt; K{{Kafka}}
+    K --&gt; F[Flink 实时计算]
+    K --&gt; L[(数据湖&lt;br&#x2F;&gt;Iceberg&#x2F;Hudi)]
+    F --&gt; L
+    L --&gt; T[Trino&#x2F;Spark&lt;br&#x2F;&gt;查询引擎]
+    T --&gt; O1[BI 报表]
+    T --&gt; O2[即席分析]
+    F --&gt; O3[实时大屏&#x2F;告警]
+    L --&gt; O4[AI 训练数据集]
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：流批同构（Iceberg 表既是批表也是流表）、一份数据多处消费（OLAP&#x2F;实时&#x2F;AI）、计算与存储分离弹性扩缩。详见 <a href="/datascience/lakehouse-guide/">湖仓一体：Iceberg · Flink · Trino</a>。</p>
-<h2 id="8-云原生部署架构（K8s）"><a href="#8-云原生部署架构（K8s）" class="headerlink" title="8. 云原生部署架构（K8s）"></a>8. 云原生部署架构（K8s）</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    subgraph 集群外</span><br><span class="line">        DNS --&gt; SLB[云负载均衡]</span><br><span class="line">    end</span><br><span class="line">    subgraph K8s 集群</span><br><span class="line">        SLB --&gt; IN[Ingress/Gateway API]</span><br><span class="line">        subgraph 命名空间: prod</span><br><span class="line">            IN --&gt; SVC1[Service A ×3 Pod]</span><br><span class="line">            IN --&gt; SVC2[Service B ×2 Pod]</span><br><span class="line">        end</span><br><span class="line">        HPA[HPA 自动扩缩] -.-&gt; SVC1</span><br><span class="line">        subgraph 平台层</span><br><span class="line">            ARGO[ArgoCD GitOps]</span><br><span class="line">            PROM[Prometheus + OTel Collector]</span><br><span class="line">            MESH[Service Mesh&lt;br/&gt;mTLS/流量治理]</span><br><span class="line">        end</span><br><span class="line">    end</span><br><span class="line">    SVC1 &amp; SVC2 --&gt; RDS[(云 RDS)]</span><br><span class="line">    SVC1 &amp; SVC2 --&gt; OSS[(对象存储)]</span><br></pre></td></tr></table></figure>
+<h2 id="8-云原生部署架构（K8s）"><a href="#8-云原生部署架构（K8s）" class="headerlink" title="8. 云原生部署架构（K8s）"></a>8. 云原生部署架构（K8s）</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    subgraph 集群外
+        DNS --&gt; SLB[云负载均衡]
+    end
+    subgraph K8s 集群
+        SLB --&gt; IN[Ingress&#x2F;Gateway API]
+        subgraph 命名空间: prod
+            IN --&gt; SVC1[Service A ×3 Pod]
+            IN --&gt; SVC2[Service B ×2 Pod]
+        end
+        HPA[HPA 自动扩缩] -.-&gt; SVC1
+        subgraph 平台层
+            ARGO[ArgoCD GitOps]
+            PROM[Prometheus + OTel Collector]
+            MESH[Service Mesh&lt;br&#x2F;&gt;mTLS&#x2F;流量治理]
+        end
+    end
+    SVC1 &amp; SVC2 --&gt; RDS[(云 RDS)]
+    SVC1 &amp; SVC2 --&gt; OSS[(对象存储)]
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：一切声明式（GitOps 为唯一变更入口）、HPA 按指标弹性伸缩、流量治理与安全下沉到 Mesh&#x2F;Gateway API。详见 <a href="/kubernetes/kubernetes-guide/">Kubernetes 实战指南</a>。</p>
-<h2 id="9-异地多活与容灾架构"><a href="#9-异地多活与容灾架构" class="headerlink" title="9. 异地多活与容灾架构"></a>9. 异地多活与容灾架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">flowchart TB</span><br><span class="line">    GSLB[全局流量调度&lt;br/&gt;DNS/GSLB] --&gt; R1[华东机房&lt;br/&gt;70% 流量]</span><br><span class="line">    GSLB --&gt; R2[华南机房&lt;br/&gt;30% 流量]</span><br><span class="line">    R1 &lt;--&gt; |数据双向同步&lt;br/&gt;DTS/消息复制| R2</span><br><span class="line">    R1 --&gt; |异步复制| DR[异地灾备中心&lt;br/&gt;冷备]</span><br><span class="line"></span><br><span class="line">    subgraph 机房内部（两单元同构）</span><br><span class="line">        APP[应用集群] --&gt; CACHE[(缓存)] &amp; DB[(数据库单元化)]</span><br><span class="line">    end</span><br></pre></td></tr></table></figure>
+<h2 id="9-异地多活与容灾架构"><a href="#9-异地多活与容灾架构" class="headerlink" title="9. 异地多活与容灾架构"></a>9. 异地多活与容灾架构</h2><pre>
+<code class="mermaid">
+
+
+flowchart TB
+    GSLB[全局流量调度&lt;br&#x2F;&gt;DNS&#x2F;GSLB] --&gt; R1[华东机房&lt;br&#x2F;&gt;70% 流量]
+    GSLB --&gt; R2[华南机房&lt;br&#x2F;&gt;30% 流量]
+    R1 &lt;--&gt; |数据双向同步&lt;br&#x2F;&gt;DTS&#x2F;消息复制| R2
+    R1 --&gt; |异步复制| DR[异地灾备中心&lt;br&#x2F;&gt;冷备]
+
+    subgraph 机房内部（两单元同构）
+        APP[应用集群] --&gt; CACHE[(缓存)] &amp; DB[(数据库单元化)]
+    end
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：单元化分片（用户按规则路由到固定单元，单元内闭环）、数据同步延迟是硬约束（同城 &lt;10ms 可半同步，跨省只能异步+最终一致）、<strong>定期真实切换演练</strong>——不演练的容灾等于没有。RTO&#x2F;RPO 指标要写进架构文档。</p>
-<h2 id="10-零信任安全架构"><a href="#10-零信任安全架构" class="headerlink" title="10. 零信任安全架构"></a>10. 零信任安全架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    U[员工/设备] --&gt; IDP[身份提供方&lt;br/&gt;SSO + MFA]</span><br><span class="line">    IDP --&gt; PDP&#123;策略决策点&lt;br/&gt;设备+身份+上下文&#125;</span><br><span class="line">    PDP -- 放行 --&gt; GW[零信任网关/mTLS]</span><br><span class="line">    GW --&gt; APP1[内部系统 A]</span><br><span class="line">    GW --&gt; APP2[内部系统 B]</span><br><span class="line">    PDP -- 拒绝 --&gt; DENY[阻断 + 告警]</span><br><span class="line">    GW --&gt; LOG[(全流量审计日志)]</span><br></pre></td></tr></table></figure>
+<h2 id="10-零信任安全架构"><a href="#10-零信任安全架构" class="headerlink" title="10. 零信任安全架构"></a>10. 零信任安全架构</h2><pre>
+<code class="mermaid">
+
+
+flowchart LR
+    U[员工&#x2F;设备] --&gt; IDP[身份提供方&lt;br&#x2F;&gt;SSO + MFA]
+    IDP --&gt; PDP{策略决策点&lt;br&#x2F;&gt;设备+身份+上下文}
+    PDP -- 放行 --&gt; GW[零信任网关&#x2F;mTLS]
+    GW --&gt; APP1[内部系统 A]
+    GW --&gt; APP2[内部系统 B]
+    PDP -- 拒绝 --&gt; DENY[阻断 + 告警]
+    GW --&gt; LOG[(全流量审计日志)]
+
+</code>
+</pre>
 
 <p><strong>原则</strong>：永不信任、始终验证——不再区分”内网可信&#x2F;外网不可信”，每次访问都鉴权，最小权限 + 微分段。详见 <a href="/security/09-zero-trust-architecture/">零信任架构实战</a>。</p>
-<h2 id="11-DevOps-交付流水线"><a href="#11-DevOps-交付流水线" class="headerlink" title="11. DevOps 交付流水线"></a>11. DevOps 交付流水线</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">    DEV[开发提交] --&gt; MR[MR 门禁&lt;br/&gt;评审+静态扫描+单测]</span><br><span class="line">    MR --&gt; CI[CI 构建&lt;br/&gt;编译+镜像+制品]</span><br><span class="line">    CI --&gt; SEC[安全扫描&lt;br/&gt;SBOM+漏洞+密钥]</span><br><span class="line">    SEC --&gt; STG[预发部署&lt;br/&gt;ArgoCD 同步]</span><br><span class="line">    STG --&gt; E2E[自动化回归]</span><br><span class="line">    E2E --&gt; GRAY[灰度发布&lt;br/&gt;5%→50%→100%]</span><br><span class="line">    GRAY --&gt; PROD[生产]</span><br><span class="line">    PROD --&gt; MON[监控+SLO 看板]</span><br><span class="line">    MON -.异常自动回滚.-&gt; GRAY</span><br></pre></td></tr></table></figure>
+<h2 id="11-DevOps-交付流水线"><a href="#11-DevOps-交付流水线" class="headerlink" title="11. DevOps 交付流水线"></a>11. DevOps 交付流水线</h2><pre>
+<code class="mermaid">
+
+
+flowchart LR
+    DEV[开发提交] --&gt; MR[MR 门禁&lt;br&#x2F;&gt;评审+静态扫描+单测]
+    MR --&gt; CI[CI 构建&lt;br&#x2F;&gt;编译+镜像+制品]
+    CI --&gt; SEC[安全扫描&lt;br&#x2F;&gt;SBOM+漏洞+密钥]
+    SEC --&gt; STG[预发部署&lt;br&#x2F;&gt;ArgoCD 同步]
+    STG --&gt; E2E[自动化回归]
+    E2E --&gt; GRAY[灰度发布&lt;br&#x2F;&gt;5%→50%→100%]
+    GRAY --&gt; PROD[生产]
+    PROD --&gt; MON[监控+SLO 看板]
+    MON -.异常自动回滚.-&gt; GRAY
+
+</code>
+</pre>
 
 <p><strong>关键设计点</strong>：质量左移（门禁在 MR 阶段拦截）、制品只构建一次逐级晋升、灰度按指标自动暂停&#x2F;回滚。详见 <a href="/devops/cicd-guide/">CI&#x2F;CD 实战指南</a>。</p>
 <h2 id="12-画好架构图的六条军规"><a href="#12-画好架构图的六条军规" class="headerlink" title="12. 画好架构图的六条军规"></a>12. 画好架构图的六条军规</h2><ol>
@@ -1557,7 +1965,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-10-29 23:31:07" itemprop="dateModified" datetime="2026-10-29T23:31:07+08:00">2026-10-29</time>
+      <time title="修改时间：2026-11-06 20:20:41" itemprop="dateModified" datetime="2026-11-06T20:20:41+08:00">2026-11-06</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -1576,7 +1984,7 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>9.2k</span>
+      <span>9.3k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
@@ -1658,7 +2066,19 @@
 <h3 id="3-5-参数（Parameter）"><a href="#3-5-参数（Parameter）" class="headerlink" title="3.5 参数（Parameter）"></a>3.5 参数（Parameter）</h3><p>节点的运行时配置，支持动态修改：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ros2 param <span class="built_in">set</span> /planner max_vel_x 0.5</span><br></pre></td></tr></table></figure>
 
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">    Cam[相机节点] -- /image_raw topic --&gt; Det[检测节点]</span><br><span class="line">    Det -- /objects topic --&gt; Plan[规划节点]</span><br><span class="line">    Plan -- NavigateToPose action --&gt; Nav[Nav2]</span><br><span class="line">    Nav -- /cmd_vel topic --&gt; Base[底盘驱动节点]</span><br><span class="line">    Base -- /odom topic --&gt; TF[TF2]</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+graph LR
+    Cam[相机节点] -- &#x2F;image_raw topic --&gt; Det[检测节点]
+    Det -- &#x2F;objects topic --&gt; Plan[规划节点]
+    Plan -- NavigateToPose action --&gt; Nav[Nav2]
+    Nav -- &#x2F;cmd_vel topic --&gt; Base[底盘驱动节点]
+    Base -- &#x2F;odom topic --&gt; TF[TF2]
+
+</code>
+</pre>
 
 <h2 id="4-工作空间与-colcon-构建"><a href="#4-工作空间与-colcon-构建" class="headerlink" title="4. 工作空间与 colcon 构建"></a>4. 工作空间与 colcon 构建</h2><p>ROS2 用 colcon 作为构建工具（替代 ROS1 的 catkin）：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p ~/ros2_ws/src</span><br><span class="line"><span class="built_in">cd</span> ~/ros2_ws/src</span><br><span class="line">ros2 pkg create --build-type ament_python my_py_pkg</span><br><span class="line">ros2 pkg create --build-type ament_cmake my_cpp_pkg</span><br><span class="line"></span><br><span class="line"><span class="built_in">cd</span> ~/ros2_ws</span><br><span class="line">colcon build --symlink-install</span><br><span class="line"><span class="built_in">source</span> install/setup.bash</span><br></pre></td></tr></table></figure>
@@ -1690,7 +2110,20 @@
 <h3 id="8-2-Isaac-Sim（NVIDIA，GPU-加速）"><a href="#8-2-Isaac-Sim（NVIDIA，GPU-加速）" class="headerlink" title="8.2 Isaac Sim（NVIDIA，GPU 加速）"></a>8.2 Isaac Sim（NVIDIA，GPU 加速）</h3><p>基于 Omniverse，RTX 渲染 + PhysX，支持大规模并行仿真与域随机化（Domain Randomization），是当前具身智能数据采集的主流。通过 <code>omni.isaac.ros2_bridge</code> 扩展可直接发布 ROS2 topic（相机自动发布 <code>/rgb</code>、<code>/depth</code>、<code>/camera_info</code>）。</p>
 <p>选型：算法验证用 Gazebo；训练数据采集、合成视觉用 Isaac Sim；强化学习大规模并行用 Isaac Gym &#x2F; MuJoCo。</p>
 <h2 id="9-Nav2-导航栈"><a href="#9-Nav2-导航栈" class="headerlink" title="9. Nav2 导航栈"></a>9. Nav2 导航栈</h2><p>Nav2 是移动机器人导航的完整解决方案，行为树（Behavior Tree）驱动：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">graph TD</span><br><span class="line">    Goal[目标位姿] --&gt; BT[行为树]</span><br><span class="line">    BT --&gt; Planner[全局规划器 A*/Smac]</span><br><span class="line">    BT --&gt; Controller[局部控制器 DWB/MPPI]</span><br><span class="line">    Planner --&gt; Costmap[全局代价地图]</span><br><span class="line">    Controller --&gt; Costmap2[局部代价地图]</span><br><span class="line">    Controller --&gt; CmdVel[/cmd_vel]</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+graph TD
+    Goal[目标位姿] --&gt; BT[行为树]
+    BT --&gt; Planner[全局规划器 A*&#x2F;Smac]
+    BT --&gt; Controller[局部控制器 DWB&#x2F;MPPI]
+    Planner --&gt; Costmap[全局代价地图]
+    Controller --&gt; Costmap2[局部代价地图]
+    Controller --&gt; CmdVel[&#x2F;cmd_vel]
+
+</code>
+</pre>
 
 <p>启动示例：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ros2 launch nav2_bringup navigation_launch.py</span><br><span class="line">ros2 launch nav2_bringup rviz_launch.py</span><br></pre></td></tr></table></figure>
@@ -1711,7 +2144,19 @@
 <li>ros2_control：把规划结果下发到真实硬件的标准接口。</li>
 </ul>
 <h2 id="11-VLA-模型与-ROS2-的集成趋势"><a href="#11-VLA-模型与-ROS2-的集成趋势" class="headerlink" title="11. VLA 模型与 ROS2 的集成趋势"></a>11. VLA 模型与 ROS2 的集成趋势</h2><p>2024 年以来，RT-2、OpenVLA、π0 等视觉-语言-动作模型把”大模型推理”直接接到机械臂控制。典型 ROS2 集成架构：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">    Cam[相机] --&gt;|/image| VLAnode[VLA 推理节点]</span><br><span class="line">    Prompt[语言指令] --&gt;|/instruction| VLAnode</span><br><span class="line">    VLAnode --&gt;|action chunk| Bridge[动作桥接节点]</span><br><span class="line">    Bridge --&gt;|JointTrajectory| Controller[ros2_control]</span><br><span class="line">    Bridge --&gt;|/gripper_cmd| Grip[夹爪驱动]</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+graph LR
+    Cam[相机] --&gt;|&#x2F;image| VLAnode[VLA 推理节点]
+    Prompt[语言指令] --&gt;|&#x2F;instruction| VLAnode
+    VLAnode --&gt;|action chunk| Bridge[动作桥接节点]
+    Bridge --&gt;|JointTrajectory| Controller[ros2_control]
+    Bridge --&gt;|&#x2F;gripper_cmd| Grip[夹爪驱动]
+
+</code>
+</pre>
 
 <p>落地要点：</p>
 <ol>
@@ -1811,7 +2256,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-11-05 00:40:53" itemprop="dateModified" datetime="2026-11-05T00:40:53+08:00">2026-11-05</time>
+      <time title="修改时间：2026-11-06 20:20:41" itemprop="dateModified" datetime="2026-11-06T20:20:41+08:00">2026-11-06</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -1903,7 +2348,18 @@
 <h2 id="3-CRDT-的两种范式"><a href="#3-CRDT-的两种范式" class="headerlink" title="3. CRDT 的两种范式"></a>3. CRDT 的两种范式</h2><h3 id="3-1-基于状态（State-based-CvRDT）"><a href="#3-1-基于状态（State-based-CvRDT）" class="headerlink" title="3.1 基于状态（State-based &#x2F; CvRDT）"></a>3.1 基于状态（State-based &#x2F; CvRDT）</h3><p>副本之间交换<strong>完整状态</strong>，通过 <code>merge(a, b)</code> 函数合并。要求 merge 满足交换律、结合律、幂等律。典型例子：G-Counter（只增计数器，各节点各自累加自己的分量，取 max 合并）。</p>
 <h3 id="3-2-基于操作（Op-based-CmRDT）"><a href="#3-2-基于操作（Op-based-CmRDT）" class="headerlink" title="3.2 基于操作（Op-based &#x2F; CmRDT）"></a>3.2 基于操作（Op-based &#x2F; CmRDT）</h3><p>副本之间广播<strong>操作</strong>，要求因果序交付。操作本身被设计成可交换的。典型例子：G-Set（只增集合）。</p>
 <p>Yjs 属于两者的混合：对外表现为基于操作的更新传播，内部用状态向量（state vector）做增量同步与缺失补全，兼具两者优点。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">    A[客户端 A] -- update --&gt; S[同步服务端]</span><br><span class="line">    B[客户端 B] -- update --&gt; S</span><br><span class="line">    S -- 广播 update --&gt; C[客户端 C]</span><br><span class="line">    A -- state vector 增量同步 --&gt; B</span><br></pre></td></tr></table></figure>
+<pre>
+<code class="mermaid">
+
+
+graph LR
+    A[客户端 A] -- update --&gt; S[同步服务端]
+    B[客户端 B] -- update --&gt; S
+    S -- 广播 update --&gt; C[客户端 C]
+    A -- state vector 增量同步 --&gt; B
+
+</code>
+</pre>
 
 <h2 id="4-Yjs-核心数据结构"><a href="#4-Yjs-核心数据结构" class="headerlink" title="4. Yjs 核心数据结构"></a>4. Yjs 核心数据结构</h2><p>Yjs 把文档抽象为 <code>Y.Doc</code>，内部是若干<strong>共享类型</strong>，所有共享类型都是 CRDT。</p>
 <h3 id="4-1-YArray"><a href="#4-1-YArray" class="headerlink" title="4.1 YArray"></a>4.1 YArray</h3><p>有序列表，支持插入、删除、按索引读取。元素可以是任意 JSON 值或另一个共享类型。</p>
@@ -1947,7 +2403,7 @@
 <p>重新联网后，y-websocket 的 sync step 会用 state vector 交换双方缺失的 update，天然完成离线合并——这正是 CRDT 相对 OT 的最大优势。</p>
 <h2 id="9-性能与内存"><a href="#9-性能与内存" class="headerlink" title="9. 性能与内存"></a>9. 性能与内存</h2><ul>
 <li><strong>tombstone（墓碑）</strong>：删除的字符不会物理移除，只做标记。超长文档反复编辑后墓碑占比可能超过 80%。</li>
-<li><strong>GC</strong>：Yjs 在 <code>gc: true</code>（默认）下会回收不再被引用的项；<code>Y.Doc({ gc: true })</code>。快照（snapshot）存在时会阻止 GC。</li>
+<li><strong>GC</strong>：Yjs 在 <code>gc: true</code>（默认）下会回收不再被引用的项；<code>Y.Doc(&#123; gc: true &#125;)</code>。快照（snapshot）存在时会阻止 GC。</li>
 <li><strong>结构化压缩</strong>：Yjs 内部把同 clientID 的连续操作合并为 Item 块，减少内存占用。</li>
 <li><strong>二进制 update 编码</strong>：update 是紧凑的 varint 编码，比 JSON 小一个数量级。</li>
 <li><strong>大文档初始化</strong>：首屏建议走 HTTP 拉全量 state，再切 WebSocket 做增量，避免握手消息过大。</li>
