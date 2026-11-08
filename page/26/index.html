@@ -243,6 +243,518 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://my919.github.io/search/02-elasticsearch-query-tuning/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="my">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="my">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content=" | my">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/search/02-elasticsearch-query-tuning/" class="post-title-link" itemprop="url">第二章：Elasticsearch 查询与性能调优</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-09-02 10:00:00" itemprop="dateCreated datePublished" datetime="2026-09-02T10:00:00+08:00">2026-09-02</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-11-05 00:40:53" itemprop="dateModified" datetime="2026-11-05T00:40:53+08:00">2026-11-05</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%90%9C%E7%B4%A2%E5%BC%95%E6%93%8E/" itemprop="url" rel="index"><span itemprop="name">搜索引擎</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>18k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>16 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="第二章：Elasticsearch-查询与性能调优"><a href="#第二章：Elasticsearch-查询与性能调优" class="headerlink" title="第二章：Elasticsearch 查询与性能调优"></a>第二章：Elasticsearch 查询与性能调优</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
+<li><strong>Query DSL 是 JSON 化的查询语法</strong>：一切查询走 <code>GET /idx/_search { body }</code>，body 由 query &#x2F; aggregations &#x2F; sort &#x2F; size &#x2F; from 等组成——告别 SQL，拥抱嵌套 JSON。</li>
+<li><strong>精确匹配 vs 全文检索</strong>：<code>term</code> 对 keyword &#x2F; 数值精确匹配（不打分），<code>match</code> 对 text 分词后匹配并打分——用错类型是新手头号坑。</li>
+<li><strong>相关性评分 BM25</strong>：ES 7+ 默认 BM25（替代 TF-IDF），核心是「词频饱和 + 文档长度归一」——短文档命中高权重，长文档被稀释。</li>
+<li><strong>聚合 &#x3D; 分桶 + 算指标</strong>：bucket agg（terms &#x2F; date_histogram &#x2F; range）分组，metrics agg（avg &#x2F; sum &#x2F; cardinality）算值，可嵌套——OLAP 分析能力。</li>
+<li><strong>分页深翻是 ES 的痛</strong>：<code>from + size</code> 超过 10000 默认被拒（max_result_window），深翻用 <code>search_after</code> 游标或 scroll——选错方式直接 OOM。</li>
+</ol>
+<blockquote>
+<p>本章承接 <a href="/search/01-elasticsearch-guide/">第一章：Elasticsearch 入门与索引管理</a> 的索引与 mapping；查询 DSL、聚合、调优在此展开。ES 按 9.x 语法。</p>
+</blockquote>
+<hr>
+<h2 id="一、Query-DSL-全览"><a href="#一、Query-DSL-全览" class="headerlink" title="一、Query DSL 全览"></a>一、Query DSL 全览</h2><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// match：text 字段分词后匹配，多词默认 OR，打分</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;无线 耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// match_phrase：词序敏感、完整短语（slop 控制词间隔）</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match_phrase&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="string">&quot;无线耳机&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;slop&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// term：keyword/数值精确匹配，不打分（text 字段别用 term！）</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;order_no&quot;</span><span class="punctuation">:</span> <span class="string">&quot;NO20260902001&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// terms：多值 IN</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;terms&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="number">1</span><span class="punctuation">,</span> <span class="number">2</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// range：范围</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;range&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;amount&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;gte&quot;</span><span class="punctuation">:</span> <span class="number">100</span><span class="punctuation">,</span> <span class="attr">&quot;lte&quot;</span><span class="punctuation">:</span> <span class="number">500</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bool 组合：must 打分、should 加分、filter 不打分但走缓存</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;bool&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;must&quot;</span><span class="punctuation">:</span>     <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span>   <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;range&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;amount&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;gte&quot;</span><span class="punctuation">:</span> <span class="number">50</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;should&quot;</span><span class="punctuation">:</span>   <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="string">&quot;新品&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;must_not&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="string">&quot;下架&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;minimum_should_match&quot;</span><span class="punctuation">:</span> <span class="number">1</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>query（查询上下文）</th>
+<th>filter（过滤上下文）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>是否打分</td>
+<td>是（算 _score）</td>
+<td>否</td>
+</tr>
+<tr>
+<td>是否缓存</td>
+<td>不缓存</td>
+<td>缓存（bitset 复用）</td>
+</tr>
+<tr>
+<td>性能</td>
+<td>慢</td>
+<td>快</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>全文检索要排序</td>
+<td>精确条件、范围、时间过滤</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>过滤条件能进 <code>filter</code> 就进 <code>filter</code>：不打分 + 可缓存，同样命中快数倍。</p>
+</blockquote>
+<h3 id="高亮、排序与浅分页组合"><a href="#高亮、排序与浅分页组合" class="headerlink" title="高亮、排序与浅分页组合"></a>高亮、排序与浅分页组合</h3><p>一个完整的业务搜索查询通常还包含高亮命中片段、相关度&#x2F;时间双排序与浅分页：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">GET /articles/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;bool&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;must&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;Elasticsearch&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="string">&quot;published&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span></span><br><span class="line">  <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;highlight&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;fields&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="attr">&quot;content&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;fragment_size&quot;</span><span class="punctuation">:</span> <span class="number">150</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;sort&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;_score&quot;</span><span class="punctuation">:</span> <span class="string">&quot;desc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;createdAt&quot;</span><span class="punctuation">:</span> <span class="string">&quot;desc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;from&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">20</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、复合查询与相关性"><a href="#二、复合查询与相关性" class="headerlink" title="二、复合查询与相关性"></a>二、复合查询与相关性</h2><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// function_score：电商搜索，标题匹配分 × 销量加权 × 新品加权 × 时间衰减</span></span><br><span class="line">GET /goods_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;function_score&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;手机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;functions&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;field_value_factor&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;sales&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;modifier&quot;</span><span class="punctuation">:</span> <span class="string">&quot;log1p&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;factor&quot;</span><span class="punctuation">:</span> <span class="number">2</span><span class="punctuation">,</span> <span class="attr">&quot;missing&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;weight&quot;</span><span class="punctuation">:</span> <span class="number">1.5</span><span class="punctuation">,</span> <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="string">&quot;新品&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;gauss&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;created_at&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;origin&quot;</span><span class="punctuation">:</span> <span class="string">&quot;now&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;scale&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30d&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;score_mode&quot;</span><span class="punctuation">:</span> <span class="string">&quot;multiply&quot;</span><span class="punctuation">,</span>    <span class="comment">// 各函数分相乘</span></span><br><span class="line">      <span class="attr">&quot;boost_mode&quot;</span><span class="punctuation">:</span> <span class="string">&quot;sum&quot;</span>          <span class="comment">// 与原 query 分相加</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// boosting：负向降权不剔除   |  constant_score：把 filter 包成固定分查询</span></span><br><span class="line">GET /goods_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;boosting&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;positive&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;手机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;negative&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="string">&quot;翻新&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;negative_boost&quot;</span><span class="punctuation">:</span> <span class="number">0.3</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span>        <span class="comment">// 命中翻新分 ×0.3</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>手法</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>function_score</td>
+<td>销量 &#x2F; 时间 &#x2F; 距离等业务字段加权</td>
+</tr>
+<tr>
+<td>boosting</td>
+<td>负向降权不剔除</td>
+</tr>
+<tr>
+<td>constant_score</td>
+<td>filter 转查询、固定分</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>电商搜索排序不是单纯 BM25：标题匹配分 + 销量 + 新鲜度 + 是否促销，function_score 是标准答案。</p>
+</blockquote>
+<h3 id="BM25-打分拆解"><a href="#BM25-打分拆解" class="headerlink" title="BM25 打分拆解"></a>BM25 打分拆解</h3><p><code>_explain</code> 看单文档得分明细：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /goods_idx/_explain/<span class="number">1001</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;无线耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>打分公式（简化）：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">score(q,d) = Σ IDF(t) · [ f(t,d)·(k1+1) / ( f(t,d) + k1·(1 - b + b·|d|/avgdl) ) ]</span><br><span class="line">             IDF(t)：词 t 的稀有度，越罕见权重越高</span><br><span class="line">             f(t,d)：词频，k1≈1.2 控制饱和（出现 10 次 ≠ 10 倍分）</span><br><span class="line">             |d|/avgdl：文档长度比，b≈0.75 控制长度归一（长文被稀释）</span><br></pre></td></tr></table></figure>
+
+<p><strong>multi_match 两种常用模式</strong>：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">GET /goods_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;multi_match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="string">&quot;无线耳机&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;fields&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;title^3&quot;</span><span class="punctuation">,</span> <span class="string">&quot;brand^2&quot;</span><span class="punctuation">,</span> <span class="string">&quot;desc&quot;</span><span class="punctuation">]</span><span class="punctuation">,</span>   <span class="comment">// 字段权重：标题 3 倍</span></span><br><span class="line">    <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;best_fields&quot;</span>        <span class="comment">// 默认：任一字段匹配好即可（找同一实体）</span></span><br><span class="line">  <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// cross_fields：多字段当一个整体打分，词可分散在不同字段（如 &quot;索尼 耳机&quot; 品牌+品类）</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>type</th>
+<th>语义</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>best_fields</td>
+<td>单字段最高分胜出</td>
+<td>同义字段（title&#x2F;subtitle）</td>
+</tr>
+<tr>
+<td>cross_fields</td>
+<td>字段合并打分</td>
+<td>词分散在多字段（品牌+品名）</td>
+</tr>
+<tr>
+<td>most_fields</td>
+<td>全字段累加</td>
+<td>需要多字段共同参与排序</td>
+</tr>
+</tbody></table>
+<h3 id="向量搜索与混合检索（kNN-RRF）"><a href="#向量搜索与混合检索（kNN-RRF）" class="headerlink" title="向量搜索与混合检索（kNN + RRF）"></a>向量搜索与混合检索（kNN + RRF）</h3><p>AI 语义搜索：字段在 mapping 中声明为 <code>dense_vector</code>（<code>dims</code> 与模型维度一致、<code>index: true</code>、<code>similarity: cosine</code>），写入时由同步链路生成 Embedding（见第一章 Java 客户端集成）。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 语义搜索：用户输入 → Embedding → 向量相似度</span></span><br><span class="line">GET /articles/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;knn&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;embedding&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;query_vector&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="number">0.123</span><span class="punctuation">,</span> <span class="number">0.456</span><span class="punctuation">,</span> ...<span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;k&quot;</span><span class="punctuation">:</span> <span class="number">10</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;num_candidates&quot;</span><span class="punctuation">:</span> <span class="number">100</span></span><br><span class="line">  <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;_source&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;title&quot;</span><span class="punctuation">,</span> <span class="string">&quot;content&quot;</span><span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 混合搜索：关键词 + 语义（RRF 融合排序）</span></span><br><span class="line">GET /articles/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;retriever&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;rrf&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;retrievers&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;standard&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;性能优化&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;knn&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;embedding&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;query_vector&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="number">0.123</span><span class="punctuation">,</span> ...<span class="punctuation">]</span><span class="punctuation">,</span> <span class="attr">&quot;k&quot;</span><span class="punctuation">:</span> <span class="number">10</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;rank_window_size&quot;</span><span class="punctuation">:</span> <span class="number">50</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;rank_constant&quot;</span><span class="punctuation">:</span> <span class="number">60</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="三、聚合分析"><a href="#三、聚合分析" class="headerlink" title="三、聚合分析"></a>三、聚合分析</h2><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// metrics agg：按状态分组，算总金额、均价、去重用户数</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;by_status&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;terms&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;status&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;total_amount&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;sum&quot;</span><span class="punctuation">:</span>  <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;avg_amount&quot;</span><span class="punctuation">:</span>   <span class="punctuation">&#123;</span> <span class="attr">&quot;avg&quot;</span><span class="punctuation">:</span>  <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;max_amount&quot;</span><span class="punctuation">:</span>    <span class="punctuation">&#123;</span> <span class="attr">&quot;max&quot;</span><span class="punctuation">:</span>  <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;unique_users&quot;</span><span class="punctuation">:</span>  <span class="punctuation">&#123;</span> <span class="attr">&quot;cardinality&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;user_id&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;precision_threshold&quot;</span><span class="punctuation">:</span> <span class="number">1000</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bucket agg：按天统计销售额，天内再嵌套按小时（date_histogram）</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;daily_sales&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;date_histogram&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;created_at&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;calendar_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;1d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;format&quot;</span><span class="punctuation">:</span> <span class="string">&quot;yyyy-MM-dd&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;time_zone&quot;</span><span class="punctuation">:</span> <span class="string">&quot;Asia/Shanghai&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;daily_total&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;sum&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;hourly&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;date_histogram&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;created_at&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;fixed_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;1h&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// range：金额区间分桶</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;amount_ranges&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;range&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;ranges&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;to&quot;</span><span class="punctuation">:</span> <span class="number">100</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;from&quot;</span><span class="punctuation">:</span> <span class="number">100</span><span class="punctuation">,</span> <span class="attr">&quot;to&quot;</span><span class="punctuation">:</span> <span class="number">500</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;from&quot;</span><span class="punctuation">:</span> <span class="number">500</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>agg 类型</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>terms</td>
+<td>按字段值分组（Top N）</td>
+</tr>
+<tr>
+<td>date_histogram</td>
+<td>按时间分桶（日 &#x2F; 时 &#x2F; 月）</td>
+</tr>
+<tr>
+<td>range</td>
+<td>按数值区间分桶</td>
+</tr>
+<tr>
+<td>cardinality</td>
+<td>去重计数（近似，HyperLogLog）</td>
+</tr>
+<tr>
+<td>nested</td>
+<td>聚合 nested 对象数组</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><code>cardinality</code> 是近似去重（误差约 1%），<code>size: 0</code> 表示只取聚合不要文档明细——大表聚合必备。</p>
+</blockquote>
+<h3 id="聚合性能与下推"><a href="#聚合性能与下推" class="headerlink" title="聚合性能与下推"></a>聚合性能与下推</h3><ol>
+<li><strong>filter 先行</strong>：把过滤条件写进 query 的 filter 上下文，聚合只在过滤后的文档集上跑——别对全表聚合；</li>
+<li><strong><code>eager_global_ordinals</code></strong>：高基数 keyword 字段在建索引时就构建全局序号，聚合不再临时计算（适合反复聚合的维度列）：</li>
+</ol>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">PUT /order_idx <span class="punctuation">&#123;</span> <span class="attr">&quot;mappings&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;properties&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;keyword&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;eager_global_ordinals&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><strong>深翻聚合用 composite</strong>：terms 只能拿 Top N，全量分组导出用 <code>composite + after_key</code> 逐页拉取：</li>
+</ol>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;by_user&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;composite&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;sources&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;user&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;terms&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;user_id&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">1000</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;after_key&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;user&quot;</span><span class="punctuation">:</span> <span class="number">42</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span>     <span class="comment">// after_key 取上一页返回值</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li><strong>近似优先</strong>：<code>sampler</code> agg 先抽样再聚合、cardinality 用 HyperLogLog 近似——接受 1% 误差换 10 倍速度。</li>
+</ol>
+<hr>
+<h2 id="四、分页与深度翻页"><a href="#四、分页与深度翻页" class="headerlink" title="四、分页与深度翻页"></a>四、分页与深度翻页</h2><table>
+<thead>
+<tr>
+<th>方式</th>
+<th>上限</th>
+<th>适用</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>from + size</td>
+<td>10000（max_result_window）</td>
+<td>浅分页、要跳页</td>
+<td>通用</td>
+</tr>
+<tr>
+<td>search_after</td>
+<td>无上限</td>
+<td>深翻、顺序翻（不可跳页）</td>
+<td>推荐</td>
+</tr>
+<tr>
+<td>scroll</td>
+<td>无上限</td>
+<td>全量导出、一次性</td>
+<td>7.10+ 渐进弃用，优先 search_after</td>
+</tr>
+</tbody></table>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// from + size：浅分页（page=3, size=10 → from=20），必须有唯一排序</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;from&quot;</span><span class="punctuation">:</span> <span class="number">20</span><span class="punctuation">,</span> <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">10</span><span class="punctuation">,</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match_all&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;sort&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;created_at&quot;</span><span class="punctuation">:</span> <span class="string">&quot;desc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;asc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// search_after：用上一页最后一条的排序值当游标</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">10</span><span class="punctuation">,</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match_all&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;sort&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;created_at&quot;</span><span class="punctuation">:</span> <span class="string">&quot;desc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;asc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;search_after&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;2026-09-02T10:00:00&quot;</span><span class="punctuation">,</span> <span class="string">&quot;1001&quot;</span><span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// scroll：导出全量，建立游标逐批取</span></span><br><span class="line">POST /order_idx/_search?scroll=<span class="number">1</span>m <span class="punctuation">&#123;</span> <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">1000</span><span class="punctuation">,</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match_all&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// 后续用 _search/scroll &#123; &quot;scroll&quot;: &quot;1m&quot;, &quot;scroll_id&quot;: &quot;xxx&quot; &#125; 续取</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>from + size</code> 超过 10000 报错：协调节点要把 from+size 条数据都取到内存再截断，深翻是性能与内存双重压力。导出用 search_after 或 scroll。</p>
+</blockquote>
+<hr>
+<h2 id="五、性能调优"><a href="#五、性能调优" class="headerlink" title="五、性能调优"></a>五、性能调优</h2><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 索引设计：写入密集期临时降副本 + 调大 refresh_interval，写完恢复</span></span><br><span class="line">PUT /order_idx/_settings <span class="punctuation">&#123;</span> <span class="attr">&quot;number_of_replicas&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span> <span class="attr">&quot;refresh_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30s&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line">PUT /order_idx/_settings <span class="punctuation">&#123;</span> <span class="attr">&quot;number_of_replicas&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span> <span class="attr">&quot;refresh_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;1s&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// 查询优化：精确条件进 filter（不打分 + 缓存），按维度 routing 少扫分片</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;bool&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;must&quot;</span><span class="punctuation">:</span>  <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;range&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;amount&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;gte&quot;</span><span class="punctuation">:</span> <span class="number">50</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line">GET /order_idx/_search?routing=user_42 <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;user_id&quot;</span><span class="punctuation">:</span> <span class="number">42</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// 写入优化：bulk 5~15MB 一批并行多批；translog 异步落盘换吞吐</span></span><br><span class="line">PUT /order_idx/_settings <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;index.translog.durability&quot;</span><span class="punctuation">:</span> <span class="string">&quot;async&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;index.translog.sync_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30s&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>分片数</strong>：单分片 30~50GB 为宜；过多分片使聚合 scatter-gather 开销大、元数据重。</li>
+<li><strong>filter 缓存</strong>：精确条件进 filter 上下文，bitset 复用。</li>
+<li><strong>routing</strong>：按维度（如 user_id）路由，查询带 routing 少扫分片。</li>
+<li><strong>索引拆分</strong>：按时间（logs-2026.09）或业务隔离，缩扫描范围。</li>
+<li><strong>避免 wildcard 前缀</strong>：<code>*foo</code> 无法走 term 字典跳查，等于全词典扫描——非用不可时建 <code>wildcard</code> 类型字段（为通配查询优化的存储结构）。</li>
+<li><strong>只读索引 forcemerge</strong>：历史日志索引合并到 1 个 segment，查询提速 + 省句柄（段合并原理见第一章）。</li>
+<li><strong>ES|QL（9.x）</strong>：<code>POST /_query { &quot;query&quot;: &quot;FROM order_idx | WHERE amount &gt; 100 | STATS total = SUM(amount) BY status&quot; }</code>——管道语法可读性远好于嵌套 DSL，分析类查询优先尝试；复杂打分与精细控制仍以 DSL 兜底。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>硬件项</th>
+<th>建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>堆内存</td>
+<td>物理内存 50%，剩给 Lucene 文件系统缓存</td>
+</tr>
+<tr>
+<td>JVM</td>
+<td>不超 31GB（指针压缩阈值），用 G1GC</td>
+</tr>
+<tr>
+<td>磁盘</td>
+<td>SSD 必备；HDD 只读副本勉强</td>
+</tr>
+<tr>
+<td>副本</td>
+<td>读 QPS 高加副本；写入期临时归零</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="六、慢查询排查"><a href="#六、慢查询排查" class="headerlink" title="六、慢查询排查"></a>六、慢查询排查</h2><h3 id="1-慢日志：先抓住嫌疑犯"><a href="#1-慢日志：先抓住嫌疑犯" class="headerlink" title="1. 慢日志：先抓住嫌疑犯"></a>1. 慢日志：先抓住嫌疑犯</h3><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">PUT /order_idx/_settings <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;index.search.slowlog.threshold.query.warn&quot;</span><span class="punctuation">:</span> <span class="string">&quot;10s&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;index.search.slowlog.threshold.query.info&quot;</span><span class="punctuation">:</span> <span class="string">&quot;5s&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;index.search.slowlog.threshold.fetch.debug&quot;</span><span class="punctuation">:</span> <span class="string">&quot;500ms&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;index.indexing.slowlog.threshold.index.warn&quot;</span><span class="punctuation">:</span> <span class="string">&quot;10s&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>按索引独立配置，warn 级别落 <code>*_index_search_slowlog.log</code>，线上建议常态开启。</p>
+<h3 id="2-Profile-API：解剖单条查询"><a href="#2-Profile-API：解剖单条查询" class="headerlink" title="2. Profile API：解剖单条查询"></a>2. Profile API：解剖单条查询</h3><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;profile&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;bool&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;must&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>返回逐子查询的 <code>breakdown</code>（create_weight &#x2F; score &#x2F; next_doc 各阶段耗时）——哪个子查询吃时间一目了然；profile 本身有开销，<strong>只用于排查，别常驻</strong>。</p>
+<h3 id="3-节点级热点：hot-threads-与线程池"><a href="#3-节点级热点：hot-threads-与线程池" class="headerlink" title="3. 节点级热点：hot_threads 与线程池"></a>3. 节点级热点：hot_threads 与线程池</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">curl -s <span class="string">&quot;http://localhost:9200/_nodes/hot_threads?threads=3&quot;</span>   <span class="comment"># 最忙线程栈：merge？GC？聚合？</span></span><br><span class="line">curl -s <span class="string">&quot;http://localhost:9200/_cat/thread_pool/search?v&amp;h=node_name,active,queue,rejected&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>判读：</p>
+<table>
+<thead>
+<tr>
+<th>信号</th>
+<th>含义</th>
+<th>处置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>search 池 <code>rejected</code> 持续增长</td>
+<td>查询打满，开始拒请求</td>
+<td>加副本&#x2F;节点，或优化慢查询</td>
+</tr>
+<tr>
+<td>queue 长期积压</td>
+<td>吞吐不足</td>
+<td>查慢日志找大头</td>
+</tr>
+<tr>
+<td>hot_threads 显示 merge 占比高</td>
+<td>段合并压力大</td>
+<td>调大 refresh_interval、控制写入节奏</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="七、运维与监控"><a href="#七、运维与监控" class="headerlink" title="七、运维与监控"></a>七、运维与监控</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">curl -s http://localhost:9200/_cluster/health?pretty   <span class="comment"># 集群健康 green/yellow/red</span></span><br><span class="line">curl -s http://localhost:9200/_cat/nodes?v              <span class="comment"># 节点信息</span></span><br><span class="line">curl -s http://localhost:9200/_cat/shards?v             <span class="comment"># 分片分布（看未分配）</span></span><br><span class="line">curl -s http://localhost:9200/_cat/indices?v             <span class="comment"># 索引列表 + 大小</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 强制 merge：只读索引合并 segment，省资源 + 提查询</span></span><br><span class="line">POST /logs<span class="number">-2026.08</span>/_forcemerge?max_num_segments=<span class="number">1</span></span><br><span class="line"><span class="comment">// ILM 策略：hot 滚动 → warm 合并 → cold 冻结 → delete 清理</span></span><br><span class="line">PUT /_ilm/policy/logs_policy <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;policy&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;phases&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;hot&quot;</span><span class="punctuation">:</span>    <span class="punctuation">&#123;</span> <span class="attr">&quot;actions&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;rollover&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;max_age&quot;</span><span class="punctuation">:</span> <span class="string">&quot;1d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;max_size&quot;</span><span class="punctuation">:</span> <span class="string">&quot;10gb&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;warm&quot;</span><span class="punctuation">:</span>   <span class="punctuation">&#123;</span> <span class="attr">&quot;min_age&quot;</span><span class="punctuation">:</span> <span class="string">&quot;7d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;actions&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;forcemerge&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;max_num_segments&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="attr">&quot;shrink&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;number_of_shards&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;cold&quot;</span><span class="punctuation">:</span>   <span class="punctuation">&#123;</span> <span class="attr">&quot;min_age&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;actions&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;freeze&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;delete&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;min_age&quot;</span><span class="punctuation">:</span> <span class="string">&quot;90d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;actions&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;delete&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Kibana → Stack Monitoring 可视化集群健康、节点负载、索引速率；ILM 让日志索引自动滚动归档，运维省心。</p>
+</blockquote>
+<hr>
+<h2 id="八、实战案例：商品搜索索引设计与零停机重建"><a href="#八、实战案例：商品搜索索引设计与零停机重建" class="headerlink" title="八、实战案例：商品搜索索引设计与零停机重建"></a>八、实战案例：商品搜索索引设计与零停机重建</h2><p><strong>问题背景</strong>：商城商品搜索上线三个月问题集中爆发：中文搜不出结果（分词器没配对）、重建索引要停服、翻页翻到 5000 条就报错、索引一天天变大磁盘告警。</p>
+<p><strong>方案</strong>：IK 分词 + 精细 mapping（该分词的分词、不该索引的关掉）→ 别名机制支持零停机重建 → search_after 深分页 → 动态 mapping 收紧控制膨胀。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 建索引（Kibana Console 语法）：分词器 + mapping 一次到位</span></span><br><span class="line">PUT products_v2</span><br><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;settings&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;number_of_shards&quot;</span><span class="punctuation">:</span> <span class="number">3</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;number_of_replicas&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;refresh_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30s&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;analysis&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;analyzer&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;goods_ik&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;custom&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;tokenizer&quot;</span><span class="punctuation">:</span> <span class="string">&quot;ik_max_word&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;lowercase&quot;</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;mappings&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;dynamic&quot;</span><span class="punctuation">:</span> <span class="string">&quot;strict&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;properties&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;text&quot;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;analyzer&quot;</span><span class="punctuation">:</span> <span class="string">&quot;goods_ik&quot;</span><span class="punctuation">,</span>             <span class="comment">// 索引侧细粒度分词</span></span><br><span class="line">        <span class="attr">&quot;search_analyzer&quot;</span><span class="punctuation">:</span> <span class="string">&quot;ik_smart&quot;</span><span class="punctuation">,</span>      <span class="comment">// 搜索侧粗粒度，召回更准</span></span><br><span class="line">        <span class="attr">&quot;fields&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">          <span class="attr">&quot;keyword&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;keyword&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;ignore_above&quot;</span><span class="punctuation">:</span> <span class="number">256</span> <span class="punctuation">&#125;</span></span><br><span class="line">        <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;category_id&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;keyword&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;price&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;scaled_float&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;scaling_factor&quot;</span><span class="punctuation">:</span> <span class="number">100</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;sales&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;long&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;detail_html&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;object&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;enabled&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">false</span></span> <span class="punctuation">&#125;</span><span class="punctuation">,</span>   <span class="comment">// 不索引大字段</span></span><br><span class="line">      <span class="attr">&quot;embedding&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;dense_vector&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;dims&quot;</span><span class="punctuation">:</span> <span class="number">768</span><span class="punctuation">,</span> <span class="attr">&quot;index&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span> <span class="attr">&quot;similarity&quot;</span><span class="punctuation">:</span> <span class="string">&quot;cosine&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 零停机重建：新索引 -&gt; reindex -&gt; 原子切别名 -&gt; 删旧索引</span></span><br><span class="line">PUT products/_alias/products_read            <span class="comment"># 步骤 1：读写分离别名（首次）</span></span><br><span class="line">POST _reindex</span><br><span class="line">&#123; <span class="string">&quot;source&quot;</span>: &#123; <span class="string">&quot;index&quot;</span>: <span class="string">&quot;products_v1&quot;</span> &#125;, <span class="string">&quot;dest&quot;</span>: &#123; <span class="string">&quot;index&quot;</span>: <span class="string">&quot;products_v2&quot;</span> &#125; &#125;</span><br><span class="line">POST _aliases                                <span class="comment"># 步骤 3：原子切换读别名</span></span><br><span class="line">&#123; <span class="string">&quot;actions&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;remove&quot;</span>: &#123; <span class="string">&quot;index&quot;</span>: <span class="string">&quot;products_v1&quot;</span>, <span class="string">&quot;alias&quot;</span>: <span class="string">&quot;products_read&quot;</span> &#125; &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;add&quot;</span>:    &#123; <span class="string">&quot;index&quot;</span>: <span class="string">&quot;products_v2&quot;</span>, <span class="string">&quot;alias&quot;</span>: <span class="string">&quot;products_read&quot;</span> &#125; &#125;</span><br><span class="line">] &#125;</span><br><span class="line">DELETE products_v1                           <span class="comment"># 步骤 4：确认无误后删旧</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 深分页：search_after 取代 from+size（无 10000 上限）</span></span><br><span class="line"><span class="type">SearchResponse</span> <span class="variable">resp</span> <span class="operator">=</span> esClient.search(s -&gt; s.index(<span class="string">&quot;products_read&quot;</span>)</span><br><span class="line">    .size(<span class="number">20</span>)</span><br><span class="line">    .sort(so -&gt; so.field(f -&gt; f.field(<span class="string">&quot;sales&quot;</span>).order(SortOrder.Desc)))</span><br><span class="line">    .sort(so -&gt; so.field(f -&gt; f.field(<span class="string">&quot;_id&quot;</span>).order(SortOrder.Asc)))  <span class="comment">// 追加唯一字段防重复</span></span><br><span class="line">    .searchAfter(List.of(lastSales, lastId)),                       <span class="comment">// 携带上一页末尾值</span></span><br><span class="line">    ProductDoc.class);</span><br></pre></td></tr></table></figure>
+
+<p><strong>踩坑点</strong>：</p>
+<ul>
+<li>IK 装了但 mapping 里 analyzer 没指到它，或索引&#x2F;搜索两侧都用 <code>ik_max_word</code> 导致召回过杂——索引用 <code>ik_max_word</code>（细粒度）、搜索用 <code>ik_smart</code>（粗粒度）。</li>
+<li>直接改 mapping 字段类型：ES 直接报错，只能重建索引——别名机制必须第一天就上。</li>
+<li><code>from+size</code> 翻页过深直接 400：导出&#x2F;翻页一律 <code>search_after</code>；跳页需求预查总数 + 关键词约束。</li>
+<li>动态 mapping 放飞：脏数据把 <code>price</code> 推成 text，聚合全挂——生产索引 <code>dynamic: strict</code> + 显式 mapping。</li>
+</ul>
+<hr>
+<h2 id="常见避坑"><a href="#常见避坑" class="headerlink" title="常见避坑"></a>常见避坑</h2><table>
+<thead>
+<tr>
+<th>坑</th>
+<th>现象</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>text 字段用 term</td>
+<td>查不到（term 不分词，匹配已分词的 term）</td>
+<td>text 用 match，keyword 用 term</td>
+</tr>
+<tr>
+<td>from + size 超 10000</td>
+<td>报错或 OOM</td>
+<td>改 search_after 游标翻页</td>
+</tr>
+<tr>
+<td>全用 must 打分</td>
+<td>慢、缓存失效</td>
+<td>精确条件进 filter，不打分且缓存</td>
+</tr>
+<tr>
+<td>cardinality 要精确</td>
+<td>误差大</td>
+<td>调大 precision_threshold 或换 terms agg（代价高）</td>
+</tr>
+<tr>
+<td>聚合不带 size:0</td>
+<td>返回大量文档明细拖慢</td>
+<td>聚合查询设 size:0</td>
+</tr>
+<tr>
+<td>深翻用 scroll 做分页</td>
+<td>游标占内存、不可跳页</td>
+<td>在线分页用 search_after，scroll 只导出</td>
+</tr>
+<tr>
+<td>nested 聚合漏声明</td>
+<td>结果错误</td>
+<td>nested 聚合要包 <code>nested</code> agg 路径</td>
+</tr>
+<tr>
+<td>堆设超 31GB</td>
+<td>指针压缩失效、内存浪费</td>
+<td>堆不超 31GB，多余给文件缓存</td>
+</tr>
+<tr>
+<td>分片过多</td>
+<td>元数据重、聚合 scatter-gather 慢</td>
+<td>单分片 30~50GB，别一上来 50 分片</td>
+</tr>
+<tr>
+<td>写入不批量</td>
+<td>单条 PUT 频繁 refresh 慢</td>
+<td>用 bulk，5~15MB 一批</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
+<thead>
+<tr>
+<th>要点</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Query DSL</td>
+<td>match 分词打分、term 精确不打分；bool 组合</td>
+</tr>
+<tr>
+<td>query vs filter</td>
+<td>精确条件进 filter，不打分 + 缓存</td>
+</tr>
+<tr>
+<td>相关性</td>
+<td>BM25 默认；function_score 做业务加权</td>
+</tr>
+<tr>
+<td>聚合</td>
+<td>bucket（terms&#x2F;date_histogram）+ metrics（sum&#x2F;avg&#x2F;cardinality）嵌套</td>
+</tr>
+<tr>
+<td>分页</td>
+<td>浅用 from+size，深用 search_after，导出用 scroll</td>
+</tr>
+<tr>
+<td>调优</td>
+<td>写入期降副本 + 大 refresh；查询进 filter 缓存 + routing</td>
+</tr>
+<tr>
+<td>硬件</td>
+<td>堆 50%、不超 31GB；SSD 必备</td>
+</tr>
+<tr>
+<td>运维</td>
+<td>_cat API 看健康；ILM 自动滚动归档；forcemerge 压只读索引</td>
+</tr>
+<tr>
+<td>BM25</td>
+<td>k1 控词频饱和、b 控长度归一；_explain 看分明细，multi_match 选对 type</td>
+</tr>
+<tr>
+<td>向量搜索</td>
+<td>dense_vector + kNN 语义检索；RRF 融合关键词与向量排序</td>
+</tr>
+<tr>
+<td>聚合性能</td>
+<td>filter 先行、eager_global_ordinals、composite 深翻、sampler 近似</td>
+</tr>
+<tr>
+<td>慢查询</td>
+<td>慢日志抓嫌疑 → Profile 解剖单条 → hot_threads&#x2F;thread_pool 看节点瓶颈</td>
+</tr>
+<tr>
+<td>实战</td>
+<td>商品搜索：IK 分词 + 严格 mapping + 别名零停机重建 + search_after 深分页</td>
+</tr>
+</tbody></table>
+<hr>
+<p>ES 两章到此：<a href="/search/01-elasticsearch-guide/">第一章：Elasticsearch 入门与索引管理</a> 打地基（索引 &#x2F; mapping &#x2F; 分词 &#x2F; CRUD &#x2F; 客户端），本章补查询与调优。选型上，ES 擅长全文检索与倒排索引场景；分析型大表扫描与聚合更推荐列存引擎，见 <a href="/database/01-clickhouse-guide/">ClickHouse：列式存储入门</a>；日志检索与可观测性栈（ELK&#x2F;EFK）的采集—存储—可视化链路将在后续可观测性系列展开。</p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
     <link itemprop="mainEntityOfPage" href="https://my919.github.io/search/01-elasticsearch-guide/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -835,518 +1347,6 @@
 </tbody></table>
 <hr>
 <p>至此 ES 基础打好：索引、mapping、分词、CRUD、Java 集成俱备；查询 DSL、聚合、分页与性能调优请看 <a href="/search/02-elasticsearch-query-tuning/">第二章：Elasticsearch 查询与性能调优</a>。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://my919.github.io/search/02-elasticsearch-query-tuning/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="my">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="my">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | my">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/search/02-elasticsearch-query-tuning/" class="post-title-link" itemprop="url">第二章：Elasticsearch 查询与性能调优</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2026-09-02 10:00:00" itemprop="dateCreated datePublished" datetime="2026-09-02T10:00:00+08:00">2026-09-02</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-11-05 00:40:53" itemprop="dateModified" datetime="2026-11-05T00:40:53+08:00">2026-11-05</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E6%90%9C%E7%B4%A2%E5%BC%95%E6%93%8E/" itemprop="url" rel="index"><span itemprop="name">搜索引擎</span></a>
-        </span>
-    </span>
-
-  
-    <span class="post-meta-break"></span>
-    <span class="post-meta-item" title="本文字数">
-      <span class="post-meta-item-icon">
-        <i class="far fa-file-word"></i>
-      </span>
-      <span class="post-meta-item-text">本文字数：</span>
-      <span>18k</span>
-    </span>
-    <span class="post-meta-item" title="阅读时长">
-      <span class="post-meta-item-icon">
-        <i class="far fa-clock"></i>
-      </span>
-      <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>16 分钟</span>
-    </span>
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h1 id="第二章：Elasticsearch-查询与性能调优"><a href="#第二章：Elasticsearch-查询与性能调优" class="headerlink" title="第二章：Elasticsearch 查询与性能调优"></a>第二章：Elasticsearch 查询与性能调优</h1><h2 id="概念基础"><a href="#概念基础" class="headerlink" title="概念基础"></a>概念基础</h2><ol>
-<li><strong>Query DSL 是 JSON 化的查询语法</strong>：一切查询走 <code>GET /idx/_search { body }</code>，body 由 query &#x2F; aggregations &#x2F; sort &#x2F; size &#x2F; from 等组成——告别 SQL，拥抱嵌套 JSON。</li>
-<li><strong>精确匹配 vs 全文检索</strong>：<code>term</code> 对 keyword &#x2F; 数值精确匹配（不打分），<code>match</code> 对 text 分词后匹配并打分——用错类型是新手头号坑。</li>
-<li><strong>相关性评分 BM25</strong>：ES 7+ 默认 BM25（替代 TF-IDF），核心是「词频饱和 + 文档长度归一」——短文档命中高权重，长文档被稀释。</li>
-<li><strong>聚合 &#x3D; 分桶 + 算指标</strong>：bucket agg（terms &#x2F; date_histogram &#x2F; range）分组，metrics agg（avg &#x2F; sum &#x2F; cardinality）算值，可嵌套——OLAP 分析能力。</li>
-<li><strong>分页深翻是 ES 的痛</strong>：<code>from + size</code> 超过 10000 默认被拒（max_result_window），深翻用 <code>search_after</code> 游标或 scroll——选错方式直接 OOM。</li>
-</ol>
-<blockquote>
-<p>本章承接 <a href="/search/01-elasticsearch-guide/">第一章：Elasticsearch 入门与索引管理</a> 的索引与 mapping；查询 DSL、聚合、调优在此展开。ES 按 9.x 语法。</p>
-</blockquote>
-<hr>
-<h2 id="一、Query-DSL-全览"><a href="#一、Query-DSL-全览" class="headerlink" title="一、Query DSL 全览"></a>一、Query DSL 全览</h2><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// match：text 字段分词后匹配，多词默认 OR，打分</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;无线 耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// match_phrase：词序敏感、完整短语（slop 控制词间隔）</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match_phrase&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="string">&quot;无线耳机&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;slop&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// term：keyword/数值精确匹配，不打分（text 字段别用 term！）</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;order_no&quot;</span><span class="punctuation">:</span> <span class="string">&quot;NO20260902001&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// terms：多值 IN</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;terms&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="number">1</span><span class="punctuation">,</span> <span class="number">2</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// range：范围</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;range&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;amount&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;gte&quot;</span><span class="punctuation">:</span> <span class="number">100</span><span class="punctuation">,</span> <span class="attr">&quot;lte&quot;</span><span class="punctuation">:</span> <span class="number">500</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bool 组合：must 打分、should 加分、filter 不打分但走缓存</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;bool&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;must&quot;</span><span class="punctuation">:</span>     <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span>   <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;range&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;amount&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;gte&quot;</span><span class="punctuation">:</span> <span class="number">50</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;should&quot;</span><span class="punctuation">:</span>   <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="string">&quot;新品&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;must_not&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="string">&quot;下架&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;minimum_should_match&quot;</span><span class="punctuation">:</span> <span class="number">1</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<table>
-<thead>
-<tr>
-<th>维度</th>
-<th>query（查询上下文）</th>
-<th>filter（过滤上下文）</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>是否打分</td>
-<td>是（算 _score）</td>
-<td>否</td>
-</tr>
-<tr>
-<td>是否缓存</td>
-<td>不缓存</td>
-<td>缓存（bitset 复用）</td>
-</tr>
-<tr>
-<td>性能</td>
-<td>慢</td>
-<td>快</td>
-</tr>
-<tr>
-<td>适用</td>
-<td>全文检索要排序</td>
-<td>精确条件、范围、时间过滤</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p>过滤条件能进 <code>filter</code> 就进 <code>filter</code>：不打分 + 可缓存，同样命中快数倍。</p>
-</blockquote>
-<h3 id="高亮、排序与浅分页组合"><a href="#高亮、排序与浅分页组合" class="headerlink" title="高亮、排序与浅分页组合"></a>高亮、排序与浅分页组合</h3><p>一个完整的业务搜索查询通常还包含高亮命中片段、相关度&#x2F;时间双排序与浅分页：</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">GET /articles/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;bool&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;must&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;Elasticsearch&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="string">&quot;published&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span></span><br><span class="line">  <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;highlight&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;fields&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="attr">&quot;content&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;fragment_size&quot;</span><span class="punctuation">:</span> <span class="number">150</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;sort&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;_score&quot;</span><span class="punctuation">:</span> <span class="string">&quot;desc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;createdAt&quot;</span><span class="punctuation">:</span> <span class="string">&quot;desc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;from&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">20</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<hr>
-<h2 id="二、复合查询与相关性"><a href="#二、复合查询与相关性" class="headerlink" title="二、复合查询与相关性"></a>二、复合查询与相关性</h2><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// function_score：电商搜索，标题匹配分 × 销量加权 × 新品加权 × 时间衰减</span></span><br><span class="line">GET /goods_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;function_score&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;手机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;functions&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;field_value_factor&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;sales&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;modifier&quot;</span><span class="punctuation">:</span> <span class="string">&quot;log1p&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;factor&quot;</span><span class="punctuation">:</span> <span class="number">2</span><span class="punctuation">,</span> <span class="attr">&quot;missing&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;weight&quot;</span><span class="punctuation">:</span> <span class="number">1.5</span><span class="punctuation">,</span> <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="string">&quot;新品&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;gauss&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;created_at&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;origin&quot;</span><span class="punctuation">:</span> <span class="string">&quot;now&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;scale&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30d&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;score_mode&quot;</span><span class="punctuation">:</span> <span class="string">&quot;multiply&quot;</span><span class="punctuation">,</span>    <span class="comment">// 各函数分相乘</span></span><br><span class="line">      <span class="attr">&quot;boost_mode&quot;</span><span class="punctuation">:</span> <span class="string">&quot;sum&quot;</span>          <span class="comment">// 与原 query 分相加</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// boosting：负向降权不剔除   |  constant_score：把 filter 包成固定分查询</span></span><br><span class="line">GET /goods_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;boosting&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;positive&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;手机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;negative&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="string">&quot;翻新&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;negative_boost&quot;</span><span class="punctuation">:</span> <span class="number">0.3</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span>        <span class="comment">// 命中翻新分 ×0.3</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<table>
-<thead>
-<tr>
-<th>手法</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>function_score</td>
-<td>销量 &#x2F; 时间 &#x2F; 距离等业务字段加权</td>
-</tr>
-<tr>
-<td>boosting</td>
-<td>负向降权不剔除</td>
-</tr>
-<tr>
-<td>constant_score</td>
-<td>filter 转查询、固定分</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p>电商搜索排序不是单纯 BM25：标题匹配分 + 销量 + 新鲜度 + 是否促销，function_score 是标准答案。</p>
-</blockquote>
-<h3 id="BM25-打分拆解"><a href="#BM25-打分拆解" class="headerlink" title="BM25 打分拆解"></a>BM25 打分拆解</h3><p><code>_explain</code> 看单文档得分明细：</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET /goods_idx/_explain/<span class="number">1001</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;无线耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<p>打分公式（简化）：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">score(q,d) = Σ IDF(t) · [ f(t,d)·(k1+1) / ( f(t,d) + k1·(1 - b + b·|d|/avgdl) ) ]</span><br><span class="line">             IDF(t)：词 t 的稀有度，越罕见权重越高</span><br><span class="line">             f(t,d)：词频，k1≈1.2 控制饱和（出现 10 次 ≠ 10 倍分）</span><br><span class="line">             |d|/avgdl：文档长度比，b≈0.75 控制长度归一（长文被稀释）</span><br></pre></td></tr></table></figure>
-
-<p><strong>multi_match 两种常用模式</strong>：</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">GET /goods_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;multi_match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="string">&quot;无线耳机&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;fields&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;title^3&quot;</span><span class="punctuation">,</span> <span class="string">&quot;brand^2&quot;</span><span class="punctuation">,</span> <span class="string">&quot;desc&quot;</span><span class="punctuation">]</span><span class="punctuation">,</span>   <span class="comment">// 字段权重：标题 3 倍</span></span><br><span class="line">    <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;best_fields&quot;</span>        <span class="comment">// 默认：任一字段匹配好即可（找同一实体）</span></span><br><span class="line">  <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// cross_fields：多字段当一个整体打分，词可分散在不同字段（如 &quot;索尼 耳机&quot; 品牌+品类）</span></span><br></pre></td></tr></table></figure>
-
-<table>
-<thead>
-<tr>
-<th>type</th>
-<th>语义</th>
-<th>适用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>best_fields</td>
-<td>单字段最高分胜出</td>
-<td>同义字段（title&#x2F;subtitle）</td>
-</tr>
-<tr>
-<td>cross_fields</td>
-<td>字段合并打分</td>
-<td>词分散在多字段（品牌+品名）</td>
-</tr>
-<tr>
-<td>most_fields</td>
-<td>全字段累加</td>
-<td>需要多字段共同参与排序</td>
-</tr>
-</tbody></table>
-<h3 id="向量搜索与混合检索（kNN-RRF）"><a href="#向量搜索与混合检索（kNN-RRF）" class="headerlink" title="向量搜索与混合检索（kNN + RRF）"></a>向量搜索与混合检索（kNN + RRF）</h3><p>AI 语义搜索：字段在 mapping 中声明为 <code>dense_vector</code>（<code>dims</code> 与模型维度一致、<code>index: true</code>、<code>similarity: cosine</code>），写入时由同步链路生成 Embedding（见第一章 Java 客户端集成）。</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 语义搜索：用户输入 → Embedding → 向量相似度</span></span><br><span class="line">GET /articles/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;knn&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;embedding&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;query_vector&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="number">0.123</span><span class="punctuation">,</span> <span class="number">0.456</span><span class="punctuation">,</span> ...<span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;k&quot;</span><span class="punctuation">:</span> <span class="number">10</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;num_candidates&quot;</span><span class="punctuation">:</span> <span class="number">100</span></span><br><span class="line">  <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;_source&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;title&quot;</span><span class="punctuation">,</span> <span class="string">&quot;content&quot;</span><span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 混合搜索：关键词 + 语义（RRF 融合排序）</span></span><br><span class="line">GET /articles/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;retriever&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;rrf&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;retrievers&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;standard&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;性能优化&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="punctuation">&#123;</span> <span class="attr">&quot;knn&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;embedding&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;query_vector&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="number">0.123</span><span class="punctuation">,</span> ...<span class="punctuation">]</span><span class="punctuation">,</span> <span class="attr">&quot;k&quot;</span><span class="punctuation">:</span> <span class="number">10</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;rank_window_size&quot;</span><span class="punctuation">:</span> <span class="number">50</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;rank_constant&quot;</span><span class="punctuation">:</span> <span class="number">60</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<hr>
-<h2 id="三、聚合分析"><a href="#三、聚合分析" class="headerlink" title="三、聚合分析"></a>三、聚合分析</h2><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// metrics agg：按状态分组，算总金额、均价、去重用户数</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;by_status&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;terms&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;status&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;total_amount&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;sum&quot;</span><span class="punctuation">:</span>  <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;avg_amount&quot;</span><span class="punctuation">:</span>   <span class="punctuation">&#123;</span> <span class="attr">&quot;avg&quot;</span><span class="punctuation">:</span>  <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;max_amount&quot;</span><span class="punctuation">:</span>    <span class="punctuation">&#123;</span> <span class="attr">&quot;max&quot;</span><span class="punctuation">:</span>  <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;unique_users&quot;</span><span class="punctuation">:</span>  <span class="punctuation">&#123;</span> <span class="attr">&quot;cardinality&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;user_id&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;precision_threshold&quot;</span><span class="punctuation">:</span> <span class="number">1000</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bucket agg：按天统计销售额，天内再嵌套按小时（date_histogram）</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;daily_sales&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;date_histogram&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;created_at&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;calendar_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;1d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;format&quot;</span><span class="punctuation">:</span> <span class="string">&quot;yyyy-MM-dd&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;time_zone&quot;</span><span class="punctuation">:</span> <span class="string">&quot;Asia/Shanghai&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;daily_total&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;sum&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;hourly&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;date_histogram&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;created_at&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;fixed_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;1h&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// range：金额区间分桶</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;amount_ranges&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;range&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;amount&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;ranges&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;to&quot;</span><span class="punctuation">:</span> <span class="number">100</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;from&quot;</span><span class="punctuation">:</span> <span class="number">100</span><span class="punctuation">,</span> <span class="attr">&quot;to&quot;</span><span class="punctuation">:</span> <span class="number">500</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;from&quot;</span><span class="punctuation">:</span> <span class="number">500</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<table>
-<thead>
-<tr>
-<th>agg 类型</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>terms</td>
-<td>按字段值分组（Top N）</td>
-</tr>
-<tr>
-<td>date_histogram</td>
-<td>按时间分桶（日 &#x2F; 时 &#x2F; 月）</td>
-</tr>
-<tr>
-<td>range</td>
-<td>按数值区间分桶</td>
-</tr>
-<tr>
-<td>cardinality</td>
-<td>去重计数（近似，HyperLogLog）</td>
-</tr>
-<tr>
-<td>nested</td>
-<td>聚合 nested 对象数组</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p><code>cardinality</code> 是近似去重（误差约 1%），<code>size: 0</code> 表示只取聚合不要文档明细——大表聚合必备。</p>
-</blockquote>
-<h3 id="聚合性能与下推"><a href="#聚合性能与下推" class="headerlink" title="聚合性能与下推"></a>聚合性能与下推</h3><ol>
-<li><strong>filter 先行</strong>：把过滤条件写进 query 的 filter 上下文，聚合只在过滤后的文档集上跑——别对全表聚合；</li>
-<li><strong><code>eager_global_ordinals</code></strong>：高基数 keyword 字段在建索引时就构建全局序号，聚合不再临时计算（适合反复聚合的维度列）：</li>
-</ol>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">PUT /order_idx <span class="punctuation">&#123;</span> <span class="attr">&quot;mappings&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;properties&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;keyword&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;eager_global_ordinals&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<ol start="3">
-<li><strong>深翻聚合用 composite</strong>：terms 只能拿 Top N，全量分组导出用 <code>composite + after_key</code> 逐页拉取：</li>
-</ol>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;aggs&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;by_user&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;composite&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;sources&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;user&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;terms&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;field&quot;</span><span class="punctuation">:</span> <span class="string">&quot;user_id&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">1000</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;after_key&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;user&quot;</span><span class="punctuation">:</span> <span class="number">42</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span>     <span class="comment">// after_key 取上一页返回值</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<ol start="4">
-<li><strong>近似优先</strong>：<code>sampler</code> agg 先抽样再聚合、cardinality 用 HyperLogLog 近似——接受 1% 误差换 10 倍速度。</li>
-</ol>
-<hr>
-<h2 id="四、分页与深度翻页"><a href="#四、分页与深度翻页" class="headerlink" title="四、分页与深度翻页"></a>四、分页与深度翻页</h2><table>
-<thead>
-<tr>
-<th>方式</th>
-<th>上限</th>
-<th>适用</th>
-<th>状态</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>from + size</td>
-<td>10000（max_result_window）</td>
-<td>浅分页、要跳页</td>
-<td>通用</td>
-</tr>
-<tr>
-<td>search_after</td>
-<td>无上限</td>
-<td>深翻、顺序翻（不可跳页）</td>
-<td>推荐</td>
-</tr>
-<tr>
-<td>scroll</td>
-<td>无上限</td>
-<td>全量导出、一次性</td>
-<td>7.10+ 渐进弃用，优先 search_after</td>
-</tr>
-</tbody></table>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// from + size：浅分页（page=3, size=10 → from=20），必须有唯一排序</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;from&quot;</span><span class="punctuation">:</span> <span class="number">20</span><span class="punctuation">,</span> <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">10</span><span class="punctuation">,</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match_all&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;sort&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;created_at&quot;</span><span class="punctuation">:</span> <span class="string">&quot;desc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;asc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// search_after：用上一页最后一条的排序值当游标</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">10</span><span class="punctuation">,</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match_all&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;sort&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;created_at&quot;</span><span class="punctuation">:</span> <span class="string">&quot;desc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;asc&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;search_after&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;2026-09-02T10:00:00&quot;</span><span class="punctuation">,</span> <span class="string">&quot;1001&quot;</span><span class="punctuation">]</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// scroll：导出全量，建立游标逐批取</span></span><br><span class="line">POST /order_idx/_search?scroll=<span class="number">1</span>m <span class="punctuation">&#123;</span> <span class="attr">&quot;size&quot;</span><span class="punctuation">:</span> <span class="number">1000</span><span class="punctuation">,</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;match_all&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// 后续用 _search/scroll &#123; &quot;scroll&quot;: &quot;1m&quot;, &quot;scroll_id&quot;: &quot;xxx&quot; &#125; 续取</span></span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p><code>from + size</code> 超过 10000 报错：协调节点要把 from+size 条数据都取到内存再截断，深翻是性能与内存双重压力。导出用 search_after 或 scroll。</p>
-</blockquote>
-<hr>
-<h2 id="五、性能调优"><a href="#五、性能调优" class="headerlink" title="五、性能调优"></a>五、性能调优</h2><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 索引设计：写入密集期临时降副本 + 调大 refresh_interval，写完恢复</span></span><br><span class="line">PUT /order_idx/_settings <span class="punctuation">&#123;</span> <span class="attr">&quot;number_of_replicas&quot;</span><span class="punctuation">:</span> <span class="number">0</span><span class="punctuation">,</span> <span class="attr">&quot;refresh_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30s&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line">PUT /order_idx/_settings <span class="punctuation">&#123;</span> <span class="attr">&quot;number_of_replicas&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span> <span class="attr">&quot;refresh_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;1s&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// 查询优化：精确条件进 filter（不打分 + 缓存），按维度 routing 少扫分片</span></span><br><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;bool&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;must&quot;</span><span class="punctuation">:</span>  <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;range&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;amount&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;gte&quot;</span><span class="punctuation">:</span> <span class="number">50</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br><span class="line">GET /order_idx/_search?routing=user_42 <span class="punctuation">&#123;</span> <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;term&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;user_id&quot;</span><span class="punctuation">:</span> <span class="number">42</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// 写入优化：bulk 5~15MB 一批并行多批；translog 异步落盘换吞吐</span></span><br><span class="line">PUT /order_idx/_settings <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;index.translog.durability&quot;</span><span class="punctuation">:</span> <span class="string">&quot;async&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;index.translog.sync_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30s&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><strong>分片数</strong>：单分片 30~50GB 为宜；过多分片使聚合 scatter-gather 开销大、元数据重。</li>
-<li><strong>filter 缓存</strong>：精确条件进 filter 上下文，bitset 复用。</li>
-<li><strong>routing</strong>：按维度（如 user_id）路由，查询带 routing 少扫分片。</li>
-<li><strong>索引拆分</strong>：按时间（logs-2026.09）或业务隔离，缩扫描范围。</li>
-<li><strong>避免 wildcard 前缀</strong>：<code>*foo</code> 无法走 term 字典跳查，等于全词典扫描——非用不可时建 <code>wildcard</code> 类型字段（为通配查询优化的存储结构）。</li>
-<li><strong>只读索引 forcemerge</strong>：历史日志索引合并到 1 个 segment，查询提速 + 省句柄（段合并原理见第一章）。</li>
-<li><strong>ES|QL（9.x）</strong>：<code>POST /_query { &quot;query&quot;: &quot;FROM order_idx | WHERE amount &gt; 100 | STATS total = SUM(amount) BY status&quot; }</code>——管道语法可读性远好于嵌套 DSL，分析类查询优先尝试；复杂打分与精细控制仍以 DSL 兜底。</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>硬件项</th>
-<th>建议</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>堆内存</td>
-<td>物理内存 50%，剩给 Lucene 文件系统缓存</td>
-</tr>
-<tr>
-<td>JVM</td>
-<td>不超 31GB（指针压缩阈值），用 G1GC</td>
-</tr>
-<tr>
-<td>磁盘</td>
-<td>SSD 必备；HDD 只读副本勉强</td>
-</tr>
-<tr>
-<td>副本</td>
-<td>读 QPS 高加副本；写入期临时归零</td>
-</tr>
-</tbody></table>
-<hr>
-<h2 id="六、慢查询排查"><a href="#六、慢查询排查" class="headerlink" title="六、慢查询排查"></a>六、慢查询排查</h2><h3 id="1-慢日志：先抓住嫌疑犯"><a href="#1-慢日志：先抓住嫌疑犯" class="headerlink" title="1. 慢日志：先抓住嫌疑犯"></a>1. 慢日志：先抓住嫌疑犯</h3><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">PUT /order_idx/_settings <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;index.search.slowlog.threshold.query.warn&quot;</span><span class="punctuation">:</span> <span class="string">&quot;10s&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;index.search.slowlog.threshold.query.info&quot;</span><span class="punctuation">:</span> <span class="string">&quot;5s&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;index.search.slowlog.threshold.fetch.debug&quot;</span><span class="punctuation">:</span> <span class="string">&quot;500ms&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;index.indexing.slowlog.threshold.index.warn&quot;</span><span class="punctuation">:</span> <span class="string">&quot;10s&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<p>按索引独立配置，warn 级别落 <code>*_index_search_slowlog.log</code>，线上建议常态开启。</p>
-<h3 id="2-Profile-API：解剖单条查询"><a href="#2-Profile-API：解剖单条查询" class="headerlink" title="2. Profile API：解剖单条查询"></a>2. Profile API：解剖单条查询</h3><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET /order_idx/_search <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;profile&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;query&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;bool&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;must&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">&#123;</span> <span class="attr">&quot;match&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="string">&quot;耳机&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<p>返回逐子查询的 <code>breakdown</code>（create_weight &#x2F; score &#x2F; next_doc 各阶段耗时）——哪个子查询吃时间一目了然；profile 本身有开销，<strong>只用于排查，别常驻</strong>。</p>
-<h3 id="3-节点级热点：hot-threads-与线程池"><a href="#3-节点级热点：hot-threads-与线程池" class="headerlink" title="3. 节点级热点：hot_threads 与线程池"></a>3. 节点级热点：hot_threads 与线程池</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">curl -s <span class="string">&quot;http://localhost:9200/_nodes/hot_threads?threads=3&quot;</span>   <span class="comment"># 最忙线程栈：merge？GC？聚合？</span></span><br><span class="line">curl -s <span class="string">&quot;http://localhost:9200/_cat/thread_pool/search?v&amp;h=node_name,active,queue,rejected&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>判读：</p>
-<table>
-<thead>
-<tr>
-<th>信号</th>
-<th>含义</th>
-<th>处置</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>search 池 <code>rejected</code> 持续增长</td>
-<td>查询打满，开始拒请求</td>
-<td>加副本&#x2F;节点，或优化慢查询</td>
-</tr>
-<tr>
-<td>queue 长期积压</td>
-<td>吞吐不足</td>
-<td>查慢日志找大头</td>
-</tr>
-<tr>
-<td>hot_threads 显示 merge 占比高</td>
-<td>段合并压力大</td>
-<td>调大 refresh_interval、控制写入节奏</td>
-</tr>
-</tbody></table>
-<hr>
-<h2 id="七、运维与监控"><a href="#七、运维与监控" class="headerlink" title="七、运维与监控"></a>七、运维与监控</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">curl -s http://localhost:9200/_cluster/health?pretty   <span class="comment"># 集群健康 green/yellow/red</span></span><br><span class="line">curl -s http://localhost:9200/_cat/nodes?v              <span class="comment"># 节点信息</span></span><br><span class="line">curl -s http://localhost:9200/_cat/shards?v             <span class="comment"># 分片分布（看未分配）</span></span><br><span class="line">curl -s http://localhost:9200/_cat/indices?v             <span class="comment"># 索引列表 + 大小</span></span><br></pre></td></tr></table></figure>
-
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 强制 merge：只读索引合并 segment，省资源 + 提查询</span></span><br><span class="line">POST /logs<span class="number">-2026.08</span>/_forcemerge?max_num_segments=<span class="number">1</span></span><br><span class="line"><span class="comment">// ILM 策略：hot 滚动 → warm 合并 → cold 冻结 → delete 清理</span></span><br><span class="line">PUT /_ilm/policy/logs_policy <span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;policy&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;phases&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;hot&quot;</span><span class="punctuation">:</span>    <span class="punctuation">&#123;</span> <span class="attr">&quot;actions&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;rollover&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;max_age&quot;</span><span class="punctuation">:</span> <span class="string">&quot;1d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;max_size&quot;</span><span class="punctuation">:</span> <span class="string">&quot;10gb&quot;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;warm&quot;</span><span class="punctuation">:</span>   <span class="punctuation">&#123;</span> <span class="attr">&quot;min_age&quot;</span><span class="punctuation">:</span> <span class="string">&quot;7d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;actions&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;forcemerge&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;max_num_segments&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span> <span class="attr">&quot;shrink&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;number_of_shards&quot;</span><span class="punctuation">:</span> <span class="number">1</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;cold&quot;</span><span class="punctuation">:</span>   <span class="punctuation">&#123;</span> <span class="attr">&quot;min_age&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;actions&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;freeze&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;delete&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;min_age&quot;</span><span class="punctuation">:</span> <span class="string">&quot;90d&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;actions&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;delete&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span> <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>Kibana → Stack Monitoring 可视化集群健康、节点负载、索引速率；ILM 让日志索引自动滚动归档，运维省心。</p>
-</blockquote>
-<hr>
-<h2 id="八、实战案例：商品搜索索引设计与零停机重建"><a href="#八、实战案例：商品搜索索引设计与零停机重建" class="headerlink" title="八、实战案例：商品搜索索引设计与零停机重建"></a>八、实战案例：商品搜索索引设计与零停机重建</h2><p><strong>问题背景</strong>：商城商品搜索上线三个月问题集中爆发：中文搜不出结果（分词器没配对）、重建索引要停服、翻页翻到 5000 条就报错、索引一天天变大磁盘告警。</p>
-<p><strong>方案</strong>：IK 分词 + 精细 mapping（该分词的分词、不该索引的关掉）→ 别名机制支持零停机重建 → search_after 深分页 → 动态 mapping 收紧控制膨胀。</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 建索引（Kibana Console 语法）：分词器 + mapping 一次到位</span></span><br><span class="line">PUT products_v2</span><br><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;settings&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;number_of_shards&quot;</span><span class="punctuation">:</span> <span class="number">3</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;number_of_replicas&quot;</span><span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;refresh_interval&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30s&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;analysis&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;analyzer&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;goods_ik&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;custom&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;tokenizer&quot;</span><span class="punctuation">:</span> <span class="string">&quot;ik_max_word&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;filter&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="string">&quot;lowercase&quot;</span><span class="punctuation">]</span> <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;mappings&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;dynamic&quot;</span><span class="punctuation">:</span> <span class="string">&quot;strict&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;properties&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;title&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;text&quot;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;analyzer&quot;</span><span class="punctuation">:</span> <span class="string">&quot;goods_ik&quot;</span><span class="punctuation">,</span>             <span class="comment">// 索引侧细粒度分词</span></span><br><span class="line">        <span class="attr">&quot;search_analyzer&quot;</span><span class="punctuation">:</span> <span class="string">&quot;ik_smart&quot;</span><span class="punctuation">,</span>      <span class="comment">// 搜索侧粗粒度，召回更准</span></span><br><span class="line">        <span class="attr">&quot;fields&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">          <span class="attr">&quot;keyword&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;keyword&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;ignore_above&quot;</span><span class="punctuation">:</span> <span class="number">256</span> <span class="punctuation">&#125;</span></span><br><span class="line">        <span class="punctuation">&#125;</span></span><br><span class="line">      <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;category_id&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;keyword&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;price&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;scaled_float&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;scaling_factor&quot;</span><span class="punctuation">:</span> <span class="number">100</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;sales&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;long&quot;</span> <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;detail_html&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;object&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;enabled&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">false</span></span> <span class="punctuation">&#125;</span><span class="punctuation">,</span>   <span class="comment">// 不索引大字段</span></span><br><span class="line">      <span class="attr">&quot;embedding&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span> <span class="attr">&quot;type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;dense_vector&quot;</span><span class="punctuation">,</span> <span class="attr">&quot;dims&quot;</span><span class="punctuation">:</span> <span class="number">768</span><span class="punctuation">,</span> <span class="attr">&quot;index&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span> <span class="attr">&quot;similarity&quot;</span><span class="punctuation">:</span> <span class="string">&quot;cosine&quot;</span> <span class="punctuation">&#125;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 零停机重建：新索引 -&gt; reindex -&gt; 原子切别名 -&gt; 删旧索引</span></span><br><span class="line">PUT products/_alias/products_read            <span class="comment"># 步骤 1：读写分离别名（首次）</span></span><br><span class="line">POST _reindex</span><br><span class="line">&#123; <span class="string">&quot;source&quot;</span>: &#123; <span class="string">&quot;index&quot;</span>: <span class="string">&quot;products_v1&quot;</span> &#125;, <span class="string">&quot;dest&quot;</span>: &#123; <span class="string">&quot;index&quot;</span>: <span class="string">&quot;products_v2&quot;</span> &#125; &#125;</span><br><span class="line">POST _aliases                                <span class="comment"># 步骤 3：原子切换读别名</span></span><br><span class="line">&#123; <span class="string">&quot;actions&quot;</span>: [</span><br><span class="line">    &#123; <span class="string">&quot;remove&quot;</span>: &#123; <span class="string">&quot;index&quot;</span>: <span class="string">&quot;products_v1&quot;</span>, <span class="string">&quot;alias&quot;</span>: <span class="string">&quot;products_read&quot;</span> &#125; &#125;,</span><br><span class="line">    &#123; <span class="string">&quot;add&quot;</span>:    &#123; <span class="string">&quot;index&quot;</span>: <span class="string">&quot;products_v2&quot;</span>, <span class="string">&quot;alias&quot;</span>: <span class="string">&quot;products_read&quot;</span> &#125; &#125;</span><br><span class="line">] &#125;</span><br><span class="line">DELETE products_v1                           <span class="comment"># 步骤 4：确认无误后删旧</span></span><br></pre></td></tr></table></figure>
-
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 深分页：search_after 取代 from+size（无 10000 上限）</span></span><br><span class="line"><span class="type">SearchResponse</span> <span class="variable">resp</span> <span class="operator">=</span> esClient.search(s -&gt; s.index(<span class="string">&quot;products_read&quot;</span>)</span><br><span class="line">    .size(<span class="number">20</span>)</span><br><span class="line">    .sort(so -&gt; so.field(f -&gt; f.field(<span class="string">&quot;sales&quot;</span>).order(SortOrder.Desc)))</span><br><span class="line">    .sort(so -&gt; so.field(f -&gt; f.field(<span class="string">&quot;_id&quot;</span>).order(SortOrder.Asc)))  <span class="comment">// 追加唯一字段防重复</span></span><br><span class="line">    .searchAfter(List.of(lastSales, lastId)),                       <span class="comment">// 携带上一页末尾值</span></span><br><span class="line">    ProductDoc.class);</span><br></pre></td></tr></table></figure>
-
-<p><strong>踩坑点</strong>：</p>
-<ul>
-<li>IK 装了但 mapping 里 analyzer 没指到它，或索引&#x2F;搜索两侧都用 <code>ik_max_word</code> 导致召回过杂——索引用 <code>ik_max_word</code>（细粒度）、搜索用 <code>ik_smart</code>（粗粒度）。</li>
-<li>直接改 mapping 字段类型：ES 直接报错，只能重建索引——别名机制必须第一天就上。</li>
-<li><code>from+size</code> 翻页过深直接 400：导出&#x2F;翻页一律 <code>search_after</code>；跳页需求预查总数 + 关键词约束。</li>
-<li>动态 mapping 放飞：脏数据把 <code>price</code> 推成 text，聚合全挂——生产索引 <code>dynamic: strict</code> + 显式 mapping。</li>
-</ul>
-<hr>
-<h2 id="常见避坑"><a href="#常见避坑" class="headerlink" title="常见避坑"></a>常见避坑</h2><table>
-<thead>
-<tr>
-<th>坑</th>
-<th>现象</th>
-<th>正确做法</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>text 字段用 term</td>
-<td>查不到（term 不分词，匹配已分词的 term）</td>
-<td>text 用 match，keyword 用 term</td>
-</tr>
-<tr>
-<td>from + size 超 10000</td>
-<td>报错或 OOM</td>
-<td>改 search_after 游标翻页</td>
-</tr>
-<tr>
-<td>全用 must 打分</td>
-<td>慢、缓存失效</td>
-<td>精确条件进 filter，不打分且缓存</td>
-</tr>
-<tr>
-<td>cardinality 要精确</td>
-<td>误差大</td>
-<td>调大 precision_threshold 或换 terms agg（代价高）</td>
-</tr>
-<tr>
-<td>聚合不带 size:0</td>
-<td>返回大量文档明细拖慢</td>
-<td>聚合查询设 size:0</td>
-</tr>
-<tr>
-<td>深翻用 scroll 做分页</td>
-<td>游标占内存、不可跳页</td>
-<td>在线分页用 search_after，scroll 只导出</td>
-</tr>
-<tr>
-<td>nested 聚合漏声明</td>
-<td>结果错误</td>
-<td>nested 聚合要包 <code>nested</code> agg 路径</td>
-</tr>
-<tr>
-<td>堆设超 31GB</td>
-<td>指针压缩失效、内存浪费</td>
-<td>堆不超 31GB，多余给文件缓存</td>
-</tr>
-<tr>
-<td>分片过多</td>
-<td>元数据重、聚合 scatter-gather 慢</td>
-<td>单分片 30~50GB，别一上来 50 分片</td>
-</tr>
-<tr>
-<td>写入不批量</td>
-<td>单条 PUT 频繁 refresh 慢</td>
-<td>用 bulk，5~15MB 一批</td>
-</tr>
-</tbody></table>
-<hr>
-<h2 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h2><table>
-<thead>
-<tr>
-<th>要点</th>
-<th>结论</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>Query DSL</td>
-<td>match 分词打分、term 精确不打分；bool 组合</td>
-</tr>
-<tr>
-<td>query vs filter</td>
-<td>精确条件进 filter，不打分 + 缓存</td>
-</tr>
-<tr>
-<td>相关性</td>
-<td>BM25 默认；function_score 做业务加权</td>
-</tr>
-<tr>
-<td>聚合</td>
-<td>bucket（terms&#x2F;date_histogram）+ metrics（sum&#x2F;avg&#x2F;cardinality）嵌套</td>
-</tr>
-<tr>
-<td>分页</td>
-<td>浅用 from+size，深用 search_after，导出用 scroll</td>
-</tr>
-<tr>
-<td>调优</td>
-<td>写入期降副本 + 大 refresh；查询进 filter 缓存 + routing</td>
-</tr>
-<tr>
-<td>硬件</td>
-<td>堆 50%、不超 31GB；SSD 必备</td>
-</tr>
-<tr>
-<td>运维</td>
-<td>_cat API 看健康；ILM 自动滚动归档；forcemerge 压只读索引</td>
-</tr>
-<tr>
-<td>BM25</td>
-<td>k1 控词频饱和、b 控长度归一；_explain 看分明细，multi_match 选对 type</td>
-</tr>
-<tr>
-<td>向量搜索</td>
-<td>dense_vector + kNN 语义检索；RRF 融合关键词与向量排序</td>
-</tr>
-<tr>
-<td>聚合性能</td>
-<td>filter 先行、eager_global_ordinals、composite 深翻、sampler 近似</td>
-</tr>
-<tr>
-<td>慢查询</td>
-<td>慢日志抓嫌疑 → Profile 解剖单条 → hot_threads&#x2F;thread_pool 看节点瓶颈</td>
-</tr>
-<tr>
-<td>实战</td>
-<td>商品搜索：IK 分词 + 严格 mapping + 别名零停机重建 + search_after 深分页</td>
-</tr>
-</tbody></table>
-<hr>
-<p>ES 两章到此：<a href="/search/01-elasticsearch-guide/">第一章：Elasticsearch 入门与索引管理</a> 打地基（索引 &#x2F; mapping &#x2F; 分词 &#x2F; CRUD &#x2F; 客户端），本章补查询与调优。选型上，ES 擅长全文检索与倒排索引场景；分析型大表扫描与聚合更推荐列存引擎，见 <a href="/database/01-clickhouse-guide/">ClickHouse：列式存储入门</a>；日志检索与可观测性栈（ELK&#x2F;EFK）的采集—存储—可视化链路将在后续可观测性系列展开。</p>
 
       
     </div>
