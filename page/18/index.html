@@ -1863,7 +1863,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-11-05 00:40:53" itemprop="dateModified" datetime="2026-11-05T00:40:53+08:00">2026-11-05</time>
+      <time title="修改时间：2026-11-08 13:44:13" itemprop="dateModified" datetime="2026-11-08T13:44:13+08:00">2026-11-08</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -1958,13 +1958,13 @@
 <td>CPU 问题</td>
 <td>某进程 CPU 100%、响应变慢</td>
 <td>top、jstack、async-profiler</td>
-<td><a href="jvm-cpu-analysis-guide.md">JVM CPU 飙高排查</a></td>
+<td><a href="/jvm/jvm-cpu-analysis-guide/">JVM CPU 飙高排查</a></td>
 </tr>
 <tr>
 <td>GC 问题</td>
 <td>GC 频繁、停顿过长、Full GC 异常</td>
 <td>GC 日志、GCeasy</td>
-<td><a href="jvm-gc-log-guide.md">JVM GC 日志解读</a></td>
+<td><a href="/jvm/jvm-gc-log-guide/">JVM GC 日志解读</a></td>
 </tr>
 </tbody></table>
 <p><strong>诊断前提</strong>：启动参数必须开对（见 §4），否则事后无法分析。</p>
@@ -2095,12 +2095,12 @@
 <figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">现象：订单服务每周五 16:00 准时 OOM，重启后恢复，下周又犯。</span><br><span class="line"></span><br><span class="line">1. 保留现场：/data/dumps/java_pid12345.hprof + gc.log</span><br><span class="line">2. GC 日志：Full GC 从 14:00 开始每 2 分钟一次，老年代一路涨到 100%</span><br><span class="line">   → 不是堆太小（平时很稳），是&quot;内存只增不减&quot; = 泄漏</span><br><span class="line">3. MAT 打开 dump → Leak Suspects：</span><br><span class="line">   &quot;一个 java.util.HashMap 实例占用 62% 的堆&quot;</span><br><span class="line">4. Dominator Tree → 展开：HashMap 的 key 全是 LocalDate（都是周五）</span><br><span class="line">5. Path to GC Roots → 被 static 字段 WeeklyReportCache.INSTANCE 持有</span><br><span class="line">6. 回代码：周报定时任务每天 put 一份数据，Map 从不清理</span><br><span class="line">   → 确认泄漏：缓存只增不减</span><br><span class="line">7. 修复：改用 Caffeine（maximumSize=100 + expireAfterWrite=7d）</span><br><span class="line">8. 上线后观察两周：GC 曲线平稳、无 OOM、dump 目录不再新增</span><br><span class="line">9. 复盘：把&quot;缓存必须有上限&quot;写进评审清单</span><br></pre></td></tr></table></figure>
 
 <h2 id="4-CPU-飙高排查（专题索引）"><a href="#4-CPU-飙高排查（专题索引）" class="headerlink" title="4. CPU 飙高排查（专题索引）"></a>4. CPU 飙高排查（专题索引）</h2><p>CPU 100%、死循环、正则回溯、锁竞争自旋等问题的完整排查步骤（top → jstack → 火焰图 async-profiler → 七类根因判定），详见：</p>
-<p>📖 <a href="jvm-cpu-analysis-guide.md">JVM 实战：CPU 飙高排查完整步骤</a></p>
+<p>📖 <a href="/jvm/jvm-cpu-analysis-guide/">JVM 实战：CPU 飙高排查完整步骤</a></p>
 <p>速查：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">top -Hp &lt;pid&gt;                          <span class="comment"># 找热点线程</span></span><br><span class="line"><span class="built_in">printf</span> <span class="string">&#x27;%x\n&#x27;</span> &lt;线程PID&gt;                 <span class="comment"># 转十六进制 nid</span></span><br><span class="line">jstack &lt;pid&gt; | grep -A20 <span class="string">&#x27;nid=0x3039&#x27;</span>   <span class="comment"># 定位代码行</span></span><br><span class="line">./profiler.sh -d 30 -o flamegraph &lt;pid&gt; <span class="comment"># 火焰图（精准）</span></span><br></pre></td></tr></table></figure>
 
 <h2 id="5-GC-日志解读（专题索引）"><a href="#5-GC-日志解读（专题索引）" class="headerlink" title="5. GC 日志解读（专题索引）"></a>5. GC 日志解读（专题索引）</h2><p>G1 日志逐字段解读、停顿分析、GCeasy 工具、常见模式与调参，详见：</p>
-<p>📖 <a href="jvm-gc-log-guide.md">JVM GC 日志深度解读</a></p>
+<p>📖 <a href="/jvm/jvm-gc-log-guide/">JVM GC 日志深度解读</a></p>
 <p>速查：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 开启 GC 日志（JDK 17+）</span></span><br><span class="line">java -Xlog:gc*:file=/data/logs/gc.log:<span class="keyword">time</span>,<span class="built_in">uptime</span>,level,tags:filecount=5,filesize=20m -jar app.jar</span><br><span class="line"><span class="comment"># 实时监控</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000   <span class="comment"># 关注 FGC（次数）、FGCT（耗时）、O（老年代使用率）</span></span><br></pre></td></tr></table></figure>
 
